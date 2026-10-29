@@ -429,13 +429,14 @@ const RIDERS=[
   {id:"hond",name:"Hondje",cost:60,def:"Bobbie",de:"het hondje"}
 ];
 const riderOf=()=>RIDERS.find(r=>r.id===S.rider)||RIDERS[0];
+const itemName=it=>typeof it.name==="object"? (it.name[S.rider]||it.name.capibara) : it.name;
 const FRIENDS=[
   {id:"geen",name:"Geen",cost:0,f:[]},
-  {id:"baby",name:"Kapibaby",cost:20,f:[{s:.55}]},
+  {id:"baby",name:{capibara:"Kapibaby",konijn:"Babykonijntje",hond:"Puppy"},cost:20,f:[{s:.55}]},
   {id:"twee",name:"Twee vriendjes",cost:45,f:[{s:.75},{s:.7,hat:"strik"}]},
   {id:"ballon",name:"Met ballonnen",cost:75,f:[{s:.75,ball:"#ff6b8b"},{s:.6,ball:"#6cc4ff"}]},
-  {id:"parade",name:"Capibara-parade",cost:130,f:[{s:.75,hat:"kroon"},{s:.68,hat:"hoed"},{s:.72,hat:"bloemen"},{s:.52,hat:"strik"}]},
-  {id:"wolk",name:"Wolkencapibara",cost:180,f:[{s:.85,cloud:true,hat:"hoed"}]}
+  {id:"parade",name:{capibara:"Capibara-parade",konijn:"Konijnenparade",hond:"Hondenparade"},cost:130,f:[{s:.75,hat:"kroon"},{s:.68,hat:"hoed"},{s:.72,hat:"bloemen"},{s:.52,hat:"strik"}]},
+  {id:"wolk",name:{capibara:"Wolkencapibara",konijn:"Wolkenkonijntje",hond:"Wolkenhondje"},cost:180,f:[{s:.85,cloud:true,hat:"hoed"}]}
 ];
 
 /* ---------------- Save data ---------------- */
@@ -715,7 +716,7 @@ function drawCapyRun(x,gy,s,ph,f,t,run){
   ctx.save(); ctx.translate(x,gy); ctx.scale(s,s); ctx.lineJoin="round"; ctx.lineCap="round";
   if(f.cloud){
     ctx.translate(0,-78+Math.sin(t*2)*5);
-    puff(-34,14,.8,PAL.cloud,PAL.cloudShade); drawCapy(-2,0,f.hat);
+    puff(-34,14,.8,PAL.cloud,PAL.cloudShade); drawRider(S.rider,-2,0,f.hat,t);
     ctx.restore(); return;
   }
   const hop=Math.abs(Math.sin(ph))*7*(.3+run);
@@ -727,6 +728,14 @@ function drawCapyRun(x,gy,s,ph,f,t,run){
     ctx.beginPath(); ctx.moveTo(bx-2,by+13); ctx.lineTo(bx+2,by+13); ctx.lineTo(bx,by+16); ctx.closePath(); ctx.fillStyle=f.ball; ctx.fill();
   }
   ctx.translate(0,-hop);
+  if(S.rider==="konijn"||S.rider==="hond"){
+    const legCol= S.rider==="konijn"? "#d9cbe9" : "#c48d4a";
+    [-12,-5,8,14].forEach((lx,i)=>{ const sw=Math.sin(ph*2+i*1.57)*4*(.3+run);
+      ctx.strokeStyle=legCol; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(lx,-9); ctx.lineTo(lx+sw,0); ctx.stroke(); });
+    ctx.translate(0,-16); ctx.scale(1.15,1.15);
+    if(S.rider==="konijn") drawBunny(0,0,f.hat,t+x*.01); else drawDog(0,0,f.hat,t+x*.01);
+    ctx.restore(); return;
+  }
   [-12,-5,8,14].forEach((lx,i)=>{ const sw=Math.sin(ph*2+i*1.57)*4*(.3+run);
     ctx.strokeStyle="#7a4e26"; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(lx,-9); ctx.lineTo(lx+sw,0); ctx.stroke(); });
   ctx.fillStyle="#b07a45"; ctx.strokeStyle="#7a4e26"; ctx.lineWidth=2;
@@ -928,7 +937,7 @@ function finishRace(){
   if(isRec && prevBest) news.push(`<div class="rec">Nieuw record! ${fmt(prevBest.time-time)} sneller dan je vorige beste tijd.</div>`);
   else if(isRec) news.push(`<div class="rec">Eerste race op dit level.${S.ghostOn?" Volgende keer race je tegen je spookeenhoorn!":""}</div>`);
   else news.push(`<div class="soft">Record: ${fmt(prevBest.time)}. Nog ${fmt(Math.max(1,time-prevBest.time))} sneller voor een nieuw record.</div>`);
-  [...MANES,...ACCS,...UNIX,...TRAILS,...FRIENDS,...RIDERS].forEach(it=>{ if(it.cost>before && it.cost<=S.stars) news.push(`<div class="unl">Nieuw in de stal: ${it.name}!</div>`); });
+  [...MANES,...ACCS,...UNIX,...TRAILS,...FRIENDS,...RIDERS].forEach(it=>{ if(it.cost>before && it.cost<=S.stars) news.push(`<div class="unl">Nieuw in de stal: ${itemName(it)}!</div>`); });
   $("news").innerHTML=news.join("");
   const hasMiss=Object.keys(G.miss).length>0;
   $("heatWrap").hidden=!hasMiss; if(hasMiss) buildKb($("heatKb"),{heat:G.miss});
@@ -1099,7 +1108,7 @@ function singleSw(el,list,key,inner){
   el.innerHTML="";
   list.forEach(it=>{ const b=document.createElement("button"); b.className="sw"; b.disabled=S.stars<it.cost;
     b.setAttribute("aria-pressed",String(S[key]===it.id));
-    b.innerHTML=(inner?inner(it):"")+`<span class="nm">${it.name}</span>${lockTxt(it.cost)}`;
+    b.innerHTML=(inner?inner(it):"")+`<span class="nm">${itemName(it)}</span>${lockTxt(it.cost)}`;
     b.onclick=()=>{ S[key]=it.id; if(key==="trail"){ trl=[]; pvTrail=[]; } save(); buildSwatches(); }; el.appendChild(b); });
 }
 function buildSwatches(){
