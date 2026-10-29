@@ -279,13 +279,15 @@ canvas#preview{width:100%;max-width:460px;aspect-ratio:640/300;height:auto}
         <div class="pv"><canvas id="preview" width="640" height="300"></canvas></div>
         <div class="names">
           <label>Naam van je eenhoorn<input id="uniName" maxlength="16" autocomplete="off"></label>
-          <label>Naam van je capibara<input id="capyName" maxlength="16" autocomplete="off"></label>
+          <label><span id="capyLabel">Naam van je capibara</span><input id="capyName" maxlength="16" autocomplete="off"></label>
         </div>
         <h3>Manen</h3>
         <div class="swatches" id="maneSw"></div>
         <div><h3>Voor de eenhoorn</h3><p class="soft" style="font-size:.88rem">Je mag er meerdere tegelijk aandoen.</p></div>
         <div class="swatches" id="uniSw"></div>
-        <h3>Iets voor de capibara</h3>
+        <h3>Wie rijdt er mee?</h3>
+        <div class="swatches" id="riderSw"></div>
+        <h3 id="accHead">Iets voor de capibara</h3>
         <div class="swatches" id="accSw"></div>
         <h3>Vriendjes</h3>
         <div class="swatches" id="friendSw"></div>
@@ -421,6 +423,12 @@ const TRAILS=[
   {id:"geen",name:"Geen",cost:0},{id:"hartjes",name:"Hartjes",cost:25},{id:"sterren",name:"Sterretjes",cost:50},
   {id:"bubbels",name:"Bubbels",cost:90},{id:"vlinders",name:"Vlinders",cost:140},{id:"regenboog",name:"Regenboogstreep",cost:220}
 ];
+const RIDERS=[
+  {id:"capibara",name:"Capibara",cost:0,def:"Kapi",de:"de capibara"},
+  {id:"konijn",name:"Konijntje",cost:30,def:"Hoppel",de:"het konijntje"},
+  {id:"hond",name:"Hondje",cost:60,def:"Bobbie",de:"het hondje"}
+];
+const riderOf=()=>RIDERS.find(r=>r.id===S.rider)||RIDERS[0];
 const FRIENDS=[
   {id:"geen",name:"Geen",cost:0,f:[]},
   {id:"baby",name:"Kapibaby",cost:20,f:[{s:.55}]},
@@ -433,7 +441,7 @@ const FRIENDS=[
 /* ---------------- Save data ---------------- */
 const KEY="eenhoornrace-v1";
 function loadSave(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
-const DEFAULTS=()=>({uni:"Sterretje",capy:"Kapi",mane:"regenboog",acc:"geen",uniX:[],trail:"geen",friends:"geen",stars:0,sound:true,help:true,ghostOn:true,len:15,best:{},ks:{},bg:{}});
+const DEFAULTS=()=>({uni:"Sterretje",capy:"Kapi",mane:"regenboog",acc:"geen",uniX:[],trail:"geen",friends:"geen",rider:"capibara",stars:0,sound:true,help:true,ghostOn:true,len:15,best:{},ks:{},bg:{}});
 const S=Object.assign(DEFAULTS(), loadSave());
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
@@ -629,7 +637,7 @@ function drawUnicorn(x,y,s,ph,o){
     ctx.strokeStyle="#6cc4ff"; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(20,-14); ctx.quadraticCurveTo(8,-8+w,-4,-12+w*1.5); ctx.stroke();
     ctx.strokeStyle="#ffffff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(4,-11+w); ctx.lineTo(2,-7+w); ctx.stroke();
   }
-  drawCapy(-12,-29+(run? Math.abs(Math.sin(ph))*-2:0),o.acc);
+  drawRider(o.rider||S.rider,-12,-29+(run? Math.abs(Math.sin(ph))*-2:0),o.acc,t);
   ctx.restore();
 }
 function flower(x,y,c,r){ ctx.fillStyle=c; for(let i=0;i<5;i++){ const a=i*1.2566; ell(x+Math.cos(a)*r,y+Math.sin(a)*r,r*.75,r*.75); ctx.fill(); } ctx.fillStyle="#fff7c2"; ell(x,y,r*.6,r*.6); ctx.fill(); }
@@ -643,6 +651,50 @@ function drawCapyAcc(acc){
     ctx.fillStyle="#ffcc3d"; ctx.fill(); ctx.strokeStyle="#d8941c"; ctx.lineWidth=1.2; ctx.stroke(); ctx.fillStyle="#ff6fa8"; ell(12.5,-19,1.6,1.6); ctx.fill(); }
   if(acc==="hoorn"){ ctx.beginPath(); ctx.moveTo(10,-16); ctx.lineTo(15,-16); ctx.lineTo(13.5,-31); ctx.closePath(); ctx.fillStyle="#ffcc3d"; ctx.fill();
     ctx.strokeStyle="#d8941c"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(10.5,-19); ctx.lineTo(14.8,-21); ctx.moveTo(11.3,-23.5); ctx.lineTo(14.3,-25); ctx.stroke(); }
+}
+function drawRider(kind,cx,cy,acc,t){
+  if(kind==="konijn") drawBunny(cx,cy,acc,t);
+  else if(kind==="hond") drawDog(cx,cy,acc,t);
+  else drawCapy(cx,cy,acc);
+}
+function drawBunny(cx,cy,acc,t){
+  ctx.save(); ctx.translate(cx,cy); ctx.lineJoin="round"; ctx.lineCap="round";
+  const fur="#fbf7ff", edge="#c9b8de", pink="#ffb3cf";
+  const tw=Math.sin((t||0)*3)*.06;
+  [[8,-14,-.35+tw],[17,-15,.25-tw]].forEach(([x,y,r])=>{ ctx.save(); ctx.translate(x,y); ctx.rotate(r);
+    ell(0,-11,4.6,12); ctx.fillStyle=fur; ctx.fill(); ctx.strokeStyle=edge; ctx.lineWidth=2; ctx.stroke();
+    ell(0,-11,2.2,8.5); ctx.fillStyle=pink; ctx.fill(); ctx.restore(); });
+  ctx.fillStyle=fur; ctx.strokeStyle=edge; ctx.lineWidth=2;
+  ell(0,0,16,10.5); ctx.fill(); ctx.stroke();
+  ell(-16,-3,5.5,5.5); ctx.fill(); ctx.stroke();
+  ell(14,-8,11,9.5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=fur; ell(13,7,4.5,3); ctx.fill(); ctx.strokeStyle=edge; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.strokeStyle="#3b2350"; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(16.5,-9.5,2.2,Math.PI*1.1,Math.PI*1.9); ctx.stroke();
+  ctx.fillStyle="rgba(255,130,175,.45)"; ell(18,-4.5,3,2.2); ctx.fill();
+  ctx.fillStyle="#ff7fae"; ell(24.3,-6.8,1.8,1.4); ctx.fill();
+  ctx.strokeStyle="#c9b8de"; ctx.lineWidth=.9; ctx.beginPath(); ctx.moveTo(23,-5.5); ctx.lineTo(29,-4.5); ctx.moveTo(23,-5); ctx.lineTo(28.5,-2.5); ctx.stroke();
+  drawCapyAcc(acc);
+  ctx.restore();
+}
+function drawDog(cx,cy,acc,t){
+  ctx.save(); ctx.translate(cx,cy); ctx.lineJoin="round"; ctx.lineCap="round";
+  const fur="#e8b46c", edge="#a8763a", dark="#8a5a2b", light="#f8dfb4";
+  const wag=Math.sin((t||0)*14)*.5;
+  ctx.save(); ctx.translate(-15,-4); ctx.rotate(-.9+wag); ctx.strokeStyle=edge; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(-3,-8,1,-13); ctx.stroke();
+  ctx.strokeStyle=fur; ctx.lineWidth=3.5; ctx.stroke(); ctx.restore();
+  ctx.fillStyle=fur; ctx.strokeStyle=edge; ctx.lineWidth=2;
+  ell(0,0,17,11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=light; ell(2,3,9,5.5); ctx.fill();
+  rrect(4,-18,19,16,8); ctx.fillStyle=fur; ctx.fill(); ctx.stroke();
+  rrect(17,-12,10,9,4.5); ctx.fillStyle=light; ctx.fill(); ctx.strokeStyle=edge; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle="#2c1a10"; ell(26,-10.5,2.3,1.8); ctx.fill();
+  ctx.strokeStyle="#2c1a10"; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(14.5,-11,2.2,Math.PI*1.1,Math.PI*1.9); ctx.stroke();
+  ctx.strokeStyle=dark; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(22,-6,2.4,.3,2.6); ctx.stroke();
+  ctx.fillStyle="#ff8fab"; ell(22.5,-3,1.8,2.2); ctx.fill();
+  ctx.save(); ctx.translate(7,-15); ctx.rotate(.35+Math.sin((t||0)*8)*.08); ell(0,7,4.2,8.5); ctx.fillStyle=dark; ctx.fill(); ctx.restore();
+  ctx.fillStyle=fur; ell(15,7,4.5,3.2); ctx.fill(); ctx.strokeStyle=edge; ctx.lineWidth=1.5; ctx.stroke();
+  drawCapyAcc(acc);
+  ctx.restore();
 }
 function drawCapy(cx,cy,acc){
   ctx.save(); ctx.translate(cx,cy); ctx.lineJoin="round";
@@ -876,7 +928,7 @@ function finishRace(){
   if(isRec && prevBest) news.push(`<div class="rec">Nieuw record! ${fmt(prevBest.time-time)} sneller dan je vorige beste tijd.</div>`);
   else if(isRec) news.push(`<div class="rec">Eerste race op dit level.${S.ghostOn?" Volgende keer race je tegen je spookeenhoorn!":""}</div>`);
   else news.push(`<div class="soft">Record: ${fmt(prevBest.time)}. Nog ${fmt(Math.max(1,time-prevBest.time))} sneller voor een nieuw record.</div>`);
-  [...MANES,...ACCS,...UNIX,...TRAILS,...FRIENDS].forEach(it=>{ if(it.cost>before && it.cost<=S.stars) news.push(`<div class="unl">Nieuw in de stal: ${it.name}!</div>`); });
+  [...MANES,...ACCS,...UNIX,...TRAILS,...FRIENDS,...RIDERS].forEach(it=>{ if(it.cost>before && it.cost<=S.stars) news.push(`<div class="unl">Nieuw in de stal: ${it.name}!</div>`); });
   $("news").innerHTML=news.join("");
   const hasMiss=Object.keys(G.miss).length>0;
   $("heatWrap").hidden=!hasMiss; if(hasMiss) buildKb($("heatKb"),{heat:G.miss});
@@ -1061,9 +1113,20 @@ function buildSwatches(){
   singleSw($("trailSw"),TRAILS,"trail");
   singleSw($("friendSw"),FRIENDS,"friends");
   singleSw($("accSw"),ACCS,"acc");
+  const rs=$("riderSw"); rs.innerHTML="";
+  RIDERS.forEach(r=>{ const b=document.createElement("button"); b.className="sw"; b.disabled=S.stars<r.cost;
+    b.setAttribute("aria-pressed",String(S.rider===r.id));
+    b.innerHTML=`<span class="nm">${r.name}</span>${lockTxt(r.cost)}`;
+    b.onclick=()=>{ const prev=riderOf(); S.rider=r.id;
+      if(!S.capy || S.capy===prev.def){ S.capy=r.def; $("capyName").value=r.def; }
+      save(); buildSwatches(); };
+    rs.appendChild(b); });
+  const rd=riderOf();
+  $("accHead").textContent="Iets voor "+rd.de;
+  $("capyLabel").textContent="Naam van "+rd.de.replace(/^(de|het) /,"je ");
 }
 $("uniName").oninput=e=>{ S.uni=e.target.value.trim()||"Sterretje"; save(); };
-$("capyName").oninput=e=>{ S.capy=e.target.value.trim()||"Kapi"; save(); };
+$("capyName").oninput=e=>{ S.capy=e.target.value.trim()||riderOf().def; save(); };
 $("stalBtn").onclick=openStal;
 $("stalClose").onclick=openMenu;
 
