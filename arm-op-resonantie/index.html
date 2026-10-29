@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Een arm op resonantie</title>
+<meta name="description" content="Bewegende simulatie van hoe de Einstein Telescope zijn armen van 10 km op resonantie houdt, met een passerende zwaartekrachtgolf en een zoom naar de echte schaal.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: optical-breadboard stage on top, film-style caption strip, then an instrument rack of plots + controls */
+:root{
+  --bg:#eef1f4; --surface:#f9fbfc; --table:#e2e7ec; --hole:#c8d1d9;
+  --ink:#16202a; --muted:#5b6977; --line:#c3ccd5;
+  --beam:#d2302a; --signal:#0d7c84; --hl:#0d7c84; --warn:#a8650f; --gw:#6a3fb5;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d141b; --surface:#131c25; --table:#101922; --hole:#1d2934;
+  --ink:#e4ebf1; --muted:#8c9cab; --line:#2a3846;
+  --beam:#ff6457; --signal:#3ec5cb; --hl:#3ec5cb; --warn:#e3a54a; --gw:#b597ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d141b; --surface:#131c25; --table:#101922; --hole:#1d2934;
+  --ink:#e4ebf1; --muted:#8c9cab; --line:#2a3846;
+  --beam:#ff6457; --signal:#3ec5cb; --hl:#3ec5cb; --warn:#e3a54a; --gw:#b597ff; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 40px;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--signal)}
+h1{font-family:var(--f-display);font-stretch:118%;font-weight:750;font-size:clamp(26px,4.2vw,40px);line-height:1.05;margin:4px 0 0;text-wrap:balance;letter-spacing:-.01em}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.lang button{font:500 13px var(--f-mono);background:transparent;color:var(--muted);border:0;padding:6px 12px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.stage{border:1px solid var(--line);border-radius:10px;overflow-x:auto;background:var(--table)}
+#stage{display:block;width:100%;min-width:620px;aspect-ratio:800/380}
+.film{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.transport{display:flex;gap:8px}
+.btn{font:600 14px var(--f-body);display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn:focus-visible,.chip:focus-visible,.lang button:focus-visible,input:focus-visible,.switch:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.caption{min-width:0;display:grid;gap:6px}
+.caption h2{font-family:var(--f-display);font-stretch:110%;font-weight:700;font-size:19px;margin:0;text-wrap:balance}
+.caption p{margin:0;max-width:72ch;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{position:relative;overflow:hidden;font:500 12px var(--f-mono);border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:5px 10px;cursor:pointer}
+.chip[aria-current="true"]{color:var(--ink);border-color:var(--ink)}
+.chip .bar{position:absolute;left:0;bottom:0;height:2px;background:var(--signal);width:0}
+.rack{display:grid;grid-template-columns:1fr 1fr 300px;grid-template-areas:"err strip ctl" "out out ctl";gap:14px}
+.a-err{grid-area:err}.a-strip{grid-area:strip}.a-out{grid-area:out}.controls{grid-area:ctl}
+.plot.wide{aspect-ratio:3/1}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:600 13px var(--f-body);background:transparent;color:var(--muted);border:0;padding:8px 6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px}
+.btn.gw{border-color:var(--gw);color:var(--gw);justify-content:center}
+.btn.gw:disabled{opacity:.5;cursor:default}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0;display:grid;gap:8px;align-content:start}
+.card h3{margin:0;font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.plot{display:block;width:100%;aspect-ratio:16/10}
+.status{display:flex;align-items:center;gap:8px;font:600 14px var(--f-body)}
+.pill{font:600 12px var(--f-mono);letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid currentColor}
+.pill[data-s="off"]{color:var(--muted)} .pill[data-s="acquire"]{color:var(--warn)} .pill[data-s="locked"]{color:var(--signal)} .pill[data-s="lost"]{color:var(--beam)}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ro{border-top:1px solid var(--line);padding-top:6px}
+.ro b{display:block;font:500 20px var(--f-mono);font-variant-numeric:tabular-nums}
+.ro span{font-size:12px;color:var(--muted)}
+.ctl{display:grid;gap:4px}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.ctl output{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--signal)}
+.switch{display:flex;align-items:center;justify-content:space-between;width:100%;font:600 14px var(--f-body);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.switch .knob{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;transition:background .2s}
+.switch .knob::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface);transition:transform .2s}
+.switch[aria-checked="true"] .knob{background:var(--signal)}
+.switch[aria-checked="true"] .knob::after{transform:translateX(16px)}
+.scale{gap:12px}
+.scale>*{min-width:0}
+.scale h2{font-family:var(--f-display);font-stretch:110%;font-weight:700;font-size:21px;margin:0;text-wrap:balance}
+.scale .lede{margin:0;max-width:75ch}
+.scale-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px;align-items:start}
+.scale-main{display:grid;gap:10px;min-width:0}
+#pscale{display:block;width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.scale-side h4{margin:0 0 6px;font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+#zlist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+#zlist li{display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+#zlist li .sw{width:10px;height:10px;border-radius:2px;align-self:center}
+#zlist li b{font-weight:600}
+#zlist li small{display:block;color:var(--muted);font:500 11.5px var(--f-mono)}
+#zlist li[data-v="in"]{background:linear-gradient(90deg,color-mix(in srgb,var(--signal) 10%,transparent),transparent)}
+#zlist li[data-v="in"] small{color:var(--signal)}
+.small{font-size:13px;color:var(--muted);margin:0;max-width:90ch}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600}
+summary:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{text-align:left;padding:7px 10px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n{white-space:nowrap;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+@media (max-width:760px){.scale-grid{grid-template-columns:minmax(0,1fr)}#pscale{aspect-ratio:4/3}}
+.note{font-size:13px;color:var(--muted);max-width:90ch;margin:0}
+@media (max-width:900px){.rack{grid-template-columns:1fr 1fr;grid-template-areas:"err strip" "out out" "ctl ctl"}}
+@media (max-width:620px){.rack{grid-template-columns:1fr;grid-template-areas:"err" "strip" "out" "ctl"}.film{grid-template-columns:1fr}.plot.wide{aspect-ratio:2/1}}
+@media (prefers-reduced-motion:reduce){.switch .knob,.switch .knob::after{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow" data-i="eyebrow">Einstein Telescope · interferometer technology</div>
+      <h1 data-i="title">Keeping a 10 km arm on resonance</h1>
+    </div>
+    <div class="lang" role="group" aria-label="Taal">
+      <button id="lang-en" aria-pressed="false">EN</button><button id="lang-nl" aria-pressed="true">NL</button>
+    </div>
+  </header>
+
+  <div class="stage"><canvas id="stage" role="img" aria-label="Bewegend schema van een armtrilholte met Pound–Drever–Hall-terugkoppeling"></canvas></div>
+
+  <section class="film" aria-live="polite">
+    <div class="transport">
+      <button class="btn primary" id="play" aria-label="Afspelen of pauzeren">▶</button>
+      <button class="btn" id="restart" data-i="restart">↺ Restart</button>
+    </div>
+    <div class="caption">
+      <h2 id="cap-h"></h2>
+      <p id="cap-p"></p>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+
+  <section class="rack">
+    <div class="card a-err">
+      <h3 data-i="plotErr">Error signal vs. arm length</h3>
+      <canvas class="plot" id="perr"></canvas>
+    </div>
+    <div class="card a-strip">
+      <h3 data-i="plotStrip">Last 15 seconds</h3>
+      <canvas class="plot" id="pstrip"></canvas>
+    </div>
+    <div class="card a-out">
+      <h3 id="out-h">Detector output · last 6 seconds</h3>
+      <canvas class="plot wide" id="pout"></canvas>
+    </div>
+    <div class="card controls">
+      <div class="seg" role="group" aria-label="Weergave"><button id="v-arm" aria-pressed="true">One arm</button><button id="v-full" aria-pressed="false">Full detector</button></div>
+      <div class="status"><span data-i="status">Status</span><span class="pill" id="pill" data-s="off">Free</span></div>
+      <div class="readouts">
+        <div class="ro"><b id="ro-p">100%</b><span id="ro-p-l">light in arm (of max)</span></div>
+        <div class="ro"><b id="ro-w">0.00</b><span id="ro-w-l">offset, in resonance widths</span></div>
+      </div>
+      <button class="switch" id="lock" role="switch" aria-checked="false"><span data-i="lockLbl">Feedback lock</span><span class="knob"></span></button>
+      <div class="ctl"><label for="amp"><span data-i="ampLbl">Ground motion</span><output id="amp-o"></output></label><input id="amp" type="range" min="0" max="3" step="0.05" value="1.6"></div>
+      <div class="ctl"><label for="gain"><span data-i="gainLbl">Servo gain</span><output id="gain-o"></output></label><input id="gain" type="range" min="0" max="1" step="0.01" value="0.6"></div>
+      <button class="btn gw" id="gwbtn" data-i="gwBtn">≋ Send a gravitational wave</button>
+    </div>
+  </section>
+
+  <section class="card scale">
+    <h2 data-i="secTitle">True scale</h2>
+    <p class="lede" data-i="secLede"></p>
+    <div class="scale-grid">
+      <div class="scale-main">
+        <canvas id="pscale" role="img" aria-label="Zoombare liniaal met echte afmetingen en bewegingen"></canvas>
+        <div class="ctl"><label for="zoom"><span data-i="zoomLbl">Zoom</span><output id="zoom-o"></output></label><input id="zoom" type="range" min="-4.6" max="18" step="0.01" value="8.4"></div>
+        <div class="chips" id="zchips"></div>
+      </div>
+      <div class="scale-side"><h4 data-i="atZoom">At this zoom</h4><ul id="zlist"></ul></div>
+    </div>
+    <p class="small" data-i="scaleNote"></p>
+    <details><summary data-i="exTitle">How much does the animation above exaggerate?</summary>
+      <div class="tbl"><table id="extbl"></table></div>
+      <p class="small" data-i="exNote" style="margin-top:8px"></p>
+    </details>
+  </section>
+
+  <p class="note" data-i="note">Not to scale. Real mirrors drift by up to around a micrometre, hundreds of times the width of the resonance (about a nanometre), and the real lock holds them far more tightly than shown. Here the resonance is drawn much wider and the motion much smaller so you can see both at once. The gravitational wave is exaggerated even more: a real one changes the 10 km arm by less than a hundredth of the width of a proton. In the real detector the wave stretches one arm while squeezing the other, and that difference is what gets read out.</p>
+</div>
+
+<script>
+(()=>{
+/* ---------- text ---------- */
+const NOTE_EN="Not to scale. Real mirrors drift by up to around a micrometre, hundreds of times the width of the resonance (about a nanometre), and the real lock holds them far more tightly than shown. Here the resonance is drawn much wider and the motion much smaller so you can see both at once. The gravitational wave is exaggerated even more: a real one changes the 10 km arm by less than a hundredth of the width of a proton.";
+const NOTE_NL="Niet op schaal. Echte spiegels verschuiven tot ongeveer een micrometer, honderden keren de breedte van de resonantie (ongeveer een nanometer), en de echte regeling houdt ze veel strakker vast dan hier. De resonantie is hier veel breder getekend en de beweging veel kleiner, zodat je beide tegelijk ziet. De zwaartekrachtgolf is nog veel sterker overdreven: een echte verandert de arm van 10 km met minder dan een honderdste van de breedte van een proton.";
+const TX={
+en:{eyebrow:"Einstein Telescope · interferometer technology",title:"Keeping a 10 km arm on resonance",restart:"↺ Restart",
+plotErr:"Error signal vs. arm length",plotStrip:"Last 15 seconds",plotOut:"Arm X signal · last 6 seconds",plotOutFull:"Detector output (X − Y) · last 6 seconds",
+gwBtn:"≋ Send a gravitational wave",status:"Status",roP:"light in arm (of max)",roW:"offset, in resonance widths",roAS:"light at dark port",roD:"arm difference, in widths",
+lockLbl:"Feedback lock",ampLbl:"Ground motion",gainLbl:"Servo gain",viewArm:"One arm",viewFull:"Full detector",note:NOTE_EN,
+st:{off:"Free",acquire:"Acquiring…",locked:"Locked",lost:"Lock lost"},widths:"× width",
+lb:{laser:"Laser",eom:"Phase modulator",osc:"Oscillator",pd:"Photodiode",mix:"Mixer",servo:"Servo",err:"error signal",inm:"Input mirror",endm:"End mirror",act:"Actuator",arm:"10 km arm (not to scale)",ground:"Ground / suspension point",trans:"Trans.",short:"too short",res:"resonance",long:"too long",errS:"error signal",light:"light in arm",offset:"mirror offset",locked:"locked",now:"now",
+out:"arm signal",outFull:"detector output (X − Y)",gwPass:"≋ Gravitational wave passing",truth:"injected wave",noLock:"Not locked: no measurement",
+bs:"Beamsplitter",armX:"arm X · 10 km",armY:"arm Y · 10 km",dark:"Dark port",lockOn:"● locked",lockOff:"○ free",lockAcq:"◐ acquiring",darkLight:"light at dark port",offX:"offset X",offY:"offset Y"},
+ch:[
+["1 · The arm is a resonator","Each 10 km arm of the Einstein Telescope is a cavity: laser light bounces back and forth between two mirrors. When the round trip is a whole number of wavelengths, every pass lines up in phase with the next and the light piles up. That is resonance, and it multiplies the power in the arm by hundreds."],
+["2 · The ground never stops moving","Ocean waves, wind and traffic shake the ground. Even deep underground and hanging on pendulums, the mirrors drift by far more than the resonance allows. The arm only lights up in brief flashes, each time it happens to pass through resonance."],
+["3 · A signal that says which way","The Pound–Drever–Hall trick: a phase modulator adds faint sidebands to the laser. They reflect off the arm and beat with the main beam on a photodiode, and a mixer turns that into an error signal. It is exactly zero on resonance, and its sign says whether the arm is too long or too short."],
+["4 · Closing the loop","The servo waits for a flash of resonance, then grabs it. It feeds the error signal to coil–magnet actuators that push the mirror back the moment it starts to drift. Watch the feedback path light up."],
+["5 · Locked","The suspension point still shakes, but the mirror now stays put to a tiny fraction of the resonance width and the arm stays full of light. Only with the arms held like this can the detector sense the far smaller stretch of a passing gravitational wave."],
+["6 · A gravitational wave passes","Now a wave in spacetime itself rolls through: watch the dots on the table breathe. It stretches and squeezes the arm in a rising chirp, like two black holes spiralling into each other. The lock keeps the arm on resonance anyway, so the servo has to push the mirror in step with the wave. That push, together with the error signal, records the wave."],
+["7 · Two arms, one dark output","Zoom out to the whole detector. A beamsplitter divides one laser between two arms at an angle, each locked the way you just saw. The light coming back from both arms is recombined so that it cancels almost completely, and the output stays dark (another loop holds it there). A gravitational wave stretches one arm while it squeezes the other, the two beams stop cancelling, and light flickers out of the dark port in the rhythm of the wave. In the triangle design of the Einstein Telescope, three such detectors share a triangle with 60° arms; here it is drawn as a classic L."],
+["Your turn","Send a gravitational wave, switch between one arm and the full detector, turn the lock off and on, shake the ground harder, or lower the servo gain until the lock breaks. Without a lock there is no measurement, and a weak servo lets the wave knock the arms out of resonance."]],
+chip:["1 Resonator","2 Ground","3 Error signal","4 Feedback","5 Locked","6 Wave","7 Two arms","Explore"]},
+nl:{eyebrow:"Einstein Telescope · interferometertechnologie",title:"Een arm van 10 km op resonantie houden",restart:"↺ Opnieuw",
+plotErr:"Foutsignaal vs. armlengte",plotStrip:"Laatste 15 seconden",plotOut:"Signaal arm X · laatste 6 seconden",plotOutFull:"Detectorsignaal (X − Y) · laatste 6 seconden",
+gwBtn:"≋ Stuur een zwaartekrachtgolf",status:"Status",roP:"licht in de arm (van max.)",roW:"afwijking, in resonantiebreedtes",roAS:"licht aan donkere uitgang",roD:"verschil tussen armen, in breedtes",
+lockLbl:"Terugkoppeling",ampLbl:"Grondtrilling",gainLbl:"Servoversterking",viewArm:"Eén arm",viewFull:"Hele detector",note:NOTE_NL,
+st:{off:"Vrij",acquire:"Zoekt…",locked:"Vergrendeld",lost:"Kwijt"},widths:"× breedte",
+lb:{laser:"Laser",eom:"Fasemodulator",osc:"Oscillator",pd:"Fotodiode",mix:"Mixer",servo:"Servo",err:"foutsignaal",inm:"Ingangsspiegel",endm:"Eindspiegel",act:"Actuator",arm:"arm van 10 km (niet op schaal)",ground:"Grond / ophangpunt",trans:"Trans.",short:"te kort",res:"resonantie",long:"te lang",errS:"foutsignaal",light:"licht in arm",offset:"spiegelafwijking",locked:"vergrendeld",now:"nu",
+out:"armsignaal",outFull:"detectorsignaal (X − Y)",gwPass:"≋ Zwaartekrachtgolf passeert",truth:"ingestuurde golf",noLock:"Niet vergrendeld: geen meting",
+bs:"Bundelsplitser",armX:"arm X · 10 km",armY:"arm Y · 10 km",dark:"Donkere uitgang",lockOn:"● vergrendeld",lockOff:"○ vrij",lockAcq:"◐ zoekt",darkLight:"licht aan donkere uitgang",offX:"afwijking X",offY:"afwijking Y"},
+ch:[
+["1 · De arm is een resonator","Elke arm van 10 km van de Einstein Telescope is een trilholte: laserlicht kaatst heen en weer tussen twee spiegels. Als een heen-en-terug precies een geheel aantal golflengtes lang is, valt elke doorgang in fase met de volgende en stapelt het licht zich op. Dat is resonantie, en die vermenigvuldigt het vermogen in de arm honderden keren."],
+["2 · De grond staat nooit stil","Oceaangolven, wind en verkeer doen de grond trillen. Zelfs diep onder de grond en aan slingers opgehangen bewegen de spiegels veel meer dan de resonantie toelaat. De arm licht alleen even op wanneer hij toevallig door de resonantie gaat."],
+["3 · Een signaal dat de richting aangeeft","De Pound–Drever–Hall-truc: een fasemodulator geeft de laser zwakke zijbanden. Die weerkaatsen op de arm en interfereren met de hoofdbundel op een fotodiode, en een mixer maakt daar een foutsignaal van. Dat is precies nul op resonantie, en het teken zegt of de arm te lang of te kort is."],
+["4 · De lus sluiten","De servo wacht op een flits van resonantie en houdt die dan vast. Hij stuurt het foutsignaal naar spoel-magneetactuatoren die de spiegel terugduwen zodra die begint te verschuiven. Kijk hoe het terugkoppelpad oplicht."],
+["5 · Vergrendeld","Het ophangpunt trilt nog steeds, maar de spiegel blijft nu stil tot op een piepklein deel van de resonantiebreedte en de arm blijft vol licht. Pas met zo vastgehouden armen kan de detector de veel kleinere uitrekking van een passerende zwaartekrachtgolf voelen."],
+["6 · Er passeert een zwaartekrachtgolf","Nu rolt er een golf in de ruimtetijd zelf voorbij: kijk hoe de puntjes op de tafel ademen. De golf rekt de arm uit en drukt hem samen in een stijgende ‘chirp’, zoals bij twee zwarte gaten die naar elkaar toe spiralen. De vergrendeling houdt de arm toch op resonantie, dus moet de servo de spiegel in de maat van de golf duwen. Die duw, samen met het foutsignaal, legt de golf vast."],
+["7 · Twee armen, één donkere uitgang","Zoom uit naar de hele detector. Een bundelsplitser verdeelt één laser over twee armen onder een hoek, elk vergrendeld zoals je net zag. Het licht dat uit beide armen terugkomt, wordt zo samengebracht dat het elkaar bijna volledig uitdooft, en de uitgang blijft donker (een extra lus houdt dat zo). Een zwaartekrachtgolf rekt de ene arm uit terwijl hij de andere samendrukt, de twee bundels doven elkaar niet meer uit, en er flikkert licht uit de donkere uitgang in het ritme van de golf. In het driehoeksontwerp van de Einstein Telescope delen drie zulke detectoren een driehoek met armen onder 60°; hier getekend als een klassieke L."],
+["Nu jij","Stuur een zwaartekrachtgolf, wissel tussen één arm en de hele detector, zet de terugkoppeling uit en weer aan, laat de grond harder trillen of draai de servoversterking omlaag tot de vergrendeling breekt. Zonder vergrendeling is er geen meting, en een zwakke servo laat de golf de armen uit resonantie duwen."]],
+chip:["1 Resonator","2 Grond","3 Foutsignaal","4 Terugkoppeling","5 Vergrendeld","6 Golf","7 Twee armen","Verkennen"]}};
+let lang="nl"; try{const s=localStorage.getItem("arm-op-resonantie-lang"); if(s==="en")lang="en"}catch(e){}
+const T=()=>TX[lang];
+
+/* ---------- physics ---------- */
+const R1=0.90,R2=0.99,OM=1.2,PMAX=1/((1-R1*R2)**2),TAU=Math.PI*2;
+function refl(p){const c=Math.cos(p),s=Math.sin(p),nr=R2*c-R1,ni=R2*s,dr=1-R1*R2*c,di=-R1*R2*s,d=dr*dr+di*di;return[(nr*dr+ni*di)/d,(ni*dr-nr*di)/d]}
+function circ(p){const c=Math.cos(p),s=Math.sin(p),dr=1-R1*R2*c,di=-R1*R2*s;return 1/(dr*dr+di*di)/PMAX}
+function raw(p){const a=refl(p),b=refl(p+OM),c=refl(p-OM);return (a[1]*b[0]-a[0]*b[1])-(a[0]*c[1]-a[1]*c[0])}
+let EMAX=0;for(let x=-3.14;x<3.14;x+=0.002)EMAX=Math.max(EMAX,Math.abs(raw(x)));
+const ESG=Math.sign(raw(0.01)-raw(-0.01));
+const err=p=>ESG*raw(p)/EMAX;
+const FWHM=2*(1-R1*R2)/Math.sqrt(R1*R2);
+const wrap=p=>p-TAU*Math.round(p/TAU);
+const seisX=t=>0.9*Math.sin(TAU*.13*t+.4)+0.5*Math.sin(TAU*.31*t+1.3)+0.3*Math.sin(TAU*.71*t+2.1)+0.07*Math.sin(TAU*1.9*t+.7)+0.03*Math.sin(TAU*3.7*t+2.5);
+const seisY=t=>0.9*Math.sin(TAU*.12*t+2.2)+0.5*Math.sin(TAU*.29*t+0.1)+0.3*Math.sin(TAU*.67*t+1.0)+0.07*Math.sin(TAU*2.1*t+1.9)+0.03*Math.sin(TAU*3.3*t+.4);
+/* Michelson dark port: the two returning beams are recombined with a small static offset (DC readout) */
+const DOFF=0.12,ASN=0.7;
+function darkPort(wx,wy){const a=refl(wx),b=refl(wy),c=Math.cos(DOFF),s=Math.sin(DOFF);
+  const er=(a[0]*c-a[1]*s)-(b[0]*c+b[1]*s),ei=(a[0]*s+a[1]*c)-(b[1]*c-b[0]*s);return Math.min(1,(er*er+ei*ei)/4/ASN)}
+function mkArm(sf,sgn){return{sf,sgn,phiC:0,phiS:0,w:0,P:1,e:0,state:"off",low:0,lostT:0,out:null,F:{ok:false,x:0,y1:0,y2:0}}}
+const X=mkArm(seisX,1),Y=mkArm(seisY,-1),ARMS=[X,Y];
+const S={t:0,A:0,Atgt:0,K:30,req:false,phiG:0,gf:0,as:0,view:"arm",mix:0,hist:[]};
+/* gravitational wave: inspiral chirp (f ~ (tc-t)^-3/8, amplitude ~ f^2/3) then ringdown, in slow motion; +h on arm X, -h on arm Y */
+const GW={on:false,t0:0,ph:0,env:0,f0:2.5,fmax:7,Tc:3,amp:0.7};
+const TCP=GW.Tc/(1-Math.pow(GW.f0/GW.fmax,8/3));
+function gwStep(h){
+  if(!GW.on){GW.env=0;return 0}
+  const tau=S.t-GW.t0;let f,a;
+  if(tau<GW.Tc){f=GW.f0*Math.pow(1-tau/TCP,-3/8);a=GW.amp*Math.pow(f/GW.fmax,2/3)*Math.min(1,tau/0.6)}
+  else{f=GW.fmax;a=GW.amp*Math.exp(-(tau-GW.Tc)/0.18);if(tau>GW.Tc+1.2){GW.on=false;GW.env=0;return 0}}
+  GW.ph+=TAU*f*h;GW.env=a;return a*Math.sin(GW.ph);
+}
+function fireGW(){GW.on=true;GW.t0=S.t;GW.ph=0}
+/* arm signal: reconstructed length change (residual + servo correction), high-passed above the ground motion */
+const RC=1/(TAU*1.5),G={x:0,y1:0,y2:0};
+function step(dt){
+  const n=32,h=dt/n,al=RC/(RC+h);
+  for(let i=0;i<n;i++){
+    S.t+=h; S.A+=(S.Atgt-S.A)*Math.min(1,h*1.5);
+    S.phiG=gwStep(h);
+    {const z1=al*(G.y1+S.phiG-G.x),z2=al*(G.y2+z1-G.y1);G.x=S.phiG;G.y1=z1;G.y2=z2;S.gf=z2}
+    for(const a of ARMS){
+      a.phiS=S.A*a.sf(S.t); a.w=wrap(a.phiS+a.sgn*S.phiG+a.phiC); a.P=circ(a.w);
+      a.e=err(a.w)+(Math.random()-.5)*0.04;
+      if(!S.req)a.state="off"; else if(a.state==="off")a.state="acquire";
+      if(a.state==="acquire"&&a.P>0.5){a.state="locked";a.low=0}
+      if(a.state==="locked"){a.phiC-=S.K*a.e*h; if(a.P<0.15){a.low+=h;if(a.low>0.2){a.state="lost";a.lostT=1.2}}else a.low=0}
+      if(a.state==="lost"){a.lostT-=h;if(a.lostT<=0)a.state="acquire"}
+      const F=a.F;
+      if(a.state==="locked"){const x=a.w-a.phiC;if(!F.ok){F.x=x;F.y1=0;F.y2=0;F.ok=true}
+        const y1=al*(F.y1+x-F.x),y2=al*(F.y2+y1-F.y1);F.x=x;F.y1=y1;F.y2=y2;a.out=y2}
+      else{F.ok=false;a.out=null}
+    }
+    S.as=darkPort(X.w,Y.w);
+  }
+  S.mix+=((S.view==="full"?1:0)-S.mix)*Math.min(1,dt*4);
+  S.hist.push({t:S.t,P:X.P,w:X.w,wy:Y.w,L:X.state==="locked",LB:X.state==="locked"&&Y.state==="locked",
+    o:X.out,d:(X.out!==null&&Y.out!==null)?(X.out-Y.out)/2:null,g:S.gf,as:S.as});
+  while(S.hist.length&&S.hist[0].t<S.t-15)S.hist.shift();
+}
+function combinedState(){
+  if(S.view!=="full")return X.state;
+  const st=[X.state,Y.state];
+  if(st.includes("lost"))return"lost"; if(st.includes("acquire"))return"acquire"; if(st[0]==="locked"&&st[1]==="locked")return"locked"; return"off";
+}
+
+/* ---------- movie script ---------- */
+const CH=[{s:0,e:12,hl:["cavity"]},{s:12,e:26,hl:["susp"]},{s:26,e:40,hl:["pdh"]},{s:40,e:54,hl:["loop"]},{s:54,e:72,hl:["loop","susp"]},{s:72,e:88,hl:["out"]},{s:88,e:110,hl:["dark"]}];
+const END=110,NCH=CH.length,SHOTS=[75,93];
+let mode="movie",playing=true,chapter=0,shot=0;
+const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(reduced)playing=false;
+function script(){
+  const t=S.t;
+  if(t<12){S.Atgt=0;S.A=0;S.req=false}
+  else if(t<26){S.Atgt=1.6*Math.min(1,(t-12)/3);S.A=S.Atgt;S.req=false}
+  else if(t<40){S.Atgt=S.A=1.6;S.req=false}
+  else {S.Atgt=S.A=1.6;S.req=true}
+  S.K=30; S.view=t>=88?"full":"arm";
+  if(shot<SHOTS.length&&t>=SHOTS[shot]){shot++;fireGW()}
+}
+function jump(k){
+  mode="movie";S.hist=[];S.t=CH[k].s;S.K=30;GW.on=false;G.x=G.y1=G.y2=0;
+  shot=SHOTS.findIndex(x=>x>=S.t);if(shot<0)shot=SHOTS.length;
+  S.A=S.Atgt=k===0?0:1.6;
+  for(const a of ARMS){a.phiC=0;a.low=0;a.lostT=0;a.F.ok=false;
+    if(k<=2){a.state="off"}else if(k===3){a.state="acquire"}else{a.state="locked";a.phiC=-S.A*a.sf(S.t)}}
+  script();S.mix=S.view==="full"?1:0;syncControls();playing=true;updateUI(true);
+}
+function toExplore(){ playing=true; if(mode!=="explore"){mode="explore";updateUI(true)} }
+
+/* ---------- DOM ---------- */
+const $=id=>document.getElementById(id);
+const chipsEl=$("chips"),chipEls=[];
+for(let i=0;i<=NCH;i++){const b=document.createElement("button");b.className="chip";b.innerHTML='<span class="lbl"></span><span class="bar"></span>';
+  b.addEventListener("click",()=>{ if(i<NCH)jump(i); else {toExplore();updateUI(true)} });chipsEl.appendChild(b);chipEls.push(b)}
+const gainK=v=>3*Math.pow(40,v);
+const gainV=K=>Math.log(K/3)/Math.log(40);
+function syncControls(){
+  $("lock").setAttribute("aria-checked",String(S.req));
+  $("amp").value=S.Atgt.toFixed(2); $("gain").value=gainV(S.K).toFixed(2); outputs(); viewLabels();
+}
+function outputs(){
+  $("amp-o").textContent="±"+Math.round(+$("amp").value*1.9/FWHM)+" "+T().widths;
+  $("gain-o").textContent=Math.round(gainK(+$("gain").value));
+}
+let lastView="";
+function viewLabels(force){
+  if(!force&&lastView===S.view)return; lastView=S.view;
+  const full=S.view==="full",t=T();
+  $("v-arm").setAttribute("aria-pressed",String(!full));$("v-full").setAttribute("aria-pressed",String(full));
+  $("out-h").textContent=full?t.plotOutFull:t.plotOut;
+  $("ro-p-l").textContent=full?t.roAS:t.roP;
+  $("ro-w-l").textContent=full?t.roD:t.roW;
+  lastState="";
+}
+$("lock").addEventListener("click",()=>{toExplore();S.req=!S.req;syncControls();});
+$("amp").addEventListener("input",e=>{toExplore();S.Atgt=+e.target.value;outputs()});
+$("gain").addEventListener("input",e=>{toExplore();S.K=gainK(+e.target.value);outputs()});
+$("v-arm").addEventListener("click",()=>{toExplore();S.view="arm";viewLabels()});
+$("v-full").addEventListener("click",()=>{toExplore();S.view="full";viewLabels()});
+$("play").addEventListener("click",()=>{playing=!playing;updateUI(false)});
+$("restart").addEventListener("click",()=>jump(0));
+$("gwbtn").addEventListener("click",()=>{toExplore();if(!GW.on)fireGW()});
+function setLang(l){lang=l;try{localStorage.setItem("arm-op-resonantie-lang",l)}catch(e){}
+  document.title=l==="nl"?"Een arm op resonantie":"An arm on resonance";
+  $("lang-en").setAttribute("aria-pressed",l==="en");$("lang-nl").setAttribute("aria-pressed",l==="nl");
+  document.documentElement.lang=l;
+  document.querySelectorAll("[data-i]").forEach(el=>{const v=T()[el.dataset.i];if(typeof v==="string")el.textContent=v});
+  $("v-arm").textContent=T().viewArm;$("v-full").textContent=T().viewFull;
+  outputs();viewLabels(true);updateUI(true);if(typeof scaleLang==="function")scaleLang();}
+$("lang-en").addEventListener("click",()=>setLang("en"));$("lang-nl").addEventListener("click",()=>setLang("nl"));
+
+let lastCap=-1,lastState="";
+function updateUI(force){
+  $("play").textContent=playing?"❚❚":"▶";
+  const idx=mode==="explore"?NCH:chapter;
+  if(force||idx!==lastCap){lastCap=idx;const c=T().ch[idx];$("cap-h").textContent=c[0];$("cap-p").textContent=c[1];
+    chipEls.forEach((b,i)=>{b.querySelector(".lbl").textContent=T().chip[i];b.setAttribute("aria-current",String(i===idx))});}
+  chipEls.forEach((b,i)=>{const bar=b.querySelector(".bar");let f=0;
+    if(mode==="movie"&&i<NCH){const c=CH[i];f=Math.max(0,Math.min(1,(S.t-c.s)/(c.e-c.s)))}else if(mode==="explore"&&i<NCH)f=1;
+    bar.style.width=(f*100).toFixed(1)+"%"});
+  const st=combinedState();
+  if(force||st!==lastState){lastState=st;const p=$("pill");p.dataset.s=st;p.textContent=T().st[st]}
+  $("gwbtn").disabled=GW.on;
+  const full=S.view==="full";
+  $("ro-p").textContent=Math.round((full?S.as:X.P)*100)+"%";
+  {const v=((full?(X.w-Y.w)/2:X.w)/FWHM).toFixed(2);$("ro-w").textContent=(v==="-0.00"?"0.00":v);}
+}
+
+/* ---------- drawing ---------- */
+let C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);
+  ["bg","surface","table","hole","ink","muted","line","beam","signal","hl","warn","gw"].forEach(k=>C[k]=cs.getPropertyValue("--"+k).trim());}
+readColors();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",readColors);
+new MutationObserver(readColors).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+function alpha(hex,a){const h=hex.replace("#","");const n=parseInt(h.length===3?h.split("").map(x=>x+x).join(""):h,16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+function fit(cv,W){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;
+  const w=Math.round(r.width*d),h=Math.round(r.height*d);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
+  const ctx=cv.getContext("2d");const s=r.width/W;ctx.setTransform(d*s,0,0,d*s,0,0);return{ctx,H:r.height/s}}
+const FD='"Public Sans",system-ui,sans-serif',FM='"JetBrains Mono",ui-monospace,monospace';
+function text(ctx,s,x,y,o={}){ctx.font=`${o.w||500} ${o.size||12}px ${o.mono?FM:FD}`;ctx.fillStyle=o.c||C.ink;ctx.textAlign=o.a||"center";ctx.textBaseline=o.b||"middle";ctx.fillText(s,x,y)}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
+function line(ctx,pts,col,w=1.5,dash=null,off=0){ctx.beginPath();ctx.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)ctx.lineTo(pts[i],pts[i+1]);
+  ctx.strokeStyle=col;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.lineDashOffset=off;ctx.stroke();ctx.setLineDash([])}
+const beamA=a=>alpha(C.beam,a);
+function spots(ctx,list){list.forEach(([x,y,w,h])=>{rr(ctx,x,y,w,h,10);ctx.fillStyle=alpha(C.hl,.08);ctx.fill();ctx.strokeStyle=alpha(C.hl,.6);ctx.lineWidth=1.2;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])})}
+/* standing wave in a cavity along the x axis from x0 to x1, centred on y */
+function cavityLight(ctx,x0,x1,y,P,now){
+  if(x1<=x0)return;
+  const g=ctx.createLinearGradient(0,y-22,0,y+22);g.addColorStop(0,beamA(0));g.addColorStop(.5,beamA(.08+.45*P));g.addColorStop(1,beamA(0));
+  ctx.fillStyle=g;ctx.fillRect(x0,y-22,x1-x0,44);
+  const amp=2+16*Math.sqrt(P)*(0.92+0.08*Math.sin(now/90)),kx=Math.PI*17/(x1-x0);
+  ctx.beginPath();for(let x=x0;x<=x1;x+=2)ctx.lineTo(x,y-amp*Math.abs(Math.sin(kx*(x-x0))));for(let x=x1;x>=x0;x-=2)ctx.lineTo(x,y+amp*Math.abs(Math.sin(kx*(x-x0))));
+  ctx.closePath();ctx.fillStyle=beamA(.12+.5*P);ctx.fill();
+  line(ctx,[x0,y,x1,y],beamA(.3+.7*P),1.6);
+}
+function breakMark(ctx,x,y,rot){ctx.save();ctx.translate(x,y);if(rot)ctx.rotate(-Math.PI/2);ctx.save();ctx.transform(1,0,-.3,1,0,0);ctx.fillStyle=C.table;ctx.fillRect(-5,-30,10,60);ctx.restore();
+  line(ctx,[-9,30,1,-30],C.muted,1.2);line(ctx,[-1,30,9,-30],C.muted,1.2);ctx.restore()}
+
+const stage=$("stage");
+function drawStage(now){
+  const {ctx}=fit(stage,800),m=S.mix;
+  ctx.fillStyle=C.table;ctx.fillRect(0,0,800,380);
+  // spacetime: breadboard holes breathe in a plus pattern around the active view's centre
+  const cx=m>0.5?230:495,cy=m>0.5?250:162,hv=S.phiG*7/(m>0.5?250:205);
+  if(GW.on){ctx.fillStyle=alpha(C.gw,.06*Math.min(1,GW.env/GW.amp+.3));ctx.fillRect(0,0,800,380)}
+  ctx.fillStyle=GW.on?alpha(C.gw,.55):C.hole;
+  for(let x=10;x<800;x+=20)for(let y=10;y<380;y+=20){ctx.beginPath();ctx.arc(x+hv*(x-cx),y-hv*(y-cy),GW.on?1.8:1.5,0,TAU);ctx.fill()}
+  if(m<0.999){ctx.globalAlpha=1-m;drawArmView(ctx,now);}
+  if(m>0.001){ctx.globalAlpha=m;drawFullView(ctx,now);}
+  ctx.globalAlpha=1;
+  if(GW.on)text(ctx,T().lb.gwPass,18,22,{w:700,size:13,c:C.gw,a:"left"});
+}
+function drawArmView(ctx,now){
+  const L=T().lb,hl=mode==="movie"?CH[chapter].hl:[];
+  spots(ctx,[].concat(...hl.map(k=>({cavity:[[280,98,440,128]],susp:[[636,14,160,192]],pdh:[[136,128,216,230]],loop:[[432,268,330,50],[712,160,48,150]],out:[[596,286,170,66]]}[k]||[]))));
+  const by=162,k=7,gx=700+X.phiS*k,mx=Math.max(640,Math.min(716,700+(X.phiS+X.phiC)*k));
+  const locked=X.state==="locked";
+  const dim=alpha(C.signal,.55);
+  line(ctx,[180,286,180,176],dim,1.5,[3,3]);
+  line(ctx,[180,314,180,345,330,345,330,314],dim,1.5,[3,3]);
+  line(ctx,[245,248,245,300,316,300],C.signal,1.8);
+  line(ctx,[344,300,450,300],C.signal,1.8);
+  text(ctx,L.err,397,290,{size:10.5,c:C.muted,mono:true});
+  line(ctx,[530,300,732,300,732,206],locked?C.signal:C.line,locked?2.4:1.5,locked?[8,6]:[4,4],locked?-(now/25)%14:0);
+  { const oc=locked?C.gw:C.line; line(ctx,[612,300,612,334,626,334],oc,locked?2:1.4);
+    ctx.beginPath();ctx.arc(612,300,3.5,0,TAU);ctx.fillStyle=oc;ctx.fill();
+    text(ctx,"→ "+L.out,630,334,{size:11.5,w:600,c:locked?C.gw:C.muted,a:"left"}); }
+  ctx.beginPath();ctx.arc(180,300,14,0,TAU);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.3;ctx.stroke();
+  ctx.beginPath();for(let i=0;i<=20;i++){const x=172+i*0.8,y=300-4*Math.sin(i/20*TAU);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.strokeStyle=C.ink;ctx.stroke();
+  text(ctx,L.osc,180,362,{size:11.5,c:C.muted});
+  ctx.beginPath();ctx.arc(330,300,14,0,TAU);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.ink;ctx.stroke();
+  line(ctx,[322,292,338,308],C.ink,1.4);line(ctx,[338,292,322,308],C.ink,1.4);
+  text(ctx,L.mix,330,274,{size:11.5,c:C.muted});
+  rr(ctx,450,284,80,32,6);ctx.fillStyle=locked?alpha(C.signal,.15):C.surface;ctx.fill();ctx.strokeStyle=locked?C.signal:C.ink;ctx.lineWidth=1.3;ctx.stroke();
+  text(ctx,L.servo,490,300,{w:600,size:12.5});
+  rr(ctx,30,140,90,44,6);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.ink;ctx.stroke();
+  text(ctx,L.laser,75,162,{w:600,size:13});
+  line(ctx,[120,by,150,by],beamA(.9),2.5);
+  rr(ctx,150,148,60,28,4);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.ink;ctx.stroke();
+  text(ctx,"EOM",180,162,{w:600,size:11.5,mono:true});
+  text(ctx,L.eom,180,136,{size:11.5,c:C.muted});
+  line(ctx,[210,by,288,by],beamA(.9),2.5);
+  for(let x=216;x<284;x+=12){line(ctx,[x,by-5,x,by-3],beamA(.5),1.2);line(ctx,[x,by+3,x,by+5],beamA(.5),1.2)}
+  const rp=(()=>{const r=refl(X.w);return r[0]*r[0]+r[1]*r[1]})();
+  line(ctx,[288,by+6,245,by+6,245,232],beamA(.25+.5*rp),2);
+  line(ctx,[237,154,253,170],C.muted,3);
+  rr(ctx,236,232,18,14,3);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.pd,260,240,{size:11.5,c:C.muted,a:"left"});
+  cavityLight(ctx,297,mx-5,by,X.P,now);
+  breakMark(ctx,495,by,false);
+  text(ctx,L.arm,495,108,{size:12,c:C.muted});
+  rr(ctx,288,126,8,72,2);ctx.fillStyle=C.muted;ctx.fill();
+  text(ctx,L.inm,292,214,{size:11.5,c:C.muted});
+  text(ctx,L.ground,700,30,{size:11.5,c:C.muted});
+  ctx.fillStyle=C.muted;ctx.fillRect(gx-48,44,96,6);
+  for(let x=gx-46;x<gx+48;x+=8)line(ctx,[x,44,x+6,38],C.muted,1);
+  line(ctx,[gx-6,50,mx-6,126],C.ink,1);line(ctx,[gx+6,50,mx+6,126],C.ink,1);
+  rr(ctx,mx-4,126,8,72,2);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.endm,686,214,{size:11.5,c:C.muted,a:"right"});
+  line(ctx,[mx+4,by,766,by],beamA(.15+.6*X.P),1.8);
+  rr(ctx,766,154,12,16,2);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.trans,772,140,{size:10.5,c:C.muted,mono:true});
+  rr(ctx,726,176,12,30,2);ctx.fillStyle=locked?C.signal:C.surface;ctx.fill();ctx.strokeStyle=locked?C.signal:C.ink;ctx.lineWidth=1.2;ctx.stroke();
+  for(let y=180;y<204;y+=5)line(ctx,[726,y,738,y+3],locked?C.surface:C.muted,1);
+  if(locked){const ax=mx+6;line(ctx,[724,186,ax+2,186],C.signal,1.6);
+    ctx.beginPath();ctx.moveTo(ax+2,186);ctx.lineTo(ax+8,182);ctx.lineTo(ax+8,190);ctx.closePath();ctx.fillStyle=C.signal;ctx.fill()}
+  text(ctx,L.act,722,236,{size:11.5,c:C.muted,a:"right"});
+}
+function lockBadge(ctx,a,x,y,al){const L=T().lb;const st=a.state;
+  const s=st==="locked"?L.lockOn:st==="acquire"?L.lockAcq:L.lockOff;
+  text(ctx,s,x,y,{size:11.5,w:600,mono:true,c:st==="locked"?C.signal:st==="acquire"?C.warn:C.muted,a:al||"left"})}
+function drawFullView(ctx,now){
+  const L=T().lb,hl=mode==="movie"?CH[chapter].hl:[],k=7,bx=230,by=250;
+  if(hl.includes("dark"))spots(ctx,[[196,292,200,78]]);
+  // laser -> beamsplitter
+  rr(ctx,30,232,90,36,6);ctx.fillStyle=C.surface;ctx.fill();ctx.strokeStyle=C.ink;ctx.lineWidth=1.3;ctx.stroke();
+  text(ctx,L.laser,75,250,{w:600,size:13});
+  line(ctx,[120,by,bx,by],beamA(.9),2.5);
+  // arm X along +x
+  const mxX=Math.max(690,Math.min(770,740+(X.phiS+X.phiC)*k));
+  line(ctx,[bx,by,296,by],beamA(.85),2.5);
+  cavityLight(ctx,304,mxX-5,by,X.P,now);
+  breakMark(ctx,520,by,false);
+  rr(ctx,296,222,8,56,2);ctx.fillStyle=C.muted;ctx.fill();
+  rr(ctx,mxX-4,222,8,56,2);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.armX,520,206,{size:12,w:600,c:C.muted});
+  lockBadge(ctx,X,mxX+10,296,"right");
+  // arm Y along -y (drawn by rotating the x-cavity)
+  const myY=Math.max(26,Math.min(80,50-(Y.phiS+Y.phiC)*k)); // larger arm length = further up
+  line(ctx,[bx,by,bx,184],beamA(.85),2.5);
+  ctx.save();ctx.translate(bx,by);ctx.rotate(-Math.PI/2);cavityLight(ctx,74,by-myY-5,0,Y.P,now);ctx.restore();
+  breakMark(ctx,bx,118,true);
+  rr(ctx,bx-28,176,56,8,2);ctx.fillStyle=C.muted;ctx.fill();
+  rr(ctx,bx-28,myY-4,56,8,2);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.armY,bx+40,118,{size:12,w:600,c:C.muted,a:"left"});
+  lockBadge(ctx,Y,bx+40,myY,"left");
+  // beamsplitter
+  line(ctx,[bx-12,by+12,bx+12,by-12],C.muted,3.5);
+  text(ctx,L.bs,bx-18,by-26,{size:11.5,c:C.muted,a:"right"});
+  // dark port
+  const b=S.as,bright=Math.sqrt(b);
+  line(ctx,[bx,by,bx,326],beamA(.1+.85*bright),1.5+3*bright);
+  const gr=ctx.createRadialGradient(bx,334,0,bx,334,10+30*bright);gr.addColorStop(0,beamA(.75*bright));gr.addColorStop(1,beamA(0));
+  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(bx,334,10+30*bright,0,TAU);ctx.fill();
+  rr(ctx,bx-9,326,18,14,3);ctx.fillStyle=C.ink;ctx.fill();
+  text(ctx,L.dark,bx+18,326,{size:11.5,w:600,c:C.ink,a:"left"});
+  const both=X.state==="locked"&&Y.state==="locked";
+  text(ctx,"→ "+L.outFull,bx+18,344,{size:11.5,w:600,c:both?C.gw:C.muted,a:"left"});
+  // GW stretch/squeeze arrows on the arms while a wave passes
+  if(GW.on){const s=S.phiG/GW.amp;const ax=Math.abs(s)*14;
+    const col=alpha(C.gw,.9);
+    const arr=(x1,y1,x2,y2)=>{line(ctx,[x1,y1,x2,y2],col,2);const an=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-7*Math.cos(an-.5),y2-7*Math.sin(an-.5));ctx.lineTo(x2-7*Math.cos(an+.5),y2-7*Math.sin(an+.5));ctx.closePath();ctx.fillStyle=col;ctx.fill()};
+    if(ax>2){ if(s>0){arr(640,316,640+ax+6,316);arr(bx+92,90,bx+92,90+ax+6)} else {arr(640+ax+6,316,640,316);arr(bx+92,90+ax+6,bx+92,90)} }
+  }
+}
+
+const perr=$("perr");
+function drawErr(){
+  const {ctx,H}=fit(perr,320),L=T().lb,W=320,pl=12,pr=12,pt=22,pb=34,X0=-1.6,X1=1.6;
+  ctx.clearRect(0,0,W,H);
+  const sx=x=>pl+(x-X0)/(X1-X0)*(W-pl-pr),cy=pt+(H-pt-pb)/2,ay=(H-pt-pb)/2*0.92,sy=v=>cy-v*ay;
+  line(ctx,[pl,cy,W-pr,cy],C.line,1);line(ctx,[sx(0),pt,sx(0),H-pb],C.line,1,[3,3]);
+  ctx.beginPath();ctx.moveTo(sx(X0),sy(-1));for(let x=X0;x<=X1;x+=0.01)ctx.lineTo(sx(x),sy(-1+2*circ(x)));ctx.lineTo(sx(X1),sy(-1));ctx.closePath();
+  ctx.fillStyle=alpha(C.beam,.16);ctx.fill();
+  ctx.beginPath();for(let x=X0;x<=X1;x+=0.005){const y=sy(err(x));x===X0?ctx.moveTo(sx(x),y):ctx.lineTo(sx(x),y)}
+  ctx.strokeStyle=C.signal;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=C.signal;ctx.fillRect(pl,6,14,3);text(ctx,L.errS,pl+20,8,{size:10.5,c:C.muted,a:"left"});
+  ctx.fillStyle=alpha(C.beam,.4);ctx.fillRect(pl+120,4,14,8);text(ctx,L.light,pl+140,8,{size:10.5,c:C.muted,a:"left"});
+  text(ctx,"← "+L.short,pl,H-14,{size:10.5,c:C.muted,a:"left"});
+  text(ctx,L.res,sx(0),H-14,{size:10.5,c:C.muted});
+  text(ctx,L.long+" →",W-pr,H-14,{size:10.5,c:C.muted,a:"right"});
+  const dots=S.view==="full"?[[Y,"Y"],[X,"X"]]:[[X,""]];
+  for(const [a,nm] of dots){
+    const w=a.w,inR=Math.abs(w)<=X1,xp=sx(Math.max(X0,Math.min(X1,w))),yp=inR?sy(err(w)):cy;
+    ctx.beginPath();ctx.arc(xp,yp,inR?5.5:4,0,TAU);ctx.fillStyle=a.state==="locked"?C.signal:C.ink;ctx.fill();
+    ctx.strokeStyle=C.surface;ctx.lineWidth=2;ctx.stroke();
+    if(nm)text(ctx,nm,xp+(nm==="X"?10:-10),yp-10,{size:11,w:700,mono:true,c:C.ink});
+  }
+}
+
+const pstrip=$("pstrip");
+function drawStrip(){
+  const {ctx,H}=fit(pstrip,320),L=T().lb,W=320,pl=12,pr=12,pt=8,pb=28,span=15,full=S.view==="full";
+  ctx.clearRect(0,0,W,H);
+  const h=S.hist;if(!h.length)return;
+  const tN=S.t,sx=t=>pl+(1-(tN-t)/span)*(W-pl-pr);
+  const lane=(H-pt-pb-10)/2,y1=pt,y2=pt+lane+10;
+  line(ctx,[pl,y1+lane,W-pr,y1+lane],C.line,1);
+  ctx.beginPath();ctx.moveTo(sx(h[0].t),y1+lane);h.forEach(p=>ctx.lineTo(sx(p.t),y1+lane-(full?p.as:p.P)*lane));ctx.lineTo(sx(h[h.length-1].t),y1+lane);ctx.closePath();
+  ctx.fillStyle=alpha(C.beam,.35);ctx.fill();
+  text(ctx,full?L.darkLight:L.light,pl+2,y1+8,{size:10.5,c:C.muted,a:"left"});
+  const cy=y2+lane/2;line(ctx,[pl,cy,W-pr,cy],C.line,1,[3,3]);
+  const trace=(key,col)=>{ctx.beginPath();h.forEach((p,i)=>{const v=Math.max(-1,Math.min(1,p[key]/1.6));const y=cy-v*lane/2*0.95;i?ctx.lineTo(sx(p.t),y):ctx.moveTo(sx(p.t),y)});ctx.strokeStyle=col;ctx.lineWidth=1.4;ctx.stroke()};
+  if(full)trace("wy",C.muted);
+  trace("w",C.ink);
+  text(ctx,full?L.offX+" · "+L.offY:L.offset,pl+2,y2+6,{size:10.5,c:C.muted,a:"left"});
+  const yb=H-pb+6;
+  for(let i=1;i<h.length;i++)if(full?h[i].LB:h[i].L){ctx.fillStyle=C.signal;ctx.fillRect(sx(h[i-1].t),yb,Math.max(1,sx(h[i].t)-sx(h[i-1].t))+.5,4)}
+  text(ctx,"−15 s",pl,H-8,{size:10.5,c:C.muted,a:"left",mono:true});
+  text(ctx,"■ "+L.locked,W/2,H-8,{size:10.5,c:C.signal});
+  text(ctx,L.now,W-pr,H-8,{size:10.5,c:C.muted,a:"right",mono:true});
+}
+
+const pout=$("pout");
+function drawOut(){
+  const W=Math.max(320,Math.min(640,pout.getBoundingClientRect().width||640)),{ctx,H}=fit(pout,W),L=T().lb,pl=12,pr=12,pt=24,pb=22,span=6,full=S.view==="full",key=full?"d":"o";
+  ctx.clearRect(0,0,W,H);
+  const cy=pt+(H-pt-pb)/2,ay=(H-pt-pb)/2,sy=v=>cy-Math.max(-1,Math.min(1,v/0.8))*ay*0.95,sx=t=>pl+(1-(S.t-t)/span)*(W-pl-pr);
+  line(ctx,[pl,cy,W-pr,cy],C.line,1);
+  const h=S.hist.filter(p=>p.t>=S.t-span);
+  for(let i=1;i<h.length;i++)if(h[i][key]===null){ctx.fillStyle=alpha(C.muted,.08);ctx.fillRect(sx(h[i-1].t),pt,sx(h[i].t)-sx(h[i-1].t)+.5,H-pt-pb)}
+  ctx.beginPath();h.forEach((p,i)=>{i?ctx.lineTo(sx(p.t),sy(p.g)):ctx.moveTo(sx(p.t),sy(p.g))});
+  ctx.strokeStyle=alpha(C.gw,.45);ctx.lineWidth=1.4;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();let pen=false;h.forEach(p=>{const v=p[key];if(v===null){pen=false;return}const x=sx(p.t),y=sy(v);pen?ctx.lineTo(x,y):ctx.moveTo(x,y);pen=true});
+  ctx.strokeStyle=C.gw;ctx.lineWidth=2;ctx.stroke();
+  if(combinedState()!=="locked")text(ctx,L.noLock,W/2,cy,{size:12.5,w:600,c:C.muted});
+  ctx.fillStyle=C.gw;ctx.fillRect(pl,9,16,3);const lab=full?L.outFull:L.out;text(ctx,lab,pl+22,10,{size:10.5,c:C.muted,a:"left"});
+  ctx.font=`500 10.5px ${FD}`;const lx=pl+22+ctx.measureText(lab).width+20;
+  line(ctx,[lx,10,lx+16,10],alpha(C.gw,.6),1.4,[4,3]);text(ctx,L.truth,lx+22,10,{size:10.5,c:C.muted,a:"left"});
+  text(ctx,"−6 s",pl,H-8,{size:10.5,c:C.muted,a:"left",mono:true});
+  text(ctx,L.now,W-pr,H-8,{size:10.5,c:C.muted,a:"right",mono:true});
+}
+
+/* ---------- true scale ---------- */
+const SC={
+en:{secTitle:"True scale",
+secLede:"The animation above has to cheat. Here every object and motion sits on one honest ruler. Zoom in by powers of ten, from the 10 km arm down to the stretch of a gravitational wave. Nothing on this ruler is exaggerated, so at any one zoom most things are either far too big or far too small to see.",
+zoomLbl:"Zoom · width of view",atZoom:"At this zoom",
+scaleNote:"Ground motion runs in real time; the wave is slowed down. Why can a mirror made of atoms be pinned down far more precisely than one atom? The laser spot covers about 10¹⁷ atoms and measures their average position. Typical values: free mirror motion and locked residual from km-scale detectors such as LIGO; resonance width about 1 nm, as in Advanced LIGO; the wave is a strain of about 10⁻²² across a 10 km arm.",
+exTitle:"How much does the animation above exaggerate?",
+exNote:"The resonance itself is also drawn about 20 times wider, compared with the wavelength, than in a real arm, where it is roughly a thousandth of a wavelength.",
+th:["","Real","Real, in resonance widths","In the animation","Animation vs. reality"],
+rows:{ground:"Ground motion (unlocked mirror)",lock:"Mirror when locked",gw:"Gravitational wave"},
+bigger:"× bigger",smaller:"× smaller",notLocked:"not locked now",
+st:{in:"fits in view",big:"{n} wider than the view",small:"{n} smaller than a pixel",edge:"barely visible"},
+tracks:{ground:"Ground motion · unlocked mirror",lock:"Mirror when locked · residual",gw:"Gravitational wave"},
+gwIdle:"no wave passing right now",sweep:"off screen: sweeps {n} view widths",tiny:"moves {n} of a pixel",
+refs:{arm:"10 km arm",susp:"mirror suspension",mirror:"mirror",hair:"human hair",ground:"ground motion",wave:"laser wavelength",width:"resonance width",atom:"atom",lockr:"locked residual",proton:"proton",gwr:"gravitational-wave stretch"},
+presets:[["10 km arm",-4.4],["Suspension",-1.6],["Mirror",-0.2],["Hair",3.5],["Light wave",5.2],["Resonance · atom",8.4],["Lock · proton",13.2],["Gravitational wave",17.2]]},
+nl:{secTitle:"Echte schaal",
+secLede:"De animatie hierboven moet valsspelen. Hier staat elk voorwerp en elke beweging op één eerlijke liniaal. Zoom in met machten van tien, van de arm van 10 km tot de uitrekking door een zwaartekrachtgolf. Niets op deze liniaal is overdreven, dus op elk zoomniveau is het meeste ofwel veel te groot ofwel veel te klein om te zien.",
+zoomLbl:"Zoom · breedte van het beeld",atZoom:"Op dit zoomniveau",
+scaleNote:"De grondtrilling loopt in echte tijd; de golf is vertraagd. Hoe kan een spiegel van atomen veel preciezer geplaatst worden dan één atoom? De laservlek bedekt ongeveer 10¹⁷ atomen en meet hun gemiddelde positie. Typische waarden: vrije spiegelbeweging en resterende beweging in vergrendeling uit detectoren van kilometerschaal zoals LIGO; resonantiebreedte ongeveer 1 nm, zoals in Advanced LIGO; de golf is een vervorming van ongeveer 10⁻²² over een arm van 10 km.",
+exTitle:"Hoeveel overdrijft de animatie hierboven?",
+exNote:"Ook de resonantie zelf is ongeveer 20 keer breder getekend, vergeleken met de golflengte, dan in een echte arm, waar ze ongeveer een duizendste van een golflengte is.",
+th:["","Echt","Echt, in resonantiebreedtes","In de animatie","Animatie vs. werkelijkheid"],
+rows:{ground:"Grondtrilling (spiegel niet vergrendeld)",lock:"Spiegel in vergrendeling",gw:"Zwaartekrachtgolf"},
+bigger:"× groter",smaller:"× kleiner",notLocked:"nu niet vergrendeld",
+st:{in:"past in beeld",big:"{n} breder dan het beeld",small:"{n} kleiner dan een pixel",edge:"nauwelijks zichtbaar"},
+tracks:{ground:"Grondtrilling · spiegel niet vergrendeld",lock:"Spiegel in vergrendeling · rest",gw:"Zwaartekrachtgolf"},
+gwIdle:"er passeert nu geen golf",sweep:"buiten beeld: zwaait over {n} beeldbreedtes",tiny:"beweegt {n} van een pixel",
+refs:{arm:"arm van 10 km",susp:"spiegelophanging",mirror:"spiegel",hair:"mensenhaar",ground:"grondtrilling",wave:"golflengte laser",width:"resonantiebreedte",atom:"atoom",lockr:"rest in vergrendeling",proton:"proton",gwr:"uitrekking door golf"},
+presets:[["Arm 10 km",-4.4],["Ophanging",-1.6],["Spiegel",-0.2],["Haar",3.5],["Lichtgolf",5.2],["Resonantie · atoom",8.4],["Vergrendeling · proton",13.2],["Zwaartekrachtgolf",17.2]]}};
+const REFS=[{id:"arm",m:1e4,shape:"bar",c:"muted"},{id:"susp",m:17,shape:"bar",c:"muted"},{id:"mirror",m:0.5,shape:"bar",c:"ink"},{id:"hair",m:7e-5,shape:"bar",c:"muted"},
+ {id:"ground",m:1e-6,shape:"bar",c:"warn"},{id:"wave",m:1.064e-6,shape:"wave",c:"beam"},{id:"width",m:1e-9,shape:"bar",c:"signal"},{id:"atom",m:2.5e-10,shape:"disc",c:"muted"},
+ {id:"lockr",m:1e-14,shape:"bar",c:"signal"},{id:"proton",m:1.7e-15,shape:"disc",c:"beam"},{id:"gwr",m:1e-18,shape:"bar",c:"gw"}];
+const SUP={"-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"};
+const sup=n=>String(n).split("").map(ch=>SUP[ch]||ch).join("");
+const PFX=[[1e3,"km"],[1,"m"],[1e-3,"mm"],[1e-6,"µm"],[1e-9,"nm"],[1e-12,"pm"],[1e-15,"fm"],[1e-18,"am"]];
+function fmtM(m){for(const [p,u] of PFX){if(m>=p*0.9995){const v=m/p;return (v>=100?Math.round(v):+v.toPrecision(2))+" "+u}}return (m/1e-18).toPrecision(2)+" am"}
+function sciM(m){const e=Math.floor(Math.log10(m)+1e-9),mant=m/10**e;return (Math.abs(mant-1)<0.05?"":(+mant.toPrecision(2))+" × ")+"10"+sup(e)+" m"}
+function fmtN(n){ // big ratio, e.g. 7 000 or 3 × 10⁹
+  if(n<10)return (+n.toPrecision(1)).toString();
+  const e=Math.floor(Math.log10(n)),mant=Math.round(n/10**e);
+  if(e<6)return (mant*10**e).toLocaleString(lang==="nl"?"nl-BE":"en-GB").replace(/[,.]/g," ");
+  return (mant===1?"":mant+" × ")+"10"+sup(e);
+}
+let zCur=8.4,zTgt=8.4;
+const pscale=$("pscale"),zchipEls=[];
+for(let i=0;i<8;i++){const b=document.createElement("button");b.className="chip";b.addEventListener("click",()=>{zTgt=SC[lang].presets[i][1]});$("zchips").appendChild(b);zchipEls.push(b)}
+$("zoom").addEventListener("input",e=>{zTgt=zCur=+e.target.value});
+function scaleLang(){const t=SC[lang];zchipEls.forEach((b,i)=>b.textContent=t.presets[i][0]);
+  document.querySelectorAll("[data-i]").forEach(el=>{const v=t[el.dataset.i];if(typeof v==="string")el.textContent=v});lastList=0;}
+const groundM=t=>0.8e-6*seisX(t)/1.5;
+const lockM=t=>1.5e-14*(0.6*Math.sin(TAU*1.7*t+.3)+0.5*Math.sin(TAU*3.1*t+1.1)+0.4*Math.sin(TAU*5.3*t+2)+0.3*Math.sin(TAU*8.9*t+.7));
+function drawScale(dt){
+  zCur+=(zTgt-zCur)*Math.min(1,dt*5); if(Math.abs(zTgt-zCur)>0.001)$("zoom").value=zCur.toFixed(2);
+  const fov=10**(-zCur);
+  const W=Math.max(320,Math.min(720,pscale.getBoundingClientRect().width||640)),{ctx,H}=fit(pscale,W),ppm=W/fov,L=SC[lang],cx=W/2;
+  $("zoom-o").textContent=fmtM(fov);
+  ctx.clearRect(0,0,W,H);
+  // ruler: nice scale step, grid lines
+  const tgt=(W/5)/ppm,e=Math.floor(Math.log10(tgt)),base=10**e,step=[1,2,5,10].map(k=>k*base).find(v=>v>=tgt*0.7)||10*base,sp=step*ppm;
+  for(let k=-Math.ceil(cx/sp);k<=Math.ceil(cx/sp);k++){const x=cx+k*sp;line(ctx,[x,30,x,H],alpha(C.line,k===0?1:.6),1,k===0?null:[2,4])}
+  line(ctx,[14,18,14+sp,18],C.ink,2);line(ctx,[14,13,14,23],C.ink,1.5);line(ctx,[14+sp,13,14+sp,23],C.ink,1.5);
+  text(ctx,fmtM(step),20+sp,18,{size:11.5,w:600,mono:true,a:"left"});
+  // reference row
+  const rowY=72,vis=REFS.filter(r=>{const px=r.m*ppm;return r.shape==="disc"?px>=2.5&&px<=70:r.shape==="wave"?px>=6&&px<=W*0.42:px>=2.5&&px<=W*0.85});
+  vis.forEach((r,i)=>{const px=r.m*ppm,x=W*(i+1)/(vis.length+1),col=C[r.c];
+    if(r.shape==="bar"){line(ctx,[x-px/2,rowY,x+px/2,rowY],col,3);line(ctx,[x-px/2,rowY-6,x-px/2,rowY+6],col,1.5);line(ctx,[x+px/2,rowY-6,x+px/2,rowY+6],col,1.5)}
+    else if(r.shape==="disc"){ctx.beginPath();ctx.arc(x,rowY,px/2,0,TAU);ctx.fillStyle=alpha(col,.35);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=1.2;ctx.stroke()}
+    else{ctx.beginPath();for(let u=0;u<=2*px;u+=1){const xx=x-px+u,yy=rowY-10*Math.sin(TAU*u/px);u?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke()}
+    text(ctx,L.refs[r.id],x,rowY+(r.shape==="disc"?Math.max(16,px/2+10):20),{size:11.5,w:600,c:C.ink});
+    text(ctx,fmtM(r.m),x,rowY+(r.shape==="disc"?Math.max(16,px/2+10):20)+14,{size:10.5,c:C.muted,mono:true});
+  });
+  // motion tracks, all on the same ruler
+  const t=S.t,tr=[["ground",groundM(t),1e-6,C.warn],["lock",lockM(t),2e-14,C.signal],["gw",GW.on?1e-18*S.phiG/GW.amp:0,1e-18,C.gw]];
+  const top=H*0.47,th=(H-top-8)/3;
+  tr.forEach(([id,val,amp,col],i)=>{
+    const narrow=W<520,y0=top+i*th,yc=y0+th*(narrow?0.74:0.62);
+    line(ctx,[10,yc,W-10,yc],alpha(C.line,1),1);
+    const half=amp*ppm;
+    ctx.fillStyle=alpha(col,.12);const bw=Math.min(cx-10,half);ctx.fillRect(cx-bw,yc-7,2*bw,14);
+    let x=cx+val*ppm,off=0;if(x<12){x=12;off=-1}else if(x>W-12){x=W-12;off=1}
+    if(off){ctx.beginPath();ctx.moveTo(x+off*6,yc);ctx.lineTo(x-off*2,yc-7);ctx.lineTo(x-off*2,yc+7);ctx.closePath();ctx.fillStyle=col;ctx.fill()}
+    else{line(ctx,[x,yc-11,x,yc+11],col,2.5);ctx.beginPath();ctx.arc(x,yc,4,0,TAU);ctx.fillStyle=col;ctx.fill()}
+    text(ctx,L.tracks[id],10,y0+8,{size:11.5,w:600,a:"left",c:C.ink});
+    let st;
+    if(id==="gw"&&!GW.on)st=L.gwIdle;
+    else if(half>cx)st=L.sweep.replace("{n}",fmtN(2*half/W));
+    else if(half<0.5)st=L.tiny.replace("{n}",lang==="nl"?"1/"+fmtN(1/half):"1/"+fmtN(1/half));
+    else st="± "+fmtM(amp);
+    text(ctx,st,narrow?10:W-10,narrow?y0+21:y0+8,{size:10.5,c:off||half<0.5?C.muted:col,a:narrow?"left":"right",mono:true});
+  });
+}
+let lastList=0;
+function updateScaleText(now){
+  if(now-lastList<300)return;lastList=now;
+  const L=SC[lang],ppm=pscale.getBoundingClientRect().width/10**(-zCur);
+  $("zlist").innerHTML=REFS.map(r=>{const px=r.m*ppm;let v,s;
+    if(px<1){v="small";s=L.st.small.replace("{n}",fmtN(1/px)+"×")}
+    else if(px<3){v="edge";s=L.st.edge}
+    else if(px>pscale.getBoundingClientRect().width){v="big";s=L.st.big.replace("{n}",fmtN(px/pscale.getBoundingClientRect().width)+"×")}
+    else{v="in";s=L.st.in}
+    return `<li data-v="${v}"><span class="sw" style="background:${C[r.c]}"></span><span><b>${L.refs[r.id]}</b> · ${fmtM(r.m)}<small>${s}</small></span></li>`}).join("");
+  // exaggeration table
+  const real={ground:1e-6,lock:1e-14,gw:1e-18},width=1e-9;
+  const hl=S.hist.filter(p=>p.t>S.t-3&&p.L);
+  const anim={ground:S.Atgt*1.9/FWHM,lock:hl.length>20?Math.sqrt(hl.reduce((a,p)=>a+p.w*p.w,0)/hl.length)/FWHM:null,gw:GW.amp/FWHM};
+  const f=v=>v>=0.1?(+v.toPrecision(2)).toString():v.toExponential(0).replace(/e([-+]\d+)/,(m,e)=>" × 10"+sup(+e)).replace(/^1 × /,"");
+  $("extbl").innerHTML="<thead><tr>"+L.th.map(h=>`<th>${h}</th>`).join("")+"</tr></thead><tbody>"+["ground","lock","gw"].map(k=>{
+    const rw=real[k]/width,a=anim[k];let ratio="—";
+    if(a!==null&&a>0){const q=a/rw;ratio=q>=1?"≈ "+fmtN(q)+L.bigger:"≈ "+fmtN(1/q)+L.smaller}
+    return `<tr><td>${L.rows[k]}</td><td class="n">≈ ${fmtM(real[k])}</td><td class="n">≈ ${f(rw)}</td><td class="n">${a===null?L.notLocked:"≈ "+f(a)}</td><td class="n">${ratio}</td></tr>`}).join("")+"</tbody>";
+}
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(playing){
+    if(mode==="movie"){script();}
+    step(dt);
+    if(mode==="movie"){
+      syncControls();
+      let c=CH.findIndex(c=>S.t>=c.s&&S.t<c.e); if(c<0)c=NCH-1;
+      if(c!==chapter)chapter=c;
+      if(S.t>=END){mode="explore";syncControls();}
+    }
+  }
+  drawStage(now);drawErr();drawStrip();drawOut();drawScale(dt||0.016);updateScaleText(now);updateUI(false);
+  requestAnimationFrame(frame);
+}
+S.t=0;script();step(0.001);syncControls();setLang(lang);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
