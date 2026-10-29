@@ -1,0 +1,736 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Spacetime Funhouse Mirror</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen exhibit. Full-bleed mirror stage on the left, control column on the right; stacks on phones.
+   Deliberately single dark look (a stage in a dim hall). Amber = + polarization, cyan = × polarization. */
+:root {
+  --ink: #090d15;
+  --panel: #111723;
+  --raise: #182031;
+  --line: #26314a;
+  --fg: #e8ecf4;
+  --muted: #8e9ab2;
+  --plus: #ffb24a;
+  --cross: #5cc6ff;
+  --circ: #c9a6ff;
+  --warn: #ff7a6b;
+  --font-display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ink); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+#app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr); }
+.bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); background: var(--ink); }
+.brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; flex: 1; }
+.brand h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 30px; letter-spacing: 0.01em; line-height: 1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand small { color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang button { background: none; border: 0; padding: 4px 12px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--fg); color: var(--ink); }
+
+.stage { position: relative; min-height: 0; overflow: hidden; background: var(--ink); touch-action: manipulation; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#ov { pointer-events: none; }
+.hud { position: absolute; left: 16px; top: 14px; pointer-events: none; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.hud .h { font-family: var(--font-display); font-weight: 800; font-size: clamp(34px, 5vw, 58px); line-height: 0.95; }
+.hud .f { font-family: var(--font-mono); font-size: 13px; color: var(--fg); opacity: .9; margin-top: 4px; }
+.badge { position: absolute; right: 16px; top: 14px; text-align: right; pointer-events: none; }
+.badge b { display: inline-block; font-family: var(--font-mono); font-weight: 500; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--fg); border-radius: 3px; background: rgba(9,13,21,.6); }
+.badge span { display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg); opacity: .85; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.note { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); max-width: min(520px, calc(100% - 32px)); background: rgba(17,23,35,.92); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 14px; text-align: center; pointer-events: none; transition: opacity .3s; }
+.countdown { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: min(40vh, 300px); color: var(--fg); text-shadow: 0 4px 40px rgba(0,0,0,.6); pointer-events: none; }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s ease-out; }
+
+.panel { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--panel); padding-block: 16px 24px; padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.label output { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg); }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.seg button { background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 8px 6px; cursor: pointer; font-size: 14px; line-height: 1.2; }
+.seg button[aria-pressed="true"] { border-color: var(--sel, var(--fg)); box-shadow: inset 0 0 0 1px var(--sel, var(--fg)); }
+.seg button .sym { display: block; font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1; color: var(--sel, var(--fg)); }
+.help { font-size: 13px; color: var(--muted); margin: 0; }
+input[type=range] { width: 100%; accent-color: var(--accent, var(--plus)); }
+.toggles { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.toggles label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border-radius: 8px; padding: 12px 14px; font-weight: 600; font-size: 15px; cursor: pointer; border: 1px solid var(--line); background: var(--raise); }
+.btn.primary { background: var(--fg); color: var(--ink); border-color: var(--fg); }
+.btn.chirp { border-color: var(--circ); color: var(--fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.srcs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.srcs button { background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 7px 4px; font-size: 13px; cursor: pointer; }
+.srcs button[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+details { border-top: 1px solid var(--line); padding-top: 14px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+.kbd { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+.sheet { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(5,8,14,.78); padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.card { width: min(760px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 1; text-transform: uppercase; text-wrap: balance; }
+.card p { margin: 0; max-width: 65ch; }
+.card .fine { font-size: 13px; color: var(--muted); }
+.card img { width: 100%; border-radius: 6px; border: 1px solid var(--line); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .btn { width: auto; flex: 1 1 140px; }
+.big sup { font-size: 0.5em; vertical-align: 0.9em; line-height: 0; }
+.big { font-family: var(--font-display); font-weight: 800; font-size: clamp(44px, 9vw, 76px); line-height: 1; color: var(--plus); font-variant-numeric: tabular-nums; }
+.heightrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.heightrow input { width: 90px; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-family: var(--font-mono); }
+.ladder { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; font-size: 13px; }
+.ladder .lbar { height: 10px; border-radius: 2px; background: var(--muted); }
+.ladder .lbar.you { background: var(--plus); }
+.ladder .val { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+.ladder .cap { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  #app { display: block; height: auto; }
+  .stage { height: 62svh; min-height: 340px; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .brand small { display: none; }
+  .brand h1 { font-size: 22px; }
+  .badge { top: auto; bottom: 92px; }
+  .note { bottom: 84px; }
+}
+@media (prefers-reduced-motion: reduce) { .flash, .note { transition: none; } }
+</style>
+
+<div id="app">
+  <header class="bar">
+    <div class="brand"><h1 data-i18n="title">Ruimtetijd-lachspiegel</h1><small>ET-Vlaanderen</small></div>
+    <div class="lang" role="group" aria-label="Taal / Language">
+      <button id="lang-nl" type="button" aria-pressed="true">NL</button>
+      <button id="lang-en" type="button" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="gl" aria-label="Vervormd camerabeeld"></canvas>
+    <canvas id="ov" aria-hidden="true"></canvas>
+    <div class="hud"><div class="h" id="hud-h">h = 0,22</div><div class="f" id="hud-f"></div></div>
+    <div class="badge"><b data-i18n="simulated">Gesimuleerd</b><span id="badge-detail"></span></div>
+    <div class="note" id="note" hidden></div>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="flash" id="flash"></div>
+  </main>
+
+  <aside class="panel" aria-label="Bediening">
+    <div class="group">
+      <div class="label"><span data-i18n="source">Beeld</span></div>
+      <div class="srcs">
+        <button type="button" id="src-camera" aria-pressed="false" data-i18n="srcCamera">Live camera</button>
+        <button type="button" id="src-photo" aria-pressed="false" data-i18n="srcPhoto">Foto kiezen</button>
+        <button type="button" id="src-demo" aria-pressed="true" data-i18n="srcDemo">Demo</button>
+      </div>
+      <input type="file" id="file" accept="image/*" capture="user" hidden>
+    </div>
+
+    <div class="group">
+      <div class="label"><span data-i18n="pol">Polarisatie</span></div>
+      <div class="seg">
+        <button type="button" id="pol-plus" aria-pressed="true" style="--sel: var(--plus)"><span class="sym">+</span><span data-i18n="polPlus">plus</span></button>
+        <button type="button" id="pol-cross" aria-pressed="false" style="--sel: var(--cross)"><span class="sym">×</span><span data-i18n="polCross">kruis</span></button>
+        <button type="button" id="pol-circ" aria-pressed="false" style="--sel: var(--circ)"><span class="sym">○</span><span data-i18n="polCirc">rond</span></button>
+      </div>
+      <p class="help" id="pol-help"></p>
+    </div>
+
+    <div class="group">
+      <div class="label"><label for="amp" data-i18n="amp">Sterkte (rek h)</label><output id="amp-out" for="amp"></output></div>
+      <input type="range" id="amp" min="0" max="0.4" step="0.01" value="0.22">
+    </div>
+
+    <div class="group">
+      <div class="label"><label for="freq" data-i18n="freq">Frequentie</label><output id="freq-out" for="freq"></output></div>
+      <input type="range" id="freq" min="0.2" max="3" step="0.05" value="0.8">
+    </div>
+
+    <div class="group">
+      <div class="toggles">
+        <label><input type="checkbox" id="ring" checked> <span data-i18n="ring">Testmassa's</span></label>
+        <label><input type="checkbox" id="grid"> <span data-i18n="grid">Rooster</span></label>
+        <label><input type="checkbox" id="trace" checked> <span data-i18n="trace">Signaal</span></label>
+      </div>
+      <p class="help" data-i18n="tapHint">Tik op het beeld om het midden te kiezen.</p>
+    </div>
+
+    <div class="group">
+      <button type="button" class="btn chirp" id="chirp" data-i18n="chirpBtn">Laat twee zwarte gaten samensmelten</button>
+      <p class="help" data-i18n="chirpHelp"></p>
+    </div>
+
+    <div class="group">
+      <button type="button" class="btn primary" id="snap" data-i18n="photo">Maak een foto</button>
+      <div class="row2">
+        <button type="button" class="btn" id="reveal" data-i18n="reveal">Hoe groot is het echt?</button>
+        <button type="button" class="btn" id="pause" data-i18n="pause">Pauze</button>
+      </div>
+    </div>
+
+    <details>
+      <summary data-i18n="whatTitle">Wat zie je?</summary>
+      <p data-i18n="what1"></p>
+      <p data-i18n="what2"></p>
+      <p class="kbd" data-i18n="keys"></p>
+    </details>
+  </aside>
+</div>
+
+<div class="sheet" id="photo-sheet" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="photo-title">
+    <h2 id="photo-title" data-i18n="photoTitle">Je zwaartekrachtgolf-foto</h2>
+    <img id="photo-img" alt="">
+    <p class="fine" data-i18n="privacy">De foto blijft op dit toestel. Er wordt niets geüpload.</p>
+    <div class="actions">
+      <button type="button" class="btn primary" id="photo-save" data-i18n="save">Bewaar foto</button>
+      <button type="button" class="btn" id="photo-again" data-i18n="again">Opnieuw</button>
+      <button type="button" class="btn" id="photo-close" data-i18n="close">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="reveal-sheet" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="reveal-title">
+    <h2 id="reveal-title" data-i18n="reveal">Hoe groot is het echt?</h2>
+    <p id="rv-intro"></p>
+    <div class="heightrow"><label for="height" data-i18n="yourHeight">Jouw lengte</label><input id="height" type="number" min="50" max="230" step="1" value="170"> <span>cm</span></div>
+    <div class="big" id="rv-big"></div>
+    <p id="rv-explain"></p>
+    <div class="ladder" id="rv-ladder"></div>
+    <p id="rv-det"></p>
+    <p class="fine" id="rv-fine"></p>
+    <p class="fine" id="rv-src"></p>
+    <div class="actions"><button type="button" class="btn" id="reveal-close" data-i18n="close">Sluiten</button></div>
+  </div>
+</div>
+
+<video id="video" playsinline muted autoplay hidden></video>
+
+<script>
+(() => {
+"use strict";
+
+/* ------------------------------------------------------------------ physics constants
+   Every number here is meant to be checked. Sources in the reveal sheet. */
+const PHYS = {
+  hReal: 1.0e-21,            // GW150914 peak strain (Abbott et al. 2016, PRL 116, 061102)
+  protonRadius: 0.84075e-15, // CODATA 2022 rms charge radius, 0.84075(64) fm
+  ligoArm: 4000,             // m
+  etArm10: 10000,            // m, triangle design
+  etArm15: 15000,            // m, 2L design
+  slow: 80,                  // display slow-down factor: screen Hz = real Hz / 80, screen s = real s * 80
+  Tsun: 4.925491e-6,         // G M_sun / c^3 in s
+  chirpMass: 30,             // M_sun, roughly GW150914 (detector frame)
+  fStart: 35, fMerge: 250,   // Hz, GW150914 sweep 35 -> 250 Hz
+  fRing: 250, tauRing: 0.004 // ringdown: ~250 Hz, damping time ~4 ms (approximate)
+};
+const Mt = PHYS.chirpMass * PHYS.Tsun;
+const tauOf = f => 5 / 256 * Math.pow(Mt, -5 / 3) * Math.pow(Math.PI * f, -8 / 3);
+const fOf = tau => Math.pow(5 / (256 * tau), 3 / 8) * Math.pow(Mt, -5 / 8) / Math.PI;
+const TAU0 = tauOf(PHYS.fStart);
+
+/* ------------------------------------------------------------------ i18n */
+const STR = {
+  nl: {
+    title: "Ruimtetijd-lachspiegel",
+    simulated: "Gesimuleerd",
+    simDetail: "{x} keer overdreven · {s} keer vertraagd",
+    source: "Beeld", srcCamera: "Live camera", srcPhoto: "Foto kiezen", srcDemo: "Demo",
+    pol: "Polarisatie", polPlus: "plus", polCross: "kruis", polCirc: "rond",
+    polHelp_plus: "Rekt beurtelings op en neer en links en rechts.",
+    polHelp_cross: "Hetzelfde patroon, 45° gedraaid.",
+    polHelp_circ: "Zo komt de golf aan als twee zwarte gaten recht boven je om elkaar draaien.",
+    amp: "Sterkte (rek h)", freq: "Frequentie",
+    freqOut: "{f} Hz ≈ {r} Hz echt",
+    ring: "Testmassa's", grid: "Rooster", trace: "Signaal",
+    tapHint: "Tik op het beeld om het midden te kiezen.",
+    chirpBtn: "Laat twee zwarte gaten samensmelten",
+    chirpHelp: "Zoals GW150914: het signaal versnelt van 35 naar 250 Hz in 0,2 s. Hier 80 keer trager.",
+    photo: "Maak een foto", reveal: "Hoe groot is het echt?", pause: "Pauze", play: "Verder",
+    whatTitle: "Wat zie je?",
+    what1: "Een zwaartekrachtgolf die recht op je af komt, rekt de ruimte in de ene richting uit en drukt ze in de andere richting samen, steeds afwisselend. Alles in dat vlak vervormt mee: jij, de muur en de stippen.",
+    what2: "De stippen zijn testmassa's: vrij zwevende voorwerpen, zoals de spiegels van een detector. De gestippelde cirkel toont waar ze zonder golf zouden staan.",
+    keys: "Toetsen: spatie = foto · M = samensmelting · 1/2/3 = polarisatie · P = pauze",
+    hudF: "f = {f} Hz op het scherm · ≈ {r} Hz echt",
+    hudChirp: "f = {r} Hz echt · nog {t} s tot de samensmelting",
+    hudRing: "f ≈ {r} Hz echt · nagalm (ringdown)",
+    merged: "Samengesmolten! In het echt duurde dit alles 0,2 seconden.",
+    camDenied: "Geen live camera in deze weergave. Kies een foto of gebruik de demo.",
+    camNone: "Deze browser geeft geen toegang tot een camera.",
+    photoTitle: "Je zwaartekrachtgolf-foto",
+    privacy: "De foto blijft op dit toestel. Er wordt niets geüpload.",
+    save: "Bewaar foto", again: "Opnieuw", close: "Sluiten",
+    saved: "Foto bewaard.", saveFail: "Bewaren lukte niet in deze weergave.",
+    stripHead: "Uitgerekt door een zwaartekrachtgolf",
+    stripFoot: "Gesimuleerd: {x} keer overdreven. Echt zou je lengte maar ±{d} m veranderen.",
+    wide: "breed", tall: "lang", diagA: "schuin ⤢", diagB: "schuin ⤡",
+    yourHeight: "Jouw lengte",
+    rvIntro: "De eerste gemeten zwaartekrachtgolf, GW150914, had bij aankomst op aarde een rek van hoogstens h = {h}. Op het scherm staat h nu op {hs}: {x} keer sterker.",
+    rvExplain: "Zoveel wordt de afstand van je kruin tot je tenen langer en korter (½ · h · L). Van uitgerekt tot samengedrukt is dat {pp} m: ongeveer 1/{n} van de diameter van een proton.",
+    rvDet: "LIGO meet met armen van 4 km: ±{ligo} m. De Einsteintelescoop krijgt armen van 10 km (driehoek) of 15 km (twee L-vormen): ±{e10} tot ±{e15} m. Zo'n kleine beweging meet je alleen als de spiegels heel stil hangen, daarom komt ET diep onder de grond.",
+    rvFine: "Kleine lettertjes: dit is de verandering in afstand tussen vrij zwevende voorwerpen. Je lichaam wordt door krachten tussen atomen bijeengehouden en vervormt nog veel minder. Daarom hangen de spiegels in een detector vrij aan slingers.",
+    rvSrc: "Bronnen: LIGO/Virgo, PRL 116, 061102 (2016); CODATA 2022 (protonstraal 0,84075 fm).",
+    ladCap: "Logaritmische schaal: elke stap naar links is 10 keer kleiner.",
+    ladYou: "Jij", ladHair: "Dikte van een haar", ladAtom: "Waterstofatoom", ladProton: "Proton", ladGW: "Jouw rek door de golf"
+  },
+  en: {
+    title: "Spacetime funhouse mirror",
+    simulated: "Simulated",
+    simDetail: "exaggerated {x} times · slowed down {s} times",
+    source: "Picture", srcCamera: "Live camera", srcPhoto: "Choose photo", srcDemo: "Demo",
+    pol: "Polarization", polPlus: "plus", polCross: "cross", polCirc: "circular",
+    polHelp_plus: "Stretches up and down, then left and right, in turn.",
+    polHelp_cross: "The same pattern, turned by 45°.",
+    polHelp_circ: "This is how the wave arrives when two black holes orbit each other right above you.",
+    amp: "Strength (strain h)", freq: "Frequency",
+    freqOut: "{f} Hz ≈ {r} Hz real",
+    ring: "Test masses", grid: "Grid", trace: "Signal",
+    tapHint: "Tap the picture to set the center.",
+    chirpBtn: "Merge two black holes",
+    chirpHelp: "Like GW150914: the signal speeds up from 35 to 250 Hz in 0.2 s. Here 80 times slower.",
+    photo: "Take a photo", reveal: "How big is it really?", pause: "Pause", play: "Play",
+    whatTitle: "What are you seeing?",
+    what1: "A gravitational wave coming straight at you stretches space in one direction and squeezes it in the other, back and forth. Everything in that plane deforms with it: you, the wall and the dots.",
+    what2: "The dots are test masses: freely floating objects, like the mirrors in a detector. The dashed circle shows where they would sit without a wave.",
+    keys: "Keys: space = photo · M = merger · 1/2/3 = polarization · P = pause",
+    hudF: "f = {f} Hz on screen · ≈ {r} Hz real",
+    hudChirp: "f = {r} Hz real · {t} s to merger",
+    hudRing: "f ≈ {r} Hz real · ringdown",
+    merged: "Merged! For real, all of this took 0.2 seconds.",
+    camDenied: "No live camera in this view. Choose a photo or use the demo.",
+    camNone: "This browser gives no access to a camera.",
+    photoTitle: "Your gravitational-wave photo",
+    privacy: "The photo stays on this device. Nothing is uploaded.",
+    save: "Save photo", again: "Retake", close: "Close",
+    saved: "Photo saved.", saveFail: "Saving didn't work in this view.",
+    stripHead: "Stretched by a gravitational wave",
+    stripFoot: "Simulated: exaggerated {x} times. For real, your height would change by only ±{d} m.",
+    wide: "wide", tall: "tall", diagA: "diagonal ⤢", diagB: "diagonal ⤡",
+    yourHeight: "Your height",
+    rvIntro: "The first gravitational wave ever measured, GW150914, reached Earth with a strain of at most h = {h}. On screen, h is set to {hs}: {x} times stronger.",
+    rvExplain: "That is how much the distance from the top of your head to your toes grows and shrinks (½ · h · L). From stretched to squeezed is {pp} m: about 1/{n} of the diameter of a proton.",
+    rvDet: "LIGO measures with 4 km arms: ±{ligo} m. The Einstein Telescope will have 10 km arms (triangle) or 15 km arms (two L shapes): ±{e10} to ±{e15} m. You can only measure a motion that small if the mirrors hang extremely still, which is why ET will be built deep underground.",
+    rvFine: "Fine print: this is the change in distance between freely floating objects. Your body is held together by forces between atoms and deforms far less. That is why the mirrors in a detector hang freely from pendulums.",
+    rvSrc: "Sources: LIGO/Virgo, PRL 116, 061102 (2016); CODATA 2022 (proton radius 0.84075 fm).",
+    ladCap: "Logarithmic scale: each step to the left is 10 times smaller.",
+    ladYou: "You", ladHair: "Width of a hair", ladAtom: "Hydrogen atom", ladProton: "Proton", ladGW: "Your stretch from the wave"
+  }
+};
+let lang = "nl";
+const t = (k, v) => { let s = (STR[lang][k] ?? STR.nl[k] ?? k); if (v) for (const [a, b] of Object.entries(v)) s = s.split("{" + a + "}").join(b); return s; };
+
+/* ------------------------------------------------------------------ number formatting */
+const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const dec = (x, d) => x.toFixed(d).replace(".", lang === "nl" ? "," : ".");
+function sci(x, d = 1) {
+  if (x === 0) return "0";
+  let e = Math.floor(Math.log10(Math.abs(x)));
+  let m = x / Math.pow(10, e);
+  if (Math.abs(m) >= 9.95 && d <= 1) { m /= 10; e += 1; }
+  const ms = (Math.abs(m - 1) < 0.05 && d <= 1) ? "1" : dec(m, d);
+  const es = String(e).split("").map(c => SUP[c]).join("");
+  return (ms === "1" ? "" : ms + "×") + "10" + es;
+}
+const sciFull = (x, d = 1) => { const s = sci(x, d); return s.startsWith("10") ? "1×" + s : s; };
+const grp = n => n.toLocaleString(lang === "nl" ? "nl-BE" : "en-US");
+const round2 = n => { const p = Math.pow(10, Math.floor(Math.log10(n)) - 1); return Math.round(n / p) * p; };
+
+/* ------------------------------------------------------------------ DOM */
+const $ = id => document.getElementById(id);
+const stage = $("stage"), glc = $("gl"), ov = $("ov"), octx = ov.getContext("2d");
+const video = $("video");
+const ui = { amp: $("amp"), freq: $("freq"), ring: $("ring"), grid: $("grid"), trace: $("trace") };
+
+const state = {
+  pol: "plus", amp: 0.22, freq: 0.8, paused: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  source: "demo", mirror: false, center: [0.5, 0.5],
+  phase: 0, env: 1, chirp: null, hold: 0, override: null
+};
+
+/* ------------------------------------------------------------------ demo scene (an invented figure in front of a height chart) */
+function makeDemo() {
+  const W = 1280, H = 960, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#263349"); bg.addColorStop(1, "#141b29");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(255,255,255,0.08)"; g.lineWidth = 2;
+  for (let x = 0; x <= W; x += 80) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H * 0.82); g.stroke(); }
+  for (let y = 0; y <= H * 0.82; y += 80) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.fillStyle = "#0f1520"; g.fillRect(0, H * 0.82, W, H);
+  // height chart
+  g.fillStyle = "#f2e6c9"; g.fillRect(150, 60, 110, 720);
+  g.fillStyle = "#1a2232"; g.font = "600 26px 'IBM Plex Mono', monospace"; g.textAlign = "left";
+  for (let cm = 100; cm <= 200; cm += 2) {
+    const y = 780 - (cm - 100) * 7.2, major = cm % 10 === 0;
+    g.fillRect(150, y - 1.5, major ? 56 : 28, 3);
+    if (major) g.fillText(String(cm), 210, y + 9);
+  }
+  // figure
+  const cx = 720;
+  g.fillStyle = "#ffb24a"; g.beginPath(); g.moveTo(cx - 190, 960); g.quadraticCurveTo(cx - 200, 560, cx, 545); g.quadraticCurveTo(cx + 200, 560, cx + 190, 960); g.closePath(); g.fill();
+  g.fillStyle = "#13203a"; g.font = "800 110px 'Big Shoulders Display', sans-serif"; g.textAlign = "center"; g.fillText("ET", cx, 760);
+  g.fillStyle = "#e9c3a0"; g.fillRect(cx - 38, 480, 76, 80);
+  g.beginPath(); g.ellipse(cx, 360, 125, 150, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#3a2a22"; g.beginPath(); g.ellipse(cx, 255, 130, 70, 0, Math.PI, 0); g.fill();
+  g.fillStyle = "#1b1b24"; g.beginPath(); g.arc(cx - 45, 350, 13, 0, Math.PI * 2); g.arc(cx + 45, 350, 13, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "#1b1b24"; g.lineWidth = 7; g.lineCap = "round"; g.beginPath(); g.arc(cx, 395, 48, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
+  g.fillStyle = "rgba(255,255,255,0.5)"; g.font = "500 24px 'IBM Plex Mono', monospace"; g.textAlign = "right"; g.fillText("demo", W - 30, H - 30);
+  return c;
+}
+
+/* ------------------------------------------------------------------ WebGL */
+const gl = glc.getContext("webgl2", { preserveDrawingBuffer: true, antialias: false });
+let prog, tex, U = {}, srcW = 1280, srcH = 960, demoCanvas = null, staticSrc = null;
+const VS = `#version 300 es
+in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+const FS = `#version 300 es
+precision highp float;
+uniform sampler2D u_tex; uniform vec2 u_res, u_src, u_c; uniform float u_a, u_b, u_mirror, u_grid, u_gs;
+out vec4 o;
+void main(){
+  vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 d = p - u_c;
+  float det = 1.0 - u_a*u_a - u_b*u_b;
+  // inverse of the displacement map x' = (1 + H/2) x, with H/2 = [[a, b], [b, -a]]
+  vec2 s = vec2((1.0 - u_a)*d.x - u_b*d.y, -u_b*d.x + (1.0 + u_a)*d.y) / det;
+  vec2 q = u_c + s;
+  float sc = max(u_res.x/u_src.x, u_res.y/u_src.y);
+  vec2 off = (u_res - u_src*sc) * 0.5;
+  vec2 uv = (q - off) / (sc*u_src);
+  if (u_mirror > 0.5) uv.x = 1.0 - uv.x;
+  bool inside = all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)));
+  vec3 col = inside ? texture(u_tex, uv).rgb : vec3(0.035, 0.05, 0.085);
+  vec2 gq = s / u_gs;
+  vec2 fw = max(fwidth(gq), vec2(1e-4));
+  vec2 f = abs(fract(gq - 0.5) - 0.5) / fw;
+  float line = 1.0 - min(min(f.x, f.y), 1.0);
+  float ga = inside ? u_grid : max(u_grid, 0.35);
+  col = mix(col, vec3(0.62, 0.72, 0.9), line * ga);
+  o = vec4(col, 1.0);
+}`;
+function initGL() {
+  if (!gl) return false;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  for (const n of ["u_tex", "u_res", "u_src", "u_c", "u_a", "u_b", "u_mirror", "u_grid", "u_gs"]) U[n] = gl.getUniformLocation(prog, n);
+  tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return true;
+}
+function upload(src) { gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); }
+
+/* ------------------------------------------------------------------ sizing */
+let W = 1, H = 1, dpr = 1;
+function resize() {
+  const r = stage.getBoundingClientRect(); dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(1, Math.round(r.width * dpr)); H = Math.max(1, Math.round(r.height * dpr));
+  glc.width = W; glc.height = H; ov.width = W; ov.height = H;
+}
+new ResizeObserver(resize).observe(stage);
+
+/* ------------------------------------------------------------------ wave state */
+// hp, hx hold [a, b] = [h+/2, hx/2] (displacement-matrix entries); the HUD and trace show h = 2a
+let hp = 0, hx = 0, hudInfo = { kind: "cw" };
+function pattern(A, ph) {
+  if (state.pol === "plus") return [A * Math.cos(ph), 0];
+  if (state.pol === "cross") return [0, A * Math.cos(ph)];
+  return [A * Math.cos(ph), A * Math.sin(ph)];
+}
+function step(dt) {
+  if (state.chirp) {
+    const c = state.chirp; c.t += dt / PHYS.slow;            // real seconds
+    let fReal, A;
+    const tau = TAU0 - c.t;
+    if (!c.merged && tau > 0 && fOf(tau) < PHYS.fMerge) {
+      fReal = fOf(tau); A = state.amp * Math.pow(fReal / PHYS.fMerge, 2 / 3);
+      hudInfo = { kind: "chirp", fReal, tau: Math.max(0, tau - tauOf(PHYS.fMerge)) };
+    } else {
+      if (!c.merged) { c.merged = true; c.tm = c.t; }
+      fReal = PHYS.fRing; A = state.amp * Math.exp(-(c.t - c.tm) / PHYS.tauRing);
+      hudInfo = { kind: "ring", fReal };
+      if (c.t - c.tm > 8 * PHYS.tauRing) { state.chirp = null; state.hold = 2.2; state.env = 0; showNote(t("merged"), 3500); $("chirp").disabled = false; }
+    }
+    state.phase += 2 * Math.PI * (fReal / PHYS.slow) * dt;
+    [hp, hx] = pattern(A / 2, state.phase);
+    return;
+  }
+  if (state.hold > 0) { state.hold -= dt; hp = hx = 0; hudInfo = { kind: "cw" }; return; }
+  state.env = Math.min(1, state.env + dt / 1.2);
+  state.phase += 2 * Math.PI * state.freq * dt;
+  [hp, hx] = pattern(state.amp * state.env / 2, state.phase);
+  hudInfo = { kind: "cw" };
+}
+
+/* ------------------------------------------------------------------ render */
+const traceBuf = [];
+function render(a, b) {
+  if (state.source === "camera" && video.readyState >= 2) upload(video);
+  gl.viewport(0, 0, W, H);
+  gl.uniform1i(U.u_tex, 0);
+  gl.uniform2f(U.u_res, W, H); gl.uniform2f(U.u_src, srcW, srcH);
+  gl.uniform2f(U.u_c, state.center[0] * W, state.center[1] * H);
+  gl.uniform1f(U.u_a, a); gl.uniform1f(U.u_b, b);
+  gl.uniform1f(U.u_mirror, state.mirror ? 1 : 0);
+  gl.uniform1f(U.u_grid, ui.grid.checked ? 0.55 : 0);
+  gl.uniform1f(U.u_gs, 0.07 * Math.min(W, H));
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  drawOverlay(a, b);
+}
+function polColor() { return state.pol === "plus" ? "#ffb24a" : state.pol === "cross" ? "#5cc6ff" : "#c9a6ff"; }
+function drawOverlay(a, b, forPhoto) {
+  octx.clearRect(0, 0, W, H);
+  const cx = state.center[0] * W, cy = state.center[1] * H, R = 0.3 * Math.min(W, H);
+  if (ui.ring.checked) {
+    octx.save();
+    octx.setLineDash([6 * dpr, 7 * dpr]); octx.lineWidth = 1.5 * dpr; octx.strokeStyle = "rgba(232,236,244,0.55)";
+    octx.beginPath(); octx.arc(cx, cy, R, 0, Math.PI * 2); octx.stroke(); octx.setLineDash([]);
+    octx.fillStyle = polColor(); octx.strokeStyle = "rgba(9,13,21,0.9)"; octx.lineWidth = 2 * dpr;
+    const N = 16;
+    for (let i = 0; i < N; i++) {
+      const th = 2 * Math.PI * i / N, x = R * Math.cos(th), y = R * Math.sin(th);
+      const X = cx + (1 + a) * x + b * y, Y = cy + b * x + (1 - a) * y;
+      octx.beginPath(); octx.arc(X, Y, 7 * dpr, 0, Math.PI * 2); octx.fill(); octx.stroke();
+    }
+    octx.restore();
+  }
+  if (ui.trace.checked && !forPhoto) {
+    const h = 64 * dpr, y0 = H - h - 14 * dpr, x0 = 16 * dpr, w = W - 32 * dpr;
+    octx.fillStyle = "rgba(9,13,21,0.72)"; octx.fillRect(x0, y0, w, h);
+    octx.strokeStyle = "rgba(232,236,244,0.18)"; octx.lineWidth = 1; octx.beginPath(); octx.moveTo(x0, y0 + h / 2); octx.lineTo(x0 + w, y0 + h / 2); octx.stroke();
+    const n = traceBuf.length, sy = (h / 2 - 6 * dpr) / 0.4;
+    for (const [k, col] of [[0, "#ffb24a"], [1, "#5cc6ff"]]) {
+      octx.strokeStyle = col; octx.lineWidth = 2 * dpr; octx.beginPath();
+      for (let i = 0; i < n; i++) { const X = x0 + w * (i / 299), Y = y0 + h / 2 - Math.max(-0.4, Math.min(0.4, traceBuf[i][k])) * sy; i ? octx.lineTo(X, Y) : octx.moveTo(X, Y); }
+      octx.stroke();
+    }
+    octx.font = `500 ${12 * dpr}px "IBM Plex Mono", monospace`;
+    octx.fillStyle = "#ffb24a"; octx.fillText("h₊", x0 + 8 * dpr, y0 + 16 * dpr);
+    octx.fillStyle = "#5cc6ff"; octx.fillText("h×", x0 + 36 * dpr, y0 + 16 * dpr);
+  }
+}
+
+/* ------------------------------------------------------------------ HUD */
+function updateHUD() {
+  const hShown = Math.hypot(2 * hp, 2 * hx);
+  const hEl = $("hud-h"); hEl.textContent = "h = " + dec(hShown, 2); hEl.style.color = polColor();
+  let f;
+  if (hudInfo.kind === "chirp") f = t("hudChirp", { r: Math.round(hudInfo.fReal), t: dec(hudInfo.tau, 3) });
+  else if (hudInfo.kind === "ring") f = t("hudRing", { r: Math.round(hudInfo.fReal) });
+  else f = t("hudF", { f: dec(state.freq, 2), r: Math.round(state.freq * PHYS.slow) });
+  $("hud-f").textContent = f;
+}
+function exaggeration() { return Math.max(state.amp, 0.01) / PHYS.hReal; }
+function updateStatic() {
+  $("badge-detail").textContent = t("simDetail", { x: sci(exaggeration(), 1), s: PHYS.slow });
+  $("amp-out").textContent = "h = " + dec(state.amp, 2);
+  $("freq-out").textContent = t("freqOut", { f: dec(state.freq, 2), r: Math.round(state.freq * PHYS.slow) });
+  $("pol-help").textContent = t("polHelp_" + state.pol);
+  document.querySelector(".panel").style.setProperty("--accent", polColor());
+}
+function applyLang() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  $("pause").textContent = state.paused ? t("play") : t("pause");
+  $("lang-nl").setAttribute("aria-pressed", lang === "nl"); $("lang-en").setAttribute("aria-pressed", lang === "en");
+  updateStatic(); updateHUD();
+  if (!$("reveal-sheet").hidden) fillReveal();
+}
+
+/* ------------------------------------------------------------------ notes */
+let noteTimer;
+function showNote(msg, ms = 3000) { const n = $("note"); n.textContent = msg; n.hidden = false; clearTimeout(noteTimer); noteTimer = setTimeout(() => { n.hidden = true; }, ms); }
+
+/* ------------------------------------------------------------------ sources */
+function setSourceButtons() { for (const s of ["camera", "photo", "demo"]) $("src-" + s).setAttribute("aria-pressed", state.source === s); }
+function useDemo() {
+  stopCamera();
+  if (!demoCanvas) demoCanvas = makeDemo();
+  staticSrc = demoCanvas; srcW = demoCanvas.width; srcH = demoCanvas.height; upload(demoCanvas);
+  state.source = "demo"; state.mirror = false; setSourceButtons();
+}
+let stream = null;
+function stopCamera() { if (stream) { stream.getTracks().forEach(tr => tr.stop()); stream = null; } }
+async function useCamera(quiet) {
+  if (!navigator.mediaDevices?.getUserMedia) { if (!quiet) showNote(t("camNone"), 4000); return false; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    video.srcObject = stream; await video.play();
+    await new Promise(r => video.videoWidth ? r() : video.addEventListener("loadedmetadata", r, { once: true }));
+    srcW = video.videoWidth; srcH = video.videoHeight;
+    state.source = "camera"; state.mirror = true; setSourceButtons();
+    return true;
+  } catch (e) {
+    if (!quiet) showNote(t("camDenied"), 4500);
+    return false;
+  }
+}
+$("file").addEventListener("change", e => {
+  const f = e.target.files?.[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    stopCamera();
+    const c = document.createElement("canvas"); const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    staticSrc = c; srcW = c.width; srcH = c.height; upload(c);
+    state.source = "photo"; state.mirror = false; setSourceButtons(); URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(f); e.target.value = "";
+});
+
+/* ------------------------------------------------------------------ photo booth */
+let lastBlob = null, lastUrl = null, busy = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function snap() {
+  if (busy) return; busy = true; $("snap").disabled = true;
+  const cd = $("countdown"); cd.hidden = false;
+  for (const n of [3, 2, 1]) { cd.textContent = n; await sleep(800); }
+  cd.hidden = true;
+  const A = Math.max(state.amp, 0.2) / 2;
+  const pair = state.pol === "cross" ? [[0, A], [0, -A]] : [[A, 0], [-A, 0]];
+  const labels = state.pol === "cross" ? [t("diagA"), t("diagB")] : [t("wide"), t("tall")];
+  const frames = [];
+  for (const [a, b] of pair) {
+    render(a, b); drawOverlay(a, b, true);
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+    g.drawImage(glc, 0, 0); g.drawImage(ov, 0, 0); frames.push(c);
+  }
+  const fl = $("flash"); fl.style.transition = "none"; fl.style.opacity = "0.9"; requestAnimationFrame(() => { fl.style.transition = ""; fl.style.opacity = "0"; });
+  lastBlob = await composeStrip(frames, labels, A * 2);
+  if (lastUrl) URL.revokeObjectURL(lastUrl);
+  lastUrl = URL.createObjectURL(lastBlob);
+  $("photo-img").src = lastUrl; $("photo-img").alt = t("stripHead");
+  $("photo-sheet").hidden = false; $("photo-save").focus({ preventScroll: true });
+  busy = false; $("snap").disabled = false;
+}
+async function composeStrip(frames, labels, hShown) {
+  try { await document.fonts.ready; } catch {}
+  const fw = 900, fh = Math.round(fw * frames[0].height / frames[0].width), pad = 40, head = 130, foot = 120;
+  const c = document.createElement("canvas"); c.width = pad * 3 + fw * 2; c.height = head + fh + foot + pad; const g = c.getContext("2d");
+  g.fillStyle = "#090d15"; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = "#e8ecf4"; g.font = "800 76px 'Big Shoulders Display', 'Arial Narrow', sans-serif"; g.textBaseline = "alphabetic";
+  g.fillText(t("stripHead").toUpperCase(), pad, 100);
+  frames.forEach((f, i) => {
+    const x = pad + i * (fw + pad);
+    g.drawImage(f, x, head, fw, fh);
+    g.fillStyle = "rgba(9,13,21,0.75)"; g.fillRect(x, head, 210, 52);
+    g.fillStyle = "#e8ecf4"; g.font = "800 40px 'Big Shoulders Display', sans-serif"; g.fillText(labels[i].toUpperCase(), x + 16, head + 41);
+  });
+  const L = (parseFloat($("height").value) || 170) / 100;
+  g.fillStyle = "#e8ecf4"; g.font = "400 26px 'IBM Plex Sans', sans-serif";
+  g.fillText(t("stripFoot", { x: sci(hShown / PHYS.hReal, 1), d: sciFull(PHYS.hReal * L / 2, 1) }), pad, head + fh + 56);
+  g.fillStyle = "#8e9ab2"; g.font = "500 22px 'IBM Plex Mono', monospace";
+  g.fillText("ET-Vlaanderen · " + t("title"), pad, head + fh + 96);
+  g.fillStyle = polColor(); g.textAlign = "right"; g.fillText("h = " + dec(hShown, 2), c.width - pad, head + fh + 96); g.textAlign = "left";
+  return await new Promise(r => c.toBlob(r, "image/png"));
+}
+let downloads = null;
+(async () => { try { if (window.claude?.use) downloads = await window.claude.use("downloads"); } catch {} })();
+async function savePhoto() {
+  if (!lastBlob) return;
+  const name = (lang === "nl" ? "zwaartekrachtgolf-foto-" : "gravitational-wave-photo-") + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + ".png";
+  if (downloads) {
+    try { await downloads.save({ filename: name, data: lastBlob }); showNote(t("saved")); }
+    catch (e) { if (e?.code !== "declined") showNote(t("saveFail"), 4000); }
+    return;
+  }
+  const a = document.createElement("a"); a.href = lastUrl; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ------------------------------------------------------------------ reveal */
+function fillReveal() {
+  const L = Math.max(0.3, (parseFloat($("height").value) || 170) / 100);
+  const dL = PHYS.hReal * L / 2, pp = PHYS.hReal * L, dp = 2 * PHYS.protonRadius;
+  $("rv-intro").textContent = t("rvIntro", { h: sciFull(PHYS.hReal, 1), hs: dec(state.amp, 2), x: sci(exaggeration(), 1) });
+  { const e = Math.floor(Math.log10(dL)), m = dL / Math.pow(10, e); $("rv-big").innerHTML = "±" + dec(m, 1) + "×10<sup>−" + (-e) + "</sup> m"; }
+  $("rv-explain").textContent = t("rvExplain", { pp: sciFull(pp, 1), n: grp(round2(dp / pp)) });
+  $("rv-det").textContent = t("rvDet", { ligo: sciFull(PHYS.hReal * PHYS.ligoArm / 2, 0), e10: sciFull(PHYS.hReal * PHYS.etArm10 / 2, 0), e15: sciFull(PHYS.hReal * PHYS.etArm15 / 2, 1) });
+  $("rv-fine").textContent = t("rvFine"); $("rv-src").textContent = t("rvSrc");
+  const rows = [[t("ladYou"), L], [t("ladHair"), 7e-5], [t("ladAtom"), 1.06e-10], [t("ladProton"), dp], [t("ladGW"), pp, true]];
+  const lo = -22, hi = 1, lad = $("rv-ladder"); lad.textContent = "";
+  for (const [name, v, you] of rows) {
+    const a = document.createElement("div"); a.textContent = name;
+    const b = document.createElement("div"); b.className = "lbar" + (you ? " you" : ""); b.style.width = Math.max(1.5, 100 * (Math.log10(v) - lo) / (hi - lo)) + "%";
+    const c = document.createElement("div"); c.className = "val"; c.textContent = (v >= 0.1 ? dec(v, 2) : sciFull(v, 1)) + " m";
+    lad.append(a, b, c);
+  }
+  const cap = document.createElement("div"); cap.className = "cap"; cap.textContent = t("ladCap"); lad.append(cap);
+}
+
+/* ------------------------------------------------------------------ controls */
+function setPol(p) { state.pol = p; for (const q of ["plus", "cross", "circ"]) $("pol-" + q).setAttribute("aria-pressed", q === p); updateStatic(); }
+for (const q of ["plus", "cross", "circ"]) $("pol-" + q).addEventListener("click", () => setPol(q));
+ui.amp.addEventListener("input", () => { state.amp = parseFloat(ui.amp.value); updateStatic(); });
+ui.freq.addEventListener("input", () => { state.freq = parseFloat(ui.freq.value); updateStatic(); });
+$("lang-nl").addEventListener("click", () => { lang = "nl"; applyLang(); });
+$("lang-en").addEventListener("click", () => { lang = "en"; applyLang(); });
+$("src-demo").addEventListener("click", useDemo);
+$("src-photo").addEventListener("click", () => $("file").click());
+$("src-camera").addEventListener("click", () => useCamera(false));
+function startChirp() { if (state.chirp) return; state.chirp = { t: 0, merged: false }; state.phase = 0; state.hold = 0; state.paused = false; $("pause").textContent = t("pause"); $("chirp").disabled = true; }
+$("chirp").addEventListener("click", startChirp);
+$("snap").addEventListener("click", snap);
+function togglePause() { state.paused = !state.paused; $("pause").textContent = state.paused ? t("play") : t("pause"); }
+$("pause").addEventListener("click", togglePause);
+$("reveal").addEventListener("click", () => { fillReveal(); $("reveal-sheet").hidden = false; $("reveal-close").focus({ preventScroll: true }); $("reveal-sheet").querySelector(".card").scrollTop = 0; });
+$("height").addEventListener("input", fillReveal);
+$("reveal-close").addEventListener("click", () => { $("reveal-sheet").hidden = true; });
+$("photo-close").addEventListener("click", () => { $("photo-sheet").hidden = true; });
+$("photo-again").addEventListener("click", () => { $("photo-sheet").hidden = true; snap(); });
+$("photo-save").addEventListener("click", savePhoto);
+for (const id of ["photo-sheet", "reveal-sheet"]) $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; });
+stage.addEventListener("pointerdown", e => {
+  const r = stage.getBoundingClientRect();
+  state.center = [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+});
+stage.addEventListener("dblclick", () => { state.center = [0.5, 0.5]; });
+addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("input")) return;
+  if (e.key === "Escape") { $("photo-sheet").hidden = true; $("reveal-sheet").hidden = true; return; }
+  if (e.key === " ") { e.preventDefault(); snap(); }
+  else if (e.key === "m" || e.key === "M") startChirp();
+  else if (e.key === "p" || e.key === "P") togglePause();
+  else if (e.key === "1") setPol("plus"); else if (e.key === "2") setPol("cross"); else if (e.key === "3") setPol("circ");
+});
+
+/* ------------------------------------------------------------------ loop */
+let last = performance.now(), hudTick = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!state.paused && !busy) step(dt);
+  if (!busy) {
+    traceBuf.push([2 * hp, 2 * hx]); if (traceBuf.length > 300) traceBuf.shift();
+    render(hp, hx);
+    if ((hudTick += dt) > 0.08) { hudTick = 0; updateHUD(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------------ boot */
+if (!initGL()) {
+  stage.insertAdjacentHTML("beforeend", '<div class="note">WebGL2 is not available in this browser.</div>');
+} else {
+  resize(); useDemo(); applyLang();
+  if (state.paused) $("pause").textContent = t("play");
+  requestAnimationFrame(frame);
+  if (document.fonts) document.fonts.ready.then(() => { demoCanvas = makeDemo(); if (state.source === "demo") { staticSrc = demoCanvas; upload(demoCanvas); } });
+  useCamera(true); // live camera where the browser allows it; otherwise the demo stays
+}
+})();
+</script>
+</body></html>
