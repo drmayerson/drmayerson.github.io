@@ -3,11 +3,11 @@
 import { formatDay, formatDateTime, deadlineOf } from './dates.js';
 
 export const STATUS = {
-  need: { short: 'Rit nodig', long: 'We hebben een lift nodig' },
-  self: { short: 'Zelf geregeld', long: 'We regelen het zelf, geen plaats over' },
-  rather_not: { short: 'Liever niet', long: 'Kan rijden, maar liever niet' },
+  need: { short: 'Rit nodig', long: 'Ons kind heeft een lift nodig' },
+  self: { short: 'Eigen vervoer', long: 'Ons kind is geregeld (zelf brengen/halen, fiets, grootouders…), maar we kunnen niemand meenemen' },
+  rather_not: { short: 'Liever niet, maar kan', long: 'Kan rijden als het echt moet, maar liever niet' },
   can: { short: 'Kan rijden', long: 'Kan rijden als het nodig is' },
-  driving: { short: 'Rij sowieso', long: 'Ik rij sowieso, plan me zeker in' },
+  driving: { short: 'Rij sowieso', long: 'Ik rij sowieso: plan me zeker in, en ik neem anderen mee' },
 };
 export const STATUS_ORDER = ['need', 'self', 'rather_not', 'can', 'driving'];
 export const DRIVER_STATUSES = ['rather_not', 'can', 'driving'];
@@ -48,7 +48,7 @@ export function reminderText({ settings, week, missing, link }) {
   const dl = formatDateTime(deadlineOf(settings, week));
   return [
     `Carpool ${settings.groupName || 'dansles'} ${formatDay(week)}: nog geen antwoord van ${missing.join(', ')}.`,
-    `Graag invullen vóór ${dl}. Zonder antwoord gaan we uit van jullie gewoonte, of dat jullie kind een lift nodig heeft.`,
+    `Graag invullen vóór ${dl}. Zonder antwoord gaan we uit van jullie standaardantwoord, of anders dat jullie kind een lift nodig heeft.`,
     link ? `👉 ${link}` : '',
   ].filter(Boolean).join('\n');
 }

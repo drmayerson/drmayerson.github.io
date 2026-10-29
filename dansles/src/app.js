@@ -123,6 +123,7 @@ function LegPicker({ leg, value, onChange, family, kidCount, settings }) {
     <div class="choices" role="group" aria-label=${`${LEG[leg].name}: jouw antwoord`}>
       ${STATUS_ORDER.map((s) => html`<button type="button" class="choice" aria-pressed=${value.status === s} title=${STATUS[s].long} onClick=${() => pick(s)}>${STATUS[s].short}</button>`)}
     </div>
+    <p class="hint">${STATUS[value.status].long}.</p>
     ${isDriver && html`<div class="row small">
       <${Stepper} label="Plaatsen voor kinderen" value=${value.seats} min=${kidCount} onChange=${(n) => onChange({ ...value, seats: n })} />
       <span class="muted">plaatsen voor kinderen, je eigen kind${kidCount > 1 ? 'eren' : ''} meegeteld</span>
@@ -156,7 +157,7 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
   return html`<div class="stack" style="gap:16px">
     ${eff.source !== 'answer' && !saveState && html`<div class="notice warn">
       <p><strong>Nog niet ingevuld voor deze week.</strong> ${eff.source === 'usual'
-        ? 'Zonder antwoord gaan we uit van jullie gewoonte, zoals hieronder.'
+        ? 'Zonder antwoord gebruiken we jullie standaardantwoord, zoals hieronder.'
         : `Zonder antwoord gaan we ervan uit dat ${kidsLabel(family)} een lift nodig heeft.`}</p>
       <div class="row"><button class="btn primary" onClick=${() => commit(draft)}>Klopt, bevestig</button></div>
     </div>`}
@@ -176,7 +177,7 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
     <div class="row" style="justify-content:space-between">
       <span class="savestate" aria-live="polite">${saveState}</span>
       <div class="row">
-        ${going && !sameAsUsual && html`<button class="btn ghost" onClick=${() => onSaveUsual({ to: draft.to, from: draft.from })}>Bewaar als gewoonte</button>`}
+        ${going && !sameAsUsual && html`<button class="btn ghost" onClick=${() => onSaveUsual({ to: draft.to, from: draft.from })}>Bewaar als standaardantwoord</button>`}
         ${response && html`<button class="btn ghost" onClick=${onClear}>Wis antwoord</button>`}
       </div>
     </div>
@@ -264,7 +265,7 @@ function MySummary({ model, me }) {
     const lp = model.plan.legs[leg];
     const kid = kidsLabel(f, a.kids);
     if (a.kids.length === 0) return html`<span class="muted">${kid} gaat niet mee.</span>`;
-    if (a[leg].status === 'self') return html`<span>Zelf geregeld.</span>`;
+    if (a[leg].status === 'self') return html`<span>Eigen vervoer.</span>`;
     const mine = lp.cars.find((c) => c.driverId === me);
     if (mine) {
       const others = mine.riders.map((id) => kidsLabel(model.byId[id], model.answers[id]?.kids));
@@ -325,7 +326,7 @@ function Overview({ model, onPick, me }) {
   return html`<div class="list">
     ${model.fams.map((f) => {
       const a = model.answers[f.id];
-      const src = model.responses[f.id] ? null : a.source === 'usual' ? html`<span class="tag">gewoonte</span>` : html`<span class="tag warn">geen antwoord</span>`;
+      const src = model.responses[f.id] ? null : a.source === 'usual' ? html`<span class="tag">standaard</span>` : html`<span class="tag warn">geen antwoord</span>`;
       return html`<button class="item" onClick=${() => onPick(f.id)}>
         <span class="grow"><span class="name">${kidsLabel(f)}</span> <span class="sub">${famLabel(f)}${f.id === me ? ' · jij' : ''}</span>
           <span class="row" style="margin-top:4px">
@@ -501,12 +502,12 @@ function FamilyForm({ family, settings, onSave, onDelete, onCancel }) {
     </div>
     <${LocationField} idPrefix="fam" value=${{ address: f.address, lat: f.lat, lng: f.lng }} onChange=${(v) => set(v)} />
     <div class="field">
-      <span class="label">Plaatsen voor kinderen in de auto</span>
+      <span class="label">Plaatsen voor kinderen in de auto (incl. eigen kind)</span>
       <div class="row"><${Stepper} label="Plaatsen" value=${f.seats} min=${1} onChange=${(n) => set({ seats: n })} /><span class="hint">Standaard, aan te passen per week.</span></div>
     </div>
     <div class="field">
-      <label class="switch"><input type="checkbox" id="fam-usual" checked=${usualOn} onChange=${() => set({ usual: usualOn ? null : usual })} /> Vaste gewoonte</label>
-      <span class="hint">Wordt gebruikt in weken waarin dit gezin niets invult. Zonder gewoonte gaan we uit van "rit nodig".</span>
+      <label class="switch"><input type="checkbox" id="fam-usual" checked=${usualOn} onChange=${() => set({ usual: usualOn ? null : usual })} /> Standaardantwoord instellen</label>
+      <span class="hint">Wat doen jullie meestal? Vult dit gezin een week niets in, dan gebruikt de planning dit antwoord. Zonder standaardantwoord gaan we ervan uit dat jullie kind een lift nodig heeft.</span>
     </div>
     ${usualOn && LEGS.map((leg) => html`<${LegPicker} leg=${leg} value=${usual[leg]} family=${f} kidCount=${f.kids.length} settings=${settings}
       onChange=${(v) => set({ usual: { ...usual, [leg]: v } })} />`)}
@@ -526,7 +527,7 @@ function FamiliesView({ data, actions, me, setMe }) {
   const fam = edit && edit !== 'new' ? data.families.find((f) => f.id === edit) : null;
   return html`
     <header class="top"><span class="eyebrow">${data.settings.groupName}</span><h1>Gezinnen</h1>
-      <p class="muted small">Adres en vaste gewoonte per gezin. Iedereen met de link kan dit aanpassen.</p></header>
+      <p class="muted small">Adres, plaatsen en standaardantwoord per gezin. Iedereen met de link kan dit aanpassen.</p></header>
     <div class="list">
       ${fams.map((f) => html`<button class="item" onClick=${() => setEdit(f.id)}>
         <span class="grow"><span class="name">${kidsLabel(f)}</span> <span class="sub">${famLabel(f)}${f.parent ? ` · ${f.parent}` : ''}</span><br />
@@ -733,7 +734,7 @@ function App({ config }) {
     clearResponse: (w, fid) => run((d) => { if (d.responses[w]) delete d.responses[w][fid]; return d; }, () => store.saveResponse(w, fid, null), 'Antwoord gewist'),
     saveUsual: (fid, usual) => {
       const f = { ...data.families.find((x) => x.id === fid), usual };
-      return run((d) => { d.families = d.families.map((x) => (x.id === fid ? f : x)); return d; }, () => store.saveFamily(f), 'Gewoonte bewaard');
+      return run((d) => { d.families = d.families.map((x) => (x.id === fid ? f : x)); return d; }, () => store.saveFamily(f), 'Standaardantwoord bewaard');
     },
     volunteer: (w, fid, leg) => {
       const f = data.families.find((x) => x.id === fid);
