@@ -18,8 +18,8 @@ export const LEG = {
 };
 
 export const kidNames = (f, ids) => (f?.kids || []).filter((k) => !ids || ids.includes(k.id)).map((k) => k.name);
-export const kidsLabel = (f, ids) => kidNames(f, ids).join(' & ') || f?.name || '?';
-export const famLabel = (f) => (f ? `Fam. ${f.name}` : '?');
+export const kidsLabel = (f, ids) => kidNames(f, ids).join(' & ') || f?.name || 'verwijderd gezin';
+export const famLabel = (f) => (f ? `Fam. ${f.name}` : 'Verwijderd gezin');
 
 /** Kid names in a car: driver's own kids first, then riders in route order. */
 export function carKids(car, byId, answers) {

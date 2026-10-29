@@ -175,3 +175,68 @@ test('dates: current week, deadline, past weeks', () => {
   assert.deepEqual(pastWeeks(s, '2026-11-04'), ['2026-10-07', '2026-10-14', '2026-10-21', '2026-10-28']);
   assert.equal(addDays('2026-10-28', 7), '2026-11-04');
 });
+
+// ---------- regressions from the October 2026 review ----------
+import { _internals, recentLessonPlans, WEIGHTS } from '../src/algorithm.js';
+
+test('review F2: exact seat check — two big cars suffice, no third car', () => {
+  const kidsOf = (id, n) => Array.from({ length: n }, (_, i) => ({ id: `${id}k${i}`, name: `${id}${i}` }));
+  const mk = (id, n, lng) => ({ id, name: id, kids: kidsOf(id, n), seats: 8, lat: 50.77, lng });
+  const families = [mk('d1', 1, 4.50), mk('d2', 1, 4.60), mk('p1', 3, 4.51), mk('p2', 3, 4.59), mk('p3', 2, 4.52), mk('p4', 2, 4.58), mk('p5', 2, 4.53), mk('w', 2, 4.57)];
+  const all = (f, to) => ({ kids: f.kids.map((k) => k.id), to, from: to });
+  const responses = Object.fromEntries(families.map((f) => [f.id, all(f, need)]));
+  responses.d1 = all(families[0], driving(8));
+  responses.d2 = all(families[1], driving(8));
+  responses.w = all(families[7], can(4));
+  const plan = computePlan({ week: W, families, studio, responses });
+  assert.equal(plan.legs.to.cars.length, 2);
+  assert.equal(plan.legs.to.seatsShort, 0);
+  // and the raw check itself
+  const { packable } = _internals;
+  assert.equal(packable([{ cap: 8, kids: 1 }, { cap: 8, kids: 1 }], [3, 3, 2, 2, 2, 2].map((k) => ({ kids: k }))), true);
+  assert.equal(packable([{ cap: 8, kids: 1 }, { cap: 8, kids: 1 }], [3, 3, 3, 3, 3].map((k) => ({ kids: k }))), false);
+});
+
+test('review F3: driver choice equals the exhaustive minimum', () => {
+  const { driverOptions, chooseDrivers, seatRiders, legParticipants } = _internals;
+  for (let seed = 1; seed <= 25; seed++) {
+    let x = seed * 9301 + 49297;
+    const rnd = () => ((x = (x * 9301 + 49297) % 233280) / 233280);
+    const st = ['need', 'can', 'rather_not', 'can', 'driving', 'need', 'self'];
+    const families = Array.from({ length: 8 }, (_, i) => fam('f' + i, 4.45 + rnd() * 0.2, { lat: 50.74 + rnd() * 0.08, seats: 2 + Math.floor(rnd() * 3) }));
+    const responses = Object.fromEntries(families.map((f) => [f.id, ans({ status: st[Math.floor(rnd() * st.length)], seats: f.seats }, { status: st[Math.floor(rnd() * st.length)], seats: f.seats })]));
+    const stats = Object.fromEntries(families.map((f) => [f.id, { rate: rnd() }]));
+    const answers = Object.fromEntries(families.map((f) => [f.id, effectiveAnswer(f, responses[f.id])]));
+    const parts = { to: legParticipants(families, answers, 'to'), from: legParticipants(families, answers, 'from') };
+    // exhaustive reference
+    const fullCost = (o, leg) => {
+      const ids = new Set(o.drivers.map((d) => d.id));
+      const seat = seatRiders(o.drivers, parts[leg].filter((p) => !ids.has(p.id)), studio);
+      return o.base + WEIGHTS.km * seat.cars.reduce((s, c) => s + c.km, 0);
+    };
+    const A = driverOptions(parts.to, stats, W, 'to'), B = driverOptions(parts.from, stats, W, 'from');
+    let ref = Infinity;
+    for (const a of A) for (const b of B) {
+      let c = fullCost(a, 'to') + fullCost(b, 'from');
+      for (const d of a.drivers) if (b.drivers.some((y) => y.id === d.id) && (a.optionalIds.has(d.id) || b.optionalIds.has(d.id))) c += WEIGHTS.bothLegs;
+      ref = Math.min(ref, c);
+    }
+    const got = chooseDrivers(parts, stats, W, studio).cost;
+    assert.ok(Math.abs(got - ref) < 1e-9, `seed ${seed}: got ${got}, exhaustive ${ref}`);
+  }
+});
+
+test('review F5: cancelled weeks do not shrink the fairness window', () => {
+  const weeks = ['w1', 'w2', 'w3', 'w4'];
+  const rec = { w1: { plan: 'P1' }, w2: { plan: 'P2' }, w3: { cancelled: true, plan: null }, w4: { cancelled: true, plan: null } };
+  assert.deepEqual(recentLessonPlans(weeks, rec, 2), ['P1', 'P2']);
+  assert.deepEqual(recentLessonPlans(weeks, { ...rec, w4: { plan: 'P4' } }, 2), ['P2', 'P4']);
+});
+
+test('performance: 12 families, many can drive, both legs < 2 s', () => {
+  const families = Array.from({ length: 12 }, (_, i) => fam('g' + i, 4.46 + i * 0.012, { lat: 50.75 + (i % 4) * 0.015 }));
+  const responses = Object.fromEntries(families.map((f, i) => [f.id, ans(i % 4 === 0 ? need : can(2 + (i % 3)), i % 3 === 0 ? need : rather(3))]));
+  const t = Date.now();
+  computePlan({ week: W, families, studio, responses });
+  assert.ok(Date.now() - t < 2000, `took ${Date.now() - t} ms`);
+});

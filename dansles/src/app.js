@@ -1,6 +1,6 @@
 // UI (Preact + htm, no build step). Dutch interface.
 import { html, render, useState, useEffect, useMemo, useRef } from '../vendor/preact-htm.js';
-import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, LEGS, WEIGHTS } from './algorithm.js';
+import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, recentLessonPlans, LEGS, WEIGHTS } from './algorithm.js';
 import { currentWeek, addDays, deadlineOf, formatDay, formatDateTime, timeLeft, pastWeeks, dayName } from './dates.js';
 import { createStore, safeLS, shareLink } from './store.js';
 import {
@@ -18,8 +18,7 @@ const activeFamilies = (data) =>
 
 function statsBefore(data, week) {
   const s = data.settings;
-  const weeks = pastWeeks(s, week).slice(-(s.lookbackWeeks || 16));
-  const plans = weeks.map((w) => data.weeks[w]).filter((r) => r && !r.cancelled && r.plan).map((r) => r.plan);
+  const plans = recentLessonPlans(pastWeeks(s, week), data.weeks, s.lookbackWeeks || 16);
   return fairnessStats(plans, data.families.map((f) => f.id));
 }
 
@@ -55,6 +54,8 @@ async function lockDue(store, data, now) {
     const rec = work.weeks[w];
     if (rec?.cancelled || rec?.plan) continue;
     const plan = computePlan({ week: w, families: activeFamilies(data), responses: data.responses[w] || {}, stats: statsBefore(work, w), studio: s.studio });
+    // A past week nobody opened after its deadline: reconstructed from answers and today's defaults.
+    if (w !== cur) plan.inferred = true;
     work.weeks[w] = await store.saveWeek(w, { ...(rec || {}), cancelled: false, plan }, { ifAbsent: true });
     changed = true;
   }
@@ -136,18 +137,30 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
   const response = responses[family.id];
   const eff = answers[family.id] || effectiveAnswer(family, response);
   const [draft, setDraft] = useState(() => ({ kids: eff.kids, to: eff.to, from: eff.from }));
-  const [saveState, setSaveState] = useState('');
+  const [saveState, setSaveState] = useState(''); // '' | 'saving' | 'saved' | 'failed'
   const timer = useRef(null);
+  const queue = useRef(Promise.resolve());
+  const latest = useRef(null);
+  const alive = useRef(true);
 
+  // Saves run one after another, so an older answer can never overwrite a newer one on the server.
+  // "Opgeslagen" only appears after the server confirmed the latest answer.
+  const save = (next) => {
+    latest.current = next;
+    setSaveState('saving');
+    queue.current = queue.current.then(async () => {
+      if (latest.current !== next) return; // a newer answer is queued behind this one
+      const ok = await onSave(next);
+      if (alive.current && latest.current === next) setSaveState(ok ? 'saved' : 'failed');
+    });
+  };
   const commit = (next) => {
     setDraft(next);
     clearTimeout(timer.current);
-    setSaveState('Bezig met opslaan…');
-    timer.current = setTimeout(async () => {
-      try { await onSave(next); setSaveState('Opgeslagen'); } catch { setSaveState('Opslaan mislukt. Controleer je verbinding.'); }
-    }, 450);
+    setSaveState('saving');
+    timer.current = setTimeout(() => save(next), 450);
   };
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => () => { alive.current = false; clearTimeout(timer.current); }, []);
 
   const kids = family.kids || [];
   const going = draft.kids.length > 0;
@@ -175,7 +188,11 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
       : html`<p class="muted">Geen rit nodig en je wordt deze week niet ingepland als chauffeur.</p>`}
 
     <div class="row" style="justify-content:space-between">
-      <span class="savestate" aria-live="polite">${saveState}</span>
+      <span class="savestate" aria-live="polite">
+        ${saveState === 'saving' && 'Bezig met opslaan…'}
+        ${saveState === 'saved' && 'Opgeslagen'}
+        ${saveState === 'failed' && html`<span style="color:var(--bad)">Niet opgeslagen.</span> <button class="btn ghost small" onClick=${() => save(draft)}>Opnieuw proberen</button>`}
+      </span>
       <div class="row">
         ${going && !sameAsUsual && html`<button class="btn ghost" onClick=${() => onSaveUsual({ to: draft.to, from: draft.from })}>Bewaar als standaardantwoord</button>`}
         ${response && html`<button class="btn ghost" onClick=${onClear}>Wis antwoord</button>`}
@@ -359,7 +376,8 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
   const [editing, setEditing] = useState(null);
   const myFam = me && byId[me];
   const left = timeLeft(deadline);
-  const link = store.mode === 'supabase' ? shareLink(store.key) : location.href.split('#')[0];
+  // Messages carry the plain address only: phones that opened the invite link once remember the key.
+  const link = location.href.split('#')[0];
   const missingNames = fams.filter((f) => !model.responses[f.id]).map((f) => famLabel(f));
   const onMove = plan ? (leg, id) => setMove({ leg, id }) : null;
 
@@ -583,7 +601,7 @@ function HistoryView({ data, now, actions, me }) {
           return html`<button class="item" onClick=${() => setOpen(w)}>
             <span class="grow"><span class="name">${formatDay(w)}</span><br />
               ${rec?.cancelled ? html`<span class="sub">Geen les</span>` : p
-                ? html`<span class="sub">Heen: ${names('to')} · Terug: ${names('from')}</span>`
+                ? html`<span class="sub">Heen: ${names('to')} · Terug: ${names('from')}</span>${p.inferred && !p.edited ? html` <span class="tag warn">achteraf berekend</span>` : ''}${p.edited ? html` <span class="tag">aangepast</span>` : ''}`
                 : html`<span class="sub">Nog niet vastgelegd</span>`}</span>
           </button>`;
         })}
@@ -593,7 +611,8 @@ function HistoryView({ data, now, actions, me }) {
     ${open && html`<${Sheet} title=${formatDay(open)} onClose=${() => setOpen(null)}>
       ${model.cancelled
         ? html`<p>Geen les deze week.</p><div class="row"><button class="btn" onClick=${() => actions.toggleCancelled(open)}>Toch les</button></div>`
-        : html`<p class="muted small">Klopt dit niet met wat er echt gebeurde? Verplaats kinderen zodat de beurtrol juist blijft.</p>
+        : html`${model.plan?.inferred && !model.plan?.edited && html`<div class="notice warn small"><p><strong>Achteraf berekend.</strong> Niemand opende de app na de deadline van deze week, dus de planning werd later gemaakt uit de antwoorden en de standaardantwoorden van toen. Ze telt mee voor de beurtrol; klopt ze niet, pas ze dan hieronder aan.</p></div>`}
+          <p class="muted small">Klopt dit niet met wat er echt gebeurde? Verplaats kinderen zodat de beurtrol juist blijft.</p>
           ${model.plan && LEGS.map((leg) => html`<${LegBlock} leg=${leg} model=${model} me=${me} onMove=${(l, id) => setMove({ leg: l, id })} onVolunteer=${null} />`)}
           <div class="row"><button class="btn ghost" onClick=${() => actions.toggleCancelled(open)}>Er was geen les</button></div>`}
       ${move && html`<${MoveSheet} move=${move} model=${model} onClose=${() => setMove(null)} onMove=${(leg, id, to) => { setMove(null); actions.move(open, leg, id, to); }} />`}
@@ -606,6 +625,7 @@ function HistoryView({ data, now, actions, me }) {
 function SettingsView({ data, store, actions, notify, now, me, setMe }) {
   const [s, setS] = useState(() => structuredClone(data.settings));
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmForget, setConfirmForget] = useState(false);
   const set = (patch) => setS({ ...s, ...patch });
   const dirty = JSON.stringify(s) !== JSON.stringify(data.settings);
   const link = store.mode === 'supabase' ? shareLink(store.key) : null;
@@ -647,13 +667,29 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
       <h2>Dit toestel</h2>
       <p class="small">${me ? `Je bent ingesteld als ${famLabel(data.families.find((f) => f.id === me))}.` : 'Je kijkt mee zonder gezin.'}</p>
       <div class="row"><button class="btn" onClick=${() => setMe(null)}>Kies een ander gezin</button></div>
+      ${store.mode === 'supabase' && html`
+        <p class="small muted">Dit toestel onthoudt de groepssleutel, zodat de gewone link volstaat. Op een gedeeld of geleend toestel kun je dat wissen.</p>
+        <div class="row">${confirmForget
+          ? html`<button class="btn danger solid" onClick=${actions.forgetDevice}>Ja, vergeet dit toestel</button><button class="btn" onClick=${() => setConfirmForget(false)}>Annuleer</button>`
+          : html`<button class="btn danger" onClick=${() => setConfirmForget(true)}>Vergeet dit toestel</button>`}</div>`}
     </section>
 
     ${link && html`<section class="section">
-      <h2>Link voor de groep</h2>
-      <p class="small muted">Deel deze link enkel in de WhatsApp-groep: wie hem heeft, kan alles zien en aanpassen.</p>
-      <div class="row"><button class="btn" onClick=${() => copyText(link, notify)}>Kopieer link</button></div>
+      <h2>Uitnodigingslink</h2>
+      <p class="small muted">Deze link bevat de groepssleutel: wie hem heeft, kan alles zien en aanpassen. Een toestel heeft hem maar één keer nodig. Kopieer en plak hem zelf in de WhatsApp-groep (bv. als vastgezet bericht); de gewone berichten van de app bevatten de sleutel niet.</p>
+      <div class="row"><button class="btn" onClick=${() => copyText(link, notify)}>Kopieer uitnodigingslink</button></div>
+      <p class="small muted">Kwam de link in verkeerde handen? Maak een nieuwe sleutel aan (zie handleiding) en deel de nieuwe link; de oude werkt dan niet meer.</p>
     </section>`}
+
+    <section class="section">
+      <h2>Privacy</h2>
+      <div class="prose small">
+        <p><strong>Wat wordt bewaard:</strong> gezinsnaam, voornaam van de ouder(s) en kinderen, adres en kaartlocatie, aantal plaatsen, de antwoorden per week en de planningen.</p>
+        <p><strong>Wie kan het zien:</strong> iedereen met de uitnodigingslink, en wie toegang heeft tot het databaseaccount van deze app. De gegevens gaan versleuteld over het internet, maar zijn niet end-to-end versleuteld. Er wordt niet bijgehouden wie wat aanpaste.</p>
+        <p><strong>Andere diensten:</strong> "Zoek op kaart" stuurt het ingetypte adres naar OpenStreetMap. "Route in Google Maps" opent de route bij Google. De WhatsApp-knoppen geven de berichttekst door aan WhatsApp, zonder groepssleutel.</p>
+        <p><strong>Hoe lang:</strong> antwoorden en planningen ouder dan ongeveer 13 maanden worden automatisch gewist. Een gezin verwijderen wist het gezin en hun antwoorden; in oude planningen blijft enkel een naamloze code over, zodat de beurtrol van de anderen klopt.</p>
+      </div>
+    </section>
 
     ${store.mode === 'demo' && html`<section class="section">
       <h2>Demo</h2>
@@ -715,7 +751,7 @@ function HowItWorks({ settings }) {
 
     <h3>4. De beurtrol</h3>
     <ul>
-      <li>De app kijkt naar de laatste ${weeks} lesweken. Weken zonder les tellen niet mee.</li>
+      <li>De app kijkt naar de laatste ${weeks} weken waarin er les was. Weken zonder les worden overgeslagen.</li>
       <li>Per gezin telt ze hoeveel ritten (heen en terug apart) hun kind meedeed, en bij hoeveel daarvan ze zelf reden.</li>
       <li>Een rit telt pas als <strong>gereden</strong> als je minstens één ander kind meenam. Enkel je eigen kind brengen telt niet.</li>
       <li>Ook ritten met "Rij sowieso" tellen als gereden. Wie vaak uit zichzelf rijdt, wordt de andere weken dus minder snel gevraagd.</li>
@@ -729,6 +765,7 @@ function HowItWorks({ settings }) {
       <li><strong>Verplaatst iemand met de hand een kind</strong>, dan blijft de planning zo staan. Veranderen er daarna antwoorden, dan verschijnt een melding met een knop om te herberekenen.</li>
       <li><strong>Na de deadline</strong> wordt de planning vastgelegd. Ook dan geeft een latere wijziging een melding en kan iedereen herberekenen.</li>
       <li><strong>Ging het anders dan gepland?</strong> Pas de week aan onder Historiek, zodat de beurtrol klopt.</li>
+      <li><strong>Opende niemand de app na de deadline van een week?</strong> Dan maakt de app die planning later alsnog, uit de antwoorden en standaardantwoorden. Zo'n week staat in Historiek als "achteraf berekend" en kan je daar aanpassen.</li>
     </ul>
   </div>`;
 }
@@ -757,6 +794,9 @@ function App({ config }) {
   const [me, setMeState] = useState(() => { const v = safeLS.get(ME_KEY); return v === null ? null : v; });
   const [toast, setToast] = useState('');
   const [help, setHelp] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const dataRef = useRef(null);
+  dataRef.current = data;
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
 
@@ -772,9 +812,12 @@ function App({ config }) {
         await store.saveSettings({ ...d.settings, startWeek: currentWeek(d.settings, t) });
         d = await store.load();
       }
-      setData(d); setNow(t); setError(null);
+      setData(d); setNow(t); setError(null); setOffline(false);
       if (await lockDue(store, d, t)) setData(await store.load());
-    } catch (e) { setError(e); }
+    } catch (e) {
+      if (dataRef.current && e.message !== 'invalid key') setOffline(true); // keep showing what we have, marked as possibly outdated
+      else setError(e);
+    }
   };
 
   useEffect(() => {
@@ -797,10 +840,16 @@ function App({ config }) {
   const validMe = me && data.families.some((f) => f.id === me) ? me : me === '' ? '' : null;
 
   // optimistic local update + save; reload afterwards to pick up others' changes
+  // Optimistic update + save. On failure the local change is rolled back and false is returned,
+  // so callers never report success for something the server didn't store.
   const run = async (localUpdate, save, okMsg) => {
+    const before = dataRef.current;
     if (localUpdate) setData((d) => localUpdate(structuredClone(d)));
-    try { await save(); if (okMsg) notify(okMsg); } catch { notify('Opslaan mislukt. Controleer je verbinding.'); }
+    let ok = true;
+    try { await save(); if (okMsg) notify(okMsg); }
+    catch { ok = false; if (localUpdate) setData(before); notify('Niet opgeslagen. Controleer je verbinding en probeer opnieuw.'); }
     reload();
+    return ok;
   };
   const weekRec = (w) => data.weeks[w] || { cancelled: false, plan: null };
 
@@ -840,6 +889,11 @@ function App({ config }) {
       return run((d) => { d.settings = next; return d; }, () => store.saveSettings(next), 'Instellingen bewaard');
     },
     openHelp: () => setHelp(true),
+    forgetDevice: () => {
+      safeLS.del('carpool.key'); safeLS.del(ME_KEY);
+      try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+      location.reload();
+    },
     resetDemo: async () => { await store.reset(); setMe(null); setOffset(0); setView('week'); await reload(); notify('Demo teruggezet'); },
   };
 
@@ -848,6 +902,10 @@ function App({ config }) {
 
   return html`
     <main class="app">
+      ${offline && html`<div class="notice warn" role="status">
+        <p><strong>Geen verbinding.</strong> Je ziet mogelijk niet de laatste gegevens, en wijzigingen worden nu niet opgeslagen.</p>
+        <div class="row"><button class="btn" onClick=${reload}>Opnieuw verbinden</button></div>
+      </div>`}
       ${view === 'week' && html`<${WeekView} data=${data} model=${model} offset=${offset} setOffset=${setOffset} me=${validMe} setMe=${setMe} actions=${actions} store=${store} notify=${notify} go=${go} />`}
       ${view === 'families' && html`<${FamiliesView} data=${data} actions=${actions} me=${validMe} setMe=${setMe} />`}
       ${view === 'history' && html`<${HistoryView} data=${data} now=${now} actions=${actions} me=${validMe} />`}

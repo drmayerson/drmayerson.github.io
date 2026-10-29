@@ -58,6 +58,21 @@ begin
   return gid;
 end $$;
 
+-- Basic shape and size checks on what the page sends (protects against garbage or oversized writes).
+create or replace function cp_check(p_data jsonb, p_max_bytes int) returns void
+language plpgsql immutable as $$
+begin
+  if p_data is null or jsonb_typeof(p_data) <> 'object' then raise exception 'invalid data' using errcode = '22023'; end if;
+  if octet_length(p_data::text) > p_max_bytes then raise exception 'data too large' using errcode = '22023'; end if;
+end $$;
+
+-- Retention: answers and week records older than ~13 months are deleted (called on every write).
+create or replace function cp_purge(gid uuid) returns void
+language sql security definer set search_path = public as $$
+  delete from cp_responses where group_id = gid and week < current_date - 400;
+  delete from cp_weeks     where group_id = gid and week < current_date - 400;
+$$;
+
 create or replace function cp_load(p_secret text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
@@ -76,6 +91,7 @@ end $$;
 create or replace function cp_save_settings(p_secret text, p_settings jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 begin
+  perform cp_check(p_settings, 20000);
   update cp_groups set settings = p_settings where id = cp_group_id(p_secret);
 end $$;
 
@@ -83,7 +99,8 @@ create or replace function cp_save_family(p_secret text, p_family jsonb) returns
 language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
 begin
-  if coalesce(p_family->>'id', '') = '' then raise exception 'family id missing'; end if;
+  perform cp_check(p_family, 20000);
+  if coalesce(p_family->>'id', '') = '' or length(p_family->>'id') > 64 then raise exception 'invalid family id'; end if;
   insert into cp_families (group_id, id, data, updated_at)
   values (gid, p_family->>'id', p_family - 'id' - 'updatedAt', now())
   on conflict (group_id, id) do update set data = excluded.data, updated_at = now();
@@ -102,9 +119,11 @@ create or replace function cp_save_response(p_secret text, p_week date, p_family
 language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
 begin
+  perform cp_purge(gid);
   if p_data is null then
     delete from cp_responses where group_id = gid and week = p_week and family_id = p_family_id;
   else
+    perform cp_check(p_data, 20000);
     insert into cp_responses (group_id, week, family_id, data, updated_at)
     values (gid, p_week, p_family_id, p_data, now())
     on conflict (group_id, week, family_id) do update set data = excluded.data, updated_at = now();
@@ -119,6 +138,8 @@ language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
 declare result jsonb;
 begin
+  perform cp_check(p_data, 300000);
+  perform cp_purge(gid);
   if p_if_absent then
     insert into cp_weeks (group_id, week, data) values (gid, p_week, p_data)
     on conflict (group_id, week) do update
@@ -135,8 +156,8 @@ end $$;
 revoke all on function cp_group_id(text), cp_load(text), cp_save_settings(text, jsonb),
   cp_save_family(text, jsonb), cp_delete_family(text, text),
   cp_save_response(text, date, text, jsonb), cp_save_week(text, date, jsonb, boolean) from public;
--- Supabase grants new functions to anon by default; the key checker stays internal.
-revoke all on function cp_group_id(text) from anon, authenticated;
+-- Supabase grants new functions to anon by default; the internal helpers stay internal.
+revoke all on function cp_group_id(text), cp_purge(uuid), cp_check(jsonb, int) from public, anon, authenticated;
 grant execute on function cp_load(text), cp_save_settings(text, jsonb),
   cp_save_family(text, jsonb), cp_delete_family(text, text),
   cp_save_response(text, date, text, jsonb), cp_save_week(text, date, jsonb, boolean) to anon, authenticated;

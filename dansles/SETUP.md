@@ -32,7 +32,9 @@ window.CARPOOL_CONFIG = {
 };
 ```
 
-The anon key is meant to be public. It can only call the app's functions, and every function refuses to do anything without the group key from step 1.4, so nothing is readable without the link.
+The anon key is meant to be public. It can only call the app's functions, and every function refuses to do anything without the group key from step 1.4, so nothing is readable through the app's API without the invite link.
+
+The data is not end-to-end encrypted: it travels over HTTPS and Supabase encrypts its disks, but anyone who can log in to your Supabase account can read it. **Turn on two-factor authentication** for your Supabase and GitHub accounts.
 
 ## 3. Put the app on your site (GitHub Pages)
 
@@ -42,13 +44,14 @@ Upload these files and folders into a folder of your `drmayerson.github.io` repo
 index.html
 styles.css
 config.js
+fonts/      (self-hosted fonts, so the page makes no requests to Google)
 src/        (all files)
 vendor/     (preact-htm.js, supabase.js)
 ```
 
 Leave out `tests/`, `tools/`, `dist/`, `supabase/` and the `.md` files; they aren't needed on the site (they don't hurt either).
 
-On github.com: open the repository → **Add file → Upload files** → drag the files and the two folders in → **Commit changes**. After a minute the app is at `https://drmayerson.github.io/dansles/`.
+On github.com: open the repository → **Add file → Upload files** → drag the files and the three folders in → **Commit changes**. After a minute the app is at `https://drmayerson.github.io/dansles/`.
 
 The page asks search engines not to index it, and it shows nothing without the group key.
 
@@ -57,14 +60,19 @@ The page asks search engines not to index it, and it shows nothing without the g
 1. Open `https://drmayerson.github.io/dansles/#k=YOUR_GROUP_KEY` on your phone.
 2. **Instellingen**: group name, lesson day and times, answer deadline, and the dance studio's address (tap *Zoek op kaart*, or paste the coordinates from Google Maps). Save.
 3. **Gezinnen**: add the families with their address, seats and their usual pattern (or let each parent add their own family).
-4. Post the link in the WhatsApp group. Each parent opens it once, taps their child under *Wie ben jij?*, and their phone remembers it. Tip for parents: *Add to Home Screen* makes it feel like an app.
+4. Post the **invite link** (with `#k=…`; Instellingen → *Kopieer uitnodigingslink*) in the WhatsApp group yourself, ideally as a pinned message. Each parent opens it once, taps their child under *Wie ben jij?*, and their phone remembers the key. After that the plain address `https://drmayerson.github.io/dansles/` is enough. Tip for parents: *Add to Home Screen* makes it feel like an app.
+
+   The reminder and schedule messages the app prepares contain only the plain address, never the key, so sharing them through WhatsApp's share button doesn't pass the key to WhatsApp's servers.
 
 ## Good to know
 
 - **History starts the first time someone uses the app**, so the fairness rotation builds up over the first few weeks. To make it start later, change *Historiek vanaf* in Instellingen.
 - **Free Supabase projects pause after about a week without any use.** During the school year someone opens the app weekly, so this shouldn't happen; after a long holiday you may need to click **Restore** in the Supabase dashboard (no data is lost).
-- **New group key** (if the link ends up somewhere it shouldn't): run
+- **Who has access**: everyone with the invite link can see and change everything; there are no personal accounts (a deliberate choice for a small, trusted group). Leaving the WhatsApp group does not remove access by itself.
+- **New group key** (if the link ends up somewhere it shouldn't, or someone leaves the group): run
   `update cp_groups set secret = encode(gen_random_bytes(16), 'hex') returning secret;`
-  and share the new link. Everyone opens it once; their phones then remember the new key.
+  and share the new invite link. The old key stops working immediately; everyone opens the new link once.
+- **Updating the database code**: when `supabase/schema.sql` changes, paste the whole file into the SQL Editor again and run it. It is safe to re-run and keeps all data.
+- **Retention**: answers and week records older than about 13 months are deleted automatically whenever someone saves. Deleting a family removes the family and its answers; old plans keep only an anonymous ID so other families' rotation stays correct.
 - **Trying things without affecting the group**: with an empty `config.js` the app runs as a demo with example families, stored only in that browser. (Opening `index.html` straight from your disk won't work; browsers block that for module scripts. Use the site, or `npx serve` locally.)
 - **Running the algorithm tests** (optional, needs Node.js): `node --test tests/*.test.js`.

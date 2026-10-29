@@ -30,7 +30,6 @@ const ROAD_FACTOR = 1.3;   // straight-line km → rough road km
 const UNKNOWN_KM = 2;      // distance assumed when coordinates are missing
 const SMOOTHING = 2;       // pseudo-legs pulling new families towards the group average
 const UNSEATED_PENALTY = 1e6;
-const KEEP_PER_LEG = 16;
 
 // ---------- geometry ----------
 
@@ -107,6 +106,16 @@ export function fairnessStats(pastPlans, familyIds) {
   return out;
 }
 
+/**
+ * Plans of the last `n` weeks that actually had a lesson (cancelled weeks and weeks without a stored
+ * plan are skipped before counting, so holidays don't shrink the window).
+ * @param {string[]} weeks  past lesson dates, oldest first
+ * @param {object} records  { [week]: { cancelled, plan } }
+ */
+export function recentLessonPlans(weeks, records, n) {
+  return weeks.map((w) => records[w]).filter((r) => r && !r.cancelled && r.plan).slice(-n).map((r) => r.plan);
+}
+
 // ---------- helpers ----------
 
 function hash01(str) {
@@ -133,20 +142,37 @@ function legParticipants(families, answers, leg) {
   return out;
 }
 
-/** Can the riders' family groups be packed into the drivers' free seats? (first-fit decreasing) */
+/**
+ * Can the riders' family groups be packed into the drivers' free seats?
+ * Exact (depth-first search with symmetry pruning); groups are small (≤ ~12 families).
+ */
 function packable(drivers, riders) {
-  const free = drivers.map((d) => d.cap - d.kids).sort((a, b) => b - a);
-  for (const r of [...riders].sort((a, b) => b.kids - a.kids)) {
-    const i = free.findIndex((f) => f >= r.kids);
-    if (i < 0) return false;
-    free[i] -= r.kids;
-  }
-  return true;
+  const free = drivers.map((d) => d.cap - d.kids);
+  const items = riders.map((r) => r.kids).sort((x, y) => y - x);
+  const total = items.reduce((s, x) => s + x, 0);
+  if (total > free.reduce((s, x) => s + Math.max(0, x), 0)) return false;
+  const place = (i) => {
+    if (i === items.length) return true;
+    const tried = new Set();
+    for (let b = 0; b < free.length; b++) {
+      if (free[b] < items[i] || tried.has(free[b])) continue; // bins with equal room are interchangeable
+      tried.add(free[b]);
+      free[b] -= items[i];
+      if (place(i + 1)) return true;
+      free[b] += items[i];
+    }
+    return false;
+  };
+  return place(0);
 }
 
 // ---------- step a: driver selection ----------
 
-function driverOptions(parts, stats, week, leg, studio) {
+/**
+ * Every feasible set of drivers for one leg, with its "base" cost (cars, fairness, rather-not, tie-break).
+ * Route cost is added lazily in chooseDrivers, which searches all of them exactly (branch and bound).
+ */
+function driverOptions(parts, stats, week, leg) {
   const forced = parts.filter((p) => p.status === 'driving');
   const optional = parts.filter((p) => p.status === 'can' || p.status === 'rather_not');
   const optCost = (p) =>
@@ -154,13 +180,7 @@ function driverOptions(parts, stats, week, leg, studio) {
     (p.status === 'rather_not' ? WEIGHTS.ratherNot : 0) +
     WEIGHTS.jitter * hash01(`${week}|${leg}|${p.id}`);
 
-  if (parts.length === 0) return [{ drivers: [], cost: 0, feasible: true, seating: { cars: [], unassigned: [] } }];
-  const withSeating = (opt) => {
-    const ids = new Set(opt.drivers.map((d) => d.id));
-    opt.seating = seatRiders(opt.drivers, parts.filter((p) => !ids.has(p.id)), studio);
-    opt.cost += WEIGHTS.km * opt.seating.cars.reduce((s, c) => s + c.km, 0);
-    return opt;
-  };
+  if (parts.length === 0) return [{ drivers: [], base: 0, feasible: true, optionalIds: new Set() }];
 
   const options = [];
   const n = optional.length;
@@ -170,29 +190,45 @@ function driverOptions(parts, stats, week, leg, studio) {
     const driverIds = new Set(drivers.map((d) => d.id));
     const riders = parts.filter((p) => !driverIds.has(p.id));
     if (!packable(drivers, riders)) continue;
-    const cost = WEIGHTS.car * chosen.length + chosen.reduce((s, p) => s + optCost(p), 0);
-    options.push({ drivers, cost, feasible: true, optionalIds: new Set(chosen.map((c) => c.id)) });
+    const base = WEIGHTS.car * chosen.length + chosen.reduce((s, p) => s + optCost(p), 0);
+    options.push({ drivers, base, feasible: true, optionalIds: new Set(chosen.map((c) => c.id)) });
   }
   if (options.length === 0) {
     // Not enough seats even with everyone who can drive: use all of them.
-    return [withSeating({ drivers: [...forced, ...optional], cost: 0, feasible: false, optionalIds: new Set(optional.map((p) => p.id)) })];
+    return [{ drivers: [...forced, ...optional], base: 0, feasible: false, optionalIds: new Set(optional.map((p) => p.id)) }];
   }
-  options.sort((a, b) => a.cost - b.cost);
-  return options.slice(0, KEEP_PER_LEG).map(withSeating).sort((a, b) => a.cost - b.cost);
+  return options.sort((a, b) => a.base - b.base);
 }
 
+/**
+ * Lowest total cost over all pairs (heen-option, terug-option):
+ *   base(heen) + base(terug) + km-cost of both seatings + both-legs penalty.
+ * Exact: km-cost and the both-legs penalty are never negative, so base costs are lower bounds
+ * and pairs that cannot beat the best total so far are skipped without computing their routes.
+ */
 function chooseDrivers(partsByLeg, stats, week, studio) {
-  const to = driverOptions(partsByLeg.to, stats, week, 'to', studio);
-  const from = driverOptions(partsByLeg.from, stats, week, 'from', studio);
+  const legs = Object.fromEntries(LEGS.map((leg) => [leg, driverOptions(partsByLeg[leg], stats, week, leg)]));
+  const full = (opt, leg) => {
+    if (opt.cost == null) {
+      const ids = new Set(opt.drivers.map((d) => d.id));
+      opt.seating = seatRiders(opt.drivers, partsByLeg[leg].filter((p) => !ids.has(p.id)), studio);
+      opt.cost = opt.base + WEIGHTS.km * opt.seating.cars.reduce((s, c) => s + c.km, 0);
+    }
+    return opt.cost;
+  };
+  const { to, from } = legs;
   let best = null;
+  const bestCost = () => (best ? best.cost : Infinity);
   for (const a of to) {
+    if (a.base + from[0].base >= bestCost()) break;
+    const ca = full(a, 'to');
     for (const b of from) {
-      let cost = a.cost + b.cost;
+      if (ca + b.base >= bestCost()) break;
+      let cost = ca + full(b, 'from');
       for (const d of a.drivers) {
-        const other = b.drivers.find((x) => x.id === d.id);
-        if (other && (a.optionalIds?.has(d.id) || b.optionalIds?.has(d.id))) cost += WEIGHTS.bothLegs;
+        if (b.drivers.some((x) => x.id === d.id) && (a.optionalIds.has(d.id) || b.optionalIds.has(d.id))) cost += WEIGHTS.bothLegs;
       }
-      if (!best || cost < best.cost) best = { to: a, from: b, cost };
+      if (cost < bestCost()) best = { to: a, from: b, cost };
     }
   }
   return best;
@@ -362,3 +398,6 @@ export function movePassenger(plan, leg, familyId, toDriverId, { families, studi
 export function freeSeats(car, kidsCount) {
   return car.seats - car.ownKids - car.riders.reduce((s, id) => s + (kidsCount(id) || 0), 0);
 }
+
+// Exposed for unit tests only.
+export const _internals = { packable, driverOptions, chooseDrivers, seatRiders, legParticipants };
