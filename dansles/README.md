@@ -4,6 +4,8 @@ Weekly carpool planner for a small group of parents (5–10 families) whose kids
 
 Setup for going live: see `SETUP.md`.
 
+**Live** (since 29 Oct 2026): <https://drmayerson.github.io/dansles/> (folder `dansles/` in the `drmayerson/drmayerson.github.io` repo), Supabase project `wgndfxipbxqihpzrjxvo`. The group key is not stored in the repo; it only lives in the link shared in WhatsApp.
+
 ## Decisions (agreed with Daniel, Oct 2026)
 
 | Topic | Decision |
