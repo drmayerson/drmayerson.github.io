@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jullie zijn twee zwarte gaten</title>
+<meta name="description" content="Draai met twee ballen rond elkaar en zie de zwaartekrachtgolven die jullie maken. Een interactieve opstelling over de Einstein Telescope.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed wave field; HUD floats at the edges — title + instruction top-left, controls top-right, meters along the bottom, camera preview bottom-right, settings drawer on the right. Deliberately single dark look (it is space). */
+:root{
+  --ink:#060a15;
+  --panel:rgba(9,14,29,.82);
+  --line:rgba(150,170,215,.2);
+  --fg:#eaf0fa;
+  --muted:#97a3bf;
+  --stretch:#ffb347;
+  --squeeze:#4fd2ff;
+  --ballA:#ff4fb3;
+  --ballB:#a4ec4c;
+  --good:#7ce6a9;
+  --warn:#ffd166;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;font-size:14px;line-height:1.4}
+body{background:var(--ink);color:var(--fg);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0}
+canvas.layer{position:absolute;inset:0;width:100%;height:100%;display:block}
+#overlay{touch-action:none;cursor:crosshair}
+
+.hud{position:fixed;z-index:2;pointer-events:none}
+.hud .hit{pointer-events:auto}
+
+#top{top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 20px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#intro{max-width:min(46rem,70vw);display:grid;gap:10px;min-width:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--fg);background:rgba(255,255,255,.04)}
+.chip.demo{border-color:rgba(255,179,71,.55);color:var(--stretch)}
+h1{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(28px,4.4vw,66px);line-height:.98;letter-spacing:-.02em;text-wrap:balance;
+  font-variation-settings:"opsz" 96}
+h1 .a{color:var(--ballA)} h1 .b{color:var(--ballB)}
+#step{margin:0;font-size:clamp(17px,1.75vw,27px);line-height:1.35;max-width:36ch;color:var(--fg);text-wrap:pretty;
+  text-shadow:0 1px 18px rgba(0,0,0,.8);transition:opacity .25s}
+#step.flash{opacity:.35}
+
+#tools{display:flex;gap:8px;flex-shrink:0}
+.btn{font:inherit;font-size:14px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;backdrop-filter:blur(6px)}
+.btn:hover{border-color:rgba(200,215,255,.45)}
+.btn:focus-visible,.seg button:focus-visible,input:focus-visible{outline:2px solid var(--squeeze);outline-offset:2px}
+.btn[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+.btn svg{width:18px;height:18px}
+
+#bottom{left:0;right:0;bottom:0;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#meters{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end;padding:14px 16px;border-radius:14px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(6px)}
+.meter{display:grid;gap:6px;min-width:150px}
+.meter .lab{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:12px}
+.meter .lab b{font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums}
+.bar{height:10px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:6px;transition:width .12s linear}
+#mSync i{background:var(--good)}
+#mAmp i{background:linear-gradient(90deg,var(--squeeze),var(--stretch))}
+#mClose i{background:var(--fg)}
+.read{font-family:var(--mono);font-size:13px;color:var(--muted);display:grid;gap:4px;font-variant-numeric:tabular-nums}
+.read b{color:var(--fg);font-weight:500}
+#legend{display:grid;gap:6px;font-size:13px;color:var(--muted);text-align:right;justify-items:end}
+#legend .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+#legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+#legend .sim{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
+
+#camBox{position:fixed;z-index:3;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 132px);
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;display:grid;gap:6px;backdrop-filter:blur(6px)}
+#camBox canvas{width:240px;max-width:42vw;aspect-ratio:4/3;height:auto;border-radius:8px;display:block;cursor:crosshair;background:#000;image-rendering:pixelated}
+#camBox .cap{font-family:var(--mono);font-size:11px;color:var(--muted);max-width:240px}
+#camBox.calib{border-color:var(--warn)}
+#camBox.calib .cap{color:var(--warn)}
+
+#panel{position:fixed;z-index:5;top:0;right:0;bottom:0;width:min(360px,100%);overflow-y:auto;background:rgba(7,11,24,.96);border-left:1px solid var(--line);
+  padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 24px);
+  padding-left:20px;padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+#panel h2{margin:0;font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:-.01em}
+#panel .grp{display:grid;gap:8px}
+#panel .grp > .t{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;font:inherit;font-size:14px;padding:9px 6px;background:transparent;color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:rgba(124,230,169,.12);color:var(--good)}
+.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sw2{width:16px;height:16px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.3)}
+label.ck{display:flex;gap:10px;align-items:center;font-size:14px}
+.rng{display:grid;gap:4px;font-size:14px}
+.rng span{display:flex;justify-content:space-between;color:var(--muted)}
+.rng span b{color:var(--fg);font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--good)}
+#status{font-size:13px;color:var(--warn);min-height:1.2em;line-height:1.4}
+.keys{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
+.keys kbd{font-family:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--fg)}
+.note{font-size:13px;color:var(--muted);line-height:1.45}
+
+#result{position:fixed;z-index:4;inset:0;display:grid;place-items:center;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#card{pointer-events:auto;width:min(560px,100%);max-height:calc(100% - 32px);overflow-y:auto;background:rgba(7,11,24,.93);border:1px solid var(--line);border-radius:18px;padding:24px;display:grid;gap:16px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);animation:rise .5s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+#card h3{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(28px,4vw,44px);letter-spacing:-.02em;line-height:1}
+.score{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.score .n{font-family:var(--display);font-weight:800;font-size:64px;line-height:1;color:var(--good);font-variant-numeric:tabular-nums}
+.score .l{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#rRating{margin:0;font-size:18px;line-height:1.4}
+.real{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+.real h4{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);font-weight:500}
+.real p{margin:0;font-size:15px;line-height:1.45;color:var(--muted)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:baseline}
+.kv dt{font-size:15px;color:var(--muted);min-width:0}
+.kv dd{margin:0;font-family:var(--mono);font-size:17px;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums}
+.kv dd.big{font-size:22px;color:var(--stretch)}
+.foot{font-size:12px;color:var(--muted);line-height:1.45}
+.cardbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#cdown{height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;flex:1;min-width:80px}
+#cdown i{display:block;height:100%;background:var(--muted);width:100%}
+
+#toast{top:calc(env(safe-area-inset-top,0px) + 74px);right:max(16px,env(safe-area-inset-right,0px));max-width:min(340px,calc(100% - 32px));background:var(--panel);border:1px solid rgba(255,209,102,.45);color:var(--warn);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45;backdrop-filter:blur(6px)}
+#nogl{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted);z-index:1}
+
+@media (max-width:640px){
+  #intro{max-width:100%}
+  #meters{gap:14px;padding:12px}
+  .meter{min-width:120px}
+  #legend{text-align:left;justify-items:start}
+  #legend .row{justify-content:flex-start}
+  #camBox{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 150px)}
+}
+@media (prefers-reduced-motion:reduce){ #card{animation:none} .bar i{transition:none} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="field" class="layer" aria-hidden="true"></canvas>
+  <canvas id="overlay" class="layer" aria-label="Speelveld"></canvas>
+</div>
+<div id="nogl" hidden>WebGL is not available in this browser.</div>
+
+<div class="hud" id="top">
+  <div id="intro">
+    <div class="eyebrow"><span data-i18n="eyebrow"></span><span class="chip" id="modeChip"></span></div>
+    <h1 id="title"></h1>
+    <p id="step" aria-live="polite"></p>
+  </div>
+  <div id="tools">
+    <button class="btn hit" id="btnSound" aria-pressed="false" title="Sound (M)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8.5a5 5 0 0 1 0 7"/><path d="M19.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+      <span data-i18n="sound"></span>
+    </button>
+    <button class="btn hit" id="btnSettings" aria-expanded="false" title="Settings (S)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span data-i18n="settings"></span>
+    </button>
+  </div>
+</div>
+
+<div class="hud" id="bottom">
+  <div id="meters">
+    <div class="meter" id="mSync"><div class="lab"><span data-i18n="m_sync"></span><b id="vSync">0</b></div><div class="bar"><i></i></div></div>
+    <div class="meter" id="mAmp"><div class="lab"><span data-i18n="m_amp"></span><b id="vAmp">0</b></div><div class="bar"><i></i></div></div>
+    <div class="meter" id="mClose"><div class="lab"><span data-i18n="m_close"></span><b id="vClose">0</b></div><div class="bar"><i></i></div></div>
+    <div class="read">
+      <span><b id="vOrbit">0.00</b> <span data-i18n="r_orbit"></span></span>
+      <span><b id="vGw">0.00</b> <span data-i18n="r_gw"></span></span>
+    </div>
+  </div>
+  <div id="legend">
+    <div class="row">
+      <span><i class="sw" style="background:var(--stretch)"></i><span data-i18n="legend_plus"></span></span>
+      <span><i class="sw" style="background:var(--squeeze)"></i><span data-i18n="legend_minus"></span></span>
+    </div>
+    <span class="sim" data-i18n="sim"></span>
+  </div>
+</div>
+
+<div id="toast" class="hud" role="status" hidden></div>
+<div id="camBox" hidden>
+  <canvas id="camView" width="160" height="120"></canvas>
+  <div class="cap" id="camCap"></div>
+</div>
+
+<aside id="panel" hidden aria-label="Settings">
+  <div class="row2" style="justify-content:space-between">
+    <h2 data-i18n="settings"></h2>
+    <button class="btn" id="btnClose" data-i18n="close"></button>
+  </div>
+  <div class="grp">
+    <div class="t" data-i18n="s_mode"></div>
+    <div class="seg" id="segMode">
+      <button data-mode="camera" data-i18n="mode_camera"></button>
+      <button data-mode="touch" data-i18n="mode_touch"></button>
+      <button data-mode="demo" data-i18n="mode_demo"></button>
+    </div>
+    <div id="status" role="status"></div>
+  </div>
+  <div class="grp">
+    <div class="t" data-i18n="s_lang"></div>
+    <div class="seg" id="segLang"><button data-lang="nl">Nederlands</button><button data-lang="en">English</button></div>
+  </div>
+  <div class="grp">
+    <div class="t" data-i18n="s_camera"></div>
+    <div class="row2">
+      <button class="btn" id="calA"><span class="sw2" id="swA"></span><span data-i18n="cal_a"></span></button>
+      <button class="btn" id="calB"><span class="sw2" id="swB"></span><span data-i18n="cal_b"></span></button>
+    </div>
+    <label class="ck"><input type="checkbox" id="ckMirror"> <span data-i18n="s_mirror"></span></label>
+    <label class="ck"><input type="checkbox" id="ckPreview"> <span data-i18n="s_preview"></span></label>
+    <label class="rng"><span><span data-i18n="s_tol"></span><b id="oTol"></b></span><input type="range" id="rTol" min="8" max="45" step="1"></label>
+    <label class="rng"><span><span data-i18n="s_zone"></span><b id="oZone"></b></span><input type="range" id="rZone" min="0.8" max="3.5" step="0.1"></label>
+  </div>
+  <div class="grp">
+    <div class="t" data-i18n="s_game"></div>
+    <label class="rng"><span><span data-i18n="s_touch"></span><b id="oTouch"></b></span><input type="range" id="rTouch" min="0.06" max="0.32" step="0.01"></label>
+    <label class="rng"><span><span data-i18n="s_mass"></span><b id="oMass"></b></span><input type="range" id="rMass" min="50" max="600" step="10"></label>
+    <button class="btn" id="btnFull" data-i18n="fullscreen"></button>
+  </div>
+  <div class="keys" data-i18n-html="keys"></div>
+  <p class="note" data-i18n="s_note"></p>
+</aside>
+
+<div id="result" hidden>
+  <div id="card" role="dialog" aria-labelledby="rTitle">
+    <h3 id="rTitle"></h3>
+    <div class="score"><span class="n" id="rScore">0</span><span class="l" data-i18n="res_score"></span></div>
+    <p id="rRating"></p>
+    <div class="real">
+      <h4 data-i18n="res_real"></h4>
+      <p id="rSetup"></p>
+      <dl class="kv">
+        <dt id="rHLab"></dt><dd class="big" id="rH"></dd>
+        <dt data-i18n="res_ligo"></dt><dd>1 × 10⁻²¹</dd>
+        <dt data-i18n="res_power"></dt><dd id="rP"></dd>
+      </dl>
+      <p id="rRatio"></p>
+      <p class="foot" data-i18n="res_foot"></p>
+    </div>
+    <div class="cardbar"><div id="cdown"><i></i></div><button class="btn" id="btnAgain" data-i18n="res_again"></button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const wrap = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
+const hueDist = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
+/* ---------- persistent per-machine settings ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('twee-zwarte-gaten-' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('twee-zwarte-gaten-' + k, JSON.stringify(v)); } catch (e) {} }
+};
+const DEFAULTS = {
+  lang: 'nl', mode: 'camera', mirror: true, preview: true,
+  tol: 22, zoneW: 1.6, touchDist: 0.16, massG: 150,
+  A: { h: 328, s: 0.42, v: 0.3 },   // magenta / hot pink ball
+  B: { h: 95,  s: 0.38, v: 0.28 }   // lime green ball
+};
+const saved = store.get('settings', {});
+const S = Object.assign({}, DEFAULTS, saved, { A: Object.assign({}, DEFAULTS.A, saved.A), B: Object.assign({}, DEFAULTS.B, saved.B) });
+const save = () => store.set('settings', S);
+
+/* ---------- text ---------- */
+const TXT = {
+  nl: {
+    eyebrow: 'Einstein Telescope · zwaartekrachtgolven',
+    title: 'Jullie zijn <span class="a">twee</span> <span class="b">zwarte gaten</span>',
+    sound: 'Geluid', settings: 'Instellingen', close: 'Sluiten',
+    chip_demo: 'Demo', chip_camera: 'Camera', chip_touch: 'Aanraken',
+    step_attract_camera: 'Pak elk een bal. Blijf stilstaan en draai de ballen samen in een cirkel, alsof je in een grote pot roert.',
+    step_attract_touch: 'Zet één of twee vingers op het scherm en draai rustig rondjes.',
+    step_demo: 'Twee zwarte gaten draaien om elkaar, komen dichterbij en smelten samen. Elke draai stuurt golven door de ruimte.',
+    step_one: 'We zien maar één bal. Houd allebei de ballen goed in zicht.',
+    step_spin: 'Draai de ballen samen in een cirkel, rond een gedeeld middelpunt.',
+    step_sync: 'Blijf recht tegenover elkaar. Gelijk draaien telt, niet snel draaien.',
+    step_fast: 'Rustiger! Snelheid helpt niet, samenspel wel.',
+    step_good: 'Mooi samen! Kom nu heel langzaam dichter bij elkaar.',
+    step_close: 'Bijna… laat de ballen elkaar zachtjes raken.',
+    step_early: 'Eerst een paar mooie rondjes samen, dan pas samensmelten.',
+    step_merger: 'Samensmelting! Het nieuwe zwarte gat trilt na en wordt stil.',
+    step_result: 'Jullie golven reizen nu verder door het heelal.',
+    m_sync: 'Samenspel', m_amp: 'Golfsterkte', m_close: 'Dichterbij',
+    r_orbit: 'rondjes per seconde', r_gw: 'golven per seconde (2 per rondje)',
+    legend_plus: 'ruimte rekt uit', legend_minus: 'ruimte krimpt',
+    sim: 'Gesimuleerd · onvoorstelbaar uitvergroot',
+    res_title: 'Samensmelting!', res_title_demo: 'Demo · nu jullie!',
+    res_score: 'samenspel / 100',
+    rate4: 'Perfect synchroon. Zo netjes draaien echte zwarte gaten om elkaar.',
+    rate3: 'Mooi samen gedraaid! De golven waren strak en helder.',
+    rate2: 'Goed begin. Nog rustiger en gelijker geeft mooiere golven.',
+    rate1: 'Wiebelige golven. Probeer het nog eens: samen en rustig.',
+    res_real: 'Hoe groot waren jullie golven echt?',
+    res_setup: (g, cm, r) => `Twee ballen van ${g} g, ongeveer ${cm} cm uit elkaar, ${r} rondjes per seconde.`,
+    res_hlab: (km, moon) => `Rek van de ruimte op ${km} km (${moon}× de afstand tot de Maan)`,
+    res_ligo: 'LIGO mat in 2015 (GW150914, twee zwarte gaten)',
+    res_power: 'Uitgestraald vermogen',
+    res_ratio: n => `Jullie golf was zo'n 10${n} keer kleiner. Daarom bouwen we de Einstein Telescope zo gevoelig mogelijk, en kijken we naar zwarte gaten in plaats van naar ballen.`,
+    res_foot: 'Quadrupoolformule; alleen de ballen als puntmassa\'s, in de gunstigste richting, op één golflengte afstand (dichterbij is de golf nog niet los van de bron). Massa en afstand zijn aannames.',
+    res_again: 'Opnieuw',
+    s_mode: 'Invoer', mode_camera: 'Camera', mode_touch: 'Aanraken', mode_demo: 'Demo',
+    s_lang: 'Taal', s_camera: 'Camera en ballen',
+    cal_a: 'Kalibreer bal A', cal_b: 'Kalibreer bal B',
+    s_mirror: 'Spiegel het camerabeeld', s_preview: 'Toon camerabeeld',
+    s_tol: 'Kleurtolerantie', s_zone: 'Breedte camerabeeld op balhoogte', s_game: 'Spel',
+    s_touch: 'Raakafstand (samensmelten)', s_mass: 'Massa per bal (voor de echte berekening)',
+    fullscreen: 'Volledig scherm',
+    keys: '<kbd>S</kbd> instellingen · <kbd>M</kbd> geluid · <kbd>F</kbd> volledig scherm<br><kbd>C</kbd> camera · <kbd>T</kbd> aanraken · <kbd>D</kbd> demo · <kbd>P</kbd> camerabeeld',
+    s_note: 'Golven, kleuren en tempo zijn gesimuleerd en enorm uitvergroot. Het patroon volgt wel echt jullie beweging: elke golf vertrekt op het moment dat jullie draaiden en loopt met vaste snelheid naar buiten.',
+    cam_starting: 'Camera starten…', cam_on: 'Camera actief. Kalibreer de balkleuren als de detectie hapert.',
+    cam_blocked: 'De camera is niet beschikbaar in deze browser. Gebruik Chrome of Edge op een computer met webcam. Aanraken en demo werken wel.',
+    cam_denied: 'Geen toegang tot de camera. Sta de camera toe in de browser en kies opnieuw Camera.',
+    cam_cap: 'Camerabeeld · gekleurde pixels = herkende bal',
+    calib: k => `Klik in het camerabeeld op bal ${k}.`,
+    calib_done: k => `Bal ${k} gekalibreerd.`
+  },
+  en: {
+    eyebrow: 'Einstein Telescope · gravitational waves',
+    title: 'You are <span class="a">two</span> <span class="b">black holes</span>',
+    sound: 'Sound', settings: 'Settings', close: 'Close',
+    chip_demo: 'Demo', chip_camera: 'Camera', chip_touch: 'Touch',
+    step_attract_camera: 'Each take a ball. Stand still and circle the balls together, as if you are stirring a big pot.',
+    step_attract_touch: 'Put one or two fingers on the screen and circle gently.',
+    step_demo: 'Two black holes circle each other, draw closer and merge. Every orbit sends waves through space.',
+    step_one: 'We can only see one ball. Keep both balls clearly in view.',
+    step_spin: 'Circle the balls together around a shared centre.',
+    step_sync: 'Stay directly opposite each other. Moving together counts, not moving fast.',
+    step_fast: 'Slower! Speed does not help, teamwork does.',
+    step_good: 'Nicely in sync! Now come closer together, very slowly.',
+    step_close: 'Almost… let the balls touch gently.',
+    step_early: 'First a few good orbits together, then merge.',
+    step_merger: 'Merger! The new black hole rings down and falls silent.',
+    step_result: 'Your waves are now travelling on through the universe.',
+    m_sync: 'In sync', m_amp: 'Wave strength', m_close: 'Closer',
+    r_orbit: 'orbits per second', r_gw: 'waves per second (2 per orbit)',
+    legend_plus: 'space stretches', legend_minus: 'space squeezes',
+    sim: 'Simulated · enormously exaggerated',
+    res_title: 'Merger!', res_title_demo: 'Demo · your turn!',
+    res_score: 'in sync / 100',
+    rate4: 'Perfectly in sync. That is how neatly real black holes orbit.',
+    rate3: 'Nicely done together! Your waves were clean and clear.',
+    rate2: 'Good start. Calmer and more together gives cleaner waves.',
+    rate1: 'Wobbly waves. Try again: together and calm.',
+    res_real: 'How big were your waves really?',
+    res_setup: (g, cm, r) => `Two balls of ${g} g, about ${cm} cm apart, ${r} orbits per second.`,
+    res_hlab: (km, moon) => `Stretch of space at ${km} km (${moon}× the distance to the Moon)`,
+    res_ligo: 'What LIGO measured in 2015 (GW150914, two black holes)',
+    res_power: 'Power radiated',
+    res_ratio: n => `Your wave was about 10${n} times smaller. That is why we build the Einstein Telescope as sensitive as possible, and listen to black holes rather than balls.`,
+    res_foot: 'Quadrupole formula; only the balls, as point masses, in the most favourable direction, one wavelength away (closer in, the wave has not yet left its source). Mass and distance are assumptions.',
+    res_again: 'Again',
+    s_mode: 'Input', mode_camera: 'Camera', mode_touch: 'Touch', mode_demo: 'Demo',
+    s_lang: 'Language', s_camera: 'Camera and balls',
+    cal_a: 'Calibrate ball A', cal_b: 'Calibrate ball B',
+    s_mirror: 'Mirror the camera image', s_preview: 'Show camera image',
+    s_tol: 'Colour tolerance', s_zone: 'Width of camera view at ball height', s_game: 'Game',
+    s_touch: 'Touch distance (merge)', s_mass: 'Mass per ball (for the real calculation)',
+    fullscreen: 'Full screen',
+    keys: '<kbd>S</kbd> settings · <kbd>M</kbd> sound · <kbd>F</kbd> full screen<br><kbd>C</kbd> camera · <kbd>T</kbd> touch · <kbd>D</kbd> demo · <kbd>P</kbd> camera image',
+    s_note: 'Waves, colours and tempo are simulated and enormously exaggerated. The pattern does follow your real motion: each wave leaves at the moment you turned and travels outward at a fixed speed.',
+    cam_starting: 'Starting camera…', cam_on: 'Camera on. Calibrate the ball colours if detection is patchy.',
+    cam_blocked: 'The camera is not available in this browser. Use Chrome or Edge on a computer with a webcam. Touch and demo still work.',
+    cam_denied: 'No camera access. Allow the camera in the browser and choose Camera again.',
+    cam_cap: 'Camera image · coloured pixels = detected ball',
+    calib: k => `Click on ball ${k} in the camera image.`,
+    calib_done: k => `Ball ${k} calibrated.`
+  }
+};
+const t = k => TXT[S.lang][k];
+
+function applyLang() {
+  document.documentElement.lang = S.lang;
+  $$('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); if (typeof v === 'string') el.textContent = v; });
+  $$('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  $('#title').innerHTML = t('title');
+  $$('#segLang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
+  $('#camCap').textContent = t('cam_cap');
+  lastStep = '';
+  updateChip();
+}
+
+/* ---------- WebGL wave field ---------- */
+const N = 512, HZ = 60, CV = 0.55;           // history samples, sample rate, visual wave speed (field units / s)
+const field = $('#field');
+const gl = field.getContext('webgl', { antialias: false, alpha: false, preserveDrawingBuffer: false });
+let prog, uni = {}, tex;
+const texData = new Uint8Array(N * 4);
+const hist = { c2: new Float32Array(N).fill(1), s2: new Float32Array(N), a: new Float32Array(N), coh: new Float32Array(N).fill(1), head: 0 };
+
+function initGL() {
+  if (!gl) { $('#nogl').hidden = false; return false; }
+  const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+  const fs = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 uRes; uniform float uUnit; uniform vec2 uC; uniform sampler2D uH;
+uniform float uN; uniform float uHz; uniform float uCv; uniform float uT; uniform float uRin; uniform float uGain;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+void main(){
+  vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / uUnit;
+  vec2 d = p - uC; float r = length(d);
+  float u = (r / uCv * uHz + 0.5) / uN;
+  vec4 s = texture2D(uH, vec2(min(u, 1.0), 0.5));
+  float inside = 1.0 - smoothstep(0.9, 1.0, u);
+  float c2 = s.r * 2.0 - 1.0; float s2 = s.g * 2.0 - 1.0; float A = s.b; float coh = s.a;
+  float ph = atan(d.y, d.x + 1e-6);
+  float wave = cos(2.0 * ph) * c2 + sin(2.0 * ph) * s2;
+  float fall = 1.0 / (1.0 + 1.3 * r);
+  float near = smoothstep(0.2 * uRin, uRin + 0.06, r);
+  float env = A * fall * near * inside;
+  float n = (vnoise(p * 9.0 + vec2(uT * 1.7, -uT * 1.3)) + vnoise(p * 21.0 - vec2(uT * 2.3, uT * 0.9))) - 1.0;
+  float h = env * (wave * (0.45 + 0.55 * coh) + (1.0 - coh) * n * 1.8);
+  float v = clamp(h * uGain, -1.6, 1.6);
+  vec2 dir = r > 1e-4 ? d / r : vec2(0.0);
+  vec2 q = p + dir * v * 0.05;
+  vec2 g = abs(fract(q * 5.0) - 0.5);
+  float ln = 1.0 - smoothstep(0.0, 0.035, 0.5 - max(g.x, g.y));
+  vec3 bg = vec3(0.024, 0.039, 0.082);
+  vec3 amb = vec3(1.0, 0.70, 0.28);
+  vec3 cyn = vec3(0.31, 0.82, 1.0);
+  vec3 col = bg + amb * pow(max(v, 0.0), 1.15) * 0.8 + cyn * pow(max(-v, 0.0), 1.15) * 0.8;
+  col += vec3(0.55, 0.63, 0.9) * ln * (0.06 + abs(v) * 0.12);
+  float vig = smoothstep(2.8, 0.5, length(p));
+  col *= mix(0.5, 1.0, vig);
+  gl_FragColor = vec4(col, 1.0);
+}`;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; } return s; };
+  const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
+  if (!v || !f) { $('#nogl').hidden = false; return false; }
+  prog = gl.createProgram(); gl.attachShader(prog, v); gl.attachShader(prog, f); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(prog)); $('#nogl').hidden = false; return false; }
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  ['uRes', 'uUnit', 'uC', 'uH', 'uN', 'uHz', 'uCv', 'uT', 'uRin', 'uGain'].forEach(n => uni[n] = gl.getUniformLocation(prog, n));
+  tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+  gl.uniform1i(uni.uH, 0); gl.uniform1f(uni.uN, N); gl.uniform1f(uni.uHz, HZ); gl.uniform1f(uni.uCv, CV);
+  return true;
+}
+const glOK = initGL();
+
+function pushHist(phi, A, coh) {
+  const i = hist.head;
+  hist.c2[i] = Math.cos(2 * phi); hist.s2[i] = Math.sin(2 * phi); hist.a[i] = clamp(A, 0, 1); hist.coh[i] = clamp(coh, 0, 1);
+  hist.head = (i + 1) % N;
+}
+function uploadHist() {
+  for (let k = 0; k < N; k++) {
+    const j = (hist.head - 1 - k + 2 * N) % N, o = k * 4;
+    texData[o] = Math.round((hist.c2[j] * 0.5 + 0.5) * 255);
+    texData[o + 1] = Math.round((hist.s2[j] * 0.5 + 0.5) * 255);
+    texData[o + 2] = Math.round(hist.a[j] * 255);
+    texData[o + 3] = Math.round(hist.coh[j] * 255);
+  }
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, N, 1, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+}
+
+/* ---------- canvas sizing ---------- */
+const overlay = $('#overlay'), octx = overlay.getContext('2d');
+let W = 0, H = 0, U = 1, dprO = 1, dprG = 1;
+function resize() {
+  W = window.innerWidth; H = window.innerHeight; U = Math.min(W, H) / 2;
+  dprO = Math.min(window.devicePixelRatio || 1, 2); dprG = Math.min(window.devicePixelRatio || 1, 1.25);
+  overlay.width = Math.round(W * dprO); overlay.height = Math.round(H * dprO);
+  field.width = Math.round(W * dprG); field.height = Math.round(H * dprG);
+  if (glOK) gl.viewport(0, 0, field.width, field.height);
+}
+window.addEventListener('resize', resize); resize();
+
+const view = { x: 0, y: 0 };
+const toScreen = p => ({ x: W / 2 + (p.x - view.x) * U, y: H / 2 - (p.y - view.y) * U });
+const toField = (sx, sy) => ({ x: (sx - W / 2) / U + view.x, y: -(sy - H / 2) / U + view.y });
+
+/* ---------- binary analysis (shared by all inputs) ---------- */
+const an = {};
+function resetAnalysis() {
+  Object.assign(an, { have: false, phi: 0, phiU: 0, omega: 0, wMean: 0, wVar: 0, cx: 0, cy: 0, cmx: 0, cmy: 0, cVar: 0,
+    R: 0.5, Rraw: 0.5, coh: 0, spin: 0, revs: 0, fast: false, credit: 0 });
+}
+resetAnalysis();
+function analyse(pA, pB, dt) {
+  const cx = (pA.x + pB.x) / 2, cy = (pA.y + pB.y) / 2;
+  const dx = pB.x - pA.x, dy = pB.y - pA.y, R = Math.hypot(dx, dy), phi = Math.atan2(dy, dx);
+  an.Rraw = R; an.cx = cx; an.cy = cy;
+  if (!an.have) { Object.assign(an, { have: true, phi, phiU: phi, cmx: cx, cmy: cy, R }); return; }
+  const dphi = wrap(phi - an.phi); an.phi = phi; an.phiU += dphi;
+  const w = R > 0.03 ? dphi / Math.max(dt, 1e-3) : 0;
+  an.omega += (clamp(w, -30, 30) - an.omega) * Math.min(1, dt / 0.2);
+  const b = Math.min(1, dt / 0.9);
+  const dw = an.omega - an.wMean; an.wMean += dw * b; an.wVar += (dw * dw - an.wVar) * b;
+  const ex = cx - an.cmx, ey = cy - an.cmy; an.cmx += ex * b; an.cmy += ey * b; an.cVar += ((ex * ex + ey * ey) - an.cVar) * b;
+  an.R += (R - an.R) * Math.min(1, dt / 0.15);
+  an.revs = Math.abs(an.wMean) / TAU;
+  an.spin = smooth(0.12, 0.3, an.revs);
+  const steady = Math.exp(-2.2 * Math.sqrt(an.wVar) / Math.max(Math.abs(an.wMean), 2.0));
+  const centred = Math.exp(-2.5 * Math.sqrt(an.cVar) / Math.max(an.R * 0.5, 0.06));
+  an.fast = an.revs > 1.3;
+  const pace = an.fast ? Math.exp(-(an.revs - 1.3) * 2.5) : 1;   // speed never helps; above a calm pace it hurts
+  an.coh += (an.spin * steady * centred * pace - an.coh) * Math.min(1, dt / 0.5);
+  if (an.coh > 0.45 && an.spin > 0.5) an.credit += dt; else an.credit = Math.max(0, an.credit - dt * 0.5);
+}
+// Wave amplitude follows separation (h ∝ 1/a for a Keplerian binary), not speed.
+const ampFromSep = R => Math.min(1, Math.pow(0.17 / Math.max(R, 0.17), 0.8));
+
+/* ---------- inputs ---------- */
+// Demo: a scripted, perfectly synchronised inspiral (separation shrinks like (1 - t/T)^(1/4), as for a real binary).
+const demo = { t: 0, phi: 0, T: 12, R0: 0.62,
+  reset() { this.t = 0; this.phi = Math.random() * TAU; },
+  step(dt) {
+    this.t += dt;
+    const x = Math.max(0, 1 - this.t / this.T);
+    const R = Math.max(0.02, this.R0 * Math.pow(x, 0.25));
+    const revs = Math.min(1.0, 0.32 * Math.pow(this.R0 / Math.max(R, 0.1), 0.75));
+    this.phi += TAU * revs * dt * (this.t < 0.6 ? this.t / 0.6 : 1);
+    const cx = 0.012 * Math.sin(this.t * 1.1), cy = 0.01 * Math.cos(this.t * 0.8);
+    const dx = R * Math.cos(this.phi) / 2, dy = R * Math.sin(this.phi) / 2;
+    return { A: { x: cx - dx, y: cy - dy }, B: { x: cx + dx, y: cy + dy } };
+  } };
+
+// Touch / mouse: two pointers drive the balls independently; one pointer drives A and B mirrors it.
+const pointers = new Map();
+let lastPointer = 0;
+overlay.addEventListener('pointerdown', e => {
+  if (S.mode === 'demo' || calibrating) return;
+  overlay.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, toField(e.clientX, e.clientY)); lastPointer = performance.now(); wake();
+});
+overlay.addEventListener('pointermove', e => { if (pointers.has(e.pointerId)) { pointers.set(e.pointerId, toField(e.clientX, e.clientY)); lastPointer = performance.now(); } });
+const up = e => pointers.delete(e.pointerId);
+overlay.addEventListener('pointerup', up); overlay.addEventListener('pointercancel', up);
+function touchBalls() {
+  if (!pointers.size) return null;
+  const ps = Array.from(pointers.values());
+  if (ps.length === 1) return { A: ps[0], B: { x: -ps[0].x, y: -ps[0].y } };
+  return { A: ps[0], B: ps[1] };
+}
+
+/* ---------- camera colour tracking ---------- */
+const CW = 160, CH = 120, CS = 0.95;
+const cam = { on: false, starting: false, video: document.createElement('video'), raw: null, lab: new Uint8Array(CW * CH),
+  A: { ok: false, x: 0, y: 0, px: 0, py: 0, n: 0 }, B: { ok: false, x: 0, y: 0, px: 0, py: 0, n: 0 }, lastBoth: 0, lastR: 1 };
+cam.video.muted = true; cam.video.playsInline = true;
+const proc = document.createElement('canvas'); proc.width = CW; proc.height = CH;
+const pctx = proc.getContext('2d', { willReadFrequently: true });
+const camView = $('#camView'), cvctx = camView.getContext('2d');
+const camImg = cvctx.createImageData(CW, CH);
+let calibrating = null;
+
+async function startCamera() {
+  if (cam.on || cam.starting) return;
+  setStatus(t('cam_starting'));
+  cam.starting = true;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('blocked'), { name: 'NotSupportedError' });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+    cam.video.srcObject = stream; await cam.video.play();
+    cam.on = true; setStatus(t('cam_on'));
+  } catch (err) {
+    cam.on = false;
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+    const inFrame = window.self !== window.top;
+    const msg = denied && !inFrame ? t('cam_denied') : t('cam_blocked');
+    cam.starting = false;
+    if (S.mode === 'camera') setMode('touch');
+    setStatus(msg); toast(msg);
+    return;
+  }
+  cam.starting = false; updateCamBox();
+}
+function stopCamera() {
+  const s = cam.video.srcObject; if (s) s.getTracks().forEach(tr => tr.stop());
+  cam.video.srcObject = null; cam.on = false; cam.A.ok = cam.B.ok = false; updateCamBox();
+}
+function rgb2hsv(r, g, b) {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn;
+  let h = 0;
+  if (c > 1e-6) { if (mx === r) h = 60 * (((g - b) / c) % 6); else if (mx === g) h = 60 * ((b - r) / c + 2); else h = 60 * ((r - g) / c + 4); }
+  if (h < 0) h += 360;
+  return [h, mx > 0 ? c / mx : 0, mx];
+}
+function trackCamera(dt) {
+  if (!cam.on || cam.video.readyState < 2) return;
+  pctx.save();
+  if (S.mirror) { pctx.translate(CW, 0); pctx.scale(-1, 1); }
+  pctx.drawImage(cam.video, 0, 0, CW, CH);
+  pctx.restore();
+  const img = pctx.getImageData(0, 0, CW, CH), d = img.data; cam.raw = d;
+  const tg = [S.A, S.B], acc = [[0, 0, 0], [0, 0, 0]], lab = cam.lab;
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    let lb = 0;
+    const [h, s, v] = rgb2hsv(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255);
+    for (let k = 0; k < 2; k++) {
+      const tk = tg[k];
+      if (s >= Math.max(0.2, tk.s) && v >= Math.max(0.12, tk.v) && hueDist(h, tk.h) <= S.tol) { lb = k + 1; acc[k][0] += p % CW; acc[k][1] += (p / CW) | 0; acc[k][2]++; break; }
+    }
+    lab[p] = lb;
+  }
+  // second pass: keep only pixels near the first centroid (rejects stray matches elsewhere in the room)
+  const MIN = 10, RAD2 = 22 * 22;
+  [cam.A, cam.B].forEach((ball, k) => {
+    const n0 = acc[k][2];
+    if (n0 < MIN) { ball.ok = false; ball.n = n0; return; }
+    const mx = acc[k][0] / n0, my = acc[k][1] / n0;
+    let sx = 0, sy = 0, n = 0;
+    for (let p = 0; p < lab.length; p++) {
+      if (lab[p] !== k + 1) continue;
+      const x = p % CW, y = (p / CW) | 0, ddx = x - mx, ddy = y - my;
+      if (ddx * ddx + ddy * ddy < RAD2) { sx += x; sy += y; n++; }
+    }
+    if (n < MIN) { ball.ok = false; ball.n = n; return; }
+    const px = sx / n, py = sy / n;
+    const fx = (px / CW - 0.5) * 2 * CS * (CW / CH), fy = -(py / CH - 0.5) * 2 * CS;
+    const a = ball.ok ? Math.min(1, dt / 0.06) : 1;
+    ball.x += (fx - ball.x) * a; ball.y += (fy - ball.y) * a; ball.px = px; ball.py = py; ball.n = n; ball.ok = true;
+  });
+  if (cam.A.ok && cam.B.ok) { cam.lastBoth = performance.now(); cam.lastR = Math.hypot(cam.A.x - cam.B.x, cam.A.y - cam.B.y); }
+  if (S.preview && !$('#camBox').hidden) drawCamPreview(d, lab);
+}
+function drawCamPreview(d, lab) {
+  const o = camImg.data, ca = hsl2rgb(S.A.h), cb = hsl2rgb(S.B.h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    if (lab[p] === 1) { o[i] = ca[0]; o[i + 1] = ca[1]; o[i + 2] = ca[2]; }
+    else if (lab[p] === 2) { o[i] = cb[0]; o[i + 1] = cb[1]; o[i + 2] = cb[2]; }
+    else { o[i] = d[i] * 0.55; o[i + 1] = d[i + 1] * 0.55; o[i + 2] = d[i + 2] * 0.55; }
+    o[i + 3] = 255;
+  }
+  cvctx.putImageData(camImg, 0, 0);
+  [[cam.A, 'A'], [cam.B, 'B']].forEach(([b, n]) => {
+    if (!b.ok) return;
+    cvctx.strokeStyle = '#fff'; cvctx.lineWidth = 1;
+    cvctx.beginPath(); cvctx.arc(b.px, b.py, 7, 0, TAU); cvctx.stroke();
+    cvctx.fillStyle = '#fff'; cvctx.font = '9px monospace'; cvctx.fillText(n, b.px + 9, b.py - 6);
+  });
+}
+function hsl2rgb(h) {
+  const s = 0.9, l = 0.6, k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+camView.addEventListener('click', e => {
+  if (!calibrating || !cam.raw) return;
+  const r = camView.getBoundingClientRect();
+  const px = Math.round((e.clientX - r.left) / r.width * CW), py = Math.round((e.clientY - r.top) / r.height * CH);
+  let R = 0, G = 0, B = 0, n = 0;
+  for (let y = py - 2; y <= py + 2; y++) for (let x = px - 2; x <= px + 2; x++) {
+    if (x < 0 || y < 0 || x >= CW || y >= CH) continue;
+    const i = (y * CW + x) * 4; R += cam.raw[i]; G += cam.raw[i + 1]; B += cam.raw[i + 2]; n++;
+  }
+  if (!n) return;
+  const [h, s, v] = rgb2hsv(R / n / 255, G / n / 255, B / n / 255);
+  S[calibrating] = { h: Math.round(h), s: +Math.max(0.2, s * 0.55).toFixed(2), v: +Math.max(0.12, v * 0.45).toFixed(2) };
+  save(); setStatus(t('calib_done')(calibrating)); calibrating = null; updateCamBox(); updateBallColours();
+});
+function startCalib(k) {
+  if (S.mode !== 'camera') setMode('camera');
+  if (!S.preview) { S.preview = true; $('#ckPreview').checked = true; save(); }
+  calibrating = k; setStatus(t('calib')(k)); updateCamBox();
+}
+function updateCamBox() {
+  const box = $('#camBox');
+  box.hidden = !(S.mode === 'camera' && cam.on && (S.preview || calibrating));
+  box.classList.toggle('calib', !!calibrating);
+  $('#camCap').textContent = calibrating ? t('calib')(calibrating) : t('cam_cap');
+}
+function updateBallColours() {
+  const ca = `hsl(${S.A.h} 90% 62%)`, cb = `hsl(${S.B.h} 85% 58%)`;
+  document.documentElement.style.setProperty('--ballA', ca);
+  document.documentElement.style.setProperty('--ballB', cb);
+  $('#swA').style.background = ca; $('#swB').style.background = cb;
+  ballCol.A = ca; ballCol.B = cb;
+}
+const ballCol = { A: '#ff4fb3', B: '#a4ec4c' };
+
+/* ---------- sound: a chirp whose pitch follows separation ---------- */
+const audio = { ctx: null, osc: null, osc2: null, gain: null, on: false };
+function toggleSound() {
+  if (!audio.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    audio.ctx = new AC();
+    audio.gain = audio.ctx.createGain(); audio.gain.gain.value = 0; audio.gain.connect(audio.ctx.destination);
+    audio.osc = audio.ctx.createOscillator(); audio.osc.type = 'sine'; audio.osc.connect(audio.gain); audio.osc.start();
+    const g2 = audio.ctx.createGain(); g2.gain.value = 0.25; g2.connect(audio.gain);
+    audio.osc2 = audio.ctx.createOscillator(); audio.osc2.type = 'triangle'; audio.osc2.connect(g2); audio.osc2.start();
+  }
+  audio.on = !audio.on;
+  if (audio.on) audio.ctx.resume();
+  $('#btnSound').setAttribute('aria-pressed', String(audio.on));
+}
+function setAudio(freq, vol) {
+  if (!audio.ctx) return;
+  const now = audio.ctx.currentTime;
+  audio.osc.frequency.setTargetAtTime(freq, now, 0.04);
+  audio.osc2.frequency.setTargetAtTime(freq * 2, now, 0.04);
+  audio.gain.gain.setTargetAtTime(audio.on ? vol : 0, now, 0.05);
+}
+
+/* ---------- game state ---------- */
+let state = 'attract';      // attract | play | merger | result
+let stateT = 0, resultFromDemo = false, earlyHint = 0, lastPresent = 0;
+const emit = { phi: 0, A: 0, coh: 1, cx: 0, cy: 0, rin: 0.3 };
+const prevEmit = { phi: 0, A: 0, coh: 1 };
+const stats = { t: 0, coh: 0, R: 0, revs: 0 };
+const merger = { phi0: 0, w0: 0, A0: 0, cx: 0, cy: 0, sign: 1 };
+const trails = { A: [], B: [] };
+let balls = null, oneBall = null;
+
+function resetStats() { stats.t = stats.coh = stats.R = stats.revs = 0; }
+function enterAttract() { state = 'attract'; stateT = 0; demo.reset(); resetAnalysis(); resetStats(); trails.A = []; trails.B = []; }
+function enterPlay() { state = 'play'; stateT = 0; resetAnalysis(); resetStats(); trails.A = []; trails.B = []; }
+function startMerger(fromDemo) {
+  state = 'merger'; stateT = 0; resultFromDemo = fromDemo;
+  merger.phi0 = emit.phi; merger.sign = an.wMean >= 0 ? 1 : -1; merger.w0 = Math.abs(an.wMean) || 4;
+  merger.A0 = emit.A; merger.cx = an.cx; merger.cy = an.cy;
+  buildResult();
+}
+
+function realInput() {
+  if (S.mode === 'demo') return null;
+  const tb = touchBalls();
+  if (tb) return { both: tb };
+  if (S.mode === 'camera' && cam.on) {
+    if (cam.A.ok && cam.B.ok) return { both: { A: { x: cam.A.x, y: cam.A.y }, B: { x: cam.B.x, y: cam.B.y } } };
+    if (cam.A.ok || cam.B.ok) return { one: cam.A.ok ? { k: 'A', x: cam.A.x, y: cam.A.y } : { k: 'B', x: cam.B.x, y: cam.B.y } };
+  }
+  return null;
+}
+
+function update(dt, now) {
+  stateT += dt;
+  if (S.mode === 'camera') trackCamera(dt);
+  const inp = realInput();
+  if (inp) lastPresent = now;
+  balls = null; oneBall = null;
+
+  if (state === 'attract') {
+    if (inp) { enterPlay(); }
+    else {
+      balls = demo.step(dt);
+      analyse(balls.A, balls.B, dt);
+      if (an.spin > 0.5) { stats.t += dt; stats.coh += an.coh * dt; stats.R += an.Rraw * dt; stats.revs += an.revs * dt; }
+      if ((an.Rraw < S.touchDist && an.credit > 1.5) || demo.t > demo.T + 1) { startMerger(true); }
+    }
+  }
+  if (state === 'play') {
+    const idle = S.mode === 'camera' ? 4 : 6;
+    if (!inp && now - lastPresent > idle * 1000) { enterAttract(); }
+    else if (inp && inp.both) {
+      balls = inp.both;
+      analyse(balls.A, balls.B, dt);
+      if (an.spin > 0.5) { stats.t += dt; stats.coh += an.coh * dt; stats.R += an.Rraw * dt; stats.revs += an.revs * dt; }
+      if (an.Rraw < S.touchDist) {
+        if (an.credit >= 2.5) startMerger(false);
+        else if (an.spin < 0.5 || an.coh < 0.45) earlyHint = 2;
+      }
+    } else if (inp && inp.one) {
+      oneBall = inp.one;
+      // balls touching can hide one colour: count a lost ball right after a close, well-synchronised approach as a merger
+      if (S.mode === 'camera' && an.credit >= 2.5 && cam.lastR < S.touchDist * 2 && now - cam.lastBoth < 400) startMerger(false);
+    }
+  }
+  if (state === 'result') {
+    const dur = resultFromDemo ? 6 : 14;
+    $('#cdown i').style.width = (100 * Math.max(0, 1 - stateT / dur)) + '%';
+    if (stateT > dur || (resultFromDemo && inp)) closeResult();
+  }
+  earlyHint = Math.max(0, earlyHint - dt);
+
+  // emission for the wave history
+  Object.assign(prevEmit, { phi: emit.phi, A: emit.A, coh: emit.coh });
+  if (state === 'merger') {
+    const tt = stateT, wRing = TAU * 2.4;
+    const w = merger.w0 + (wRing - merger.w0) * smooth(0, 0.35, tt);
+    emit.phi += merger.sign * w * dt;
+    emit.A = tt < 0.35 ? merger.A0 + (1 - merger.A0) * (tt / 0.35) : Math.exp(-(tt - 0.35) / 0.55);
+    emit.coh = 1; emit.cx = merger.cx; emit.cy = merger.cy; emit.rin = Math.max(0.02, 0.06 * (1 - tt));
+    if (tt > 2.8) showResult();
+  } else if (state === 'result') {
+    emit.A *= Math.exp(-dt * 6); emit.coh = 1;
+  } else if (an.have && balls) {
+    emit.phi = an.phiU; emit.A = an.spin * ampFromSep(an.R) * (0.35 + 0.65 * an.coh); emit.coh = an.coh;
+    emit.cx = an.cx; emit.cy = an.cy; emit.rin = an.R / 2;
+  } else {
+    emit.A *= Math.exp(-dt * 2.5);
+  }
+  pushAccum += dt;
+  const steps = Math.floor(pushAccum * HZ); pushAccum -= steps / HZ;
+  for (let i = 1; i <= steps; i++) {
+    const f = i / steps;
+    pushHist(prevEmit.phi + (emit.phi - prevEmit.phi) * f, prevEmit.A + (emit.A - prevEmit.A) * f, prevEmit.coh + (emit.coh - prevEmit.coh) * f);
+  }
+
+  // view follows the binary gently in camera / demo mode so it stays centred
+  const follow = (state === 'play' && pointers.size) ? { x: 0, y: 0 } : { x: emit.cx * 0.8, y: emit.cy * 0.8 };
+  if (pointers.size) { view.x = 0; view.y = 0; } else { view.x += (follow.x - view.x) * Math.min(1, dt / 2); view.y += (follow.y - view.y) * Math.min(1, dt / 2); }
+
+  // trails
+  if (balls) {
+    trails.A.push({ x: balls.A.x, y: balls.A.y }); trails.B.push({ x: balls.B.x, y: balls.B.y });
+    if (trails.A.length > 36) { trails.A.shift(); trails.B.shift(); }
+  } else if (trails.A.length) { trails.A.shift(); trails.B.shift(); }
+
+  // sound: pitch from separation (as in nature, closer = higher), volume from wave strength
+  if (state === 'merger') {
+    const tt = stateT;
+    setAudio(tt < 0.35 ? 260 + 560 * (tt / 0.35) : 520, 0.16 * (tt < 0.35 ? 1 : Math.exp(-(tt - 0.35) / 0.5)));
+  } else if (balls && an.have) {
+    setAudio(clamp(70 * Math.pow(0.6 / Math.max(an.R, 0.08), 1.5), 55, 700), 0.11 * emit.A * (0.3 + 0.7 * an.coh));
+  } else setAudio(60, 0);
+}
+let pushAccum = 0;
+
+/* ---------- drawing ---------- */
+function drawField(now) {
+  if (!glOK) return;
+  uploadHist();
+  gl.uniform2f(uni.uRes, field.width, field.height);
+  gl.uniform1f(uni.uUnit, U * dprG);
+  gl.uniform2f(uni.uC, emit.cx - view.x, emit.cy - view.y);
+  gl.uniform1f(uni.uT, now);
+  gl.uniform1f(uni.uRin, emit.rin);
+  gl.uniform1f(uni.uGain, 2.6);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function drawHole(p, col, r, glow) {
+  const s = toScreen(p);
+  octx.save();
+  octx.shadowColor = col; octx.shadowBlur = r * 1.6 * glow;
+  octx.beginPath(); octx.arc(s.x, s.y, r, 0, TAU); octx.fillStyle = '#02040a'; octx.fill();
+  octx.lineWidth = Math.max(2, r * 0.22); octx.strokeStyle = col; octx.stroke();
+  octx.restore();
+}
+function drawTrail(arr, col) {
+  if (arr.length < 2) return;
+  octx.save(); octx.lineCap = 'round'; octx.strokeStyle = col;
+  for (let i = 1; i < arr.length; i++) {
+    const a = toScreen(arr[i - 1]), b = toScreen(arr[i]);
+    octx.globalAlpha = (i / arr.length) * 0.5; octx.lineWidth = 2 + 4 * (i / arr.length);
+    octx.beginPath(); octx.moveTo(a.x, a.y); octx.lineTo(b.x, b.y); octx.stroke();
+  }
+  octx.restore();
+}
+function drawOverlay() {
+  octx.setTransform(dprO, 0, 0, dprO, 0, 0);
+  octx.clearRect(0, 0, W, H);
+  const r = Math.max(14, 0.055 * U);
+  if (balls) {
+    drawTrail(trails.A, ballCol.A); drawTrail(trails.B, ballCol.B);
+    // centre of mass marker: steady dot when in sync
+    const c = toScreen({ x: an.cx, y: an.cy });
+    octx.save(); octx.globalAlpha = 0.35 + 0.5 * an.coh; octx.strokeStyle = '#eaf0fa'; octx.lineWidth = 1.5;
+    octx.beginPath(); octx.moveTo(c.x - 7, c.y); octx.lineTo(c.x + 7, c.y); octx.moveTo(c.x, c.y - 7); octx.lineTo(c.x, c.y + 7); octx.stroke(); octx.restore();
+    drawHole(balls.A, ballCol.A, r, 0.6 + an.coh * 0.6);
+    drawHole(balls.B, ballCol.B, r, 0.6 + an.coh * 0.6);
+  } else if (oneBall) {
+    drawHole(oneBall, ballCol[oneBall.k], r, 0.5);
+  }
+  if (state === 'merger' || state === 'result') {
+    const tt = state === 'merger' ? stateT : 3 + stateT;
+    const ring = 1 + 0.18 * Math.exp(-tt / 0.6) * Math.sin(tt * TAU * 2.4);
+    const fade = state === 'result' ? Math.max(0, 1 - stateT / 1.5) : 1;
+    if (fade > 0) {
+      octx.save(); octx.globalAlpha = fade;
+      drawHole({ x: merger.cx, y: merger.cy }, '#fff4dc', r * 1.35 * ring, 1.4);
+      octx.restore();
+    }
+  }
+}
+
+/* ---------- HUD ---------- */
+let lastStep = '', hudT = 0;
+function stepKey() {
+  if (state === 'merger') return 'step_merger';
+  if (state === 'result') return 'step_result';
+  if (state === 'attract') return S.mode === 'demo' ? 'step_demo' : (S.mode === 'camera' && cam.on ? 'step_attract_camera' : 'step_attract_touch');
+  if (oneBall) return 'step_one';
+  if (!balls) return S.mode === 'camera' ? 'step_attract_camera' : 'step_attract_touch';
+  if (earlyHint > 0) return 'step_early';
+  if (an.spin < 0.5) return 'step_spin';
+  if (an.fast) return 'step_fast';
+  if (an.coh < 0.45) return 'step_sync';
+  if (an.credit >= 2.5 && an.R < 0.32) return 'step_close';
+  return 'step_good';
+}
+function updateHUD(dt) {
+  hudT += dt; if (hudT < 0.1) return; hudT = 0;
+  const k = stepKey();
+  if (k !== lastStep) { const el = $('#step'); el.textContent = t(k); lastStep = k; el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 120); }
+  const live = (state === 'play' || state === 'attract') && an.have;
+  const sync = live ? an.coh : (state === 'merger' ? 1 : 0);
+  const amp = state === 'merger' ? Math.min(1, emit.A) : (live ? emit.A : 0);
+  const close = live ? clamp((0.62 - an.R) / (0.62 - S.touchDist), 0, 1) : (state === 'merger' ? 1 : 0);
+  setMeter('#mSync', sync, '#vSync'); setMeter('#mAmp', amp, '#vAmp'); setMeter('#mClose', close, '#vClose');
+  const revs = live && an.spin > 0.05 ? an.revs : 0;
+  $('#vOrbit').textContent = revs.toFixed(2); $('#vGw').textContent = (2 * revs).toFixed(2);
+}
+function setMeter(sel, v, vsel) { $(sel + ' .bar i').style.width = (100 * clamp(v, 0, 1)).toFixed(1) + '%'; $(vsel).textContent = Math.round(100 * clamp(v, 0, 1)); }
+function updateChip() {
+  const c = $('#modeChip');
+  const k = state === 'attract' || S.mode === 'demo' ? 'chip_demo' : (S.mode === 'camera' ? 'chip_camera' : 'chip_touch');
+  c.textContent = t(k); c.classList.toggle('demo', k === 'chip_demo');
+}
+
+/* ---------- result card: score + the real numbers ---------- */
+const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+const sup = n => String(n).split('').map(ch => SUP[ch] || ch).join('');
+function sci(x) {
+  if (!(x > 0) || !isFinite(x)) return '—';
+  let e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e);
+  if (m >= 9.95) { m /= 10; e += 1; }
+  return `${m.toFixed(1).replace('.', S.lang === 'nl' ? ',' : '.')} × 10${sup(e)}`;
+}
+function fmtInt(x) { return Math.round(x).toLocaleString(S.lang === 'nl' ? 'nl-BE' : 'en-GB'); }
+function fmtDec(x, d) { return x.toFixed(d).replace('.', S.lang === 'nl' ? ',' : '.'); }
+
+function buildResult() {
+  const fromDemo = resultFromDemo;
+  const T = stats.t || 1;
+  const score = Math.round(100 * (stats.t > 0 ? stats.coh / T : an.coh));
+  const Rbar = stats.t > 0 ? stats.R / T : an.R;          // field units
+  const revs = Math.max(0.1, stats.t > 0 ? stats.revs / T : an.revs);
+  // metres per field unit: camera uses the configured view width; touch/demo assume 1 m per unit
+  const mPerUnit = (S.mode === 'camera' && cam.on && !fromDemo) ? S.zoneW / (2 * CS * (CW / CH)) : 1.0;
+  const G = 6.674e-11, c = 2.998e8;
+  const m = S.massG / 1000, mu = m / 2;                   // two equal masses: reduced mass m/2
+  const d = Math.max(0.05, Rbar * mPerUnit);               // separation in metres
+  const w = TAU * revs;                                    // orbital angular frequency
+  const fgw = 2 * revs, lambda = c / fgw;                  // GW frequency and wavelength
+  const h = 4 * G * mu * w * w * d * d / (Math.pow(c, 4) * lambda);   // optimal-orientation strain at one wavelength
+  const P = (32 / 5) * G * mu * mu * Math.pow(d, 4) * Math.pow(w, 6) / Math.pow(c, 5);
+  const ratioExp = Math.round(Math.log10(1e-21 / h));
+  $('#rTitle').textContent = t(fromDemo ? 'res_title_demo' : 'res_title');
+  $('#rScore').textContent = score;
+  $('#rRating').textContent = t(score >= 85 ? 'rate4' : score >= 65 ? 'rate3' : score >= 40 ? 'rate2' : 'rate1');
+  $('#rSetup').textContent = t('res_setup')(S.massG, Math.round(d * 100), fmtDec(revs, 2));
+  $('#rHLab').textContent = t('res_hlab')(fmtInt(lambda / 1000), fmtDec(lambda / 3.844e8, 1));
+  $('#rH').textContent = sci(h);
+  $('#rP').textContent = sci(P) + ' W';
+  $('#rRatio').textContent = t('res_ratio')(sup(ratioExp));
+}
+function showResult() { state = 'result'; stateT = 0; $('#result').hidden = false; $('#cdown i').style.width = '100%'; }
+function closeResult() {
+  $('#result').hidden = true;
+  if (realInput()) enterPlay(); else enterAttract();
+}
+
+/* ---------- controls ---------- */
+function setStatus(s) { $('#status').textContent = s || ''; }
+let toastTimer = 0;
+function toast(s) { const el = $('#toast'); el.textContent = s; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 9000); }
+function setMode(m) {
+  S.mode = m; save();
+  $$('#segMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  pointers.clear(); calibrating = null;
+  if (m === 'camera') startCamera(); else { stopCamera(); setStatus(''); }
+  if (state !== 'merger' && state !== 'result') enterAttract();
+  updateCamBox(); updateChip();
+}
+function togglePanel(open) {
+  const p = $('#panel'); const o = open == null ? p.hidden : open;
+  p.hidden = !o; $('#btnSettings').setAttribute('aria-expanded', String(o));
+}
+function fullscreen() {
+  const el = document.documentElement;
+  try {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  } catch (e) {}
+}
+let wakeLock = null;
+function wake() {
+  if (wakeLock || !navigator.wakeLock) return;
+  navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
+}
+
+$('#btnSound').addEventListener('click', () => { toggleSound(); wake(); });
+$('#btnSettings').addEventListener('click', () => togglePanel());
+$('#btnClose').addEventListener('click', () => togglePanel(false));
+$('#btnFull').addEventListener('click', fullscreen);
+$('#btnAgain').addEventListener('click', closeResult);
+$$('#segMode button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$$('#segLang button').forEach(b => b.addEventListener('click', () => { S.lang = b.dataset.lang; save(); applyLang(); if (state === 'result') buildResult(); }));
+$('#calA').addEventListener('click', () => startCalib('A'));
+$('#calB').addEventListener('click', () => startCalib('B'));
+$('#ckMirror').addEventListener('change', e => { S.mirror = e.target.checked; save(); });
+$('#ckPreview').addEventListener('change', e => { S.preview = e.target.checked; save(); updateCamBox(); });
+function bindRange(id, out, key, fmt) {
+  const el = $(id); el.value = S[key];
+  const show = () => { $(out).textContent = fmt(+el.value); };
+  el.addEventListener('input', () => { S[key] = +el.value; save(); show(); }); show();
+}
+bindRange('#rTol', '#oTol', 'tol', v => v + '°');
+bindRange('#rZone', '#oZone', 'zoneW', v => fmtDec(v, 1) + ' m');
+bindRange('#rTouch', '#oTouch', 'touchDist', v => fmtDec(v, 2));
+bindRange('#rMass', '#oMass', 'massG', v => v + ' g');
+$('#ckMirror').checked = S.mirror; $('#ckPreview').checked = S.preview;
+
+window.addEventListener('keydown', e => {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 's') togglePanel();
+  else if (k === 'm') toggleSound();
+  else if (k === 'f') fullscreen();
+  else if (k === 'c') setMode('camera');
+  else if (k === 't') setMode('touch');
+  else if (k === 'd') setMode('demo');
+  else if (k === 'p') { S.preview = !S.preview; $('#ckPreview').checked = S.preview; save(); updateCamBox(); }
+  else if (k === 'escape') { togglePanel(false); calibrating = null; updateCamBox(); }
+});
+
+/* ---------- boot ---------- */
+updateBallColours();
+applyLang();
+enterAttract();
+setMode(S.mode);
+let last = performance.now();
+function frame(ts) {
+  const now = ts / 1000, dt = Math.min(0.05, Math.max(0.001, (ts - last) / 1000)); last = ts;
+  update(dt, ts);
+  drawField(now);
+  drawOverlay();
+  updateHUD(dt);
+  if (state === 'attract' || state === 'play') updateChip();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
