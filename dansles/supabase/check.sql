@@ -48,6 +48,26 @@ begin
   insert into cp_selftest (check_name, passed, detail) values ('valid answer is saved', r = 'ok', r);
   begin perform cp_save_week(k, w, '{"plan":{"legs":"nonsense"}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
   insert into cp_selftest (check_name, passed, detail) values ('malformed plan is refused', r like '%invalid week%', r);
+  -- missing required fields must be refused too (not only wrong types)
+  begin perform cp_save_week(k, w, '{"plan":{}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('empty plan object is refused', r like '%invalid week%', r);
+  begin perform cp_save_week(k, w, '{"plan":{"version":1}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('plan without legs is refused', r like '%invalid week%', r);
+  begin perform cp_save_week(k, w, '{"plan":{"legs":{"to":{"participants":[],"cars":[],"unassigned":[]}}}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('plan missing one direction is refused', r like '%invalid week%', r);
+  begin perform cp_save_week(k, w, '{"plan":{"legs":{"to":{},"from":{}}}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('plan missing participants/cars/unassigned is refused', r like '%invalid week%', r);
+  begin perform cp_save_week(k, w, '{"plan":{"legs":{"to":{"participants":[],"cars":[{"riders":[]}],"unassigned":[]},"from":{"participants":[],"cars":[],"unassigned":[]}}}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('car missing driver/seats is refused', r like '%invalid week%', r);
+  begin perform cp_save_family(k, '{"id":"f-selftest2","name":"X","kids":[{"name":"No id"}],"seats":3}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('child without ID is refused', r like '%invalid family%', r);
+  begin perform cp_save_family(k, '{"id":"f-selftest2","kids":[{"id":"k1","name":"Kid"}],"seats":3}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('family without name is refused', r like '%invalid family%', r);
+  begin perform cp_save_response(k, w, 'f-selftest', '{"kids":["k1"],"to":{"status":"need"}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('answer missing a direction is refused', r like '%invalid answer%', r);
+  begin perform cp_save_week(k, w, '{"plan":{"legs":{"to":{"participants":[],"cars":[],"unassigned":[]},"from":{"participants":[],"cars":[],"unassigned":[]}}}}'); r := 'ok'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('minimal complete plan is accepted', r = 'ok', r);
+
   begin perform cp_save_settings(k, '{"weekday":9}'); r := 'accepted'; exception when others then r := sqlerrm; end;
   insert into cp_selftest (check_name, passed, detail) values ('malformed settings are refused', r like '%invalid settings%', r);
 
@@ -66,6 +86,53 @@ begin
 end $$;
 reset role;
 
+-- retention really deletes: plant expired rows directly (as owner), then trigger each clean-up path
+insert into cp_responses (group_id, week, family_id, data)
+  select id, current_date - 500, 'f-old', '{}'::jsonb from cp_groups where secret = (select secret from cp_selftest_key);
+insert into cp_weeks (group_id, week, data)
+  select id, current_date - 500, '{}'::jsonb from cp_groups where secret = (select secret from cp_selftest_key)
+  on conflict do nothing;
+set role anon;
+do $$
+declare k text := (select secret from cp_selftest_key); r text;
+begin
+  begin perform cp_save_settings(k, '{"groupName":"selftest"}'); r := 'ok'; exception when others then r := sqlerrm; end;
+end $$;
+reset role;
+insert into cp_selftest (check_name, passed, detail)
+select 'expired rows are deleted by a save',
+       not exists (select 1 from cp_responses r join cp_groups g on g.id = r.group_id where g.secret like 'selftest-%' and r.week < cp_retention_start())
+   and not exists (select 1 from cp_weeks w join cp_groups g on g.id = w.group_id where g.secret like 'selftest-%' and w.week < cp_retention_start()),
+       'planted 2 rows 500 days old, then saved settings';
+insert into cp_weeks (group_id, week, data)
+  select id, current_date - 500, '{}'::jsonb from cp_groups where secret = (select secret from cp_selftest_key)
+  on conflict do nothing;
+select cp_purge_all();
+insert into cp_selftest (check_name, passed, detail)
+select 'expired rows are deleted by the daily clean-up command',
+       not exists (select 1 from cp_weeks w join cp_groups g on g.id = w.group_id where g.secret like 'selftest-%' and w.week < cp_retention_start()),
+       'planted 1 row 500 days old, then ran cp_purge_all()';
+
+-- daily clean-up job: configured? and has it run?
+do $$
+declare j record; run record;
+begin
+  if not exists (select 1 from pg_extension where extname = 'pg_cron') then
+    insert into cp_selftest (check_name, passed, detail) values ('daily clean-up job is configured', false, 'pg_cron not installed: old data is only deleted when someone saves');
+    return;
+  end if;
+  execute $q$select jobid, schedule, command, active from cron.job where jobname = 'cp-retention'$q$ into j;
+  insert into cp_selftest (check_name, passed, detail) values ('daily clean-up job is configured',
+    j.jobid is not null and j.active and j.schedule = '23 3 * * *' and j.command = 'select public.cp_purge_all()',
+    coalesce(format('active=%s schedule=%s command=%s', j.active, j.schedule, j.command), 'job cp-retention not found'));
+  if j.jobid is null then return; end if;
+  execute $q$select status, return_message, start_time from cron.job_run_details where jobid = $1 order by start_time desc limit 1$q$ into run using j.jobid;
+  insert into cp_selftest (check_name, passed, detail) values ('daily clean-up job: last run',
+    case when run.status is null then null else run.status = 'succeeded' end,
+    case when run.status is null then 'has not run yet (runs daily at 03:23 UTC)'
+         else format('%s at %s: %s', run.status, run.start_time, run.return_message) end);
+end $$;
+
 -- key rotation: the old key must stop working
 update cp_selftest_key set old_secret = secret;
 update cp_groups set secret = 'selftest-' || encode(gen_random_bytes(12), 'hex') where secret = (select old_secret from cp_selftest_key);
@@ -78,16 +145,8 @@ begin
 end $$;
 reset role;
 
--- daily clean-up job
-insert into cp_selftest (check_name, passed, detail)
-select 'daily clean-up is scheduled (pg_cron)',
-       exists (select 1 from pg_namespace where nspname = 'cron')
-         and exists (select 1 from pg_extension where extname = 'pg_cron'),
-       case when exists (select 1 from pg_extension where extname = 'pg_cron')
-            then 'pg_cron installed' else 'pg_cron not installed: old data is only deleted on saves' end;
-
 -- remove the test group (and everything in it)
 delete from cp_groups where secret like 'selftest-%';
 
-select n as "#", check_name as "check", case when passed then 'PASS' else 'FAIL' end as result, detail
+select n as "#", check_name as "check", case when passed then 'PASS' when passed is null then 'INFO' else 'FAIL' end as result, detail
 from cp_selftest order by n;

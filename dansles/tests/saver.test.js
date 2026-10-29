@@ -98,3 +98,14 @@ test('R1: rapid edits only send the newest value', async () => {
   assert.deepEqual(h.server.calls, ['C']);
   assert.equal(h.saver.status('w|f'), 'saved');
 });
+
+test('hasPending reports unsaved edits until the server acknowledged them', async () => {
+  const h = harness();
+  assert.equal(h.saver.hasPending(), false);
+  h.saver.edit('w|f', 'A');
+  assert.equal(h.saver.hasPending(), true);
+  await h.advance(450);
+  assert.equal(h.saver.hasPending(), true, 'in flight');
+  await h.release();
+  assert.equal(h.saver.hasPending(), false);
+});

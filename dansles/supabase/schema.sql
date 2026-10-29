@@ -50,7 +50,8 @@ revoke all on cp_groups, cp_families, cp_responses, cp_weeks from anon, authenti
 -- ---------- retention: one boundary everywhere ----------
 -- Answers and week records are kept for 400 days (the web app uses the same number, src/history.js).
 -- Reading shows week >= cp_retention_start(); writes for older weeks are refused; older rows are deleted
--- on every write and, where pg_cron is available, also once a day (see the end of this file).
+-- by every write function (settings, family, delete, answer, week) and, where pg_cron is available,
+-- also once a day (see the end of this file).
 
 create or replace function cp_retention_start() returns date
 language sql stable as $$ select current_date - 400 $$;
@@ -68,74 +69,98 @@ language sql security definer set search_path = public as $$
 $$;
 
 -- ---------- validation (internal) ----------
--- Each check returns true when the value has the expected shape. Unknown keys are refused.
+-- Each check returns true only when the value has the expected shape: unknown keys are refused, and a
+-- missing required field (SQL NULL) always counts as invalid (coalesce(…, false) / IS NOT TRUE).
 
 create or replace function cp_v_null(v jsonb) returns boolean
-language sql immutable as $$ select v is null or jsonb_typeof(v) = 'null' $$;
+language sql immutable as $$ select coalesce((
+    v is null or jsonb_typeof(v) = 'null'
+  ), false) $$;
 
 create or replace function cp_v_str(v jsonb, maxlen int, required boolean) returns boolean
 language sql immutable as $$
-  select case when cp_v_null(v) then not required
-              else jsonb_typeof(v) = 'string' and length(v #>> '{}') between (case when required then 1 else 0 end) and maxlen end $$;
+  select coalesce((
+    case when cp_v_null(v) then not required
+              else jsonb_typeof(v) = 'string' and length(v #>> '{}') between (case when required then 1 else 0 end) and maxlen end
+  ), false) $$;
 
 create or replace function cp_v_num(v jsonb, lo numeric, hi numeric, required boolean, whole boolean) returns boolean
 language sql immutable as $$
-  select case when cp_v_null(v) then not required
+  select coalesce((
+    case when cp_v_null(v) then not required
               else jsonb_typeof(v) = 'number' and (v #>> '{}')::numeric between lo and hi
-                   and (not whole or (v #>> '{}')::numeric = trunc((v #>> '{}')::numeric)) end $$;
+                   and (not whole or (v #>> '{}')::numeric = trunc((v #>> '{}')::numeric)) end
+  ), false) $$;
 
 create or replace function cp_v_bool(v jsonb) returns boolean
-language sql immutable as $$ select cp_v_null(v) or jsonb_typeof(v) = 'boolean' $$;
+language sql immutable as $$ select coalesce((
+    cp_v_null(v) or jsonb_typeof(v) = 'boolean'
+  ), false) $$;
 
 create or replace function cp_v_id(v jsonb) returns boolean
-language sql immutable as $$ select jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^[A-Za-z0-9_-]{1,64}$' $$;
+language sql immutable as $$ select coalesce((
+    jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^[A-Za-z0-9_-]{1,64}$'
+  ), false) $$;
 
 create or replace function cp_v_time(v jsonb, required boolean) returns boolean
 language sql immutable as $$
-  select case when cp_v_null(v) then not required
-              else jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' end $$;
+  select coalesce((
+    case when cp_v_null(v) then not required
+              else jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' end
+  ), false) $$;
 
 create or replace function cp_v_keys(v jsonb, allowed text[]) returns boolean
 language sql immutable as $$
-  select jsonb_typeof(v) = 'object' and not exists (select 1 from jsonb_object_keys(v) k where k <> all (allowed)) $$;
+  select coalesce((
+    jsonb_typeof(v) = 'object' and not exists (select 1 from jsonb_object_keys(v) k where k <> all (allowed))
+  ), false) $$;
 
 create or replace function cp_v_ids(v jsonb, maxn int) returns boolean
 language sql immutable as $$
-  select jsonb_typeof(v) = 'array' and jsonb_array_length(v) <= maxn
-     and not exists (select 1 from jsonb_array_elements(v) e where not cp_v_id(e)) $$;
+  select coalesce((
+    jsonb_typeof(v) = 'array' and jsonb_array_length(v) <= maxn
+     and not exists (select 1 from jsonb_array_elements(v) e where cp_v_id(e) is not true)
+  ), false) $$;
 
 create or replace function cp_v_leg(v jsonb) returns boolean
 language sql immutable as $$
-  select cp_v_keys(v, array['status','seats'])
+  select coalesce((
+    cp_v_keys(v, array['status','seats'])
      and (v->>'status') in ('need','self','rather_not','can','driving')
-     and cp_v_num(v->'seats', 0, 20, false, true) $$;
+     and cp_v_num(v->'seats', 0, 20, false, true)
+  ), false) $$;
 
 create or replace function cp_v_family(f jsonb) returns boolean
 language sql immutable as $$
-  select cp_v_keys(f, array['id','name','parent','kids','address','lat','lng','seats','usual','archived','updatedAt'])
+  select coalesce((
+    cp_v_keys(f, array['id','name','parent','kids','address','lat','lng','seats','usual','archived','updatedAt'])
      and cp_v_id(f->'id')
      and cp_v_str(f->'name', 80, true)
      and cp_v_str(f->'parent', 80, false)
      and jsonb_typeof(f->'kids') = 'array' and jsonb_array_length(f->'kids') between 1 and 10
      and not exists (select 1 from jsonb_array_elements(f->'kids') k
-                     where not (cp_v_keys(k, array['id','name']) and cp_v_id(k->'id') and cp_v_str(k->'name', 60, true)))
+                     where (cp_v_keys(k, array['id','name']) and cp_v_id(k->'id') and cp_v_str(k->'name', 60, true)) is not true)
      and cp_v_str(f->'address', 200, false)
      and cp_v_num(f->'lat', -90, 90, false, false)
      and cp_v_num(f->'lng', -180, 180, false, false)
      and cp_v_num(f->'seats', 0, 20, true, true)
      and (cp_v_null(f->'usual') or (cp_v_keys(f->'usual', array['to','from']) and cp_v_leg(f->'usual'->'to') and cp_v_leg(f->'usual'->'from')))
-     and cp_v_bool(f->'archived') $$;
+     and cp_v_bool(f->'archived')
+  ), false) $$;
 
 create or replace function cp_v_response(r jsonb, kid_ids jsonb) returns boolean
 language sql immutable as $$
-  select cp_v_keys(r, array['kids','to','from'])
+  select coalesce((
+    cp_v_keys(r, array['kids','to','from'])
      and cp_v_ids(r->'kids', 10)
-     and not exists (select 1 from jsonb_array_elements(r->'kids') k where not (kid_ids @> jsonb_build_array(k)))
-     and cp_v_leg(r->'to') and cp_v_leg(r->'from') $$;
+     and not exists (select 1 from jsonb_array_elements(r->'kids') k where (kid_ids @> jsonb_build_array(k)) is not true)
+     and cp_v_leg(r->'to') and cp_v_leg(r->'from')
+  ), false) $$;
 
 create or replace function cp_v_settings(s jsonb) returns boolean
 language sql immutable as $$
-  select cp_v_keys(s, array['groupName','studio','weekday','time','endTime','deadlineDaysBefore','deadlineTime','startWeek','lookbackWeeks'])
+  select coalesce((
+    cp_v_keys(s, array['groupName','studio','weekday','time','endTime','deadlineDaysBefore','deadlineTime','startWeek','lookbackWeeks'])
      and cp_v_str(s->'groupName', 80, false)
      and (cp_v_null(s->'studio') or (cp_v_keys(s->'studio', array['address','lat','lng'])
           and cp_v_str(s->'studio'->'address', 200, false)
@@ -144,31 +169,34 @@ language sql immutable as $$
      and cp_v_time(s->'time', false) and cp_v_time(s->'endTime', false) and cp_v_time(s->'deadlineTime', false)
      and cp_v_num(s->'deadlineDaysBefore', 0, 7, false, true)
      and (cp_v_null(s->'startWeek') or (jsonb_typeof(s->'startWeek') = 'string' and (s->>'startWeek') ~ '^\d{4}-\d{2}-\d{2}$'))
-     and cp_v_num(s->'lookbackWeeks', 1, 52, false, true) $$;
+     and cp_v_num(s->'lookbackWeeks', 1, 52, false, true)
+  ), false) $$;
 
 create or replace function cp_v_plan(p jsonb) returns boolean
 language plpgsql immutable as $$
 declare leg text; lp jsonb; car jsonb;
 begin
+  -- A week without a plan is fine; a plan that is present must be complete.
   if cp_v_null(p) then return true; end if;
-  if not cp_v_keys(p, array['version','week','computedAt','edited','inferred','legs','sources','fingerprints','rates']) then return false; end if;
-  if not (cp_v_bool(p->'edited') and cp_v_bool(p->'inferred')) then return false; end if;
+  if (cp_v_keys(p, array['version','week','computedAt','edited','inferred','legs','sources','fingerprints','rates'])
+      and cp_v_bool(p->'edited') and cp_v_bool(p->'inferred')
+      and jsonb_typeof(p->'legs') = 'object') is not true then return false; end if;
   foreach leg in array array['sources','fingerprints','rates'] loop
-    if not (cp_v_null(p->leg) or jsonb_typeof(p->leg) = 'object') then return false; end if;
+    if (cp_v_null(p->leg) or jsonb_typeof(p->leg) = 'object') is not true then return false; end if;
   end loop;
-  if not cp_v_keys(p->'legs', array['to','from']) then return false; end if;
+  if (cp_v_keys(p->'legs', array['to','from']) and p->'legs' ? 'to' and p->'legs' ? 'from') is not true then return false; end if;
   foreach leg in array array['to','from'] loop
     lp := p->'legs'->leg;
-    if not (cp_v_keys(lp, array['participants','cars','unassigned','seatsShort'])
-            and cp_v_ids(lp->'participants', 50) and cp_v_ids(lp->'unassigned', 50)
-            and cp_v_num(lp->'seatsShort', 0, 200, false, true)
-            and jsonb_typeof(lp->'cars') = 'array' and jsonb_array_length(lp->'cars') <= 50) then return false; end if;
+    if (cp_v_keys(lp, array['participants','cars','unassigned','seatsShort'])
+        and cp_v_ids(lp->'participants', 50) and cp_v_ids(lp->'unassigned', 50)
+        and cp_v_num(lp->'seatsShort', 0, 200, false, true)
+        and jsonb_typeof(lp->'cars') = 'array' and jsonb_array_length(lp->'cars') <= 50) is not true then return false; end if;
     for car in select * from jsonb_array_elements(lp->'cars') loop
-      if not (cp_v_keys(car, array['driverId','forced','ratherNot','seats','ownKids','riders','km'])
-              and cp_v_id(car->'driverId') and cp_v_ids(car->'riders', 20)
-              and cp_v_bool(car->'forced') and cp_v_bool(car->'ratherNot')
-              and cp_v_num(car->'seats', 0, 20, true, true) and cp_v_num(car->'ownKids', 0, 10, false, true)
-              and cp_v_num(car->'km', 0, 2000, false, false)) then return false; end if;
+      if (cp_v_keys(car, array['driverId','forced','ratherNot','seats','ownKids','riders','km'])
+          and cp_v_id(car->'driverId') and cp_v_ids(car->'riders', 20)
+          and cp_v_bool(car->'forced') and cp_v_bool(car->'ratherNot')
+          and cp_v_num(car->'seats', 0, 20, true, true) and cp_v_num(car->'ownKids', 0, 10, false, true)
+          and cp_v_num(car->'km', 0, 2000, false, false)) is not true then return false; end if;
     end loop;
   end loop;
   return true;
@@ -176,7 +204,9 @@ end $$;
 
 create or replace function cp_v_week(w jsonb) returns boolean
 language sql immutable as $$
-  select cp_v_keys(w, array['cancelled','plan']) and cp_v_bool(w->'cancelled') and cp_v_plan(w->'plan') $$;
+  select coalesce((
+    cp_v_keys(w, array['cancelled','plan']) and cp_v_bool(w->'cancelled') and cp_v_plan(w->'plan')
+  ), false) $$;
 
 create or replace function cp_check(ok boolean, what text, p_data jsonb, p_max_bytes int) returns void
 language plpgsql immutable as $$
@@ -215,15 +245,18 @@ end $$;
 
 create or replace function cp_save_settings(p_secret text, p_settings jsonb) returns void
 language plpgsql security definer set search_path = public as $$
+declare gid uuid := cp_group_id(p_secret);
 begin
+  perform cp_purge(gid);
   perform cp_check(cp_v_settings(p_settings), 'settings', p_settings, 20000);
-  update cp_groups set settings = p_settings where id = cp_group_id(p_secret);
+  update cp_groups set settings = p_settings where id = gid;
 end $$;
 
 create or replace function cp_save_family(p_secret text, p_family jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
 begin
+  perform cp_purge(gid);
   perform cp_check(cp_v_family(p_family), 'family', p_family, 20000);
   insert into cp_families (group_id, id, data, updated_at)
   values (gid, p_family->>'id', p_family - 'id' - 'updatedAt', now())
@@ -237,6 +270,7 @@ create or replace function cp_delete_family(p_secret text, p_id text) returns vo
 language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
 begin
+  perform cp_purge(gid);
   if p_id !~ '^[A-Za-z0-9_-]{1,64}$' then raise exception 'invalid family id' using errcode = '22023'; end if;
   update cp_weeks
      set data = replace((data #- array['plan','fingerprints',p_id] #- array['plan','sources',p_id] #- array['plan','rates',p_id])::text,

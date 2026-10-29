@@ -6,6 +6,10 @@
 //  - requests for one key are sent strictly one after another, newest value last;
 //  - status is 'saved' only when the server acknowledged the *latest* revision;
 //  - flush() sends a pending edit right away (used when the editor closes or the page is hidden).
+//
+// Limitation: the queue lives in memory. When the whole page is closed, flushing is best-effort:
+// the browser may stop before a request (or one queued behind it) reaches the server. The app warns
+// before closing while hasPending() is true, and tells people to wait for "Opgeslagen".
 
 export function createSaver(send, { delay = 450, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   const slots = new Map();
@@ -70,6 +74,9 @@ export function createSaver(send, { delay = 450, setTimer = setTimeout, clearTim
 
   function status(key) { return statusOf(slot(key)); }
 
+  /** True while any edit is not yet acknowledged by the server (pending, in flight or failed). */
+  function hasPending() { return [...slots.values()].some((s) => s.rev > s.ackRev); }
+
   /** The newest value edited for this key (not necessarily saved yet), or undefined. */
   function pendingValue(key) { const s = slots.get(key); return s && s.rev > s.ackRev ? s.value : undefined; }
 
@@ -80,5 +87,5 @@ export function createSaver(send, { delay = 450, setTimer = setTimeout, clearTim
     return () => s.listeners.delete(fn);
   }
 
-  return { edit, flush, retry, flushAll, status, pendingValue, subscribe };
+  return { edit, flush, retry, flushAll, status, pendingValue, subscribe, hasPending };
 }

@@ -43,15 +43,30 @@ export function sanitizeResponse(r) {
   return out;
 }
 
+const isInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+const isIds = (v) => Array.isArray(v) && v.length <= 50 && v.every((x) => typeof x === 'string' && ID.test(x));
+const optBool = (v) => v == null || typeof v === 'boolean';
+
+// Same rules as the database's cp_v_plan(): a plan is used only if it is complete and every number
+// is in range; otherwise it is dropped (the week then shows a fresh proposal) instead of breaking the page.
+function validCar(c) {
+  return obj(c) && typeof c.driverId === 'string' && ID.test(c.driverId) && isIds(c.riders) && c.riders.length <= 20
+    && isInt(c.seats, 0, 20) && (c.ownKids == null || isInt(c.ownKids, 0, 10))
+    && (c.km == null || (typeof c.km === 'number' && c.km >= 0 && c.km <= 2000))
+    && optBool(c.forced) && optBool(c.ratherNot);
+}
 function validLeg(lp) {
-  return obj(lp) && Array.isArray(lp.participants) && Array.isArray(lp.cars) && Array.isArray(lp.unassigned)
-    && lp.cars.every((c) => obj(c) && typeof c.driverId === 'string' && Array.isArray(c.riders) && Number.isFinite(c.seats));
+  return obj(lp) && isIds(lp.participants) && isIds(lp.unassigned)
+    && (lp.seatsShort == null || isInt(lp.seatsShort, 0, 200))
+    && Array.isArray(lp.cars) && lp.cars.length <= 50 && lp.cars.every(validCar);
+}
+export function validPlan(p) {
+  return obj(p) && obj(p.legs) && validLeg(p.legs.to) && validLeg(p.legs.from) && optBool(p.edited) && optBool(p.inferred);
 }
 
 export function sanitizeWeek(w) {
   if (!obj(w)) return { cancelled: false, plan: null };
-  const plan = obj(w.plan) && obj(w.plan.legs) && validLeg(w.plan.legs.to) && validLeg(w.plan.legs.from) ? w.plan : null;
-  return { cancelled: w.cancelled === true, plan };
+  return { cancelled: w.cancelled === true, plan: validPlan(w.plan) ? w.plan : null };
 }
 
 export function sanitizeState(state) {

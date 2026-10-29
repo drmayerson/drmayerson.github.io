@@ -26,3 +26,27 @@ test('R3: malformed settings fall back to defaults', () => {
   assert.equal(s.lookbackWeeks, DEFAULT_SETTINGS.lookbackWeeks);
   assert.equal(s.studio.lat, null);
 });
+
+import { sanitizeWeek } from '../src/sanitize.js';
+const legOk = () => ({ participants: ['a', 'b'], cars: [{ driverId: 'a', riders: ['b'], seats: 3, ownKids: 1, km: 2 }], unassigned: [], seatsShort: 0 });
+const planWith = (patch) => { const p = { legs: { to: legOk(), from: legOk() } }; patch(p); return p; };
+
+test('review 4: a plan with a fractional seat count is dropped, not rendered', () => {
+  const w = sanitizeWeek({ plan: planWith((p) => { p.legs.to.cars[0].seats = 1.5; }) });
+  assert.equal(w.plan, null);
+});
+
+test('review 4: incomplete or out-of-range plans are dropped; complete ones kept', () => {
+  const bad = [
+    (p) => { delete p.legs.from; },
+    (p) => { delete p.legs.to.cars[0].driverId; },
+    (p) => { p.legs.to.cars[0].riders = [7]; },
+    (p) => { p.legs.to.cars[0].seats = 99; },
+    (p) => { p.legs.to.participants = 'a,b'; },
+    (p) => { p.legs.to.cars[0].km = -1; },
+    (p) => { p.legs.to.seatsShort = 2.5; },
+  ];
+  for (const patch of bad) assert.equal(sanitizeWeek({ plan: planWith(patch) }).plan, null, patch.toString());
+  assert.ok(sanitizeWeek({ plan: planWith(() => {}) }).plan);
+  assert.equal(sanitizeWeek({ plan: {} }).plan, null);
+});

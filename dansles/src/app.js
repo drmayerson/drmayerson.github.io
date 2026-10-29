@@ -190,7 +190,7 @@ function AnswerEditor({ family, model, saver, onSaveUsual }) {
 
     <div class="row" style="justify-content:space-between">
       <span class="savestate" aria-live="polite">
-        ${saveState === 'saving' && 'Bezig met opslaan…'}
+        ${saveState === 'saving' && 'Bezig met opslaan… Sluit de app pas als hier "Opgeslagen" staat.'}
         ${saveState === 'saved' && 'Opgeslagen'}
         ${saveState === 'failed' && html`<span style="color:var(--bad)">Niet opgeslagen.</span> <button class="btn ghost small" onClick=${() => saver.retry(key)}>Opnieuw proberen</button>`}
       </span>
@@ -207,8 +207,9 @@ function AnswerEditor({ family, model, saver, onSaveUsual }) {
 function Seats({ car, model }) {
   const own = model.kidsCount(car.driverId);
   const taken = car.riders.reduce((n, id) => n + model.kidsCount(id), 0);
-  const empty = Math.max(0, car.seats - own - taken);
-  const cells = [...Array(own).fill('own'), ...Array(taken).fill('taken'), ...Array(empty).fill('')];
+  const n = (x) => Math.max(0, Math.min(20, Math.floor(Number(x) || 0)));
+  const empty = n(car.seats - own - taken);
+  const cells = [...Array(n(own)).fill('own'), ...Array(n(taken)).fill('taken'), ...Array(empty).fill('')];
   return html`<span class="seats" title=${`${own + taken} van ${car.seats} plaatsen bezet`} aria-label=${`${own + taken} van ${car.seats} plaatsen bezet`}>
     ${cells.map((c) => html`<span class=${`seat ${c}`}></span>`)}
   </span>`;
@@ -809,12 +810,19 @@ function App({ config }) {
   }
   const saver = saverRef.current;
   useEffect(() => {
-    // Send pending edits before the page goes to the background or closes.
+    // Best-effort: try to send pending edits when the page goes to the background or closes, and ask
+    // the browser to warn before closing while something is unsaved. Neither is guaranteed by browsers.
     const out = () => { if (document.visibilityState === 'hidden') saver.flushAll(); };
     const hide = () => saver.flushAll();
+    const warn = (e) => { if (saver.hasPending()) { saver.flushAll(); e.preventDefault(); e.returnValue = ''; } };
     document.addEventListener('visibilitychange', out);
     window.addEventListener('pagehide', hide);
-    return () => { document.removeEventListener('visibilitychange', out); window.removeEventListener('pagehide', hide); };
+    window.addEventListener('beforeunload', warn);
+    return () => {
+      document.removeEventListener('visibilitychange', out);
+      window.removeEventListener('pagehide', hide);
+      window.removeEventListener('beforeunload', warn);
+    };
   }, []);
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
