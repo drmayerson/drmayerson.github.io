@@ -223,3 +223,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
 @media (max-width: 380px) { .two { grid-template-columns: 1fr; } h1 { font-size: 1.4rem; } }
+
+/* ---- explainer ---- */
+.prose { display: flex; flex-direction: column; gap: 10px; max-width: 65ch; }
+.prose h3 { margin-top: 10px; }
+.prose ul, .prose ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.prose .table-wrap td { white-space: normal; }

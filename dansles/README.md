@@ -37,7 +37,7 @@ Per week, both legs chosen jointly:
 5. **Seating**: riders are distributed over the chosen cars to minimise total route length (exact dynamic programming over subsets; best stop order per car).
 6. **Shortage**: if even all possible drivers can't seat everyone, use all of them, seat as many kids as possible and report the missing seats. The UI shows a red notice and an "Ik kan … rijden" button.
 
-Weights live in `WEIGHTS` at the top of the file.
+Weights live in `WEIGHTS` at the top of the file. The in-app explainer ("Hoe werkt de planning?", linked from Planning, Historiek and Instellingen; `HowItWorks` in `src/app.js`) reads these weights directly, so keep its wording in step when changing them.
 
 ## Weekly cycle
 

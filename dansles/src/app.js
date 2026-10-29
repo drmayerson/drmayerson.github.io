@@ -1,6 +1,6 @@
 // UI (Preact + htm, no build step). Dutch interface.
 import { html, render, useState, useEffect, useMemo, useRef } from '../vendor/preact-htm.js';
-import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, LEGS } from './algorithm.js';
+import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, LEGS, WEIGHTS } from './algorithm.js';
 import { currentWeek, addDays, deadlineOf, formatDay, formatDateTime, timeLeft, pastWeeks, dayName } from './dates.js';
 import { createStore, safeLS, shareLink } from './store.js';
 import {
@@ -396,7 +396,7 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
         </section>`}
 
         ${plan && html`<section class="section">
-          <div class="section-head"><h2>Planning</h2></div>
+          <div class="section-head"><h2>Planning</h2><button class="btn ghost small" onClick=${actions.openHelp}>Hoe werkt dit?</button></div>
           ${myFam && html`<${MySummary} model=${model} me=${me} />`}
           <${PlanStatus} model=${model} onRecalc=${() => actions.recalc(week)} />
           ${LEGS.map((leg) => html`<${LegBlock} leg=${leg} model=${model} me=${me} onMove=${onMove} onVolunteer=${(l) => actions.volunteer(week, me, l)} />`)}
@@ -560,7 +560,7 @@ function HistoryView({ data, now, actions, me }) {
   const model = open ? weekModel(data, open, now) : null;
   return html`
     <header class="top"><span class="eyebrow">${s.groupName}</span><h1>Historiek</h1>
-      <p class="muted small">Beurtrol over de laatste ${s.lookbackWeeks || 16} lesweken. Wie minder vaak reed, komt eerst aan de beurt. Een rit telt pas als je een ander kind meenam.</p></header>
+      <p class="muted small">Beurtrol over de laatste ${s.lookbackWeeks || 16} lesweken. Wie minder vaak reed, komt eerst aan de beurt. Een rit telt pas als je een ander kind meenam. <button class="btn ghost small" style="padding:0" onClick=${actions.openHelp}>Hoe werkt de planning?</button></p></header>
     ${fams.length > 0 && html`<div class="table-wrap"><table>
       <thead><tr><th>Gezin</th><th class="num">Gereden</th><th>Aandeel</th></tr></thead>
       <tbody>${fams.map((f) => {
@@ -638,6 +638,12 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
     </form>
 
     <section class="section">
+      <h2>Over de planning</h2>
+      <p class="small muted">Hoe de app bepaalt wie rijdt en wie bij wie zit.</p>
+      <div class="row"><button class="btn" onClick=${actions.openHelp}>Hoe werkt de planning?</button></div>
+    </section>
+
+    <section class="section">
       <h2>Dit toestel</h2>
       <p class="small">${me ? `Je bent ingesteld als ${famLabel(data.families.find((f) => f.id === me))}.` : 'Je kijkt mee zonder gezin.'}</p>
       <div class="row"><button class="btn" onClick=${() => setMe(null)}>Kies een ander gezin</button></div>
@@ -657,6 +663,74 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
         : html`<button class="btn danger" onClick=${() => setConfirmReset(true)}>Demo terugzetten</button>`}</div>
     </section>`}
   `;
+}
+
+// ---------------------------------------------------------------- explainer
+
+function HowItWorks({ settings }) {
+  const W = WEIGHTS;
+  const weeks = settings.lookbackWeeks || 16;
+  return html`<div class="prose">
+    <p>De app maakt elke week een voorstel. Niemand kiest met de hand wie moet rijden; dezelfde regels gelden voor iedereen. Hieronder staat precies hoe dat gebeurt.</p>
+
+    <h3>1. Welke antwoorden telt de app?</h3>
+    <ul>
+      <li>Het antwoord dat een gezin voor die week invulde.</li>
+      <li>Geen antwoord? Dan het <strong>standaardantwoord</strong> van dat gezin (in te stellen bij Gezinnen).</li>
+      <li>Ook geen standaardantwoord? Dan gaan we ervan uit dat het kind een <strong>lift nodig</strong> heeft. De app rekent nooit op iemand als chauffeur die dat niet zelf aangaf.</li>
+      <li>Kiest een gezin <strong>Eigen vervoer</strong>, of gaat hun kind niet mee, dan doen ze die rit niet mee in de planning.</li>
+    </ul>
+    <p>Heen en terug worden apart ingevuld en apart gepland, maar samen afgewogen.</p>
+
+    <h3>2. Wie rijdt?</h3>
+    <p>Wie <strong>Rij sowieso</strong> koos, rijdt altijd en neemt anderen mee als er plaats is. Daarna probeert de app <em>alle</em> mogelijke combinaties van chauffeurs uit bij wie <strong>Kan rijden</strong> of <strong>Liever niet, maar kan</strong> koos, en houdt enkel de combinaties over waarin elk kind een plaats heeft. Elke combinatie krijgt strafpunten; de combinatie met het laagste totaal wint.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Strafpunten voor…</th><th class="num">Punten</th></tr></thead>
+      <tbody>
+        <tr><td>elke extra auto</td><td class="num">${W.car}</td></tr>
+        <tr><td>de beurtrol: hoe vaak deze chauffeur al reed (zie 4)</td><td class="num">0–${W.fairness}</td></tr>
+        <tr><td>een chauffeur die "liever niet" antwoordde</td><td class="num">${W.ratherNot}</td></tr>
+        <tr><td>hetzelfde gezin rijdt heen én terug</td><td class="num">${W.bothLegs}</td></tr>
+        <tr><td>elke kilometer van de routes</td><td class="num">${W.km}</td></tr>
+        <tr><td>loting bij gelijkstand (valt elke week anders uit)</td><td class="num">0–${W.jitter}</td></tr>
+      </tbody>
+    </table></div>
+    <p>Wat dat in de praktijk betekent, van belangrijk naar minder belangrijk:</p>
+    <ol>
+      <li><strong>Zo weinig mogelijk auto's.</strong> Een extra auto kost zoveel punten dat de app (bijna) altijd voor minder auto's kiest.</li>
+      <li><strong>Wie minder vaak reed, is eerst aan de beurt.</strong></li>
+      <li><strong>"Liever niet" wordt zoveel mogelijk gespaard:</strong> enkel als er anders niet genoeg plaats is, of als de anderen al bijna elke keer reden.</li>
+      <li><strong>Liefst een ander gezin heen dan terug</strong>, zodat niemand twee keer moet rijden. Wie beide ritten "Rij sowieso" koos, krijgt hiervoor geen strafpunten.</li>
+      <li><strong>Kortere routes</strong> beslissen tussen verder gelijkwaardige keuzes.</li>
+    </ol>
+    <p class="small muted">Voorbeeld: Fam. A en Fam. B kunnen allebei rijden en er is maar één auto nodig. A reed de voorbije weken 50% van de keren, B 20%. A krijgt ${Math.round(W.fairness * 0.5)} punten, B ${Math.round(W.fairness * 0.2)}: B rijdt (kilometers even buiten beschouwing gelaten). Zei B "liever niet", dan krijgt B ${Math.round(W.fairness * 0.2)} + ${W.ratherNot} = ${Math.round(W.fairness * 0.2) + W.ratherNot} punten en rijdt A.</p>
+
+    <h3>3. Wie zit bij wie?</h3>
+    <ul>
+      <li>Een chauffeur neemt altijd de eigen kinderen mee. Broers en zussen zitten samen.</li>
+      <li>De andere kinderen worden zo over de auto's verdeeld dat de <strong>totale afstand zo klein mogelijk</strong> is. Heen: van thuis, kinderen ophalen, naar de les. Terug: van de les, kinderen afzetten, naar huis. De app rekent alle verdelingen en volgordes door.</li>
+      <li>Afstanden zijn geschat: in vogelvlucht tussen de adressen op de kaart, maal 1,3. De knop "Route in Google Maps" toont de echte route.</li>
+      <li>Is er te weinig plaats, dan rijdt iedereen die kan, krijgen zoveel mogelijk kinderen een plaats, en toont de planning hoeveel plaatsen er ontbreken.</li>
+    </ul>
+
+    <h3>4. De beurtrol</h3>
+    <ul>
+      <li>De app kijkt naar de laatste ${weeks} lesweken. Weken zonder les tellen niet mee.</li>
+      <li>Per gezin telt ze hoeveel ritten (heen en terug apart) hun kind meedeed, en bij hoeveel daarvan ze zelf reden.</li>
+      <li>Een rit telt pas als <strong>gereden</strong> als je minstens één ander kind meenam. Enkel je eigen kind brengen telt niet.</li>
+      <li>Ook ritten met "Rij sowieso" tellen als gereden. Wie vaak uit zichzelf rijdt, wordt de andere weken dus minder snel gevraagd.</li>
+      <li>Nieuwe gezinnen starten rond het groepsgemiddelde, zodat ze niet meteen elke week aan de beurt zijn.</li>
+    </ul>
+    <p>De stand per gezin staat onder <strong>Historiek</strong>.</p>
+
+    <h3>5. Wanneer ligt de planning vast?</h3>
+    <ul>
+      <li><strong>Tot de deadline</strong> is de planning een voorstel dat zich aanpast bij elk nieuw antwoord.</li>
+      <li><strong>Verplaatst iemand met de hand een kind</strong>, dan blijft de planning zo staan. Veranderen er daarna antwoorden, dan verschijnt een melding met een knop om te herberekenen.</li>
+      <li><strong>Na de deadline</strong> wordt de planning vastgelegd. Ook dan geeft een latere wijziging een melding en kan iedereen herberekenen.</li>
+      <li><strong>Ging het anders dan gepland?</strong> Pas de week aan onder Historiek, zodat de beurtrol klopt.</li>
+    </ul>
+  </div>`;
 }
 
 // ---------------------------------------------------------------- app shell
@@ -682,6 +756,7 @@ function App({ config }) {
   const [offset, setOffset] = useState(0);
   const [me, setMeState] = useState(() => { const v = safeLS.get(ME_KEY); return v === null ? null : v; });
   const [toast, setToast] = useState('');
+  const [help, setHelp] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
 
@@ -764,6 +839,7 @@ function App({ config }) {
       const next = { ...s, startWeek: s.startWeek || currentWeek(s, now) };
       return run((d) => { d.settings = next; return d; }, () => store.saveSettings(next), 'Instellingen bewaard');
     },
+    openHelp: () => setHelp(true),
     resetDemo: async () => { await store.reset(); setMe(null); setOffset(0); setView('week'); await reload(); notify('Demo teruggezet'); },
   };
 
@@ -780,6 +856,7 @@ function App({ config }) {
     <nav class="tabs" aria-label="Hoofdmenu"><div class="tabs-inner">
       ${tabs.map(([v, label]) => html`<button class="tab" aria-current=${view === v ? 'page' : undefined} onClick=${() => go(v)}><${Icon} d=${ICONS[v]} />${label}</button>`)}
     </div></nav>
+    ${help && html`<${Sheet} title="Hoe werkt de planning?" onClose=${() => setHelp(false)}><${HowItWorks} settings=${data.settings} /><//>`}
     ${toast && html`<div class="toast" role="status">${toast}</div>`}
   `;
 }
