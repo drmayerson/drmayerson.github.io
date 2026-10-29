@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zwart gat camera</title>
+<meta name="description" content="Bekijk jezelf door een draaiend zwart gat: je camerabeeld wordt live afgebogen volgens de algemene relativiteitstheorie.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Grandstander:wght@800&display=swap">
+<style>
+:root{--panel:rgba(20,14,38,.82);--ink:#f3ecff;--soft:#c3b6e0;--line:rgba(190,170,240,.28);--accent:#ff6c9c;
+  --display:"Grandstander","Trebuchet MS",system-ui,sans-serif;--body:"Andika","Trebuchet MS",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#000;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.top{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:12px max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+.top>*{pointer-events:auto}
+h1{font-family:var(--display);font-size:clamp(1.2rem,4vw,1.6rem);margin:0;padding:6px 12px;border-radius:14px;background:var(--panel)}
+a.back{color:var(--ink);text-decoration:none;font-weight:700;padding:8px 12px;border-radius:14px;background:var(--panel);white-space:nowrap}
+a.back:hover,a.back:focus-visible{color:var(--accent)}
+.panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));
+  width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 90px);overflow:auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(6px)}
+.panel.hidden>*:not(.row-head){display:none}
+.row-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row-head strong{font-family:var(--display);font-size:1.05rem}
+button{font:inherit;font-weight:700;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;min-height:40px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#1b0f2c}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+label{display:flex;flex-direction:column;gap:4px}
+.lab{display:flex;justify-content:space-between;gap:8px}
+.lab span:last-child{color:var(--soft);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
+.hint{color:var(--soft);font-size:.9rem;margin:0}
+details{color:var(--soft);font-size:.92rem}
+details p{margin:6px 0 0}
+summary{cursor:pointer;color:var(--ink);font-weight:700}
+.msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:1.1rem}
+.msg.show{display:flex}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Je camerabeeld, afgebogen door een zwart gat"></canvas>
+
+<div class="top">
+  <h1>Zwart gat camera</h1>
+  <a class="back" href="../">← Alle projecten</a>
+</div>
+
+<div class="panel" id="panel">
+  <div class="row-head">
+    <strong>Instellingen</strong>
+    <button id="toggle" aria-expanded="true" aria-controls="panel">Verbergen</button>
+  </div>
+  <div class="btns">
+    <button id="camBtn" class="primary">Camera aan</button>
+    <button id="demoBtn">Voorbeeldbeeld</button>
+  </div>
+  <p class="hint" id="camNote">Je camerabeeld blijft op je eigen toestel: er wordt niets opgeslagen of verstuurd.</p>
+
+  <label>
+    <span class="lab"><span>Draaiing van het zwarte gat</span><span id="spinVal"></span></span>
+    <input type="range" id="spin" min="0" max="0.99" step="0.01" value="0.9">
+  </label>
+  <label>
+    <span class="lab"><span>Kijkhoek</span><span id="inclVal"></span></span>
+    <input type="range" id="incl" min="0" max="90" step="1" value="90">
+  </label>
+  <label>
+    <span class="lab"><span>Grootte</span><span id="massVal"></span></span>
+    <input type="range" id="mass" min="1" max="6" step="0.1" value="3">
+  </label>
+
+  <details>
+    <summary>Wat zie je?</summary>
+    <p>De zwarte vlek is de <b>schaduw</b> van het zwarte gat: licht dat daar vandaan zou moeten komen, is in het zwarte gat verdwenen.</p>
+    <p>Daarrond buigt de zwaartekracht het licht af. Je ziet jezelf vervormd, en vlak langs de schaduw zelfs een tweede keer: licht dat helemaal rond het zwarte gat is gegaan. In de donkere ring zie je sterren van opzij en van achter je.</p>
+    <p>Een <b>draaiend</b> zwart gat sleurt de ruimte rond zich mee. De schaduw schuift dan opzij en wordt aan één kant platter, en de sterren worden in een draaikolk meegetrokken. Dat zie je het best met de kijkhoek op 90° (van opzij); bij 0° kijk je langs de draai-as en blijft de schaduw rond.</p>
+    <p>Alles wordt exact uitgerekend met de formules voor lichtbanen rond een draaiend (Kerr-)zwart gat, uit het werk van Gralla &amp; Lupsasca (2020).</p>
+  </details>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<script id="frag" type="x-shader/x-fragment">
+precision highp float;
+#define M_PI 3.14159265358979
+#define D1MACH1 1.175494351e-38
+#define D1MACH2 3.402823466e+38
+#define D1MACH3 1e-7
+uniform vec2  uResolution;
+uniform vec2  uScreen;       // full screen width/height in lensing units
+uniform vec2  uCamScale;     // full camera-image width/height in lensing units (cover fit)
+uniform float M;             // black-hole mass (sets the size)
+uniform float PsiScale;      // 1 = physical bending
+uniform float uSpin;         // a/M
+uniform float uInclination;  // radians
+uniform float uRing;         // radius of the "starry" zone as a fraction of the shorter screen side
+uniform float uTol;          // below this deflection the camera image fills the whole screen
+uniform sampler2D textureft; // camera / demo image
+uniform sampler2D texturebg; // star sky, equirectangular
+uniform sampler2D uLensMap;  // precomputed map (display pass)
+
+vec2 c_p(vec2 x, vec2 y){
+    return vec2(x[0]+y[0], x[1]+y[1]);
+}
+
+vec2 c_m(vec2 x, vec2 y){
+    return vec2(x[0]*y[0] - x[1]*y[1] , x[0]*y[1] + x[1]*y[0]);
+}
+
+vec2 c_d(vec2 x, vec2 y){
+    return c_m(x, vec2(y[0], -y[1]))/(y[0]*y[0] + y[1]*y[1]);   // was pow(y,2.): undefined for y<0 in GLSL
+}
+
+vec2 c_pow(vec2 x, float y){
+    float mag = pow(sqrt(x[0]*x[0] + x[1]*x[1]), y);
+    float angle = y*(atan(x[1],x[0]));
+    return vec2(mag*cos(angle), mag*sin(angle));
+}
+
+float DRF(float X, float Y, float Z){
+
+    float ERRTOL = pow(4.0*D1MACH3, 1.0/6.0);
+    float LOLIM  = 5.0 * D1MACH1;
+    float UPLIM  = D1MACH2/5.0;
+    float C1 = 1.0/24.0;
+    float C2 = 3.0/44.0;
+    float C3 = 1.0/14.0;
+
+    float ans = 0.0;
+    if(min(min(X,Y),Z) < 0.0) {
+        return ans;
+    }
+
+    if(max(max(X,Y),Z) > UPLIM){
+        return ans;
+    }
+
+    if(min(min(X+Y,X+Z),Y+Z) < LOLIM){
+        return ans;
+    }
+
+    float XN = X;
+    float YN = Y;
+    float ZN = Z;
+    float MU = 0.;
+    float XNDEV = 0.;
+    float YNDEV = 0.;
+    float ZNDEV = 0.;
+
+    for(int it_=0; it_<60; it_++){
+        MU = (XN+YN+ZN)/3.0;
+        XNDEV = 2.0 - (MU+XN)/MU;
+        YNDEV = 2.0 - (MU+YN)/MU;
+        ZNDEV = 2.0 - (MU+ZN)/MU;
+        float EPSLON = max(max(abs(XNDEV),abs(YNDEV)),abs(ZNDEV));
+        if(EPSLON < ERRTOL){break;}
+        float XNROOT = sqrt(XN);
+        float YNROOT = sqrt(YN);
+        float ZNROOT = sqrt(ZN);
+        float LAMDA = XNROOT*(YNROOT+ZNROOT) + YNROOT*ZNROOT;
+        XN = (XN+LAMDA)*0.250;
+        YN = (YN+LAMDA)*0.250;
+        ZN = (ZN+LAMDA)*0.250;
+    }
+
+    float E2 = XNDEV*YNDEV - ZNDEV*ZNDEV;
+    float E3 = XNDEV*YNDEV*ZNDEV;
+    float S  = 1.0 + (C1*E2-0.10-C2*E3)*E2 + C3*E3;
+    ans = S/sqrt(MU);
+
+    return ans;
+}
+
+float rawF(float sinphi, float m){
+    float sinphi2 = sinphi*sinphi;                 // was pow(sinphi,2.0): undefined for sinphi<0
+    float drf = DRF(1. - sinphi2, 1. - m*sinphi2, 1.);
+    return sinphi*drf;
+}
+
+float K(float m){ return DRF(0., 1. - m, 1.);}
+
+float F(float phi, float m){
+    if(abs(phi) > M_PI/2.0){
+        // Abramowitz & Stegun (17.4.3)
+        float phi2 = phi + M_PI/2.0;
+        float angle = (phi2/M_PI);
+        return 2.0*floor(phi2 / M_PI)*K(m) - rawF(cos((angle - floor(angle))*M_PI), m);
+    }
+    return rawF(sin(phi), m);
+}
+
+float psimax(float mag){
+    // Roots of the Schwarzschild radial cubic  r^3 - b^2 r + 2 b^2 = 0  (b = mag > sqrt(27)):
+    // three real roots v1 < 0 < v3 < v4.  Computed with the trigonometric formula.
+    // (The previous version used complex cube roots whose branch depended on the
+    // sign of a rounding-noise imaginary part, i.e. on the GPU/driver: on some
+    // renderers it mislabelled the roots and every pixel turned to stars.)
+    float pp = -mag*mag, qq = 2.0*mag*mag;
+    float rr = 2.0*sqrt(-pp/3.0);
+    float th = acos(clamp(1.5*qq/pp*sqrt(-3.0/pp), -1.0, 1.0))/3.0;
+    float v4 = rr*cos(th);                      // largest root
+    float v3 = rr*cos(th - 2.0*M_PI/3.0);       // middle root (> 0)
+    float v1 = rr*cos(th - 4.0*M_PI/3.0);       // negative root
+
+    float v32 = v3;
+    float v41 = v4 - v1;
+    float v31 = v3 - v1;
+    float v42 = v4;
+
+    float ellk = v32*v41 / (v31*v42);
+    return 4.*mag*F(asin(sqrt(v31/v41)), ellk)/sqrt(v31*v42);
+}
+
+// ============================================================================
+//  KERR LENSING  (Gralla & Lupsasca, "Lensing by Kerr black holes" and
+//  "Null geodesics of the Kerr exterior").  Fully analytic: elliptic integrals
+//  in Carlson form + Jacobi amplitude.  Validated against a numerical geodesic
+//  integrator to ~1e-8 rad (double) and to <~0.03 webcam texel (float32).
+//  All quantities in units of M (M = 1) inside these functions.
+// ============================================================================
+#define K_PI 3.14159265358979
+
+// Carlson R_F(x,y,z), fixed iteration count (WebGL1-safe loop).
+float kRF(float x, float y, float z){
+    for (int i = 0; i < 6; i++) {
+        float sx = sqrt(x), sy = sqrt(y), sz = sqrt(z);
+        float l = sx*(sy + sz) + sy*sz;
+        x = (x + l)*0.25; y = (y + l)*0.25; z = (z + l)*0.25;
+    }
+    float mu = (x + y + z)/3.0;
+    float X = 1.0 - x/mu, Y = 1.0 - y/mu, Z = -(X + Y);
+    float E2 = X*Y - Z*Z, E3 = X*Y*Z;
+    return (1.0 - E2/10.0 + E3/14.0 + E2*E2/24.0 - 3.0*E2*E3/44.0)/sqrt(mu);
+}
+
+// Carlson R_C(x,y) = R_F(x,y,y), closed form (series near x = y).
+float kRC(float x, float y){
+    float q = x/y, t = 1.0 - q, g;
+    if (abs(t) < 0.1) {
+        g = 1.0 + t*(1.0/6.0 + t*(3.0/40.0 + t*(5.0/112.0 + t*(35.0/1152.0 + t*(63.0/2816.0)))));
+    } else if (t > 0.0) {
+        g = acos(sqrt(q))/sqrt(t);
+    } else {
+        float v = sqrt(-t);
+        g = log(v + sqrt(q))/v;                 // asinh(v)/v
+    }
+    return g/sqrt(y);
+}
+
+// Carlson R_J(x,y,z,p), p > 0.
+float kRJ(float x, float y, float z, float p){
+    float s = 0.0, fac = 1.0;
+    for (int i = 0; i < 6; i++) {
+        float sx = sqrt(x), sy = sqrt(y), sz = sqrt(z);
+        float l = sx*(sy + sz) + sy*sz;
+        float al = p*(sx + sy + sz) + sx*sy*sz;
+        s += fac*kRC(al*al, p*(p + l)*(p + l));
+        fac *= 0.25;
+        x = (x + l)*0.25; y = (y + l)*0.25; z = (z + l)*0.25; p = (p + l)*0.25;
+    }
+    float mu = (x + y + z + 2.0*p)/5.0;
+    float X = (mu - x)/mu, Y = (mu - y)/mu, Z = (mu - z)/mu, P = (mu - p)/mu;
+    float ea = X*(Y + Z) + Y*Z, eb = X*Y*Z, ec = P*P;
+    float e2 = ea - 3.0*ec, e3 = eb + 2.0*P*(ea - ec);
+    float e4 = (2.0*eb + P*(ea - 3.0*ec))*P, e5 = eb*ec;
+    float S = 1.0 - 3.0*e2/14.0 + e3/6.0 + 9.0*e2*e2/88.0 - 3.0*e4/22.0
+            - 9.0*e2*e3/52.0 + 3.0*e5/26.0;
+    return 3.0*s + fac*S/(mu*sqrt(mu));
+}
+
+// Legendre F(phi|m), |phi| <= pi/2.
+float kF(float phi, float m){
+    float s = sin(phi), c = cos(phi);
+    return s*kRF(c*c, 1.0 - m*s*s, 1.0);
+}
+
+// Legendre Pi(n;phi|m), |phi| <= pi/2, with eps = 1-n passed separately so that
+// 1 - n sin^2 = cos^2 + eps sin^2 has no cancellation (pole-grazing rays).
+float kPi(float n, float eps, float phi, float m){
+    float s = sin(phi), c = cos(phi), s2 = s*s, c2 = c*c, d = 1.0 - m*s2;
+    return s*kRF(c2, d, 1.0) + (n/3.0)*s*s2*kRJ(c2, d, 1.0, c2 + eps*s2);
+}
+
+// Complete Pi(n|m).
+float kPiC(float n, float eps, float m){
+    float d = 1.0 - m;
+    return kRF(0.0, d, 1.0) + (n/3.0)*kRJ(0.0, d, 1.0, eps);
+}
+
+// Jacobi amplitude am(u|m) for m <= 0 (unwrapped, any real u).
+// Uses sn(u|m) = sd(v|mu)/sqrt(1-m), cn(u|m) = cd(v|mu), v = u sqrt(1-m),
+// mu = -m/(1-m) in [0,1) (A&S 16.10), and the descending AGM for am(v|mu).
+float kAmNeg(float u, float m){
+    float q  = sqrt(1.0 - m);
+    float mu = -m/(1.0 - m);
+    float a0 = 1.0, b0 = sqrt(1.0 - mu);
+    float a1 = 0.5*(a0 + b0), c1 = 0.5*(a0 - b0), b1 = sqrt(a0*b0);
+    float a2 = 0.5*(a1 + b1), c2 = 0.5*(a1 - b1), b2 = sqrt(a1*b1);
+    float a3 = 0.5*(a2 + b2), c3 = 0.5*(a2 - b2);
+    float ph = 8.0*a3*u*q;
+    ph = 0.5*(ph + asin(clamp(c3/a3*sin(ph), -1.0, 1.0)));
+    ph = 0.5*(ph + asin(clamp(c2/a2*sin(ph), -1.0, 1.0)));
+    ph = 0.5*(ph + asin(clamp(c1/a1*sin(ph), -1.0, 1.0)));
+    float j = floor(ph/K_PI + 0.5);
+    float r = ph - j*K_PI;
+    return j*K_PI + atan(sin(r), q*cos(r));
+}
+
+float kCbrt(float v){ return sign(v)*pow(abs(v), 1.0/3.0); }
+
+// One Gauss-Legendre node (t, weight w on [0,1]) of the direct I_phi integral
+// (without the overall factor 2a):  u = (1-t^2)/r4,
+// integrand = (2 - a lam u) u (2/r4) / ((1 - 2u + a^2 u^2) sqrt((1-r1 u)(1-r2 u)(1-r3 u)))
+// with 1 - r3 u written as (r43 + r3 t^2)/r4 (no cancellation).
+float kIphiTerm(float t, float w, float lam, float a,
+                float r1, float r2, float r3, float r4, float r43){
+    float u = (1.0 - t*t)/r4;
+    float num = (2.0 - a*lam*u)*u*2.0/r4;
+    float den = (1.0 - 2.0*u + a*a*u*u)*sqrt((1.0 - r1*u)*(1.0 - r2*u)*(r43 + r3*t*t)/r4);
+    return w*num/den;
+}
+
+// Kerr map for a distant observer with inclination (cth = cos, sth = sin) and
+// Bardeen screen coordinates (al, be), spin a, M = 1.  Traces the ray back to the
+// celestial sphere.  Returns false if it comes from the horizon (shadow).
+// Outputs cos/sin of the source polar angle, the source azimuth relative to the
+// observer's azimuth, and the polar "sweep" angle (= psimax when a = 0).
+bool kerrCore(float al, float be, float a, float cth, float sth,
+              out float cths, out float sths, out float phs, out float sweep){
+    cths = 0.0; sths = 1.0; phs = 0.0; sweep = 0.0;
+    // measure-zero screen lines: lambda = 0 (pole crossing), eta = 0 (equator)
+    if (abs(be) < 1.0e-4) be = 1.0e-4;
+    float lam = -al*sth;
+    if (abs(lam) < 1.0e-4) lam = (lam < 0.0) ? -1.0e-4 : 1.0e-4;
+    float eta = (al*al - a*a)*cth*cth + be*be;
+    if (eta <= 0.0) return false;               // vortical: always inside the shadow
+
+    // ---- radial roots (Ferrari / Cardano, KerrGeo Eq. RadialRoots) ----
+    float A = a*a - eta - lam*lam;
+    float B = 2.0*(eta + (lam - a)*(lam - a));
+    float C = -a*a*eta;
+    float P = -A*A/12.0 - C;
+    float Q = -A/3.0*((A/6.0)*(A/6.0) - C) - B*B/8.0;
+    float disc = (P/3.0)*(P/3.0)*(P/3.0) + (Q/2.0)*(Q/2.0);
+    float s3;
+    if (disc >= 0.0) {
+        float sd = sqrt(disc);
+        s3 = kCbrt(-Q/2.0 + sd) + kCbrt(-Q/2.0 - sd);
+    } else {
+        s3 = 2.0*sqrt(-P/3.0)*cos(atan(sqrt(-disc), -Q/2.0)/3.0);
+    }
+    float z2 = s3/2.0 - A/6.0;
+    float z  = sqrt(max(z2, 1.0e-12));
+    float ip = -A/2.0 - z2 + B/(4.0*z);
+    float im = -A/2.0 - z2 - B/(4.0*z);
+    float rp = 1.0 + sqrt(max(1.0 - a*a, 0.0));   // outer horizon
+    float rm = a*a/rp;                             // inner horizon
+    if (im < 0.0) return false;                    // r3, r4 complex: from horizon
+    float sip = sqrt(max(ip, 0.0)), sim = sqrt(im);
+    float r1 = -z - sip, r2 = -z + sip, r3 = z - sim, r4 = z + sim;
+    if (r4 <= rp) return false;                    // turning point inside horizon
+
+    // ---- radial integrals, ray from infinity to r4 and back (case 2) ----
+    float r31 = r3 - r1, r41 = r4 - r1, r32 = r3 - r2, r42 = r4 - r2, r43 = 2.0*sim;
+    float sq   = sqrt(r31*r42);
+    float sphi = sqrt(r31/r41);                    // sin(phi_inf)
+    float c2r  = r43/r41;                          // cos^2(phi_inf)
+    float dr   = r43/r42;                          // 1 - k sin^2(phi_inf)
+    float Fi   = sphi*kRF(c2r, dr, 1.0);           // F(phi_inf | k)
+    float Ir   = 4.0*Fi/sq;                        // total Mino time I_r
+    // Frame-dragging integral I_phi.
+    float Iphi;
+    if (r3 < 0.9*r4) {
+        // Weak/moderate field: the paper's horizon partial fractions subtract two
+        // nearly equal terms here (float32 loses most digits), so integrate
+        // a(2r - a lam)/(Delta sqrt(R)) directly in u = 1/r = (1-t^2)/r4 with an
+        // 8-point Gauss-Legendre rule on t in [0,1]; the integrand is smooth.
+        Iphi = 0.0;
+        Iphi += kIphiTerm(0.0198550717512319, 0.0506142681451881, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.1016667612931866, 0.1111905172266872, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.2372337950418355, 0.1568533229389436, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.4082826787521751, 0.1813418916891810, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.5917173212478249, 0.1813418916891810, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.7627662049581645, 0.1568533229389436, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.8983332387068134, 0.1111905172266872, lam, a, r1, r2, r3, r4, r43);
+        Iphi += kIphiTerm(0.9801449282487681, 0.0506142681451881, lam, a, r1, r2, r3, r4, r43);
+        Iphi *= 2.0*a;
+    } else {
+        // Near the critical curve: elliptic form (KerrGeo case 2, I_+- terms).
+        float s3p = sphi*sphi*sphi;
+        float rp3 = rp - r3, rp4 = rp - r4;
+        float np_ = rp3*r41/(rp4*r31);
+        float Pip = Fi + (np_/3.0)*s3p*kRJ(c2r, dr, 1.0, r43/(r4 - rp));
+        float Ip  = 2.0*(-(2.0/sq)*(r43/(rp3*rp4))*Pip - (2.0/sq)*Fi/rp3);
+        float rm3 = rm - r3, rm4 = rm - r4;
+        float nm_ = rm3*r41/(rm4*r31);
+        float Pim = Fi + (nm_/3.0)*s3p*kRJ(c2r, dr, 1.0, r43/(r4 - rm));
+        float Im  = 2.0*(-(2.0/sq)*(r43/(rm3*rm4))*Pim - (2.0/sq)*Fi/rm3);
+        Iphi = (2.0*a/(rp - rm))*((rp - a*lam/2.0)*Ip - (rm - a*lam/2.0)*Im);
+    }
+
+    // ---- angular integrals (written without 1/a so a -> 0 is regular) ----
+    float w   = (a*a - eta - lam*lam)/2.0;         // a^2 Delta_theta
+    float wm  = w - sqrt(w*w + a*a*eta);           // a^2 u_-  (< 0)
+    float up  = -eta/wm;                           // u_+
+    float eps = lam*lam/(a*a - wm);                // 1 - u_+  (exact identity)
+    float km  = a*a*up/wm;                         // u_+/u_-  (<= 0)
+    float s   = sqrt(-wm);                         // a sqrt(-u_-)
+    float sgb = (be >= 0.0) ? 1.0 : -1.0;
+    // observer-side amplitude: sin = cth/sqrt(u+); cos^2 from the exact identity
+    // u+ - cos^2(th) = sin^2(th) beta^2/(a^2 cos^2(th) - a^2 u_-), which avoids the
+    // float32 cancellation for rays arriving almost along the spin axis.
+    float sno = cth/sqrt(up);
+    float co2 = (sth*sth*be*be)/((a*a*cth*cth - wm)*up);
+    float dno = 1.0 - km*sno*sno;
+    float Fo  = sno*kRF(co2, dno, 1.0);
+    float PiO = Fo + (up/3.0)*sno*sno*sno*kRJ(co2, dno, 1.0, co2 + eps*sno*sno);
+    float PiC = kPiC(up, eps, km);
+    float Psi = kAmNeg(Fo + sgb*s*Ir, km);         // source latitude amplitude
+    float j   = floor(Psi/K_PI + 0.5);
+    float PiPsi = 2.0*j*PiC + kPi(up, eps, Psi - j*K_PI, km);
+    float Gphi  = sgb*(PiPsi - PiO)/s;
+    cths = sqrt(up)*sin(Psi);
+    sths = sqrt(max(1.0 - cths*cths, 0.0));
+    phs  = -(Iphi + lam*Gphi);                     // phi_s - phi_o = -(I_phi + lambda G_phi)
+    sweep = (0.5*K_PI/kRF(0.0, 1.0 - km, 1.0))*s*Ir;
+    return true;
+}
+
+// Full camera geometry.  The camera sits at distance D along n_o (inclination
+// uInclination, spin axis projected to screen-up).  Each pixel's ray, arriving at
+// angle phi0 = asin(b/D), is treated as the ray of an observer at infinity along
+// its own direction, so the a = 0 limit is EXACTLY the classic Schwarzschild
+// mapping  S = sin(phi0 - deltapsi) (cos w, sin w).
+// Returns false for shadow pixels; otherwise S = screen-plane components of the
+// (PsiScale-scaled) source direction and defl = its unwrapped deflection angle.
+bool kerrLens(float mag, float omega, float phi0, out vec3 S, out float defl){
+    S = vec3(0.0, 0.0, 1.0); defl = 0.0;
+    float a  = clamp(uSpin, 0.0, 0.999);
+    float so = sin(uInclination), co = cos(uInclination);
+    vec3 n_o = vec3(so, 0.0, co);
+    vec3 e_a = vec3(0.0, 1.0, 0.0);                // screen x (Bardeen alpha)
+    vec3 e_b = vec3(-co, 0.0, so);                 // screen y (projected spin axis)
+    float cw = cos(omega), sw = sin(omega);
+    float cp = cos(phi0),  sp = sin(phi0);
+    vec3 u_w  = cw*e_a + sw*e_b;
+    vec3 nf   = cp*n_o - sp*u_w;                   // photon direction at the camera
+    vec3 bvec = (mag/M)*(sp*n_o + cp*u_w);         // impact vector, |bvec| = b/M
+    float cthf = nf.z;
+    float sthf = max(length(nf.xy), 1.0e-6);
+    vec3 ex  = vec3(nf.xy/sthf, 0.0);
+    vec3 eaf = vec3(-ex.y, ex.x, 0.0);
+    vec3 ebf = vec3(-cthf*ex.x, -cthf*ex.y, sthf);
+    float cths, sths, phs, sweep;
+    if (!kerrCore(dot(bvec, eaf), dot(bvec, ebf), a, cthf, sthf, cths, sths, phs, sweep))
+        return false;
+    vec3 ns = sths*(cos(phs)*ex + sin(phs)*eaf) + vec3(0.0, 0.0, cths);
+    vec3 nc = vec3(dot(ns, e_a), dot(ns, e_b), -dot(ns, n_o));   // camera frame
+    vec3 dc = vec3(sp*cw, sp*sw, cp);                             // look direction
+    // signed, unwrapped deflection about the Schwarzschild-like axis
+    vec3 kref = vec3(sw, -cw, 0.0);
+    vec3 c  = cross(dc, nc);
+    float cl = length(c);
+    float psi = atan(cl, dot(dc, nc));
+    vec3 k = kref;
+    if (cl > 1.0e-6) {
+        k = c/cl;
+        if (dot(k, kref) < 0.0) { k = -k; psi = -psi; }
+    }
+    float psiu = psi + 2.0*K_PI*floor((sweep - K_PI - psi)/(2.0*K_PI) + 0.5);
+    if (abs(PsiScale - 1.0) > 1.0e-4) {          // artistic bending exaggeration
+        float ang = PsiScale*psiu;
+        nc = dc*cos(ang) + cross(k, dc)*sin(ang) + k*dot(k, dc)*(1.0 - cos(ang));
+    }
+    S = nc;
+    defl = PsiScale*psiu;
+    return true;
+}
+
+
+#define CAM_D 200.0
+
+vec2 skyUV(vec3 n){
+    // equirectangular: pole along screen-up, seam straight behind the viewer
+    return vec2(0.5 + atan(n.x, n.z)/(2.0*M_PI), 1.0 - acos(clamp(n.y, -1.0, 1.0))/M_PI);
+}
+
+#ifdef MAP_PASS
+#define OUT_BLACK()   gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0)
+#define OUT_CAM(tc)   gl_FragColor = vec4(tc, 1.0, 1.0)
+#define OUT_SKY(sc)   gl_FragColor = vec4(sc, 2.0, 1.0)
+#else
+#define OUT_BLACK()   gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0)
+#define OUT_CAM(tc)   gl_FragColor = texture2D(textureft, tc)
+#define OUT_SKY(sc)   gl_FragColor = texture2D(texturebg, sc)
+#endif
+
+#ifdef DISPLAY_PASS
+void main(){
+    vec4 m = texture2D(uLensMap, gl_FragCoord.xy / uResolution);
+    if (m.z < 0.5)      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    else if (m.z < 1.5) gl_FragColor = texture2D(textureft, m.xy);
+    else                gl_FragColor = texture2D(texturebg, m.xy);
+}
+#else
+void main(){
+    float x = uScreen.x*(gl_FragCoord.x/uResolution.x - 0.5);
+    float y = uScreen.y*(gl_FragCoord.y/uResolution.y - 0.5);
+    float mag = length(vec2(x, y));
+    bool useKerr = uSpin >= 1.0e-4;
+    if (!useKerr && mag*mag <= 27.0*M*M) { OUT_BLACK(); return; }
+    float omega = atan(y, x);
+    float phi0  = asin(clamp(mag/CAM_D, 0.0, 1.0));
+    vec3 n; float defl;
+    if (useKerr) {
+        if (!kerrLens(mag, omega, phi0, n, defl)) { OUT_BLACK(); return; }
+    } else {
+        float dps = psimax(mag/M) - M_PI;
+        float vb  = phi0 - dps*PsiScale;
+        n = vec3(sin(vb)*cos(omega), sin(vb)*sin(omega), cos(vb));
+        defl = dps*PsiScale;
+    }
+    float newx =  CAM_D*n.x;
+    float newy = -CAM_D*n.y;
+    vec2 tc = vec2(1.0 - (newx/uCamScale.x + 0.5), 1.0 - (newy/uCamScale.y + 0.5));   // mirrored, like a mirror
+    float Rfov = min(uScreen.x, uScreen.y)*uRing;
+    bool inCircle = length(vec2(newx, newy)) < Rfov;
+    bool barely   = abs(defl) < uTol;
+    bool inRect   = tc.x >= 0.0 && tc.x <= 1.0 && tc.y >= 0.0 && tc.y <= 1.0;
+    if (inCircle || (barely && inRect)) { OUT_CAM(tc); }
+    else                                { OUT_SKY(skyUV(n)); }
+}
+#endif
+</script>
+
+<script>
+(function(){
+"use strict";
+const KEY = 'zwart-gat-camera-instellingen';
+const canvas = document.getElementById('c');
+const msg = document.getElementById('msg');
+function fail(t){ msg.textContent = t; msg.classList.add('show'); }
+
+let gl = canvas.getContext('webgl2', {antialias:false, premultipliedAlpha:false});
+const isGL2 = !!gl;
+if (!gl) gl = canvas.getContext('webgl', {antialias:false, premultipliedAlpha:false});
+if (!gl) { fail('Je browser ondersteunt geen WebGL, dus het zwarte gat kan niet getekend worden.'); return; }
+
+// ---------- shaders ----------
+const fragSrc = document.getElementById('frag').textContent;
+const vertSrc = 'attribute vec2 pos; void main(){ gl_Position = vec4(pos, 0.0, 1.0); }';
+function compile(type, src){
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(defs){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vertSrc));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, defs + fragSrc));
+  gl.bindAttribLocation(p, 0, 'pos'); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const a = gl.getActiveUniform(p, i); u[a.name] = gl.getUniformLocation(p, a.name); }
+  return {p, u};
+}
+let progDirect, progMap = null, progDisp = null;
+try { progDirect = program(''); }
+catch (e) { console.error(e); fail('Het zwarte gat kon niet getekend worden op dit toestel.'); return; }
+
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ---------- textures ----------
+function makeTex(wrapS){
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrapS);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+const camTex = makeTex(gl.CLAMP_TO_EDGE);
+const skyTex = makeTex(gl.REPEAT);     // power-of-two, wraps around in longitude
+function upload(tex, src){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+}
+
+// Generated star sky (equirectangular, 4096 x 2048): faint nebula + stars,
+// built from directions on the sphere so it has no seams and no pole stretching.
+function rng(seed){ return function(){ seed = (seed*16807) % 2147483647; return (seed - 1)/2147483646; }; }
+function makeSky(){
+  const W = 4096, H = 2048, r = rng(20261029);
+  const sw = 512, sh = 256, small = document.createElement('canvas'); small.width = sw; small.height = sh;
+  const sctx = small.getContext('2d'), img = sctx.createImageData(sw, sh);
+  const blobs = [];
+  for (let i = 0; i < 46; i++) {
+    const z = 2*r() - 1, ph = 2*Math.PI*r(), s = Math.sqrt(1 - z*z);
+    const hue = r();
+    blobs.push({x: s*Math.cos(ph), y: z, z: s*Math.sin(ph), k: 4 + 30*r(), a: 0.35 + 0.65*r(),
+      c: hue < 0.55 ? [40, 80, 190] : hue < 0.8 ? [120, 50, 150] : [170, 70, 60]});
+  }
+  for (let j = 0; j < sh; j++) {
+    const th = (j + 0.5)/sh*Math.PI, ny = Math.cos(th), st = Math.sin(th);
+    for (let i = 0; i < sw; i++) {
+      const lo = ((i + 0.5)/sw - 0.5)*2*Math.PI, nx = st*Math.sin(lo), nz = st*Math.cos(lo);
+      let R = 6, G = 8, B = 22;
+      for (const b of blobs) {
+        const w = b.a*Math.exp(b.k*(b.x*nx + b.y*ny + b.z*nz - 1));
+        R += w*b.c[0]*0.45; G += w*b.c[1]*0.45; B += w*b.c[2]*0.45;
+      }
+      const o = 4*(j*sw + i);
+      img.data[o] = Math.min(255, R); img.data[o+1] = Math.min(255, G); img.data[o+2] = Math.min(255, B); img.data[o+3] = 255;
+    }
+  }
+  sctx.putImageData(img, 0, 0);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.drawImage(small, 0, 0, W, H);
+  // stars: uniform on the sphere, drawn as ellipses widened by 1/sin(theta)
+  for (let i = 0; i < 9000; i++) {
+    const z = 2*r() - 1, lo = 2*Math.PI*r(), th = Math.acos(z);
+    const x = lo/(2*Math.PI)*W, y = th/Math.PI*H, st = Math.max(Math.sin(th), 0.03);
+    const m = Math.pow(r(), 6), rad = 0.7 + 2.6*m, al = 0.35 + 0.65*Math.sqrt(m);
+    const t = r(), col = t < 0.15 ? '255,210,170' : t < 0.35 ? '190,215,255' : '255,255,250';
+    ctx.fillStyle = 'rgba(' + col + ',' + al.toFixed(3) + ')';
+    for (const dx of [0, -W, W]) {
+      ctx.beginPath(); ctx.ellipse(x + dx, y, Math.min(rad/st, W/4), rad, 0, 0, 2*Math.PI); ctx.fill();
+    }
+  }
+  return c;
+}
+
+// Demo picture, used until the camera is switched on.
+function makeDemo(){
+  const W = 1280, H = 960, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const cols = ['#e0485e', '#3fae5a', '#3d6fe0', '#e8c43c'];
+  for (let q = 0; q < 4; q++) { ctx.fillStyle = cols[q]; ctx.fillRect((q % 2)*W/2, (q < 2 ? 0 : 1)*H/2, W/2, H/2); }
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 6;
+  for (let x = 0; x <= W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 8;
+  ctx.font = 'bold 120px Grandstander, Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.strokeText('VOORBEELD', W/2, H*0.2); ctx.fillText('VOORBEELD', W/2, H*0.2);
+  ctx.font = 'bold 64px Andika, Trebuchet MS, sans-serif';
+  ctx.strokeText('Zet je camera aan', W/2, H*0.82); ctx.fillText('Zet je camera aan', W/2, H*0.82);
+  // image is mirrored on screen (like a mirror), so flip the text once here
+  const m = document.createElement('canvas'); m.width = W; m.height = H;
+  const mc = m.getContext('2d'); mc.translate(W, 0); mc.scale(-1, 1); mc.drawImage(c, 0, 0);
+  return m;
+}
+
+upload(skyTex, makeSky());
+let demo = makeDemo();
+upload(camTex, demo);
+let camAspect = demo.height/demo.width;
+
+// ---------- lens map (precomputed once per setting) ----------
+let mapTex = null, mapFbo = null, mapType = null, mapW = 0, mapH = 0;
+(function setupMap(){
+  // float (or else half-float) render target; otherwise fall back to direct rendering
+  let type = null, internal = gl.RGBA;
+  if (isGL2) {
+    if (gl.getExtension('EXT_color_buffer_float')) { type = gl.FLOAT; internal = gl.RGBA32F; }
+    else if (gl.getExtension('EXT_color_buffer_half_float')) { type = gl.HALF_FLOAT; internal = gl.RGBA16F; }
+  } else if (gl.getExtension('OES_texture_float') && gl.getExtension('WEBGL_color_buffer_float')) { type = gl.FLOAT; }
+  else {
+    const h = gl.getExtension('OES_texture_half_float');
+    if (h && gl.getExtension('EXT_color_buffer_half_float')) type = h.HALF_FLOAT_OES;
+  }
+  if (!type) return;
+  try {
+    progMap = program('#define MAP_PASS\n'); progDisp = program('#define DISPLAY_PASS\n');
+    mapType = {type, internal};
+  } catch (e) { console.warn('lens map unavailable, direct rendering', e); progMap = progDisp = null; }
+})();
+function allocMap(w, h){
+  if (!mapType) return false;
+  if (mapTex && mapW === w && mapH === h) return true;
+  if (!mapTex) { mapTex = gl.createTexture(); mapFbo = gl.createFramebuffer(); }
+  gl.bindTexture(gl.TEXTURE_2D, mapTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, mapType.internal, w, h, 0, gl.RGBA, mapType.type, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, mapFbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, mapTex, 0);
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  if (!ok) { mapType = null; return false; }
+  mapW = w; mapH = h; return true;
+}
+
+// ---------- settings ----------
+const el = id => document.getElementById(id);
+const spin = el('spin'), incl = el('incl'), mass = el('mass');
+try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (s) { spin.value = s.spin; incl.value = s.incl; mass.value = s.mass; } } catch (e) {}
+function labels(){
+  el('spinVal').textContent = Number(spin.value) === 0 ? 'stil (0)' : 'a/M = ' + Number(spin.value).toFixed(2);
+  el('inclVal').textContent = incl.value + '°' + (Number(incl.value) === 90 ? ' (van opzij)' : Number(incl.value) === 0 ? ' (langs de as)' : '');
+  el('massVal').textContent = Number(mass.value).toFixed(1);
+}
+let dirty = true;
+function changed(){
+  labels(); dirty = true;
+  try { localStorage.setItem(KEY, JSON.stringify({spin: spin.value, incl: incl.value, mass: mass.value})); } catch (e) {}
+}
+[spin, incl, mass].forEach(i => i.addEventListener('input', changed));
+labels();
+
+// ---------- size ----------
+const D = 200, XSCALE = D*Math.cos(0.3);
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let w = Math.round(canvas.clientWidth*dpr), h = Math.round(canvas.clientHeight*dpr);
+  const maxPx = 2.4e6, k = Math.min(1, Math.sqrt(maxPx/(w*h)));
+  w = Math.max(1, Math.round(w*k)); h = Math.max(1, Math.round(h*k));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
+}
+window.addEventListener('resize', resize); resize();
+
+function setUniforms(P){
+  gl.useProgram(P.p);
+  // Same geometry as the exhibit: the shorter screen side spans XSCALE lensing units
+  // (the kiosk's portrait width); the corners must stay within the camera distance D.
+  const W = canvas.width, H = canvas.height;
+  let xs, ys;
+  if (W <= H) { xs = XSCALE; ys = XSCALE*H/W; } else { ys = XSCALE; xs = XSCALE*W/H; }
+  const half = Math.hypot(xs, ys)/2, lim = 195;
+  if (half > lim) { xs *= lim/half; ys *= lim/half; }
+  // camera image "covers" the screen without stretching
+  const cw = Math.max(xs, ys/camAspect), ch = cw*camAspect;
+  const set1 = (n, v) => { if (P.u[n]) gl.uniform1f(P.u[n], v); };
+  if (P.u.uResolution) gl.uniform2f(P.u.uResolution, W, H);
+  if (P.u.uScreen) gl.uniform2f(P.u.uScreen, xs, ys);
+  if (P.u.uCamScale) gl.uniform2f(P.u.uCamScale, cw, ch);
+  set1('M', Number(mass.value)); set1('PsiScale', 1.0);
+  set1('uSpin', Number(spin.value)); set1('uInclination', Number(incl.value)*Math.PI/180);
+  // Starry zone: circle of half the shorter side (as in the exhibit). Outside it the camera
+  // image fills the screen wherever the bending is small; that threshold scales with the
+  // size of the black hole (weak-field bending 4M/b at the circle's edge, plus margin), so
+  // no stray ring of stars appears at any size or screen shape.
+  const Rfov = 0.5*Math.min(xs, ys), Mv = Number(mass.value);
+  set1('uRing', 0.5); set1('uTol', 1.3*4*Mv/Rfov);
+  if (P.u.textureft) gl.uniform1i(P.u.textureft, 0);
+  if (P.u.texturebg) gl.uniform1i(P.u.texturebg, 1);
+  if (P.u.uLensMap) gl.uniform1i(P.u.uLensMap, 2);
+}
+function bindTextures(){
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, camTex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, skyTex);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, mapTex);
+}
+
+// ---------- camera ----------
+const video = document.createElement('video');
+video.muted = true; video.setAttribute('playsinline', ''); video.setAttribute('autoplay', '');
+let useVideo = false;
+el('camBtn').addEventListener('click', async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('camNote').textContent = 'Deze browser geeft geen toegang tot een camera. Je ziet het voorbeeldbeeld.'; return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
+    video.srcObject = stream; await video.play();
+    useVideo = true; dirty = true;
+    el('camBtn').textContent = 'Camera staat aan'; el('camBtn').disabled = true;
+  } catch (e) {
+    el('camNote').textContent = 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
+  }
+});
+el('demoBtn').addEventListener('click', () => {
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true;
+  el('camBtn').textContent = 'Camera aan'; el('camBtn').disabled = false;
+});
+el('toggle').addEventListener('click', () => {
+  const p = el('panel'), hide = !p.classList.contains('hidden');
+  p.classList.toggle('hidden', hide);
+  el('toggle').textContent = hide ? 'Tonen' : 'Verbergen';
+  el('toggle').setAttribute('aria-expanded', String(!hide));
+});
+
+// ---------- render loop ----------
+function frame(){
+  resize();
+  if (useVideo && video.readyState >= 2 && video.videoWidth) {
+    upload(camTex, video);
+    const a = video.videoHeight/video.videoWidth;
+    if (Math.abs(a - camAspect) > 1e-6) { camAspect = a; dirty = true; }
+  }
+  const W = canvas.width, H = canvas.height;
+  gl.viewport(0, 0, W, H);
+  if (progMap && allocMap(W, H)) {
+    if (dirty) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, mapFbo);
+      setUniforms(progMap); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      dirty = false;
+    }
+    setUniforms(progDisp); bindTextures(); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  } else {
+    setUniforms(progDirect); bindTextures(); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
