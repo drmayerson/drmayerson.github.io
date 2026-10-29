@@ -1,0 +1,21 @@
+{
+  "name": "carpool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "htm": "^3.1.1",
+    "preact": "^10.29.8"
+  },
+  "type": "module",
+  "devDependencies": {
+    "esbuild": "^0.25.12"
+  }
+}
