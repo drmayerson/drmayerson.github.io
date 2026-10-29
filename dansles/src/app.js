@@ -345,7 +345,9 @@ function Overview({ model, onPick, me }) {
   return html`<div class="list">
     ${model.fams.map((f) => {
       const a = model.answers[f.id];
-      const src = model.responses[f.id] ? null : a.source === 'usual' ? html`<span class="tag">standaard</span>` : html`<span class="tag warn">geen antwoord</span>`;
+      const src = model.responses[f.id] ? null : a.source === 'usual'
+        ? html`<span class="tag warn">nog niet bevestigd: standaardantwoord</span>`
+        : html`<span class="tag warn">geen antwoord</span>`;
       return html`<button class="item" onClick=${() => onPick(f.id)}>
         <span class="grow"><span class="name">${kidsLabel(f)}</span> <span class="sub">${famLabel(f)}${f.id === me ? ' · jij' : ''}</span>
           <span class="row" style="margin-top:4px">
@@ -358,7 +360,10 @@ function Overview({ model, onPick, me }) {
       </button>`;
     })}
   </div>
-  ${missing.length > 0 && html`<p class="small muted">${missing.length} van ${model.fams.length} gezinnen hebben nog niet geantwoord.</p>`}`;
+  ${missing.length > 0 && html`<p class="small muted">
+    Nog geen antwoord van ${missing.map((f) => famLabel(f)).join(', ')} (${missing.length} van ${model.fams.length}).
+    ${missing.some((f) => model.answers[f.id].source === 'usual') ? ' Voor wie een standaardantwoord heeft, gebruikt de planning dat tot ze zelf antwoorden.' : ''}
+  </p>`}`;
 }
 
 function WhoAreYou({ fams, onPick, goFamilies }) {
