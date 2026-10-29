@@ -3,6 +3,8 @@ import { html, render, useState, useEffect, useMemo, useRef } from '../vendor/pr
 import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, recentLessonPlans, LEGS, WEIGHTS } from './algorithm.js';
 import { currentWeek, addDays, deadlineOf, formatDay, formatDateTime, timeLeft, pastWeeks, dayName } from './dates.js';
 import { createStore, safeLS, shareLink } from './store.js';
+import { createSaver } from './saver.js';
+import { weeksToLock, visiblePastWeeks } from './history.js';
 import {
   STATUS, STATUS_ORDER, DRIVER_STATUSES, LEG, kidsLabel, kidNames, famLabel, carKids,
   scheduleText, reminderText, whatsappUrl, mapsUrl, parseCoords, geocode, newId,
@@ -44,20 +46,21 @@ function weekModel(data, week, now) {
 /** Store a plan for every week whose deadline passed without one (so history and fairness build up). */
 async function lockDue(store, data, now) {
   const s = data.settings;
-  if (!s.startWeek || activeFamilies(data).length === 0) return false;
+  if (activeFamilies(data).length === 0) return false;
   const cur = currentWeek(s, now);
-  const due = pastWeeks(s, cur);
-  if (now > deadlineOf(s, cur)) due.push(cur);
   const work = { ...data, weeks: { ...data.weeks } };
   let changed = false;
-  for (const w of due) {
+  // Only weeks inside the retention window: expired weeks are never recreated.
+  for (const w of weeksToLock(s, data.weeks, now)) {
     const rec = work.weeks[w];
-    if (rec?.cancelled || rec?.plan) continue;
     const plan = computePlan({ week: w, families: activeFamilies(data), responses: data.responses[w] || {}, stats: statsBefore(work, w), studio: s.studio });
-    // A past week nobody opened after its deadline: reconstructed from answers and today's defaults.
+    // A past week nobody opened after its deadline: rebuilt later from the answers still stored
+    // and the families' *current* default answers, so it may differ from what really happened.
     if (w !== cur) plan.inferred = true;
-    work.weeks[w] = await store.saveWeek(w, { ...(rec || {}), cancelled: false, plan }, { ifAbsent: true });
-    changed = true;
+    try {
+      work.weeks[w] = await store.saveWeek(w, { ...(rec || {}), cancelled: false, plan }, { ifAbsent: true });
+      changed = true;
+    } catch { break; } // locking is best-effort; never block loading the app
   }
   return changed;
 }
@@ -132,35 +135,33 @@ function LegPicker({ leg, value, onChange, family, kidCount, settings }) {
   </div>`;
 }
 
-function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
+function AnswerEditor({ family, model, saver, onSaveUsual }) {
   const { settings, responses, answers } = model;
+  const key = `${model.week}|${family.id}`;
   const response = responses[family.id];
   const eff = answers[family.id] || effectiveAnswer(family, response);
-  const [draft, setDraft] = useState(() => ({ kids: eff.kids, to: eff.to, from: eff.from }));
-  const [saveState, setSaveState] = useState(''); // '' | 'saving' | 'saved' | 'failed'
-  const timer = useRef(null);
-  const queue = useRef(Promise.resolve());
-  const latest = useRef(null);
-  const alive = useRef(true);
+  // Reopening while an edit is still unsaved shows that edit, not the older server state.
+  const [draft, setDraft] = useState(() => {
+    const pending = saver.pendingValue(key);
+    const a = pending ? effectiveAnswer(family, pending) : pending === null ? effectiveAnswer(family, null) : eff;
+    return { kids: a.kids, to: a.to, from: a.from };
+  });
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | failed
+  const touched = useRef(saver.status(key) !== 'idle');
 
-  // Saves run one after another, so an older answer can never overwrite a newer one on the server.
-  // "Opgeslagen" only appears after the server confirmed the latest answer.
-  const save = (next) => {
-    latest.current = next;
-    setSaveState('saving');
-    queue.current = queue.current.then(async () => {
-      if (latest.current !== next) return; // a newer answer is queued behind this one
-      const ok = await onSave(next);
-      if (alive.current && latest.current === next) setSaveState(ok ? 'saved' : 'failed');
-    });
+  // Saving lives in the shared saver (src/saver.js): ordered per family and week, survives closing
+  // this editor, and only reports "saved" when the server confirmed the newest edit.
+  useEffect(() => saver.subscribe(key, setSaveState), [key]);
+  useEffect(() => () => { saver.flush(key); }, [key]); // leaving: send a pending edit right away
+
+  const commit = (next) => { touched.current = true; setDraft(next); saver.edit(key, next); };
+  const confirmNow = () => { commit(draft); saver.flush(key); };
+  const clear = () => {
+    touched.current = true;
+    const a = effectiveAnswer(family, null);
+    setDraft({ kids: a.kids, to: a.to, from: a.from });
+    saver.edit(key, null); saver.flush(key);
   };
-  const commit = (next) => {
-    setDraft(next);
-    clearTimeout(timer.current);
-    setSaveState('saving');
-    timer.current = setTimeout(() => save(next), 450);
-  };
-  useEffect(() => () => { alive.current = false; clearTimeout(timer.current); }, []);
 
   const kids = family.kids || [];
   const going = draft.kids.length > 0;
@@ -168,11 +169,11 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
   const sameAsUsual = family.usual && JSON.stringify({ to: family.usual.to, from: family.usual.from }) === JSON.stringify({ to: draft.to, from: draft.from });
 
   return html`<div class="stack" style="gap:16px">
-    ${eff.source !== 'answer' && !saveState && html`<div class="notice warn">
+    ${eff.source !== 'answer' && !touched.current && html`<div class="notice warn">
       <p><strong>Nog niet ingevuld voor deze week.</strong> ${eff.source === 'usual'
         ? 'Zonder antwoord gebruiken we jullie standaardantwoord, zoals hieronder.'
         : `Zonder antwoord gaan we ervan uit dat ${kidsLabel(family)} een lift nodig heeft.`}</p>
-      <div class="row"><button class="btn primary" onClick=${() => commit(draft)}>Klopt, bevestig</button></div>
+      <div class="row"><button class="btn primary" onClick=${confirmNow}>Klopt, bevestig</button></div>
     </div>`}
 
     <div class="stack">
@@ -191,11 +192,11 @@ function AnswerEditor({ family, model, onSave, onSaveUsual, onClear }) {
       <span class="savestate" aria-live="polite">
         ${saveState === 'saving' && 'Bezig met opslaan…'}
         ${saveState === 'saved' && 'Opgeslagen'}
-        ${saveState === 'failed' && html`<span style="color:var(--bad)">Niet opgeslagen.</span> <button class="btn ghost small" onClick=${() => save(draft)}>Opnieuw proberen</button>`}
+        ${saveState === 'failed' && html`<span style="color:var(--bad)">Niet opgeslagen.</span> <button class="btn ghost small" onClick=${() => saver.retry(key)}>Opnieuw proberen</button>`}
       </span>
       <div class="row">
         ${going && !sameAsUsual && html`<button class="btn ghost" onClick=${() => onSaveUsual({ to: draft.to, from: draft.from })}>Bewaar als standaardantwoord</button>`}
-        ${response && html`<button class="btn ghost" onClick=${onClear}>Wis antwoord</button>`}
+        ${response && html`<button class="btn ghost" onClick=${clear}>Wis antwoord</button>`}
       </div>
     </div>
   </div>`;
@@ -409,7 +410,7 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
           <div class="section-head"><h2>Jouw antwoord</h2><button class="btn ghost small" onClick=${() => setMe(null)}>Niet ${myFam.name}?</button></div>
           <div class="card mine">
             <${AnswerEditor} key=${`${me}|${week}`} family=${myFam} model=${model}
-              onSave=${(r) => actions.saveResponse(week, me, r)} onSaveUsual=${(u) => actions.saveUsual(me, u)} onClear=${() => actions.clearResponse(week, me)} />
+              saver=${actions.saver} onSaveUsual=${(u) => actions.saveUsual(me, u)} />
           </div>
         </section>`}
 
@@ -444,7 +445,7 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
     ${editing && byId[editing] && html`<${Sheet} title=${`Antwoord van ${famLabel(byId[editing])}`} onClose=${() => setEditing(null)}>
       ${editing !== me && html`<p class="muted small">Je vult in voor een ander gezin, bijvoorbeeld als ze het via WhatsApp lieten weten.</p>`}
       <${AnswerEditor} key=${`${editing}|${week}`} family=${byId[editing]} model=${model}
-        onSave=${(r) => actions.saveResponse(week, editing, r)} onSaveUsual=${(u) => actions.saveUsual(editing, u)} onClear=${() => actions.clearResponse(week, editing)} />
+        saver=${actions.saver} onSaveUsual=${(u) => actions.saveUsual(editing, u)} />
     <//>`}
   `;
 }
@@ -472,7 +473,7 @@ function LocationField({ idPrefix, value, onChange }) {
     <div class="field">
       <label for=${`${idPrefix}-addr`}>Adres</label>
       <div class="row">
-        <input class="input grow" id=${`${idPrefix}-addr`} value=${value.address || ''} placeholder="Straat 12, 3090 Overijse"
+        <input class="input grow" id=${`${idPrefix}-addr`} maxlength="200" value=${value.address || ''} placeholder="Straat 12, 3090 Overijse"
           onInput=${(e) => onChange({ ...value, address: e.target.value })} />
         <button type="button" class="btn" onClick=${lookup} disabled=${busy}>${busy ? 'Zoeken…' : 'Zoek op kaart'}</button>
       </div>
@@ -506,13 +507,13 @@ function FamilyForm({ family, settings, onSave, onDelete, onCancel }) {
   const usual = f.usual || { to: { status: 'need' }, from: { status: 'need' } };
   return html`<form class="stack" style="gap:14px" onSubmit=${(e) => { e.preventDefault(); save(); }}>
     <div class="two">
-      <div class="field"><label for="fam-name">Gezinsnaam</label><input class="input" id="fam-name" value=${f.name} placeholder="Peeters" onInput=${(e) => set({ name: e.target.value })} /></div>
-      <div class="field"><label for="fam-parent">Ouder(s)</label><input class="input" id="fam-parent" value=${f.parent} placeholder="Sarah" onInput=${(e) => set({ parent: e.target.value })} /></div>
+      <div class="field"><label for="fam-name">Gezinsnaam</label><input class="input" id="fam-name" maxlength="80" value=${f.name} placeholder="Peeters" onInput=${(e) => set({ name: e.target.value })} /></div>
+      <div class="field"><label for="fam-parent">Ouder(s)</label><input class="input" id="fam-parent" maxlength="80" value=${f.parent} placeholder="Sarah" onInput=${(e) => set({ parent: e.target.value })} /></div>
     </div>
     <div class="field">
       <span class="label">Kind(eren) in de dansles</span>
       ${f.kids.map((k, i) => html`<div class="row">
-        <input class="input grow" id=${`kid-name-${k.id}`} aria-label="Naam kind" value=${k.name} placeholder="Voornaam"
+        <input class="input grow" id=${`kid-name-${k.id}`} aria-label="Naam kind" maxlength="60" value=${k.name} placeholder="Voornaam"
           onInput=${(e) => set({ kids: f.kids.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} />
         ${f.kids.length > 1 && html`<button type="button" class="btn ghost" onClick=${() => set({ kids: f.kids.filter((_, j) => j !== i) })}>Verwijder</button>`}
       </div>`)}
@@ -569,7 +570,7 @@ function FamiliesView({ data, actions, me, setMe }) {
 function HistoryView({ data, now, actions, me }) {
   const s = data.settings;
   const cur = currentWeek(s, now);
-  const weeks = pastWeeks(s, cur).reverse();
+  const weeks = visiblePastWeeks(s, cur, now).reverse();
   const stats = statsBefore(data, cur);
   const fams = activeFamilies(data);
   const mean = (() => { const L = fams.reduce((n, f) => n + stats[f.id].legs, 0); const D = fams.reduce((n, f) => n + stats[f.id].drives, 0); return L ? D / L : 0; })();
@@ -611,7 +612,7 @@ function HistoryView({ data, now, actions, me }) {
     ${open && html`<${Sheet} title=${formatDay(open)} onClose=${() => setOpen(null)}>
       ${model.cancelled
         ? html`<p>Geen les deze week.</p><div class="row"><button class="btn" onClick=${() => actions.toggleCancelled(open)}>Toch les</button></div>`
-        : html`${model.plan?.inferred && !model.plan?.edited && html`<div class="notice warn small"><p><strong>Achteraf berekend.</strong> Niemand opende de app na de deadline van deze week, dus de planning werd later gemaakt uit de antwoorden en de standaardantwoorden van toen. Ze telt mee voor de beurtrol; klopt ze niet, pas ze dan hieronder aan.</p></div>`}
+        : html`${model.plan?.inferred && !model.plan?.edited && html`<div class="notice warn small"><p><strong>Achteraf berekend.</strong> Niemand opende de app na de deadline van deze week. De planning werd later gemaakt uit de antwoorden die voor deze week bewaard waren, en voor wie niet antwoordde uit het <em>huidige</em> standaardantwoord. Ze kan dus afwijken van wat er echt gebeurde. Ze telt mee voor de beurtrol; klopt ze niet, pas ze dan hieronder aan.</p></div>`}
           <p class="muted small">Klopt dit niet met wat er echt gebeurde? Verplaats kinderen zodat de beurtrol juist blijft.</p>
           ${model.plan && LEGS.map((leg) => html`<${LegBlock} leg=${leg} model=${model} me=${me} onMove=${(l, id) => setMove({ leg: l, id })} onVolunteer=${null} />`)}
           <div class="row"><button class="btn ghost" onClick=${() => actions.toggleCancelled(open)}>Er was geen les</button></div>`}
@@ -632,7 +633,7 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
   return html`
     <header class="top"><span class="eyebrow">${data.settings.groupName}</span><h1>Instellingen</h1></header>
     <form class="stack" style="gap:16px" onSubmit=${(e) => { e.preventDefault(); actions.saveSettings(s); }}>
-      <div class="field"><label for="set-name">Naam van de groep</label><input class="input" id="set-name" value=${s.groupName} onInput=${(e) => set({ groupName: e.target.value })} /></div>
+      <div class="field"><label for="set-name">Naam van de groep</label><input class="input" id="set-name" maxlength="80" value=${s.groupName} onInput=${(e) => set({ groupName: e.target.value })} /></div>
       <div class="two">
         <div class="field"><label for="set-day">Lesdag</label>
           <select class="input" id="set-day" value=${s.weekday} onChange=${(e) => set({ weekday: +e.target.value })}>
@@ -686,8 +687,9 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
       <div class="prose small">
         <p><strong>Wat wordt bewaard:</strong> gezinsnaam, voornaam van de ouder(s) en kinderen, adres en kaartlocatie, aantal plaatsen, de antwoorden per week en de planningen.</p>
         <p><strong>Wie kan het zien:</strong> iedereen met de uitnodigingslink, en wie toegang heeft tot het databaseaccount van deze app. De gegevens gaan versleuteld over het internet, maar zijn niet end-to-end versleuteld. Er wordt niet bijgehouden wie wat aanpaste.</p>
-        <p><strong>Andere diensten:</strong> "Zoek op kaart" stuurt het ingetypte adres naar OpenStreetMap. "Route in Google Maps" opent de route bij Google. De WhatsApp-knoppen geven de berichttekst door aan WhatsApp, zonder groepssleutel.</p>
-        <p><strong>Hoe lang:</strong> antwoorden en planningen ouder dan ongeveer 13 maanden worden automatisch gewist. Een gezin verwijderen wist het gezin en hun antwoorden; in oude planningen blijft enkel een naamloze code over, zodat de beurtrol van de anderen klopt.</p>
+        <p><strong>Waar:</strong> de app zelf (pagina, code en lettertypes) komt van drmayerson.github.io. De gegevens staan in een database bij Supabase; laden en opslaan gaat daarheen. "Zoek op kaart" stuurt het ingetypte adres naar OpenStreetMap. "Route in Google Maps" opent de route bij Google. De WhatsApp-knoppen geven de berichttekst door aan WhatsApp, zonder groepssleutel.</p>
+        <p><strong>Hoe lang:</strong> antwoorden en weekplanningen worden 400 dagen bewaard en daarna gewist: bij elke wijziging in de app, en dagelijks als de database dat ondersteunt. Oudere weken worden ook nooit opnieuw aangemaakt.</p>
+        <p><strong>Een gezin verwijderen</strong> wist het gezin (namen, adres, standaardantwoord) en al hun antwoorden. In bewaarde weekplanningen wordt hun code vervangen door "verwijderd gezin" en worden hun eigen gegevens daarin (antwoordsamenvatting, beurtrolcijfer) gewist. Wat blijft staan: dat er in die week een gezin meereed of reed en hoeveel plaatsen er waren, zodat de beurtrol van de anderen klopt. Wie de groep kent, kan daar soms nog uit afleiden wie het was.</p>
       </div>
     </section>
 
@@ -765,7 +767,7 @@ function HowItWorks({ settings }) {
       <li><strong>Verplaatst iemand met de hand een kind</strong>, dan blijft de planning zo staan. Veranderen er daarna antwoorden, dan verschijnt een melding met een knop om te herberekenen.</li>
       <li><strong>Na de deadline</strong> wordt de planning vastgelegd. Ook dan geeft een latere wijziging een melding en kan iedereen herberekenen.</li>
       <li><strong>Ging het anders dan gepland?</strong> Pas de week aan onder Historiek, zodat de beurtrol klopt.</li>
-      <li><strong>Opende niemand de app na de deadline van een week?</strong> Dan maakt de app die planning later alsnog, uit de antwoorden en standaardantwoorden. Zo'n week staat in Historiek als "achteraf berekend" en kan je daar aanpassen.</li>
+      <li><strong>Opende niemand de app na de deadline van een week?</strong> Dan maakt de app die planning later alsnog, uit de antwoorden die bewaard waren en de <em>huidige</em> standaardantwoorden. Dat kan afwijken van wat er echt gebeurde. Zo'n week staat in Historiek als "achteraf berekend" en kan je daar aanpassen.</li>
     </ul>
   </div>`;
 }
@@ -797,6 +799,23 @@ function App({ config }) {
   const [offline, setOffline] = useState(false);
   const dataRef = useRef(null);
   dataRef.current = data;
+  const actionsRef = useRef(null);
+  const saverRef = useRef(null);
+  if (!saverRef.current) {
+    saverRef.current = createSaver((key, value) => {
+      const [w, fid] = key.split('|');
+      return actionsRef.current.writeResponse(w, fid, value);
+    });
+  }
+  const saver = saverRef.current;
+  useEffect(() => {
+    // Send pending edits before the page goes to the background or closes.
+    const out = () => { if (document.visibilityState === 'hidden') saver.flushAll(); };
+    const hide = () => saver.flushAll();
+    document.addEventListener('visibilitychange', out);
+    window.addEventListener('pagehide', hide);
+    return () => { document.removeEventListener('visibilitychange', out); window.removeEventListener('pagehide', hide); };
+  }, []);
   const [now, setNow] = useState(() => new Date());
   const toastTimer = useRef(null);
 
@@ -854,8 +873,11 @@ function App({ config }) {
   const weekRec = (w) => data.weeks[w] || { cancelled: false, plan: null };
 
   const actions = {
-    saveResponse: (w, fid, r) => run((d) => { (d.responses[w] ??= {})[fid] = r; return d; }, () => store.saveResponse(w, fid, r)),
-    clearResponse: (w, fid) => run((d) => { if (d.responses[w]) delete d.responses[w][fid]; return d; }, () => store.saveResponse(w, fid, null), 'Antwoord gewist'),
+    saver,
+    // Used by the saver only; r === null clears the answer. Returns true when the server stored it.
+    writeResponse: (w, fid, r) => run(
+      (d) => { if (r === null) { if (d.responses[w]) delete d.responses[w][fid]; } else (d.responses[w] ??= {})[fid] = r; return d; },
+      () => store.saveResponse(w, fid, r)),
     saveUsual: (fid, usual) => {
       const f = { ...data.families.find((x) => x.id === fid), usual };
       return run((d) => { d.families = d.families.map((x) => (x.id === fid ? f : x)); return d; }, () => store.saveFamily(f), 'Standaardantwoord bewaard');
@@ -864,7 +886,8 @@ function App({ config }) {
       const f = data.families.find((x) => x.id === fid);
       const a = weekModel(data, w, now).answers[fid];
       const r = { kids: a.kids, to: a.to, from: a.from, [leg]: { status: 'can', seats: Math.max(f.seats ?? 3, a.kids.length) } };
-      return run((d) => { (d.responses[w] ??= {})[fid] = r; return d; }, () => store.saveResponse(w, fid, r), 'Bedankt! Planning aangepast');
+      saver.edit(`${w}|${fid}`, r);
+      return saver.flush(`${w}|${fid}`).then(() => notify(saver.status(`${w}|${fid}`) === 'saved' ? 'Bedankt! Planning aangepast' : 'Niet opgeslagen. Probeer opnieuw.'));
     },
     move: (w, leg, id, to) => {
       const m = weekModel(data, w, now);
@@ -896,6 +919,7 @@ function App({ config }) {
     },
     resetDemo: async () => { await store.reset(); setMe(null); setOffset(0); setView('week'); await reload(); notify('Demo teruggezet'); },
   };
+  actionsRef.current = actions;
 
   const go = (v) => { setView(v); window.scrollTo(0, 0); };
   const tabs = [['week', 'Deze week'], ['families', 'Gezinnen'], ['history', 'Historiek'], ['settings', 'Instellingen']];

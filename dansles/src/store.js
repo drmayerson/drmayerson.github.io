@@ -6,6 +6,7 @@
 //   { settings, families: [...], responses: { [week]: { [familyId]: data } }, weeks: { [week]: data } }
 
 import { buildDemoState } from './demo-data.js';
+import { sanitizeState, sanitizeSettings } from './sanitize.js';
 
 const KEY_STORAGE = 'carpool.key';
 const DEMO_STORAGE = 'carpool.demo.v1';
@@ -73,12 +74,12 @@ function supabaseStore(config, key) {
       for (const r of raw.responses || []) (responses[r.week] ??= {})[r.familyId] = r.data;
       const weeks = {};
       for (const w of raw.weeks || []) weeks[w.week] = w.data;
-      return {
-        settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
+      return sanitizeState({
+        settings: sanitizeSettings(raw.settings, DEFAULT_SETTINGS),
         families: raw.families || [],
         responses,
         weeks,
-      };
+      });
     },
     saveSettings: (settings) => call('cp_save_settings', { p_settings: settings }),
     saveFamily: (family) => call('cp_save_family', { p_family: family }),
@@ -103,7 +104,7 @@ function demoStore() {
   const clone = (x) => JSON.parse(JSON.stringify(x));
   return {
     mode: 'demo',
-    async load() { return clone({ ...state, settings: { ...DEFAULT_SETTINGS, ...state.settings } }); },
+    async load() { return sanitizeState(clone({ ...state, settings: sanitizeSettings(state.settings, DEFAULT_SETTINGS) })); },
     async saveSettings(s) { state.settings = clone(s); write(); },
     async saveFamily(f) {
       const i = state.families.findIndex((x) => x.id === f.id);

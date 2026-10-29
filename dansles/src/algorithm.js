@@ -76,7 +76,8 @@ export function effectiveAnswer(family, response) {
 
 export function answerFingerprint(a) {
   const leg = (l) => `${l.status}${l.seats ?? ''}`;
-  return `${[...a.kids].sort().join(',')}|${leg(a.to)}|${leg(a.from)}`;
+  // Planning only depends on how many kids go, so no child identifiers are stored in plans.
+  return `${a.kids.length}|${leg(a.to)}|${leg(a.from)}`;
 }
 
 // ---------- fairness ----------
