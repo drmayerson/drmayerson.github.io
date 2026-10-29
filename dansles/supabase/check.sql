@@ -9,6 +9,14 @@ create temp table if not exists cp_selftest_key (secret text, old_secret text);
 truncate cp_selftest_key;
 insert into cp_groups (secret) values ('selftest-' || encode(gen_random_bytes(12), 'hex'));
 insert into cp_selftest_key (secret) select secret from cp_groups where secret like 'selftest-%' order by created_at desc limit 1;
+-- Scratch tables for this session only (they disappear when the session ends). Row-level security is
+-- on with a policy that lets the test role write its results, so the editor's RLS warning doesn't apply.
+alter table cp_selftest enable row level security;
+alter table cp_selftest_key enable row level security;
+drop policy if exists cp_selftest_all on cp_selftest;
+drop policy if exists cp_selftest_key_all on cp_selftest_key;
+create policy cp_selftest_all on cp_selftest for all using (true) with check (true);
+create policy cp_selftest_key_all on cp_selftest_key for all using (true) with check (true);
 grant all on cp_selftest, cp_selftest_key to anon;
 grant usage on sequence cp_selftest_n_seq to anon;
 
