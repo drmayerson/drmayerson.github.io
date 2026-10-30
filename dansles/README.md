@@ -91,6 +91,8 @@ tools/build-demo.mjs   single-file demo build (dist/) for previews
 
 ## Ideas not built yet
 
+- **Child with two homes (separated parents)** — discussed 30 Oct 2026, deferred. For now: one family. Planned design: optional second home on a family (label, address, coordinates, seats, own standaardantwoord); per week "Deze week bij: …" with a fixed rhythm (e.g. alternating weekly from a start date) and a per-week override; optionally separate fairness per home. Backward compatible (only new optional fields; no data migration), but `schema.sql` must be updated and re-run *before* the front end is deployed, because `cp_v_family`/`cp_v_response` refuse unknown keys and `src/sanitize.js` strips them.
+
 - Push/email reminders (would need a server-side scheduled job; WhatsApp share covers it for now).
 - Calendar export per driver.
 - Per-kid participation per leg (currently per family per week; *Eigen vervoer* covers one-way exceptions).
