@@ -152,7 +152,7 @@ The **scaled** column is the one checked against the target (see `DECISIONS.md`)
 
 Scan: 600 radii log-spaced in r − r₊, 181 θ, up to r = 1000. Table: `dev/reports/m1_validity.json`; method: `dev/scripts/validityScan.mjs`.
 
-- **Johannsen:** valid down to the horizon for every α13 > −r₊³ tested, up to α13 = 100, for a ∈ [0, 0.998]. There is **no upper bound**. The lower bound is −r₊³(a): −8 at a = 0, −2.96 at a = 0.9, −1.20 at a = 0.998. Proposed slider: (−r₊³(a), 10], lower end clamped per spin.
+- **Johannsen:** valid down to the horizon for every α13 tested, from −8 up to 100, for a ∈ [0, 0.998] (**corrected below**: this grid missed a thin strip next to −r₊³). There is **no upper bound**. The lower bound is −r₊³(a): −8 at a = 0, −2.96 at a = 0.9, −1.20 at a = 0.998. Proposed slider: (−r₊³(a), 10], lower end clamped per spin.
 - **Manko–Novikov:** for **every α3 ≠ 0** there is a region just outside r₊ with CTCs (g_φφ ≤ 0), or with non-finite values at a = 0 (overflow). Its outer edge, r_valid / r₊ − 1, is symmetric in ±α3:
 
   | a \ abs(α3) | 0.01 | 0.03 | 0.1 | 0.2 | 0.5 | 1 | 2 |
@@ -195,3 +195,21 @@ Scan: 600 radii log-spaced in r − r₊, 181 θ, up to r = 1000. Table: `dev/re
   - the Johannsen α13 slider range;
   - confirmation of the scaled parity measure;
   - excluding `dev/node_modules` from Dropbox sync.
+
+### Correction: Johannsen lower bound (2026-11-03, after CHECKPOINT M1)
+
+The slider test showed that the M1 claim "Johannsen is valid for every α13 > −r₊³" is **wrong** close to the bound. The α13 grid of the scan (−8, −4, −2, −1, …) missed that strip.
+
+- For spinning holes, with α13 within about 0.6% of −r₊³, a thin CTC band (g_φφ ≤ 0) appears just outside the horizon. At a = 0.9 and α13 = −0.999 r₊³ it reaches 1.014 r₊, beyond the 1.01 r₊ termination.
+- The true lower bound for "valid outside 1.01 r₊" (bisection; 800 radii × 361 θ):
+
+  | a | −r₊³ | valid for α13 ≥ |
+  |---|---|---|
+  | 0, 0.3, 0.5 | −8, −7.460, −6.498 | the whole range > −r₊³ |
+  | 0.7 | −5.0366 | −5.0253 (0.9978 × −r₊³) |
+  | 0.9 | −2.9605 | −2.9439 (0.9944 × −r₊³) |
+  | 0.94 | −2.4124 | −2.4025 (0.9959 × −r₊³) |
+  | 0.99, 0.998, 0.999 | −1.486, −1.202, −1.140 | the whole range > −r₊³ |
+
+  At a = 0.9, a 0.01-step sweep from −2.96 to 10 finds only α13 = −2.96 and −2.95 invalid.
+- So α13 ≥ −0.99 r₊³ is valid at every tested spin. The slider bound (−r₊³(a), 10] accepted at the checkpoint therefore needs a small change; the user is asked.
