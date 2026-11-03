@@ -213,3 +213,17 @@ The slider test showed that the M1 claim "Johannsen is valid for every α13 > �
 
   At a = 0.9, a 0.01-step sweep from −2.96 to 10 finds only α13 = −2.96 and −2.95 invalid.
 - So α13 ≥ −0.99 r₊³ is valid at every tested spin. The slider bound (−r₊³(a), 10] accepted at the checkpoint therefore needs a small change; the user is asked.
+- **Resolved:** the user chose a lower end of **−0.99 r₊³(a)**, and the slider is now [−0.99 r₊³(a), 10].
+  - Fine check at that endpoint: 800 radii × 361 θ, for every a from 0 to 0.999 in steps of 0.01.
+  - No point is invalid outside 1.01 r₊.
+  - The widest CTC band reaches 1.0056 r₊, at a = 0.87, so the margin to the termination radius is 0.4%.
+  - Johannsen keeps FOORT's 1.01 r₊ termination. 42 of 42 Vitest tests pass.
+
+### M1 closed (2026-11-03)
+
+User decisions at this checkpoint, all recorded in `DECISIONS.md`:
+- MN termination at 1.01 r_valid;
+- Johannsen α13 ∈ [−0.99 r₊³, 10];
+- parity judged on the scaled measure.
+
+Still optional: excluding `dev/node_modules` from Dropbox sync. Next is M2 (CPU reference tracer + FOORT golden images), which waits for the user's go-ahead.

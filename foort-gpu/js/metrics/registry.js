@@ -8,7 +8,9 @@ import { createST3Cr, st3crLambdaMax } from './st3cr.js';
 import { createST3CrBH } from './st3crBH.js';
 
 /**
- * @typedef {{name:string, label:string, min:number, max:number, default:number, scale?:'linear'|'log', fixed?:boolean}} ParamSpec
+ * @typedef {{name:string, label:string, min:number, max:number, default:number, scale?:'linear'|'log', fixed?:boolean,
+ *   bounds?:(params:Record<string, number>) => {min:number, max:number}}} ParamSpec
+ *   `min`/`max` are the widest range; `bounds`, when present, narrows it for the other current parameters.
  * @typedef {Object} MetricEntry
  * @property {string} id
  * @property {string} label
@@ -32,10 +34,14 @@ export const METRICS = [
   {
     id: 'johannsen', label: 'Johannsen', mode: 'BH',
     create: (p) => createJohannsen({ a: p.a, alpha13: p.alpha13 }),
-    // alpha13 range: lower bound -r_+^3 (spin dependent, enforced by validate()); upper bound from the M1 scan
+    // alpha13 in [-0.99 r_+^3(a), 10] (CHECKPOINT M1): closer to -r_+^3 a thin CTC band can extend
+    // beyond the 1.01 r_+ termination for spinning holes (up to 0.9944 x -r_+^3 at a = 0.9)
     params: [
       { name: 'a', label: 'spin a', min: 0, max: 0.999, default: 0.5 },
-      { name: 'alpha13', label: 'α13', min: -1, max: 10, default: 1 },
+      {
+        name: 'alpha13', label: 'α13', min: -7.92, max: 10, default: 1,
+        bounds: (p) => ({ min: -0.99 * (1 + Math.sqrt(1 - p.a * p.a)) ** 3, max: 10 }),
+      },
     ],
     presets: {},
   },
@@ -76,6 +82,12 @@ export const metricEntry = (id) => {
   if (!e) throw new Error(`unknown metric ${id}`);
   return e;
 };
+
+/**
+ * Current [min, max] of a parameter given the other parameters.
+ * @param {ParamSpec} spec @param {Record<string, number>} params
+ */
+export const paramBounds = (spec, params) => (spec.bounds ? spec.bounds(params) : { min: spec.min, max: spec.max });
 
 /** Create a metric from its registry defaults, overridden by `params`. @param {string} id @param {Record<string, number>} [params] */
 export function createMetric(id, params = {}) {

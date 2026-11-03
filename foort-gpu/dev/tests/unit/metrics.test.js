@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { PARITY_SETS, compareRows } from '../../scripts/parityLib.mjs';
-import { METRICS, createMetric } from '../../../js/metrics/registry.js';
+import { METRICS, createMetric, metricEntry, paramBounds } from '../../../js/metrics/registry.js';
 import { invertCircular, compEllint1, validityRadius } from '../../../js/metrics/common.js';
 import { createKerr } from '../../../js/metrics/kerr.js';
 import { createJohannsen } from '../../../js/metrics/johannsen.js';
@@ -114,6 +114,15 @@ describe('validity', () => {
       // nothing invalid on a much finer sampling outside r_term
       const fine = validityRadius(m, rt, 1000, { nr: 2000, nth: 721, rRef: rh });
       expect(fine.rBad).toBe(0);
+    }
+  });
+  it('Johannsen alpha13 slider is [-0.99 r_+^3(a), 10] and both ends validate', () => {
+    const spec = metricEntry('johannsen').params.find((p) => p.name === 'alpha13');
+    for (const a of [0, 0.3, 0.5, 0.7, 0.8, 0.9, 0.94, 0.97, 0.99, 0.999]) {
+      const { min, max } = paramBounds(spec, { a });
+      expect(min).toBeCloseTo(-0.99 * (1 + Math.sqrt(1 - a * a)) ** 3, 12);
+      expect(max).toBe(10);
+      for (const alpha13 of [min, max]) expect(createJohannsen({ a, alpha13 }).validate().ok).toBe(true);
     }
   });
   it('registry defaults validate', () => {
