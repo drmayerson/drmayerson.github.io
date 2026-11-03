@@ -81,3 +81,97 @@ So the two backends perform the same here: GPU time is equal to within about 10%
   - no phone run;
   - Vitest and Playwright not run, because Node.js is not installed. These tests need to run before or during M1.
 - Next: M1 (metric library + FOORT parity harness), awaiting the user's go-ahead.
+- Update during M1: Vitest and Playwright now run and pass (Playwright: 2 of 2 in headless Chrome on the AMD GPU).
+
+## CHECKPOINT M1 — metric library + FOORT parity harness (2026-11-03)
+
+### Done
+
+- `js/metrics/`:
+  - `kerr.js`, `johannsen.js` (all five FOORT parameters; the UI exposes `a` and `alpha13`), `mankoNovikov.js`, `st3cr.js`: verbatim ports of FOORT's `getMetric_dd` / `getMetric_uu`;
+  - `st3crBH.js`: the new λ = 0 class;
+  - `common.js`: generic circular inversion, Carlson `R_F`, the elliptic integral K(k), singularity distances, pointwise and sampled validity, `validityRadius`;
+  - `registry.js`: menus and sliders, with D5 charges P = 2, q0 = 50.
+- `validate()` for every metric:
+  - FOORT's parameter-range checks;
+  - a sampled check (finite components, Lorentzian signature, no CTCs) outside the termination radius.
+- `tools/foort_parity/`: `metric_dump.cpp` + `build.sh` + README. It links FOORT's own `Metric.cpp` from the unmodified local clone (commit `cfff2d5`) and dumps g_dd and g_uu as CSV.
+- `dev/scripts/`:
+  - `metricParity.mjs` (Level 0, 1e4 random points per set) and `parityLib.mjs`;
+  - `validityScan.mjs`: Johannsen α13 and MN α3 ranges;
+  - `st3crChecks.mjs`: M_ADM, λ → 0, inverses, b_c.
+
+  The reports are in `dev/reports/m1_*.json`. Golden values (50 points per set) are in `dev/tests/golden/metric_parity/`.
+- Tests:
+  - `dev/tests/unit/metrics.test.js`, 28 tests;
+  - all 40 Vitest tests pass;
+  - `tsc --checkJs` is clean.
+
+### Level 0: JS vs FOORT, 10 000 points per set
+
+The **scaled** column is the one checked against the target (see `DECISIONS.md`). It applies only to points where FOORT's own metric is valid.
+
+| set | g_dd raw | g_dd scaled | g_uu (closed) scaled | g_uu (generic) scaled | points in invalid region |
+|---|---|---|---|---|---|
+| Kerr a = 0 / 0.5 / 0.94 / 0.998 | ≤ 2.7e-14 | ≤ 2.7e-14 | ≤ 1.3e-13 | ≤ 1.1e-12 | 0 |
+| Johannsen (4 sets, incl. all 5 parameters ≠ 0) | ≤ 9.7e-15 | ≤ 9.7e-15 | ≤ 9.6e-15 | ≤ 2.3e-14 | 0 |
+| MN a = 0, α3 = 0.2 | 7.9e-16 | 7.9e-16 | 7.8e-16 | 9.3e-16 | 0 |
+| MN a = 0.5, α3 = 0.1 | 2.0e-10 | 4.7e-15 | 5.3e-15 | 8.8e-15 | 3 |
+| MN a = 0.9, α3 = −0.5 | 3.0e-11 | 1.8e-13 | 1.4e-13 | 3.8e-13 | 15 |
+| MN a = 0.3, α3 = 1 | 4.7e-10 | 2.8e-14 | 2.8e-14 | 4.7e-10 | 36 (+6 non-finite in both) |
+| ST3Cr λ = 0.15 / 0.05 / 0.005 / 1e-4 | 3.0e-12 / 4.2e-11 / 2.3e-10 / 5.5e-7 | ≤ 5.3e-14 | ≤ 5.3e-14 | ≤ 5.3e-14 | 0 |
+
+- **Target met:** every closed form agrees with FOORT to ≤ 1.8e-13 (scaled) on valid points.
+- **Raw-measure misses** occur only in g_tφ, for MN and ST3Cr. They are explained by cancellation: at the worst ST3Cr point the condition number is about 1.5e7 × 1e3, so a rounding floor of ~1e-6 relative is expected even in double precision.
+- **Generic inversion** is worse near horizons, because det(t–φ) → 0 there: up to 1.1e-12 for Kerr a = 0.998 and 4.7e-10 for MN. Closed forms are therefore used everywhere.
+- **MN invalid region:** at points within about 1.05 r₊, FOORT itself has g_φφ < 0, with g_tt ~ −2e6 and det(g) formed from products ~1e12. No double-precision inverse is accurate there (both residuals are ~1e-3).
+- **MN non-finite points:** the 6 points that are non-finite in both codes are `exp(2γ′)` overflowing through the 1/R⁸ terms near the equatorial horizon (plan gotcha 8).
+- **Circularity:** FOORT returns exactly 0 for every off-block component at all points. This was checked from FOORT's side, as plan Section 3.3 asks.
+
+### ST3Cr (P = 2, q0 = 50)
+
+- **M_ADM** = 24.000 from g_tt asymptotics (23.9994 at r = 2e6, 1/r drift), for λ = 0.15, 0.05, 0.005, 1e-4 and 0. This matches (3P + q0 − P³)/2.
+- **J** ≈ 176 λ.
+- **λ_max** = 0.193182: λ = 0.19 validates, λ = 0.194 is rejected.
+- **λ → 0** (deviation from the BH at fixed r, maximized over θ):
+
+  | λ | r = 0.1 M | r = 1 M | r = 10 M |
+  |---|---|---|---|
+  | 1e-2 | 5e-2 / 7e-3 | 5e-4 / 2e-3 | 2e-6 / 5e-5 |
+  | 1e-4 | 7.5e-6 / 7e-5 | 7e-8 / 2e-5 | 2e-10 / 5e-7 |
+  | 1e-6 | 7.5e-10 / 7e-7 | 7e-12 / 2e-7 | 2e-14 / 5e-9 |
+
+  Each entry is |Q/Q_BH − 1| / scaled |g_tφ|. Q converges as λ², g_tφ as λ, so the limit is continuous away from the throat.
+- **Closed-form inverse** (plan Section 4.1) vs generic inversion: ≤ 8.9e-16 (20 000 points per λ).
+- **ST3Cr BH b_c** = 49.7146 = **2.0714 M_ADM**, with the photon sphere at base r = 7.129 = 0.297 M_ADM; throat L² = 73.32.
+  - Q = (1 + 4/r)³(1 + 84/r) is a 4-charge static extremal BH with charges (4, 4, 4, 84).
+  - b_c is governed by roughly the geometric mean of the charges, M by their arithmetic mean. For equal charges the same formula gives the extremal-RN value 4M.
+  - So b_c ≈ 2.07 M (well below Schwarzschild's 5.2 M) is expected for such unequal charges. It is checked analytically in the tests.
+
+### Validity ranges
+
+Scan: 600 radii log-spaced in r − r₊, 181 θ, up to r = 1000. Table: `dev/reports/m1_validity.json`; method: `dev/scripts/validityScan.mjs`.
+
+- **Johannsen:** valid down to the horizon for every α13 > −r₊³ tested, up to α13 = 100, for a ∈ [0, 0.998]. There is **no upper bound**. The lower bound is −r₊³(a): −8 at a = 0, −2.96 at a = 0.9, −1.20 at a = 0.998. Proposed slider: (−r₊³(a), 10], lower end clamped per spin.
+- **Manko–Novikov:** for **every α3 ≠ 0** there is a region just outside r₊ with CTCs (g_φφ ≤ 0), or with non-finite values at a = 0 (overflow). Its outer edge, r_valid / r₊ − 1, is symmetric in ±α3:
+
+  | a \ abs(α3) | 0.01 | 0.03 | 0.1 | 0.2 | 0.5 | 1 | 2 |
+  |---|---|---|---|---|---|---|---|
+  | 0 | 4e-3 | 7e-3 | 1.3e-2 | 1.9e-2 | 3.0e-2 | 4.1e-2 | 5.8e-2 |
+  | 0.5 | 1.1e-2 | 2.0e-2 | 3.8e-2 | 5.4e-2 | 9.0e-2 | 0.13 | 0.18 |
+  | 0.94 | 6.9e-3 | 1.2e-2 | 2.4e-2 | 3.5e-2 | 5.7e-2 | 8.0e-2 | 0.11 |
+  | 0.998 | 1.6e-3 | 2.9e-3 | 5.6e-3 | 8.1e-3 | 1.3e-2 | 1.9e-2 | 2.6e-2 |
+
+  FOORT's horizon termination at 1.01 r₊ therefore lies **inside** the pathological region for most α3 ≠ 0. This includes the MN registry default (a = 0.5, α3 = 0.1), which `validate()` currently rejects.
+
+### Open issues / decisions for the user
+
+1. **MN termination (needs a decision).** Options:
+   - (a) terminate MN rays at r_term = r_valid(a, α3) × (1 + margin), computed at bake time. A margin of 1% is proposed. This keeps rays out of the CTC region.
+   - (b) keep FOORT's 1.01 r₊ for parity and let rays enter the CTC band.
+   - (c) restrict α3 to the tiny range where the band lies inside 1.01 r₊.
+
+   Recommendation: (a) for the app. M2 parity runs would then use the same r_term on the FOORT side, as a FOORT `Epsilon_Horizon` setting. The α3 slider could be [−1, 1], where r_valid ≤ 1.13 r₊.
+2. **Johannsen α13 slider:** proposed (−r₊³(a), 10]. Confirm, or name a different upper end.
+3. The parity target is judged on the **scaled** measure (see `DECISIONS.md`). Confirm this is acceptable; raw-measure numbers are reported above.
+4. `dev/node_modules` is inside Dropbox (git-ignored), so Dropbox syncs ~100 MB of packages. It could be excluded with Dropbox's "ignore" attribute if you prefer.
