@@ -1,0 +1,17 @@
+{
+  "name": "foort-gpu-dev",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tooling for foort-gpu (tests, type checks). The served app never imports anything from here.",
+  "scripts": {
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p jsconfig.json",
+    "serve": "python -m http.server 8765 --bind 127.0.0.1 --directory .."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

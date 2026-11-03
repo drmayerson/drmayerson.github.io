@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOORT-GPU benchmark</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <p><a href="../">← FOORT-GPU</a></p>
+  <h1>FOORT-GPU backend benchmark (M0)</h1>
+  <p>The same minimal analytic-Kerr tracer (Hamiltonian RK4, FOORT adaptive step, FOORT static-observer camera,
+    no disc) runs as a WebGL2 fragment shader and as a WebGPU compute shader, with the same tile sizes.
+    The output is a FOORT four-colour image. Press <b>Run</b>, then copy the JSON report.</p>
+
+  <section>
+    <h2>Backends</h2>
+    <table>
+      <tr><th>WebGL2</th><td id="glStatus">checking…</td></tr>
+      <tr><th>WebGPU</th><td id="gpStatus">checking…</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Parameters</h2>
+    <div class="grid">
+      <label>spin a <input id="a" type="number" step="0.01" min="0" max="0.999"></label>
+      <label>camera θ (rad) <input id="thetaCam" type="number" step="0.01"></label>
+      <label>camera r (M) <input id="rCam" type="number" step="10"></label>
+      <label>screen size (M) <input id="screen" type="number" step="1"></label>
+      <label>step ε <input id="eps" type="number" step="0.005"></label>
+      <label>max steps <input id="maxSteps" type="number" step="500"></label>
+      <label>tile (px) <input id="tile" type="number" step="32"></label>
+      <label>sizes (px) <input id="sizes" type="text"></label>
+      <label>timed runs <input id="runs" type="number" min="1" step="1"></label>
+    </div>
+    <p>Defaults are FOORT's <code>KerrExample.cfg</code> (a = 0.94, r = 1000, θ = 0.2967, 15 × 15 screen, ε = 0.03).</p>
+    <button id="run" disabled>Run</button>
+  </section>
+
+  <section>
+    <h2>Results</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>backend</th><th>size</th><th>wall ms (median)</th><th>wall ms (min)</th><th>GPU ms</th>
+          <th>steps / px</th><th>Msteps/s (wall)</th><th>Msteps/s (GPU)</th><th>horizon / escape / timeout / NaN</th></tr></thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+    <p id="verdict"></p>
+  </section>
+
+  <section>
+    <h2>Images (largest size)</h2>
+    <p class="legend">Four-colour quadrants (FOORT convention):<span style="background:#e44a40"></span>1
+      <span style="background:#409ce4"></span>2<span style="background:#f0c83c"></span>3<span style="background:#5abe6e"></span>4
+      <span style="background:#000;border:1px solid var(--line)"></span>horizon<span style="background:#f0f"></span>timeout</p>
+    <div class="images">
+      <figure><canvas id="cvGL"></canvas><figcaption>WebGL2</figcaption></figure>
+      <figure><canvas id="cvGPU"></canvas><figcaption>WebGPU</figcaption></figure>
+      <figure><canvas id="cvDiff"></canvas><figcaption>Four-colour disagreement (red)</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <pre id="log"></pre>
+  </section>
+
+  <section>
+    <h2>Report (JSON) <button id="copy" class="secondary">Copy</button></h2>
+    <pre id="json"></pre>
+  </section>
+</main>
+<script type="module" src="./bench.js"></script>
+</body>
+</html>
