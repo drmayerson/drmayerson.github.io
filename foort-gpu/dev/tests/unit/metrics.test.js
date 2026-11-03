@@ -105,10 +105,18 @@ describe('validity', () => {
     expect(createMankoNovikov({ a: 0.5, alpha3: 0 }).validate().ok).toBe(true);
     expect(m.validate({ rMin: v.rValid }).ok).toBe(true);
   });
-  it('registry defaults (except Manko-Novikov, pending decision) validate', () => {
-    for (const e of METRICS) {
-      const ok = createMetric(e.id).validate().ok;
-      expect(ok).toBe(e.id !== 'mankoNovikov');
+  it('Manko-Novikov terminates 1% outside the invalid band (CHECKPOINT M1 decision (a))', () => {
+    for (const [a, alpha3] of [[0, 0.2], [0.5, 0.1], [0.9, -0.5], [0.3, 1], [0.94, 0]]) {
+      const m = createMankoNovikov({ a, alpha3 });
+      const rh = m.horizon.r, rt = m.terminationRadius();
+      const { rValid } = validityRadius(m, rh * (1 + 1e-6), 1000, { nr: 600, rRef: rh });
+      expect(rt).toBeCloseTo(Math.max(1.01 * rh, 1.01 * rValid), 12);
+      // nothing invalid on a much finer sampling outside r_term
+      const fine = validityRadius(m, rt, 1000, { nr: 2000, nth: 721, rRef: rh });
+      expect(fine.rBad).toBe(0);
     }
+  });
+  it('registry defaults validate', () => {
+    for (const e of METRICS) expect(createMetric(e.id).validate().ok).toBe(true);
   });
 });

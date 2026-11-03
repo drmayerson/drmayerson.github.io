@@ -175,3 +175,23 @@ Scan: 600 radii log-spaced in r − r₊, 181 θ, up to r = 1000. Table: `dev/re
 2. **Johannsen α13 slider:** proposed (−r₊³(a), 10]. Confirm, or name a different upper end.
 3. The parity target is judged on the **scaled** measure (see `DECISIONS.md`). Confirm this is acceptable; raw-measure numbers are reported above.
 4. `dev/node_modules` is inside Dropbox (git-ignored), so Dropbox syncs ~100 MB of packages. It could be excluded with Dropbox's "ignore" attribute if you prefer.
+
+### MN termination decision implemented (2026-11-03)
+
+- The user chose option (a). `createMankoNovikov(...).terminationRadius()` returns max(1.01 r₊, 1.01 r_valid). It is computed lazily with `validityRadius`: 600 radii × 181 θ, scanning inwards and stopping at the first invalid sample, so it takes 6–12 ms.
+- r_term / r₊ for sample parameters:
+
+  | a | α3 | r_term / r₊ |
+  |---|---|---|
+  | 0.5 | 0.1 | 1.048 |
+  | 0.5 | ±1 | 1.137 |
+  | 0.94 | 0.5 | 1.067 |
+  | 0.998 | 1 | 1.029 |
+  | 0 | 1 | 1.052 |
+
+- `validate()` now samples from r_term, so all registry defaults validate.
+- New test: no invalid point outside r_term on a much finer 2000 × 721 sampling, for five (a, α3) pairs. 41 of 41 Vitest tests pass.
+- Still open from the M1 checkpoint:
+  - the Johannsen α13 slider range;
+  - confirmation of the scaled parity measure;
+  - excluding `dev/node_modules` from Dropbox sync.

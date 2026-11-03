@@ -18,6 +18,8 @@
  * @property {(r:number, th:number) => Circular4} g_dd
  * @property {((r:number, th:number) => Circular4)=} g_uu   closed form where available
  * @property {() => Singularity[]} singularities
+ * @property {(() => number)=} terminationRadius    horizon metrics: rays stop at r < terminationRadius()
+ *                                                  (default r_h (1 + EPS_HORIZON))
  * @property {(opts?:ValidateOptions) => {ok:boolean, messages:string[]}} validate
  *
  * @typedef {Object} ValidateOptions

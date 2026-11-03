@@ -2,7 +2,12 @@
 // Manko-Novikov with spin a and octopole alpha3, M = 1. Port of FOORT MankoNovikovMetric
 // (implementation by Seppe Staelens). Prolate coordinates x = (r - 1)/k, y = cos(theta), k = sqrt(1 - a^2).
 // Not equatorially symmetric for alpha3 != 0.
-import { EPS_HORIZON, sampledValidity } from './common.js';
+// For alpha3 != 0 there is a band just outside the horizon with CTCs (or overflow at a = 0);
+// rays terminate 1% outside its edge (decision at CHECKPOINT M1, see DECISIONS.md).
+import { EPS_HORIZON, sampledValidity, validityRadius } from './common.js';
+
+/** Safety factor outside the edge r_valid of the invalid band. */
+export const MN_TERMINATION_MARGIN = 0.01;
 
 /**
  * @param {{a:number, alpha3:number}} params
@@ -72,10 +77,19 @@ export function createMankoNovikov({ a, alpha3 }) {
       };
     },
     singularities: () => [],
+    terminationRadius() {
+      if (rTerm === undefined) {
+        const { rValid } = validityRadius(metric, rh * (1 + 1e-6), 1000, { nr: 600, rRef: rh });
+        rTerm = Math.max(rh * (1 + EPS_HORIZON), rValid * (1 + MN_TERMINATION_MARGIN));
+      }
+      return rTerm;
+    },
     validate(opts = {}) {
       if (!(a * a < 1)) return { ok: false, messages: [`spin a = ${a} must satisfy |a| < 1`] };
-      return sampledValidity(metric, { rMin: rh * (1 + EPS_HORIZON), rMax: 1000, ...opts });
+      return sampledValidity(metric, { rMin: metric.terminationRadius?.() ?? rh * (1 + EPS_HORIZON), rMax: 1000, ...opts });
     },
   };
+  /** @type {number|undefined} */
+  let rTerm;
   return metric;
 }
