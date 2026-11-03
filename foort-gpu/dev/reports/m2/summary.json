@@ -1,0 +1,281 @@
+[
+ {
+  "case": "kerr_a0",
+  "mode": "parity",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 14.99,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 0.99951171875,
+  "passesMismatches": 8,
+  "escapeAngle": {
+   "median": 4.66242070411508e-7,
+   "p90": 0.0000018186133152375336,
+   "p99": 0.00001870718981347612,
+   "max": 0.0009087103930692155,
+   "count": 10324
+  },
+  "confusion": {
+   "escape->escape": 10324,
+   "horizon->horizon": 6060
+  },
+  "meanSteps": 608.5316162109375,
+  "hEscape": {
+   "median": 2.3769966126173065e-8,
+   "max": 7.905412959504952e-8
+  }
+ },
+ {
+  "case": "kerr_a0",
+  "mode": "app",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 16.384,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 0.9971923828125,
+  "passesMismatches": 46,
+  "escapeAngle": {
+   "median": 0.00005917598019016689,
+   "p90": 0.00014006367064859596,
+   "p99": 0.0002080500508516489,
+   "max": 0.000875208604501338,
+   "count": 10324
+  },
+  "confusion": {
+   "escape->escape": 10324,
+   "horizon->horizon": 6060
+  },
+  "meanSteps": 684.659423828125,
+  "hEscape": {
+   "median": 2.583673957486878e-8,
+   "max": 8.333447231749111e-8
+  }
+ },
+ {
+  "case": "kerr_a0.94",
+  "mode": "parity",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 17.837,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 1,
+  "passesMismatches": 0,
+  "escapeAngle": {
+   "median": 4.740349567111437e-7,
+   "p90": 0.0000018579304153184881,
+   "p99": 0.000022038328755484056,
+   "max": 0.0033078483723042694,
+   "count": 11006
+  },
+  "confusion": {
+   "escape->escape": 11006,
+   "horizon->horizon": 5378
+  },
+  "meanSteps": 693.4097290039062,
+  "hEscape": {
+   "median": 2.3848131809084837e-8,
+   "max": 8.949890151539812e-8
+  }
+ },
+ {
+  "case": "kerr_a0.94",
+  "mode": "app",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 20.234,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 0.99945068359375,
+  "passesMismatches": 9,
+  "escapeAngle": {
+   "median": 0.00005685343511809072,
+   "p90": 0.00013838478081253696,
+   "p99": 0.00020247032740946402,
+   "max": 0.00325284035455036,
+   "count": 11006
+  },
+  "confusion": {
+   "escape->escape": 11006,
+   "horizon->horizon": 5378
+  },
+  "meanSteps": 757.6712036132812,
+  "hEscape": {
+   "median": 2.5164317774436292e-8,
+   "max": 9.202020040353261e-8
+  }
+ },
+ {
+  "case": "johannsen",
+  "mode": "parity",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 18.757,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 1,
+  "passesMismatches": 0,
+  "escapeAngle": {
+   "median": 5.595381067847857e-7,
+   "p90": 0.000002664517629492654,
+   "p99": 0.0000303938835483766,
+   "max": 0.0007185799556107206,
+   "count": 8352
+  },
+  "confusion": {
+   "escape->escape": 8352,
+   "horizon->horizon": 8032
+  },
+  "meanSteps": 660.5526733398438,
+  "hEscape": {
+   "median": 2.6610439833541604e-8,
+   "max": 7.342339040494919e-8
+  }
+ },
+ {
+  "case": "johannsen",
+  "mode": "app",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 21.182,
+  "fourColorAgreement": 0.99993896484375,
+  "fourColorMismatches": 1,
+  "passesAgreement": 0.99932861328125,
+  "passesMismatches": 11,
+  "escapeAngle": {
+   "median": 0.00006230137361041023,
+   "p90": 0.0001459262386150462,
+   "p99": 0.00020797296133543433,
+   "max": 0.0007300644035069389,
+   "count": 8352
+  },
+  "confusion": {
+   "escape->escape": 8352,
+   "horizon->horizon": 8032
+  },
+  "meanSteps": 745.2255859375,
+  "hEscape": {
+   "median": 2.8088980863160535e-8,
+   "max": 7.605955035681033e-8
+  }
+ },
+ {
+  "case": "mankoNovikov",
+  "mode": "parity",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 54.601,
+  "fourColorAgreement": 0.99993896484375,
+  "fourColorMismatches": 1,
+  "passesAgreement": 0.99993896484375,
+  "passesMismatches": 1,
+  "escapeAngle": {
+   "median": 5.389196074016495e-7,
+   "p90": 0.0000024744005205717885,
+   "p99": 0.000030188744932718273,
+   "max": 0.018322997076508016,
+   "count": 10979
+  },
+  "confusion": {
+   "escape->escape": 10979,
+   "horizon->horizon": 5404,
+   "escape->horizon": 1
+  },
+  "meanSteps": 600.96728515625,
+  "hEscape": {
+   "median": 8.262353425771985e-9,
+   "max": 1.1210427935216426e-7
+  }
+ },
+ {
+  "case": "mankoNovikov",
+  "mode": "app",
+  "pixels": 16384,
+  "stride": 1,
+  "cpuSeconds": 52.485,
+  "fourColorAgreement": 1,
+  "fourColorMismatches": 0,
+  "passesAgreement": 0.9989013671875,
+  "passesMismatches": 18,
+  "escapeAngle": {
+   "median": 0.00005601753792953936,
+   "p90": 0.0001386232433982997,
+   "p99": 0.000207003170952832,
+   "max": 0.05124736695784807,
+   "count": 10980
+  },
+  "confusion": {
+   "escape->escape": 10980,
+   "horizon->horizon": 5404
+  },
+  "meanSteps": 639.24951171875,
+  "hEscape": {
+   "median": 8.732496804384968e-9,
+   "max": 0.003325113569221243
+  }
+ },
+ {
+  "case": "st3cr_l0.005",
+  "mode": "parity",
+  "pixels": 4096,
+  "stride": 2,
+  "cpuSeconds": 616.005,
+  "fourColorAgreement": 0.94677734375,
+  "fourColorMismatches": 218,
+  "passesAgreement": 0.938720703125,
+  "passesMismatches": 251,
+  "escapeAngle": {
+   "median": 4.196205091574438e-7,
+   "p90": 0.00013599138849513758,
+   "p99": 0.8903428713137133,
+   "max": 2.928181556610286,
+   "count": 3829
+  },
+  "confusion": {
+   "escape->escape": 3829,
+   "other->other": 84,
+   "other->escape": 61,
+   "escape->other": 71,
+   "escape->horizon": 42,
+   "other->horizon": 9
+  },
+  "meanSteps": 1144.120361328125,
+  "hEscape": {
+   "median": 6.684336618559949e-10,
+   "max": 0.9986662663593978
+  }
+ },
+ {
+  "case": "st3cr_l0.005",
+  "mode": "app",
+  "pixels": 4096,
+  "stride": 2,
+  "cpuSeconds": 483.471,
+  "fourColorAgreement": 0.947265625,
+  "fourColorMismatches": 216,
+  "passesAgreement": 0.9365234375,
+  "passesMismatches": 260,
+  "escapeAngle": {
+   "median": 4.193558478197572e-7,
+   "p90": 0.00013032176580499388,
+   "p99": 0.845957959593192,
+   "max": 2.8534646929758787,
+   "count": 3822
+  },
+  "confusion": {
+   "escape->escape": 3822,
+   "other->other": 88,
+   "other->escape": 58,
+   "escape->other": 79,
+   "escape->horizon": 41,
+   "other->horizon": 8
+  },
+  "meanSteps": 1117.92822265625,
+  "hEscape": {
+   "median": 6.597931215949402e-10,
+   "max": 0.9986662663593978
+  }
+ }
+]

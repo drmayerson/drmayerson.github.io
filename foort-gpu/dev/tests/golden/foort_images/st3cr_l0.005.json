@@ -1,0 +1,73 @@
+{
+ "case": "st3cr_l0.005",
+ "N": 128,
+ "foortHeader": "Metric: ST3Cr (P = 2.000000, q0 = 50.000000, lambda = 0.005000, using logarithmic r coord); Source: No source; Diagnostics: Geodesic position (output 1 steps, updates every 1 steps), Equatorial emission (threshold = 0.001000, geometric fudge factor = 1.000000, max. equatorial passes = infinite, reds",
+ "pixels": [
+  {
+   "i": 27,
+   "j": 103,
+   "quadrant": 3,
+   "t": -847.952238,
+   "r": 257.43776459535115,
+   "theta": 2.393269,
+   "phi": -4.511147,
+   "intensity": 0.001891,
+   "passes": 1
+  },
+  {
+   "i": 33,
+   "j": 126,
+   "quadrant": 3,
+   "t": -783.553521,
+   "r": 253.19678684401862,
+   "theta": 2.213854,
+   "phi": -3.481106,
+   "intensity": 0.000123,
+   "passes": 1
+  },
+  {
+   "i": 0,
+   "j": 0,
+   "quadrant": 1,
+   "t": -729.332509,
+   "r": 252.81196726071,
+   "theta": 1.549318,
+   "phi": -3.234063,
+   "intensity": 0.000005,
+   "passes": 2
+  },
+  {
+   "i": 126,
+   "j": 37,
+   "quadrant": 2,
+   "t": -792.510096,
+   "r": 255.94306054640032,
+   "theta": 1.367388,
+   "phi": 3.804944,
+   "intensity": 0.000026,
+   "passes": 2
+  },
+  {
+   "i": 63,
+   "j": 76,
+   "quadrant": 0,
+   "t": -971.76766,
+   "r": 0.15924999753638092,
+   "theta": 0.000649,
+   "phi": -2.371877,
+   "intensity": 0,
+   "passes": 0
+  },
+  {
+   "i": 64,
+   "j": 76,
+   "quadrant": 0,
+   "t": -971.858942,
+   "r": 0.15923136637661328,
+   "theta": 0.000629,
+   "phi": 3.33041,
+   "intensity": 0,
+   "passes": 0
+  }
+ ]
+}

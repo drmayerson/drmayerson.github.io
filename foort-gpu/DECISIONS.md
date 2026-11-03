@@ -44,3 +44,34 @@ non-trivial implementation choice.
 - 2026-11-03 — **Johannsen α13 slider revised to [−0.99 r₊³(a), 10]** by the user ("Lower end −0.99 r₊³"), after the correction in `PROGRESS.md`. Closer to −r₊³, a thin CTC band can reach beyond the 1.01 r₊ termination for spinning holes (the worst case found is 0.9944 × −r₊³ at a = 0.9). Johannsen keeps FOORT's 1.01 r₊ termination. — Alternative: MN-style termination 1% outside the band, with the full range kept.
 - 2026-11-03 — `ST3CrBH` (λ = 0) reports `horizon: {kind: 'none'}`. The horizon is at base r = 0, i.e. x → −∞ in `x = log r`. Rays will be cut at a configurable `r_cut` (M6).
 - 2026-11-03 — Validity checks (`validate()`, `validityRadius()`) test, at sample points: finite components, Lorentzian signature (g_rr > 0, g_θθ > 0, det(t–φ block) < 0), and no CTCs (g_φφ > 0). An ST3Cr point with Q ≤ 0 shows up as non-finite.
+
+## M2 implementation choices
+
+- 2026-11-03 — **CPU reference = the GPU algorithm in double precision** (`js/ref/cpuTracer.js`):
+  - Hamiltonian in (t, x, θ, φ) on the five table functions G0 = g^tt, G1 = g^tφ, G2 = sin²θ g^φφ, G3 = g^xx, G4 = g^θθ;
+  - ∂_x and ∂_θ by 4th-order central differences, step 1e-3;
+  - FOORT RK4 with the adaptive step rule, applied to dx/dλ, dθ/dλ, dφ/dλ.
+
+  Every FOORT-specific behaviour is a switch, so "parity" and "app" modes share one code path:
+
+  | switch | parity mode (FOORT) | app mode |
+  |---|---|---|
+  | `mesh` | i/(N−1) | (i+0.5)/N |
+  | `radial` | log r | log(r − r₊) |
+  | `axis` | continue, ThetaSingularity at 1e-6 | reflect |
+  | `crossing` | post-step position, threshold band | linear interpolation in λ |
+  | `singularity` | coordinate distance √((r−r_s)² + (θ−θ_s)²) | Euclidean base-space distance |
+
+  The M2 comparisons use FOORT's mesh in both modes, so the same pixels are compared.
+- 2026-11-03 — **FOORT parity runs** use FOORT's own unmodified executable (`FOORT/bin/FOORT.exe` of the clone, commit `cfff2d5`) with generated configs (`dev/scripts/foortCases.mjs`). Settings:
+  - integrator **RK4** (the example configs use Verlet), StepSize 0.03, SmallestPossibleStepsize 1e-12;
+  - `SimpleSquareMesh` 128²;
+  - BoundarySphere 1.01 r_cam;
+  - MN `Epsilon_Horizon` = r_term/r₊ − 1 = 0.122 (decision a; FOORT's own example uses 0.08);
+  - cameras and emission parameters from the example configs.
+
+  libconfig quirk found: a real-valued setting written without a decimal point (e.g. `gamma = -2`) is silently ignored by FOORT, which falls back to its default. The generator forces a decimal point on every real value.
+- 2026-11-03 — **Horizon termination counts intermediate RK4 stages.** If any stage or the step end lies inside the termination radius, the ray is captured. — Reason: in x = log r (parity mode), p_r ~ 1/Δ diverges at the horizon. A stage that lands inside r₊ returns garbage; before this fix, 43 Kerr a = 0 rays from inside the shadow "escaped" to r ~ 1e19. FOORT integrates dr/dλ, which stays finite, and ends such rays just inside r₊. In app mode (x = log(r − r₊)) the horizon is at x = −∞ and this never triggers in practice.
+- 2026-11-03 — The metric functions are evaluated at |θ| (axis reflection) and clamped to [1e-9, π − 1e-9]. Finite-difference stencils may straddle the axis, where the formulas are 0·∞ (G2) or NaN (ST3Cr's ring term uses sin θ directly).
+- 2026-11-03 — **Emission-intensity parity (part of Level 1) is deferred to M5**, where FOORT's `GeneralCircularRadialFluid` (about 450 lines: ISCO search, plunge, FD Christoffels) is ported anyway. FOORT's intensities are already in the M2 run outputs and golden files, so M5 does not need new FOORT runs. **Flagged at CHECKPOINT M2.**
+- 2026-11-03 — The relative constraint drift is reported as |H| / Σ|terms of H|, on escaping rays only. Captured rays end at a coordinate singularity, where the terms of H diverge.

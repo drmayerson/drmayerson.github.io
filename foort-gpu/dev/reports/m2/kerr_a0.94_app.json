@@ -1,0 +1,27 @@
+{
+ "case": "kerr_a0.94",
+ "mode": "app",
+ "pixels": 16384,
+ "stride": 1,
+ "cpuSeconds": 20.234,
+ "fourColorAgreement": 1,
+ "fourColorMismatches": 0,
+ "passesAgreement": 0.99945068359375,
+ "passesMismatches": 9,
+ "escapeAngle": {
+  "median": 0.00005685343511809072,
+  "p90": 0.00013838478081253696,
+  "p99": 0.00020247032740946402,
+  "max": 0.00325284035455036,
+  "count": 11006
+ },
+ "confusion": {
+  "escape->escape": 11006,
+  "horizon->horizon": 5378
+ },
+ "meanSteps": 757.6712036132812,
+ "hEscape": {
+  "median": 2.5164317774436292e-8,
+  "max": 9.202020040353261e-8
+ }
+}
