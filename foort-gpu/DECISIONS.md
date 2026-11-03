@@ -10,11 +10,15 @@ non-trivial implementation choice.
 - 2026-11-03 — **D3**: Johnson-SU envelope in FOORT's coordinate `r`; noise sampled at `log(r/M_ADM)`.
 - 2026-11-03 — **D4**: placeholder FFT noise in M7; the agent builds inoisy in M8.
 
-## Open (to decide at CHECKPOINT M0)
+## Decided at CHECKPOINT M0
 
-- **D2** graphics API — default WebGL2-first unless WebGPU > ~1.5× faster on the main laptop.
-- Default resolutions, tile size, step budgets.
-- D5–D9 still on their proposed defaults (not yet relevant).
+- 2026-11-03 — **D2: WebGL2** for Stage 1 (user: "Yes, WebGL2"). — Alternative: WebGPU-first. — Reason: the benchmark's per-ray GPU cost is equal in both backends: Chrome/AMD integrated GPU, WebGPU 1.0–1.1× the speed of WebGL2; Firefox 158, WebGL2 355 ms wall vs WebGPU 382 ms GPU at 1024². Firefox's WebGPU adds about 75–100 ms of latency per tile wait, which makes wall-clock time 4× slower. WebGL2 also has wider reach. All GPU access stays behind `js/gpu/backend.js`; WebGPU is M10 / Stage 2.
+
+## Still open (agent defaults in use until the user confirms)
+
+- Default trace resolution 1024², drag preview 256², tile 256 px (a 256² tile at about 760 steps/px runs in about 25 ms on the AMD laptop, well under the watchdog; tiles of 64 px or smaller lose 2–3× to synchronization).
+- Step budgets: `maxSteps` 5000 for BH mode and 20000 for fuzzball mode (plan defaults; to be tuned in M6).
+- D5–D9 remain on their proposed defaults.
 
 ## M0 implementation choices
 

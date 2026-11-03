@@ -71,4 +71,13 @@ So the two backends perform the same here: GPU time is equal to within about 10%
 
 - **Agreement:** termination 100%. Four-colour agreement is 100% at 512² and 99.9996% at 1024² (4 px differ). The median escape-direction difference is 8e-7 rad.
 - **Reading:** the shader cost is the same in both backends; WebGL2 wall time ≈ WebGPU GPU time. Firefox's WebGPU wall time is about 4× its GPU time. This is a fixed latency of roughly 75–100 ms per `onSubmittedWorkDone`: 4 tiles at 512² add about 300 ms, 16 tiles at 1024² add about 1.2 s. For an interactive app that has to wait on each tile, that latency rules out WebGPU in Firefox today.
-- **Status:** D2 still open. The data so far favours the default, WebGL2: WebGPU is at most 1.1× as fast in GPU time, and much slower in wall time in Firefox.
+- **Status:** the user chose **D2 = WebGL2** (2026-11-03; see `DECISIONS.md`).
+
+### M0 closed (2026-11-03)
+
+- D2 = WebGL2 was confirmed by the user, and the four-colour images were approved visually.
+- Default resolutions, tile size and step budgets use the agent defaults listed in `DECISIONS.md` ("Still open").
+- Not done in M0:
+  - no phone run;
+  - Vitest and Playwright not run, because Node.js is not installed. These tests need to run before or during M1.
+- Next: M1 (metric library + FOORT parity harness), awaiting the user's go-ahead.
