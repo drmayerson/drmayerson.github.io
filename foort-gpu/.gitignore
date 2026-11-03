@@ -1,0 +1,7 @@
+dev/node_modules/
+dev/test-results/
+dev/playwright-report/
+dev/blob-report/
+dev/package-lock.json
+tools/foort_parity/build/
+*.h5
