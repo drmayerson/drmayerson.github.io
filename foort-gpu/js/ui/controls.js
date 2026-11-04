@@ -16,6 +16,7 @@
  * @property {(v:any) => string} [format]
  * @property {(s:Record<string, any>) => boolean} [visible]
  * @property {boolean} [retrace]             false: display-only (no new trace)
+ * @property {boolean} [metricParam]         a metric parameter (dragging it re-bakes coarse tables)
  */
 
 export const VIEWS = {
@@ -34,13 +35,24 @@ const sig = (v) => (Math.abs(v) >= 100 ? Number(v).toFixed(0) : Number(v).toPrec
 
 /** @type {Control[]} */
 export const CONTROLS = [
-  { key: 'a', label: 'spin a', type: 'range', group: 'Spacetime: Kerr (analytic)', min: 0, max: 0.999, step: 0.001, default: 0.94, format: fmt(3) },
+  { key: 'metric', label: 'metric', type: 'select', group: 'Spacetime', options: ['kerr', 'johannsen', 'mankoNovikov'],
+    optionLabels: { kerr: 'Kerr', johannsen: 'Johannsen', mankoNovikov: 'Manko–Novikov' }, default: 'kerr' },
+  { key: 'path', label: 'Kerr tracer', type: 'select', group: 'Spacetime', options: ['tabulated', 'analytic'],
+    optionLabels: { tabulated: 'tabulated metric (app)', analytic: 'closed-form shader (validation)' }, default: 'tabulated',
+    visible: (s) => s.metric === 'kerr' },
+  { key: 'a', label: 'spin a', type: 'range', group: 'Spacetime', min: 0, max: 0.999, step: 0.001, default: 0.94, format: fmt(3), metricParam: true },
+  { key: 'alpha13', label: 'α13 (≥ −0.99 r₊³)', type: 'range', group: 'Spacetime', min: -7.92, max: 10, step: 0.01, default: 1, format: fmt(2),
+    visible: (s) => s.metric === 'johannsen', metricParam: true },
+  { key: 'alpha3', label: 'α3', type: 'range', group: 'Spacetime', min: -1, max: 1, step: 0.01, default: 0.1, format: fmt(2),
+    visible: (s) => s.metric === 'mankoNovikov', metricParam: true },
   { key: 'r', label: 'camera distance r (M)', type: 'range', group: 'Camera', min: 10, max: 100000, scale: 'log', default: 1000, format: sig },
   { key: 'inc', label: 'inclination (deg)', type: 'range', group: 'Camera', min: 0.01, max: 179.99, step: 0.01, default: 17, format: fmt(2) },
   { key: 'screen', label: 'screen size (M)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: sig },
   { key: 'cx', label: 'screen centre α (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
   { key: 'cy', label: 'screen centre β (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
   { key: 'N', label: 'resolution', type: 'select', group: 'Tracing', options: [128, 256, 512, 1024, 2048], default: 512 },
+  { key: 'grid', label: 'metric table (x × θ nodes per hemisphere)', type: 'select', group: 'Tracing',
+    options: ['256x128', '512x128', '512x256', '1024x256'], default: '512x128', visible: (s) => s.metric !== 'kerr' || s.path !== 'analytic' },
   { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig },
   { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000 },
   { key: 'crossing', label: 'equatorial crossings', type: 'select', group: 'Tracing', options: ['interpolate', 'foort'],

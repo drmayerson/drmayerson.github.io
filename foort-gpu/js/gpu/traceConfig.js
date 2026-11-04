@@ -5,10 +5,11 @@
 import { TetradCamera } from '../camera/tetradCamera.js';
 import { createMetric } from '../metrics/registry.js';
 import { inverseMetric, toMat4 } from '../metrics/common.js';
+import { tableRadiusFor } from '../bake/bake.js';
 
 /**
  * @typedef {Object} ViewParams
- * @property {string} metric                       registry id; M3 supports 'kerr' (analytic shader)
+ * @property {string} metric                       registry id (BH mode in M4: kerr, johannsen, mankoNovikov)
  * @property {Record<string, number>} metricParams
  * @property {{r:number, theta:number, phi?:number, screen:number, cx?:number, cy?:number}} camera  theta in rad
  * @property {number} N                            pixels per side
@@ -23,11 +24,13 @@ import { inverseMetric, toMat4 } from '../metrics/common.js';
  * @property {number} [threshold]                  FOORT crossing threshold (0.001)
  * @property {boolean} [storeH]                    record |H| instead of the third crossing
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
+ * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
+ * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
  */
 
 export const VIEW_DEFAULTS = {
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
-  mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3,
+  mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 },
 };
 
 /** @param {ViewParams} view */
@@ -35,24 +38,54 @@ export function normalizeView(view) {
   return /** @type {Required<ViewParams>} */ ({ ...VIEW_DEFAULTS, rBoundary: 1.01 * view.camera.r, ...view });
 }
 
-/** Shader program per metric (M4 adds the tabulated 'trace'). @param {string} id */
-export function tracerFor(id) {
-  if (id === 'kerr') return 'trace_kerr_analytic';
-  throw new Error(`metric ${id}: no GPU tracer before M4 (only analytic Kerr in M3)`);
+/** Shader program for a view. @param {Required<ViewParams>} v */
+export function tracerFor(v) {
+  if (v.path === 'analytic') {
+    if (v.metric !== 'kerr') throw new Error(`metric ${v.metric}: the analytic shader exists for Kerr only`);
+    return 'trace_kerr_analytic';
+  }
+  if (v.radial === 'log') throw new Error('the tabulated tracer uses x = log(r - r_+) only');
+  return 'trace';
+}
+
+/**
+ * Termination radius of a view: the metric's own (Manko-Novikov: outside its invalid band) or
+ * r_+ (1 + epsHorizon), whichever is larger.
+ * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m @param {Required<ViewParams>} v
+ */
+export function viewTerminationRadius(m, v) {
+  if (m.horizon.kind !== 'sphere') return 0;
+  const r = m.horizon.r * (1 + v.epsHorizon);
+  return m.terminationRadius ? Math.max(m.terminationRadius(), r) : r;
+}
+
+/**
+ * Table specification of a view (null for the analytic path): what the bake worker needs, and a cache key.
+ * @param {ViewParams} viewIn
+ */
+export function tableSpec(viewIn) {
+  const v = normalizeView(viewIn);
+  if (tracerFor(v) !== 'trace') return null;
+  const m = createMetric(v.metric, v.metricParams);
+  const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) };
+  return { metric: v.metric, params: m.params, spec, key: JSON.stringify([v.metric, m.params, spec]) };
 }
 
 /**
  * GPU uniforms for a view. Values are [type, data] with type '4f' | '4i' | 'm4'.
  * @param {ViewParams} viewIn
+ * @param {import('../bake/bake.js').BakedTables} [tables]  required for the tabulated path (from tableSpec(view))
  */
-export function gpuTraceSetup(viewIn) {
+export function gpuTraceSetup(viewIn, tables) {
   const v = normalizeView(viewIn);
+  const program = tracerFor(v);
   const metric = createMetric(v.metric, v.metricParams);
   const rh = metric.horizon.kind === 'sphere' ? metric.horizon.r : 0;
   const r0 = v.radial === 'log' ? 0 : rh;
+  const rTerm = viewTerminationRadius(metric, v);
   const { r, theta } = v.camera;
   const phi = v.camera.phi ?? 0;
-  if (!(r > rh * (1 + v.epsHorizon))) throw new Error(`camera radius ${r} is inside the termination radius`);
+  if (!(r > rTerm)) throw new Error(`camera radius ${r} is inside the termination radius ${rTerm.toPrecision(4)}`);
   const gdd = toMat4(metric.g_dd(r, theta));
   const cam = TetradCamera.fromStaticObserver(gdd, toMat4(inverseMetric(metric)(r, theta)), [0, r, theta, phi]);
   const G = new Float32Array(16);
@@ -64,12 +97,25 @@ export function gpuTraceSetup(viewIn) {
     uG: ['m4', G],
     uCam: ['4f', [r, Math.min(theta, Math.PI - theta), phi, Math.log(r - r0)]],
     uScreen: ['4f', [v.camera.cx ?? 0, v.camera.cy ?? 0, sx, sx]],
-    uStep: ['4f', [v.eps, v.hmin, rh * (1 + v.epsHorizon), v.rBoundary]],
+    uStep: ['4f', [v.eps, v.hmin, rTerm, v.rBoundary]],
     uAux: ['4f', [v.threshold, v.axisStepFloor, theta <= Math.PI / 2 ? 1 : -1, 0]],
     uOpt: ['4i', [v.maxSteps, v.crossing === 'foort' ? 1 : 0, v.mesh === 'foort' ? 1 : 0, v.storeH ? 1 : 0]],
   };
-  if (v.metric === 'kerr') uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
-  return { program: tracerFor(v.metric), uniforms, N: v.N, warnings: cam.warnings, metric, view: v };
+  /** @type {string|null} */
+  let tableKey = null;
+  if (program === 'trace_kerr_analytic') uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
+  else {
+    const ts = /** @type {NonNullable<ReturnType<typeof tableSpec>>} */ (tableSpec(v));
+    if (!tables) throw new Error('gpuTraceSetup: the tabulated path needs the baked tables');
+    const g = tables.grid;
+    if (Math.abs(g.r0 - r0) > 1e-12 * r0 || g.rTerm > rTerm * (1 + 1e-12) || g.rMax < v.rBoundary) throw new Error('gpuTraceSetup: tables do not cover this view');
+    uniforms.uTab = ['4f', [g.xMin, g.dx, g.thMax, g.dth]];
+    uniforms.uTabN = ['4i', [g.nx, g.nth, g.symmetric ? 1 : 0, 0]];
+    uniforms.uEq = ['4f', [g.dxEq, g.nEq, 0, 0]];
+    uniforms.uMetric = ['4f', [r0, g.M, 0, 0]];
+    tableKey = ts.key;
+  }
+  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey };
 }
 
 /**
@@ -79,12 +125,11 @@ export function gpuTraceSetup(viewIn) {
 export function cpuTraceOptions(viewIn) {
   const v = normalizeView(viewIn);
   const metric = createMetric(v.metric, v.metricParams);
-  const rh = metric.horizon.kind === 'sphere' ? metric.horizon.r : 0;
   return {
     metric,
     options: {
       N: v.N, mesh: v.mesh, camera: v.camera, radial: v.radial, eps: v.eps, hmin: v.hmin, maxSteps: v.maxSteps,
-      rTerm: rh * (1 + v.epsHorizon), rBoundary: v.rBoundary, axis: /** @type {'reflect'} */ ('reflect'),
+      rTerm: viewTerminationRadius(metric, v), rBoundary: v.rBoundary, axis: /** @type {'reflect'} */ ('reflect'),
       thetaSingEps: null, singularity: null, crossing: v.crossing, threshold: v.threshold, ncross: 3,
       axisStepFloor: v.axisStepFloor,
     },

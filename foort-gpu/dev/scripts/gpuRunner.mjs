@@ -1,5 +1,5 @@
 // Drive the viewer (index.html) in installed Chrome via Playwright and trace views on the GPU.
-// Starts `python -m http.server` on the foort-gpu folder unless one is already serving.
+// Starts dev/scripts/serve.mjs on the foort-gpu folder unless a server is already running there.
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
@@ -17,7 +17,7 @@ export async function openViewer(opts = {}) {
   const base = `http://127.0.0.1:${port}/`;
   let server = null;
   if (!(await serving(base + 'index.html'))) {
-    server = spawn(process.platform === 'win32' ? 'python' : 'python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
+    server = spawn(process.execPath, [resolve(root, 'dev/scripts/serve.mjs'), String(port)], { stdio: 'ignore' });
     for (let k = 0; k < 50 && !(await serving(base + 'index.html')); k++) await new Promise((r) => setTimeout(r, 100));
   }
   const browser = await chromium.launch({

@@ -5,17 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cpus } from 'node:os';
 import { cpuTraceOptions } from '../../js/gpu/traceConfig.js';
 import { prepareImage } from '../../js/ref/cpuTracer.js';
-
-/**
- * Keplerian prograde redshift on the equator (same placeholder as shaders/glsl/trace_kerr_analytic.glsl).
- * @param {number} a @param {number} r @param {number} pt @param {number} pphi
- */
-export function keplerRedshift(a, r, pt, pphi) {
-  const sr = Math.sqrt(r), q = r * sr - 3 * sr + 2 * a;
-  if (q <= 0) return 0;
-  const ut = (r * sr + a) / (r ** 0.75 * Math.sqrt(q));
-  return 1 / (ut * (pt + pphi / (r * sr + a)));
-}
+import { keplerOrbit, emitterRedshift } from '../../js/bake/bake.js';
 
 /**
  * @param {import('../../js/gpu/traceConfig.js').ViewParams} view
@@ -36,13 +26,14 @@ if (!isMainThread && workerData?.view) {
   const { view, pixels } = workerData;
   const { metric, options } = cpuTraceOptions(view);
   const { tracePixel } = prepareImage(metric, options);
-  const a = metric.params.a ?? 0;
+  // redshift placeholder: prograde circular equatorial emitter, as the GPU tables (js/bake/bake.js)
+  const orbit = keplerOrbit(metric);
   const out = pixels.map(([i, j]) => {
     const r = tracePixel(i, j);
     let ph = r.phi % (2 * Math.PI); if (ph < 0) ph += 2 * Math.PI;
     return {
       i, j, term: r.term, passes: r.passes, steps: r.steps, theta: r.theta, phi: ph, H: r.hamiltonian,
-      crossings: r.crossings.map((c) => ({ r: c.r, phi: ((c.phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), dt: c.t, g: keplerRedshift(a, c.r, r.pt, r.pphi) })),
+      crossings: r.crossings.map((c) => ({ r: c.r, phi: ((c.phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), dt: c.t, g: emitterRedshift(orbit(c.r), r.pt, r.pphi) })),
     };
   });
   parentPort?.postMessage(out);

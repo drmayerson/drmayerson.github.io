@@ -31,7 +31,8 @@ export function tilesCentreOut(w, h, edge) {
 export class TracePipeline {
   /**
    * @param {import('./backend.js').Backend} backend
-   * @param {{tileRays?: number, targetTileMs?: number, onProgress?: (info:{level:number, done:number, total:number}) => void}} [opts]
+   * @param {{tileRays?: number, targetTileMs?: number, onProgress?: (info:{level:number, done:number, total:number}) => void,
+   *   onStage?: (stage: string) => void}} [opts]
    */
   constructor(backend, opts = {}) {
     this.backend = backend;
@@ -41,6 +42,11 @@ export class TracePipeline {
     this.onProgress = opts.onProgress ?? (() => {});
     this.generation = 0;
     this.busy = false;
+    this.onStage = opts.onStage ?? (() => {});
+    /** trace programs compiled so far */
+    this.compiled = new Set();
+    /** key of the metric tables on the GPU */
+    this.tableKey = /** @type {string|null} */ (null);
   }
 
   /** Cancel the running trace (it stops after its current tile). */
@@ -48,7 +54,8 @@ export class TracePipeline {
 
   /**
    * Trace an image. Starting a new trace cancels the running one.
-   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number}} setup  from traceConfig.gpuTraceSetup
+   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null}} setup
+   *   from traceConfig.gpuTraceSetup
    * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean}} [opts]
    * @returns {Promise<TraceStats|null>}  null if cancelled
    */
@@ -59,8 +66,11 @@ export class TracePipeline {
     try {
       const levels = opts.levels ?? [4, 2, 1];
       const be = this.backend;
+      if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program === 'trace' ? 'tabulated' : 'closed-form Kerr'} tracer (first use)…`);
       await be.setTracer(setup.program);
+      this.compiled.add(setup.program);
       if (gen !== this.generation) return null;
+      if (setup.tables && setup.tableKey !== this.tableKey) { be.uploadTables(setup.tables); this.tableKey = setup.tableKey ?? null; }
       be.resize(setup.N, setup.N);
       be.uploadUniforms(setup.uniforms);
       be.clearRecords();

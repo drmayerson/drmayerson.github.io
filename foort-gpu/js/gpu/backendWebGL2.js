@@ -20,10 +20,12 @@ const yieldNow = () => new Promise((res) => {
 
 /**
  * @param {HTMLCanvasElement} canvas  display canvas; its size is set to the record size
- * @param {{shaderBase?: string}} [opts]  URL of the shaders/ folder
+ * @param {{shaderBase?: string, onStage?: (stage: string) => void}} [opts]  URL of the shaders/ folder; startup progress
  * @returns {Promise<import('./backend.js').Backend>}
  */
 export async function createWebGL2Backend(canvas, opts = {}) {
+  const stage = opts.onStage ?? (() => {});
+  stage('creating the WebGL2 context…');
   const base = opts.shaderBase ?? new URL('../../shaders/glsl/', import.meta.url).href;
   const gl = canvas.getContext('webgl2', { antialias: false, depth: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
   if (!gl) throw new Error('WebGL2 is not available in this browser.');
@@ -64,7 +66,11 @@ export async function createWebGL2Backend(canvas, opts = {}) {
 
   /** @type {Map<string, ReturnType<typeof build>>} */
   const tracePrograms = new Map();
+  stage('loading shaders…');
+  // fetch every shader source at once (the trace programs are compiled on first use)
+  await Promise.all(['common', 'display', 'trace', 'trace_kerr_analytic'].map(load));
   const common = await load('common');
+  stage('compiling the display shader…');
   const display = build(HEADER + await load('display'), 'display.glsl');
   const vao = gl.createVertexArray();
 
@@ -77,6 +83,8 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   let W = 0, H = 0;
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
+  /** @type {WebGLTexture|null} */
+  let tableTex = null, equatorTex = null;
   /** @type {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} */
   let traceUniforms = {};
   let lastTraceMs = /** @type {number|null} */ (null), lastDisplayMs = /** @type {number|null} */ (null);
@@ -147,6 +155,29 @@ export async function createWebGL2Backend(canvas, opts = {}) {
 
     uploadUniforms(u) { traceUniforms = u; },
 
+    uploadTables(T) {
+      const g = T.grid;
+      gl.activeTexture(gl.TEXTURE0);
+      // a fresh storage allocation per upload (texStorage is immutable; sizes may change)
+      if (tableTex) gl.deleteTexture(tableTex);
+      tableTex = gl.createTexture();
+      // bake layout [k][j][i] -> texture rows 5 j + k (the five functions of a node in adjacent rows)
+      if (5 * g.nth > gl.getParameter(gl.MAX_TEXTURE_SIZE) || g.nx > gl.getParameter(gl.MAX_TEXTURE_SIZE)) throw new Error(`metric table ${g.nx} x ${g.nth} exceeds MAX_TEXTURE_SIZE`);
+      const packed = new Float32Array(T.data.length), row = 4 * g.nx;
+      for (let k = 0; k < 5; k++) for (let j = 0; j < g.nth; j++)
+        packed.set(T.data.subarray((k * g.nth + j) * row, (k * g.nth + j + 1) * row), (5 * j + k) * row);
+      gl.bindTexture(gl.TEXTURE_2D, tableTex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nx, 5 * g.nth);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RGBA, gl.FLOAT, packed);
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+      if (equatorTex) gl.deleteTexture(equatorTex);
+      equatorTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, equatorTex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nEq, 1);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nEq, 1, gl.RGBA, gl.FLOAT, T.equator);
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+    },
+
     clearRecords() {
       const z = new Float32Array(4);
       for (const L of levels.values()) {
@@ -166,6 +197,15 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.useProgram(tracer.prog);
       gl.bindVertexArray(vao);
       setUniforms(tracer, traceUniforms);
+      if (tracer.loc('uTables')) {
+        if (!tableTex) throw new Error('uploadTables first');
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tableTex);
+        gl.uniform1i(tracer.loc('uTables'), 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, equatorTex);
+        gl.uniform1i(tracer.loc('uEquator'), 1);
+      }
       gl.uniform4i(tracer.loc('uImg'), L.w, L.h, 0, 0);
       /** @type {Promise<number|null>} */
       let gpu = Promise.resolve(null);

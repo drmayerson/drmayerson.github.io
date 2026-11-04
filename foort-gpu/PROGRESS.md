@@ -444,3 +444,115 @@ To try it yourself, serve with `sh dev/serve.sh` (or `dev\serve.ps1`) and open <
 
 ### M3 closed (2026-11-04)
 The user accepted M3 ("Accept, merge and push"). It is merged to `main` and pushed. Next: M4 (tabulated metric path), after the user's go-ahead.
+
+## CHECKPOINT M4 — tabulated metric path, all BH-mode metrics (2026-11-04)
+
+### Done
+
+- **Bake** (`js/bake/bake.js`, worker `js/bake/worker.js`, client `js/bake/client.js`):
+  - **Grid:** the tables are built in double precision on an (x, θ) grid, x = log(r − r₊), from the termination radius to r_max.
+    - r_max is 1.1 × 10ⁿ beyond the boundary sphere.
+    - θ covers [0, π/2] for symmetric metrics and [0, π] for Manko–Novikov.
+  - **Derivatives:** one metric evaluation per node; derivatives by 4th-order finite differences, with mirror ghost nodes at the axis and equator.
+  - **Validation:** pointwise signature and CTC checks at every node; an invalid table is refused, with a message.
+  - **Redshift placeholder:** a 1D equatorial table of prograde circular orbits (Keplerian).
+  - **Worker:** bakes run in a module Web Worker, cached by key; a newer request supersedes an older one.
+- **Tracer** (`shaders/glsl/trace.glsl`): it provides the five metric functions of `common.glsl` by bicubic Hermite lookups (four RGBA32F texels per function per corner, `texelFetch`). The 1/sin²θ is applied analytically. `js/bake/hermite.js` is the same lookup in JS.
+- **Viewer:**
+  - **Metric selector:** Kerr, Johannsen (a, α13) or Manko–Novikov (a, α3). The sliders are clamped to the M1 validity bounds, and the status line says when a value was clamped.
+  - **Kerr path switch:** tabulated (default) or the closed-form validation shader.
+  - **Table grid selector**, with a default of 512 × 128.
+  - **Live re-bake:** while a metric slider is dragged, a coarse 128 × 64 table is baked and a preview traced; on release, the full table and image follow.
+  - **Startup:** the status line now names each stage ("loading shaders…", "baking metric tables…", "compiling the tabulated tracer…"). The shader files are fetched in parallel.
+- **Tests:** Vitest 66 passed (new `bake.test.js`); Playwright 7 passed (new `m4.spec.js`); `tsc --checkJs` clean.
+  - The test web server is now a small Node server (`dev/scripts/serve.mjs`). Python's `http.server` intermittently left ES-module requests unanswered when two test browsers loaded the app at once. Eight consecutive full runs pass.
+
+### Findings and fixes during M4
+
+1. **float32 storage of the metric limited the rays, not the grid.**
+   - **The problem:** with G stored directly, the tabulated rays (in a double-precision tracer) were off by 4–6e-5 rad at any grid from 128 to 2048 nodes; float64 storage gave 3e-8. At large r, g^tt p_t² and g^xx p_x² cancel down to about b²/r², so float32's 6e-8 relative rounding of g^tt ≈ −1 is comparable to the geometry.
+   - **The fix:** the tables now store residuals over a regular, metric-independent analytic background with M = M_ADM: B0 = −(1 + 2M/r + 4M²/r²), B2 = B4 = 1/r², B3 = r/((r + 2M)((r − r₊)² + M²)). The shader adds it back analytically.
+   - **Result:** float32 tables then give 2e-8 rad. Because the background ignores spin, the Kerr table still carries all of the spin structure, so the Level 4 test stays meaningful.
+2. **Shader compile time of about 34 s** (ANGLE/D3D inlined the Hermite lookup at four RK4 call sites). The RK4 stages are now a loop with one call site, and the Hermite weights are folded into four `dot` products per corner. Compile time is now about 1.5 s. The closed-form path is unchanged; the M3 Level 2 rerun gives identical results.
+3. **The redshift placeholder** interpolated u^t, which diverges at the photon orbit; that was the one emission-proxy failure, 1–2% for Schwarzschild at 80°. It now interpolates 1/u^t, which vanishes continuously there, on its own 2048-node grid: about 7e-4 at worst.
+4. **Axis nodes** of the tables were evaluated at θ = 1e-6. There Manko–Novikov's prolate coordinate loses digits in 1 − cos²θ, giving a 2e-8 absolute error in g^tφ near the axis (harmless, but 40% of that tiny function). The nodes now use θ = 1e-4, an even-function error of about 1e-8. The Manko–Novikov worst-case table error fell from 0.55 to 2e-5.
+
+### Level 4: tabulated vs closed-form Kerr, both on the GPU, 256², default table 512 × 128
+
+The views use r = 1000 and a 15 × 15 screen, at inclinations of 17° (KerrExample) and 80°. The emission proxy is Σ g³ J(r), as in M3.
+
+| a | inc | escaping rays within 1e-3 rad | escape direction median / p99 (rad) | four-colour agreement | emission proxy, relative L1 |
+|---|---|---|---|---|---|
+| 0 | 17° | 99.980% | 6.4e-7 / 2.2e-5 | 100% | 3.4e-6 |
+| 0 | 80° | 99.980% | 4.8e-7 / 2.1e-5 | 100% | 7.5e-4 |
+| 0.5 | 17° | 99.974% | 6.8e-7 / 2.7e-5 | 100% | 1.9e-6 |
+| 0.5 | 80° | 99.978% | 4.9e-7 / 2.3e-5 | 100% | 1.6e-5 |
+| 0.94 | 17° | 99.977% | 7.4e-7 / 2.7e-5 | 100% | 1.6e-6 |
+| 0.94 | 80° | 99.986% | 5.1e-7 / 2.8e-5 | 99.998% (1 px) | 6.7e-6 |
+| 0.998 | 17° | 99.973% | 6.7e-7 / 2.4e-5 | 100% | 1.6e-5 |
+| 0.998 | 80° | 99.905% | 4.9e-7 / 4.0e-5 | 100% | 5.2e-6 |
+
+- **Targets met in all eight views:** at least 99% of escaping rays within 1e-3 rad, and emission L1 ≤ 0.5%. The shadow areas are identical, and r at the first crossing agrees to 3e-7.
+- **Grid dependence** (all of 256 × 128, 512 × 128, 512 × 256 and 1024 × 256, in `level4.json`): the escape-direction numbers are flat across grids. For example, the worst case (a = 0.998 at 80°) gives 99.92 / 99.91 / 99.89 / 99.88%, so the float32 path dominates. The redshift p99 improves from 256 to 512 x-nodes. Hence the default 512 × 128.
+- **Images:** the comparison maps are `level4_kerr_*_512x128.png`.
+
+### Table accuracy in double precision, Kerr a = 0.94 (`table_error_*.json`, `m4TableRays.mjs`)
+
+Errors are p99 relative to the function's scale at that radius. "Rays" is the escape direction against the direct metric with the double-precision tracer.
+
+| grid | G | ∂G/∂x | ∂G/∂θ | rays (median) |
+|---|---|---|---|---|
+| 128 × 64 | 1.2e-5 | 4.9e-4 | 3.3e-6 | 1.7e-6 |
+| 256 × 128 | 7.4e-7 | 5.4e-5 | 6.1e-6 | 1.5e-7 |
+| 512 × 128 | — | — | — | 2.1e-8 |
+| 512 × 256 | 5.4e-8 | 7.1e-6 | 1.2e-5 | 3.0e-8 |
+
+- **Convergence:** Hermite converges as h⁴ (values) and h³ (derivatives) until float32 rounding takes over at ε₃₂/h. That happens at about 512 nodes in x and about 128 in θ, which is why finer θ grids get slightly worse derivatives.
+- **Reference derivatives:** the "analytic Kerr derivatives" of the plan are the closed-form Kerr inverse metric differentiated by fine 4th-order central differences (h = 1e-4, error ≲ 1e-12).
+- **Other metrics:** Johannsen behaves identically. Manko–Novikov has p99 4e-8 and worst case 2e-5, near the termination radius at the equator.
+
+### Level 2: tabulated GPU vs CPU reference (double, direct metric), 256²
+
+| case | four-colour agreement | escape direction median / p99 (rad) | shadow radius, GPU/CPU | emission proxy L1 |
+|---|---|---|---|---|
+| Johannsen a = 0.94, α13 = 5.5, 17° (M2 case) | 99.998% (1 px, at a class edge) | 2.6e-6 / 1.2e-4 | 0.99998 | 6.1e-6 |
+| Johannsen a = 0.5, α13 = −5, 80° | 100% | 1.2e-6 / 1.7e-5 | 1.00000 | 5.9e-6 |
+| Manko–Novikov a = 0.94, α3 = 2, 30° (M2 case) | 100% | 1.7e-6 / 6.4e-5 | 1.00000 | 6.0e-6 |
+| Manko–Novikov a = 0.5, α3 = 0.5, 80° | 100% | 1.4e-6 / 8.2e-5 | 1.00000 | 1.9e-5 |
+| Kerr a = 0.94, 17°, tabulated | 100% | 2.0e-6 / 6.5e-5 | 1.00000 | 3.7e-6 |
+
+The GPU on tables matches the double-precision reference as well as the closed-form shader did in M3. The small specks inside the Manko–Novikov shadow appear identically in both codes, so they are a property of the metric. Images: `dev/reports/m4/<case>.png`.
+
+### Timings (this laptop, AMD Radeon integrated GPU, Chrome/ANGLE D3D11)
+
+| | Kerr | Johannsen | Manko–Novikov |
+|---|---|---|---|
+| bake 512 × 128 in the browser worker | 58 ms | 59 ms | 182 ms |
+| bake 512 × 256 in the browser worker | 85 ms | 108 ms | 307 ms |
+| trace 512², GPU (closed-form Kerr: 88 ms) | 430 ms | 445 ms | 487 ms |
+| trace 1024², GPU (closed-form Kerr: 240 ms) | 1.90 s | 1.74 s | 1.92 s |
+
+- **Bakes** are within the 0.5 s budget. Manko–Novikov includes its validity scan for the termination radius.
+- **Tracing on tables is 4–8× slower than the closed-form shader.** I measured why:
+  - With identical arithmetic but the five functions' fetches aliased to one, the trace runs at the closed-form speed (110 vs 89 ms). So the cost is the 20 distinct RGBA32F texel fetches per lookup, about 60,000 per ray.
+  - Table size hardly matters: 0.3 MB costs nearly what 5 MB does.
+  - Neither interleaving the functions in one texture (−13%, kept) nor caching the cell across RK stages (no gain, reverted) changes this.
+  - The remaining levers are fewer bytes per node (half-float derivative channels) and an analytic far field. Those belong in the M9 performance pass.
+- **Startup** (local): first preview after about 2.1 s, full 512² image after about 3 s. The status line shows each stage.
+
+### Images for the user (`dev/reports/m4/views/`, 512², viewer)
+
+- `fourColor_johannsen_a0.94_a13_5.5.png`, `fourColor_johannsen_a0.5_a13_-5_inc80.png`
+- `fourColor_mankoNovikov_a0.94_a3_1_inc30.png`, `sky_mankoNovikov_a0.94_a3_1_inc80.png`, `g1_mankoNovikov_a0.94_a3_1_inc80.png`. These use α3 = 1, the edge of the viewer's slider range; Level 2 tested α3 = 2 directly.
+- `sky_kerr_tabulated_faceon.png`: the face-on axis view on the tabulated path.
+
+### Open issues / for the user
+
+1. **Try the BH-mode sliders.** Run `sh dev/serve.sh` and open <http://127.0.0.1:8765/?metric=johannsen>, or publish after approval. The spin and α sliders re-bake live.
+2. **Speed:** the tabulated tracer is 4–8× slower than closed-form Kerr: 0.45 s at 512² and 1.9 s at 1024² on this iGPU. Is that acceptable for now, with optimisation deferred to M9, or do you want a performance step before M5?
+3. **Deploy:** merging to `main` publishes the M4 viewer; this needs your approval.
+4. **Redshift:** it is still the Keplerian placeholder (now generic for all metrics); FOORT's fluid model comes in M5.
+5. **α3 range:** the viewer allows Manko–Novikov α3 in [−1, 1] (M1 decision), while FOORT's example and the Level 2 test use α3 = 2, which works. Should the slider range be widened?
+
+### M4 checkpoint decision (2026-11-04)
+The tabulated-trace speed is accepted for now; optimisation is deferred to M9 (user: "Yes, defer to M9"). Still open: the Manko–Novikov α3 slider range, and publishing (merge to `main`).

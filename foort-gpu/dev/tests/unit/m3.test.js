@@ -9,7 +9,7 @@ const DEG = Math.PI / 180;
 const angle = (t1, p1, t2, p2) => Math.acos(Math.min(1, Math.sin(t1) * Math.sin(t2) * Math.cos(p1 - p2) + Math.cos(t1) * Math.cos(t2)));
 
 describe('trace configuration', () => {
-  const view = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 }, N: 64 };
+  const view = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 }, N: 64, path: 'analytic' };
   it('GPU uniforms and CPU options describe the same rays', () => {
     const g = gpuTraceSetup(view), c = cpuTraceOptions(view);
     const rh = 1 + Math.sqrt(1 - 0.94 ** 2);
@@ -21,8 +21,9 @@ describe('trace configuration', () => {
     expect(g.uniforms.uCam[1][3]).toBeCloseTo(Math.log(1000 - rh), 12);
     expect(g.uniforms.uAux[1][1]).toBe(c.options.axisStepFloor);
   });
-  it('rejects metrics without a GPU tracer yet', () => {
-    expect(() => gpuTraceSetup({ ...view, metric: 'johannsen', metricParams: {} })).toThrow(/M4/);
+  it('analytic shader for Kerr only; the tabulated path needs baked tables', () => {
+    expect(() => gpuTraceSetup({ ...view, metric: 'johannsen', metricParams: {} })).toThrow(/Kerr only/);
+    expect(() => gpuTraceSetup({ ...view, path: 'tabulated' })).toThrow(/baked tables/);
   });
   it('decodes the record layout', () => {
     const rec = new Float32Array(32);

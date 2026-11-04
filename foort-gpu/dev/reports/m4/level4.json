@@ -1,0 +1,1541 @@
+{
+ "N": 256,
+ "rows": [
+  {
+   "case": "kerr_a0_inc17_256x128",
+   "a": 0,
+   "inc": 17,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9998042478222571,
+   "gpuMs": {
+    "analytic": 209.40000009536743,
+    "tabulated": 156.10000014305115
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 6.665667666895824e-7,
+    "p99": 0.000023672406959573577,
+    "max": 0.0024946135640847755,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.7783116380765664e-7,
+     "p99": 0.0000016225364910146971
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 5.14852834980502e-7,
+     "p99": 0.00009753319421524667
+    },
+    "count": 57978
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000003404730790804761,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc17_512x128",
+   "a": 0,
+   "inc": 17,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9998042478222571,
+   "gpuMs": {
+    "analytic": 209.40000009536743,
+    "tabulated": 176.5
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 6.353558780350745e-7,
+    "p99": 0.000021749805525630836,
+    "max": 0.0024504500451957723,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.6187714321890743e-7,
+     "p99": 0.0000016133615840629378
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 5.149968366319309e-7,
+     "p99": 0.00009742413743181188
+    },
+    "count": 57978
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000033733337050635323,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc17_512x256",
+   "a": 0,
+   "inc": 17,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9998531858666928,
+   "gpuMs": {
+    "analytic": 209.40000009536743,
+    "tabulated": 400.19999980926514
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 1,
+   "escapeAngle": {
+    "median": 6.532761519188691e-7,
+    "p99": 0.000023346967026884976,
+    "max": 0.0030994114302791776,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.7113368449664373e-7,
+     "p99": 0.0000016311454833336895
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 5.167020937716126e-7,
+     "p99": 0.00009655831859014892
+    },
+    "count": 57980
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000034088873701446997,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc17_1024x256",
+   "a": 0,
+   "inc": 17,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9999021239111285,
+   "gpuMs": {
+    "analytic": 209.40000009536743,
+    "tabulated": 962.5999999046326
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 6.713795856278551e-7,
+    "p99": 0.0000247813837289803,
+    "max": 0.003359046306171412,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.7199216444972654e-7,
+     "p99": 0.0000016133615840629378
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 5.174469306427933e-7,
+     "p99": 0.00009777037534622216
+    },
+    "count": 57978
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000034046055389115095,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc80_256x128",
+   "a": 0,
+   "inc": 80,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9997553097778212,
+   "gpuMs": {
+    "analytic": 34.5,
+    "tabulated": 144.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 4.851466594964226e-7,
+    "p99": 0.000020767627057417244,
+    "max": 0.0026210030080398446,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.242594303721616e-7,
+     "p99": 0.000002146259731052193
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.59361502124992e-7,
+     "p99": 0.000031786858670003404
+    },
+    "count": 57100
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0005098338911287977,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc80_512x128",
+   "a": 0,
+   "inc": 80,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9998042478222571,
+   "gpuMs": {
+    "analytic": 34.5,
+    "tabulated": 191.19999980926514
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 4.768371582031296e-7,
+    "p99": 0.000020535011214625246,
+    "max": 0.002232088392190316,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.156478640845549e-7,
+     "p99": 0.0000021347461241312178
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.579779520433176e-7,
+     "p99": 0.00003131885542479422
+    },
+    "count": 57100
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0007478421861664778,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc80_512x256",
+   "a": 0,
+   "inc": 80,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9998042478222571,
+   "gpuMs": {
+    "analytic": 34.5,
+    "tabulated": 323.5
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 4.791598078851008e-7,
+    "p99": 0.000019079928828427723,
+    "max": 0.002482035433772265,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.2054196380461514e-7,
+     "p99": 0.0000021263799763050393
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.576701754759662e-7,
+     "p99": 0.00003211252112457905
+    },
+    "count": 57100
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0005236148860014783,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0_inc80_1024x256",
+   "a": 0,
+   "inc": 80,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9998042478222571,
+   "gpuMs": {
+    "analytic": 34.5,
+    "tabulated": 884.4000000953674
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 1,
+   "escapeAngle": {
+    "median": 4.865177785549959e-7,
+    "p99": 0.000023386455098328908,
+    "max": 0.002624637799000559,
+    "count": 40868
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.2531790675819484e-7,
+     "p99": 0.0000021307544575383253
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.591216320827821e-7,
+     "p99": 0.00003288483507609257
+    },
+    "count": 57102
+   },
+   "shadow": {
+    "capturedGPU": 24668,
+    "capturedCPU": 24668,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0005086433194672125,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc17_256x128",
+   "a": 0.5,
+   "inc": 17,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9997594650502718,
+   "gpuMs": {
+    "analytic": 41.80000019073486,
+    "tabulated": 179
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 6.683963981868691e-7,
+    "p99": 0.000025078105340345133,
+    "max": 0.026207912753674567,
+    "count": 41574
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.863093456046791e-7,
+     "p99": 0.0000016609447121333673
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.196851842604662e-7,
+     "p99": 0.000017630482296712308
+    },
+    "count": 58473
+   },
+   "shadow": {
+    "capturedGPU": 23962,
+    "capturedCPU": 23962,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.00001740507147493063,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc17_512x128",
+   "a": 0.5,
+   "inc": 17,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.999735411555299,
+   "gpuMs": {
+    "analytic": 41.80000019073486,
+    "tabulated": 230.20000004768372
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 6.764864601383438e-7,
+    "p99": 0.000026702880860168348,
+    "max": 0.02132098392144718,
+    "count": 41574
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.76564249701011e-7,
+     "p99": 0.000001654352767566745
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.2511771699738184e-7,
+     "p99": 0.000018462170671663306
+    },
+    "count": 58472
+   },
+   "shadow": {
+    "capturedGPU": 23962,
+    "capturedCPU": 23962,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000001948937720459833,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc17_512x256",
+   "a": 0.5,
+   "inc": 17,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9997113580603262,
+   "gpuMs": {
+    "analytic": 41.80000019073486,
+    "tabulated": 407.7000000476837
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 7.152557373047027e-7,
+    "p99": 0.00002960043564970116,
+    "max": 0.02271382095862488,
+    "count": 41574
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.845762247378128e-7,
+     "p99": 0.0000016770264978571794
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.2543061249837965e-7,
+     "p99": 0.00001901403632312292
+    },
+    "count": 58472
+   },
+   "shadow": {
+    "capturedGPU": 23962,
+    "capturedCPU": 23962,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000002017857730528684,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc17_1024x256",
+   "a": 0.5,
+   "inc": 17,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.999735411555299,
+   "gpuMs": {
+    "analytic": 41.80000019073486,
+    "tabulated": 678.0999999046326
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 1,
+   "escapeAngle": {
+    "median": 7.303089353348684e-7,
+    "p99": 0.000027370192304853994,
+    "max": 0.029427665432958622,
+    "count": 41574
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.8655202738902484e-7,
+     "p99": 0.0000016788836934433925
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.1627193820299346e-7,
+     "p99": 0.000017095611528341097
+    },
+    "count": 58473
+   },
+   "shadow": {
+    "capturedGPU": 23962,
+    "capturedCPU": 23962,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000020239780328665867,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc80_256x128",
+   "a": 0.5,
+   "inc": 80,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9998302948021722,
+   "gpuMs": {
+    "analytic": 36,
+    "tabulated": 165.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999542236328125,
+   "escapeAngle": {
+    "median": 4.869739603510009e-7,
+    "p99": 0.00002197685875696446,
+    "max": 0.01204245414758553,
+    "count": 41248
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.2829531345308236e-7,
+     "p99": 0.000002164669902992483
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.6506705765824783e-7,
+     "p99": 0.000007613080780016262
+    },
+    "count": 57539
+   },
+   "shadow": {
+    "capturedGPU": 24288,
+    "capturedCPU": 24288,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.00001709182936396101,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc80_512x128",
+   "a": 0.5,
+   "inc": 80,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9997818076027929,
+   "gpuMs": {
+    "analytic": 36,
+    "tabulated": 151.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 4.88339948897782e-7,
+    "p99": 0.00002334399000667535,
+    "max": 0.01167169169973356,
+    "count": 41248
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.2740109826698414e-7,
+     "p99": 0.0000021476264570952727
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.722145257345828e-7,
+     "p99": 0.000007702299914695043
+    },
+    "count": 57540
+   },
+   "shadow": {
+    "capturedGPU": 24288,
+    "capturedCPU": 24288,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000156349781210403,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc80_512x256",
+   "a": 0.5,
+   "inc": 80,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9997575640031032,
+   "gpuMs": {
+    "analytic": 36,
+    "tabulated": 272.10000014305115
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 5.044433736744803e-7,
+    "p99": 0.000024685283603305938,
+    "max": 0.0116329261290055,
+    "count": 41248
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.342094820577411e-7,
+     "p99": 0.0000021862788863805893
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.7141717287665765e-7,
+     "p99": 0.000008829436393386279
+    },
+    "count": 57539
+   },
+   "shadow": {
+    "capturedGPU": 24288,
+    "capturedCPU": 24288,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000019361997980579588,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.5_inc80_1024x256",
+   "a": 0.5,
+   "inc": 80,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9998302948021722,
+   "gpuMs": {
+    "analytic": 36,
+    "tabulated": 429.89999985694885
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999908447265625,
+   "escapeAngle": {
+    "median": 5.176947345149637e-7,
+    "p99": 0.000024206238072980687,
+    "max": 0.029634772553207286,
+    "count": 41248
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.3333511112059266e-7,
+     "p99": 0.0000021629955325129773
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.59714170271337e-7,
+     "p99": 0.000007159153697940183
+    },
+    "count": 57539
+   },
+   "shadow": {
+    "capturedGPU": 24288,
+    "capturedCPU": 24288,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000024722299690477866,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc17_256x128",
+   "a": 0.94,
+   "inc": 17,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9997938994229184,
+   "gpuMs": {
+    "analytic": 42.60000014305115,
+    "tabulated": 250.70000004768372
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 1,
+   "escapeAngle": {
+    "median": 7.152557373047027e-7,
+    "p99": 0.00002631004992057593,
+    "max": 0.007131573307791483,
+    "count": 43668
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.0133551902029795e-7,
+     "p99": 0.0000017408556984691698
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.36552241616352e-7,
+     "p99": 0.0000035425677150748215
+    },
+    "count": 60429
+   },
+   "shadow": {
+    "capturedGPU": 21868,
+    "capturedCPU": 21868,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000015352360624885206,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc17_512x128",
+   "a": 0.94,
+   "inc": 17,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9997709993587982,
+   "gpuMs": {
+    "analytic": 42.60000014305115,
+    "tabulated": 196
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 7.438650115936382e-7,
+    "p99": 0.000027060455393146375,
+    "max": 0.005401475445405454,
+    "count": 43668
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.9770446044638997e-7,
+     "p99": 0.0000017290879552461075
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.369454508921865e-7,
+     "p99": 0.0000038069437655741445
+    },
+    "count": 60428
+   },
+   "shadow": {
+    "capturedGPU": 21868,
+    "capturedCPU": 21868,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000016075934411926472,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc17_512x256",
+   "a": 0.94,
+   "inc": 17,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9997251992305578,
+   "gpuMs": {
+    "analytic": 42.60000014305115,
+    "tabulated": 436.89999985694885
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 7.540929871130165e-7,
+    "p99": 0.00003112322534963753,
+    "max": 0.00471095519928515,
+    "count": 43668
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.0371667971762547e-7,
+     "p99": 0.0000017349237958077435
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.3763826536898747e-7,
+     "p99": 0.0000038817464753742
+    },
+    "count": 60428
+   },
+   "shadow": {
+    "capturedGPU": 21868,
+    "capturedCPU": 21868,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000023181808193459313,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc17_1024x256",
+   "a": 0.94,
+   "inc": 17,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.999748099294678,
+   "gpuMs": {
+    "analytic": 42.60000014305115,
+    "tabulated": 1097
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 7.151005000294496e-7,
+    "p99": 0.000028167538523268056,
+    "max": 0.007843502763387803,
+    "count": 43668
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.987419676998193e-7,
+     "p99": 0.0000017458692732993737
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 2.3753310469188454e-7,
+     "p99": 0.0000038213104292478
+    },
+    "count": 60428
+   },
+   "shadow": {
+    "capturedGPU": 21868,
+    "capturedCPU": 21868,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000022031745419794325,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc80_256x128",
+   "a": 0.94,
+   "inc": 80,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9998828436196635,
+   "gpuMs": {
+    "analytic": 44.89999985694885,
+    "tabulated": 241.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.99993896484375,
+   "escapeAngle": {
+    "median": 5.183377006926025e-7,
+    "p99": 0.000024961780147712423,
+    "max": 0.006258217304978629,
+    "count": 42678
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.443608387344418e-7,
+     "p99": 0.000002243272578487519
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.76937138938878e-7,
+     "p99": 0.000004396973013852938
+    },
+    "count": 59333
+   },
+   "shadow": {
+    "capturedGPU": 22858,
+    "capturedCPU": 22858,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000006571010500958337,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc80_512x128",
+   "a": 0.94,
+   "inc": 80,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9998594123435962,
+   "gpuMs": {
+    "analytic": 44.89999985694885,
+    "tabulated": 157.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.9999542236328125,
+   "escapeAngle": {
+    "median": 5.075152625419671e-7,
+    "p99": 0.00002819997020729596,
+    "max": 0.006788549701692594,
+    "count": 42678
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.4199703009779063e-7,
+     "p99": 0.0000022488827269502172
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.755153376633324e-7,
+     "p99": 0.000004654684084075168
+    },
+    "count": 59333
+   },
+   "shadow": {
+    "capturedGPU": 22858,
+    "capturedCPU": 22858,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000006712857707044668,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc80_512x256",
+   "a": 0.94,
+   "inc": 80,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9998359810675289,
+   "gpuMs": {
+    "analytic": 44.89999985694885,
+    "tabulated": 304.60000014305115
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 5.291486056019339e-7,
+    "p99": 0.00003025739030626384,
+    "max": 0.0060843204888382865,
+    "count": 42678
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.5127632300103794e-7,
+     "p99": 0.000002349456693479307
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.7485532131239844e-7,
+     "p99": 0.000005123692981083125
+    },
+    "count": 59333
+   },
+   "shadow": {
+    "capturedGPU": 22858,
+    "capturedCPU": 22858,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000029389211093158325,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.94_inc80_1024x256",
+   "a": 0.94,
+   "inc": 80,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9998828436196635,
+   "gpuMs": {
+    "analytic": 44.89999985694885,
+    "tabulated": 491.2000000476837
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 5.053229617420838e-7,
+    "p99": 0.000030419482439345463,
+    "max": 0.002427726488117124,
+    "count": 42678
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.421887446046245e-7,
+     "p99": 0.000002252063171372874
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00140380859375
+    },
+    "relG": {
+     "median": 2.759224547533161e-7,
+     "p99": 0.000004743867491467094
+    },
+    "count": 59333
+   },
+   "shadow": {
+    "capturedGPU": 22858,
+    "capturedCPU": 22858,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000004451365854591152,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc17_256x128",
+   "a": 0.998,
+   "inc": 17,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9996829853720393,
+   "gpuMs": {
+    "analytic": 50.69999980926514,
+    "tabulated": 202.29999995231628
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 8.256372915026821e-7,
+    "p99": 0.000029335614453589686,
+    "max": 0.023463299176492106,
+    "count": 44162
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.1322467464961515e-7,
+     "p99": 0.0000017679200799099875
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.1602346411016326e-7,
+     "p99": 0.000004363944220064979
+    },
+    "count": 61445
+   },
+   "shadow": {
+    "capturedGPU": 21374,
+    "capturedCPU": 21374,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.00001572593679150819,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc17_512x128",
+   "a": 0.998,
+   "inc": 17,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9997282731760337,
+   "gpuMs": {
+    "analytic": 50.69999980926514,
+    "tabulated": 228.20000004768372
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.999969482421875,
+   "escapeAngle": {
+    "median": 6.660669040270871e-7,
+    "p99": 0.00002428529517527481,
+    "max": 0.04978713485986843,
+    "count": 44162
+   },
+   "crossing1": {
+    "relR": {
+     "median": 2.989176788683535e-7,
+     "p99": 0.0000017304290101232261
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.170946268236211e-7,
+     "p99": 0.0000038808350780921036
+    },
+    "count": 61445
+   },
+   "shadow": {
+    "capturedGPU": 21374,
+    "capturedCPU": 21374,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000015593805786026687,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc17_512x256",
+   "a": 0.998,
+   "inc": 17,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9997282731760337,
+   "gpuMs": {
+    "analytic": 50.69999980926514,
+    "tabulated": 368.2999999523163
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.99993896484375,
+   "escapeAngle": {
+    "median": 7.144792136393253e-7,
+    "p99": 0.000029244905982554284,
+    "max": 0.0171296896645689,
+    "count": 44162
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.0472710202469067e-7,
+     "p99": 0.0000017823509662934748
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.1635240614081144e-7,
+     "p99": 0.000004319225303749519
+    },
+    "count": 61443
+   },
+   "shadow": {
+    "capturedGPU": 21374,
+    "capturedCPU": 21374,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.00001568553790915584,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc17_1024x256",
+   "a": 0.998,
+   "inc": 17,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9997735609800281,
+   "gpuMs": {
+    "analytic": 50.69999980926514,
+    "tabulated": 1401
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.9999847412109375,
+   "escapeAngle": {
+    "median": 7.105838666895994e-7,
+    "p99": 0.000029849097679356494,
+    "max": 0.04032936295339947,
+    "count": 44162
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.045625294283544e-7,
+     "p99": 0.0000017727144754868236
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.188438212889947e-7,
+     "p99": 0.000004250626003530787
+    },
+    "count": 61445
+   },
+   "shadow": {
+    "capturedGPU": 21374,
+    "capturedCPU": 21374,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.0000017345979646636369,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc80_256x128",
+   "a": 0.998,
+   "inc": 80,
+   "nx": 256,
+   "nth": 128,
+   "fracWithin1e3": 0.9992382623147592,
+   "gpuMs": {
+    "analytic": 48.09999990463257,
+    "tabulated": 178.40000009536743
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.99993896484375,
+   "escapeAngle": {
+    "median": 5.904320703792345e-7,
+    "p99": 0.000044273955405472626,
+    "max": 0.4564369833108595,
+    "count": 43322
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.5141121472666004e-7,
+     "p99": 0.0000024590482023397075
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.4781144863120546e-7,
+     "p99": 0.000006319123585496871
+    },
+    "count": 60309
+   },
+   "shadow": {
+    "capturedGPU": 22214,
+    "capturedCPU": 22214,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.00000523912780849233,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc80_512x128",
+   "a": 0.998,
+   "inc": 80,
+   "nx": 512,
+   "nth": 128,
+   "fracWithin1e3": 0.9990535986334887,
+   "gpuMs": {
+    "analytic": 48.09999990463257,
+    "tabulated": 272.90000009536743
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 1,
+   "fourColorMismatches": 0,
+   "mismatchesInHeterogeneousNeighbourhood": 0,
+   "passesAgreement": 0.99993896484375,
+   "escapeAngle": {
+    "median": 4.858327027231832e-7,
+    "p99": 0.00003978796996761963,
+    "max": 0.3218546397619643,
+    "count": 43322
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.3063859207033876e-7,
+     "p99": 0.0000022813961633486956
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.5296767811437323e-7,
+     "p99": 0.000005213911506976843
+    },
+    "count": 60310
+   },
+   "shadow": {
+    "capturedGPU": 22214,
+    "capturedCPU": 22214,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000005213826986081929,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc80_512x256",
+   "a": 0.998,
+   "inc": 80,
+   "nx": 512,
+   "nth": 256,
+   "fracWithin1e3": 0.9989381838326947,
+   "gpuMs": {
+    "analytic": 48.09999990463257,
+    "tabulated": 390.39999985694885
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.999908447265625,
+   "escapeAngle": {
+    "median": 5.066394805908257e-7,
+    "p99": 0.00004303132344909003,
+    "max": 1.0209745325661443,
+    "count": 43322
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.4035592550731964e-7,
+     "p99": 0.000002489621573127435
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.548883528339751e-7,
+     "p99": 0.000006331012398742006
+    },
+    "count": 60310
+   },
+   "shadow": {
+    "capturedGPU": 22214,
+    "capturedCPU": 22214,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000006675871612417376,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  },
+  {
+   "case": "kerr_a0.998_inc80_1024x256",
+   "a": 0.998,
+   "inc": 80,
+   "nx": 1024,
+   "nth": 256,
+   "fracWithin1e3": 0.9988227690319007,
+   "gpuMs": {
+    "analytic": 48.09999990463257,
+    "tabulated": 824.9000000953674
+   },
+   "N": 256,
+   "pixels": 65536,
+   "terminationAgreement": 1,
+   "fourColorAgreement": 0.9999847412109375,
+   "fourColorMismatches": 1,
+   "mismatchesInHeterogeneousNeighbourhood": 1,
+   "passesAgreement": 0.99993896484375,
+   "escapeAngle": {
+    "median": 5.022376640544205e-7,
+    "p99": 0.000052008656052143804,
+    "max": 0.9048891850199737,
+    "count": 43322
+   },
+   "crossing1": {
+    "relR": {
+     "median": 3.3940457983036696e-7,
+     "p99": 0.000002422565587540092
+    },
+    "absDt": {
+     "median": 0.0001220703125,
+     "p99": 0.00146484375
+    },
+    "relG": {
+     "median": 3.5655356747889175e-7,
+     "p99": 0.000006249837046546703
+    },
+    "count": 60310
+   },
+   "shadow": {
+    "capturedGPU": 22214,
+    "capturedCPU": 22214,
+    "radiusRatio": 1
+   },
+   "emissionProxyRelL1": 0.000016556126699174432,
+   "nanGPU": 0,
+   "timeoutGPU": 0
+  }
+ ]
+}
