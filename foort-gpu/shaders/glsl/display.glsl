@@ -1,15 +1,19 @@
 // Display pass (plan Section 3.8): every frame, reads the per-pixel record and draws a view.
-// M3 has the debug views only; the emission view arrives in M5.
+// Disc emission (M5): I = sum_k F_k g_k^p J(r_k) over the stored crossings (js/fluid/emission.js), then
+// exposure, tone mapping and a colour map; and the debug views.
 // Progressive refinement: the levels (strides 1, 2, 4, 8) are separate smaller record images;
 // each pixel shows the finest level that has traced it (steps > 0 after a clear).
 
-uniform highp sampler2D uL0R0, uL0R1, uL0R3, uL1R0, uL1R1, uL1R3, uL2R0, uL2R1, uL2R3, uL3R0, uL3R1, uL3R3;
+uniform highp sampler2D uL0R0, uL0R1, uL0R2, uL0R3, uL1R0, uL1R1, uL1R2, uL1R3, uL2R0, uL2R1, uL2R2, uL2R3, uL3R0, uL3R1, uL3R2, uL3R3;
 uniform ivec4 uView;    // view mode, Nx, Ny, |H| stored in slot 3
 uniform vec4 uRange;    // view range lo, hi; max steps; r_cam
+uniform vec4 uEm;       // Johnson-SU mu, gamma, sigma; redshift power
+uniform vec4 uEm2;      // fudge factor, max passes (0: no bound), exposure, tone map (0 linear, 1 sqrt, 2 log, 3 asinh)
+uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), 0, 0, 0
 out vec4 color;
 
 const float PI = 3.14159265358979;
-const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7;
+const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7, V_EMISSION = 8;
 
 // FOORT FourColorScreen colours, as in the M0 benchmark
 const vec3 Q1 = vec3(228.0, 74.0, 64.0) / 255.0, Q2 = vec3(64.0, 156.0, 228.0) / 255.0;
@@ -43,6 +47,19 @@ vec3 quadrantColor(float th, float ph) {
   return ph < PI ? Q3 : Q4;
 }
 
+// FOORT GLMJohnsonSUEmission (true r)
+float johnsonSU(float r) {
+  float d = r - uEm.x, t = uEm.y + asinh(d / uEm.z);
+  return exp(-0.5 * t * t) / sqrt(d * d + uEm.z * uEm.z);
+}
+// one crossing (r, phi, dt, g) of pass k (0-based)
+float passEmission(vec4 c, int k) {
+  if (!(c.x > 0.0) || !(c.w > 0.0)) return 0.0;
+  if (uEm2.y > 0.0 && float(k + 1) > uEm2.y) return 0.0;
+  return (k == 0 ? 1.0 : uEm2.x) * pow(c.w, uEm.w) * johnsonSU(c.x);
+}
+vec3 afmhot(float t) { t = clamp(t, 0.0, 1.0); return clamp(vec3(2.0 * t, 2.0 * t - 0.5, 2.0 * t - 1.0), 0.0, 1.0); }
+
 // texel of level l (stride 2^l) covering full-resolution pixel p
 ivec2 levelTexel(ivec2 p, int l) {
   ivec2 n = (uView.yz + (1 << l) - 1) >> l;
@@ -50,6 +67,7 @@ ivec2 levelTexel(ivec2 p, int l) {
 }
 vec4 rec0(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R0, q, 0) : l == 1 ? texelFetch(uL1R0, q, 0) : l == 2 ? texelFetch(uL2R0, q, 0) : texelFetch(uL3R0, q, 0); }
 vec4 rec1(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R1, q, 0) : l == 1 ? texelFetch(uL1R1, q, 0) : l == 2 ? texelFetch(uL2R1, q, 0) : texelFetch(uL3R1, q, 0); }
+vec4 rec2(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R2, q, 0) : l == 1 ? texelFetch(uL1R2, q, 0) : l == 2 ? texelFetch(uL2R2, q, 0) : texelFetch(uL3R2, q, 0); }
 vec4 rec3(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R3, q, 0) : l == 1 ? texelFetch(uL1R3, q, 0) : l == 2 ? texelFetch(uL2R3, q, 0) : texelFetch(uL3R3, q, 0); }
 
 void main() {
@@ -95,6 +113,14 @@ void main() {
       float line = 1.0 - smoothstep(0.0, 1.5 * w, min(f.x, f.y));
       c = mix(quadrantColor(th, ph) * (0.55 + 0.45 * chk), vec3(1.0), 0.8 * line);
     }
+  } else if (mode == V_EMISSION) {
+    float I = passEmission(rec1(lv, q), 0) + passEmission(rec2(lv, q), 1) + (uView.w == 1 ? 0.0 : passEmission(rec3(lv, q), 2));
+    float v = max(I * uEm2.z, 0.0);
+    int tm = int(uEm2.w + 0.5);
+    if (tm == 1) v = sqrt(v);
+    else if (tm == 2) v = log(1.0 + 99.0 * v) / log(100.0);
+    else if (tm == 3) v = asinh(30.0 * v) / asinh(30.0);
+    c = uEm3.x == 0 ? afmhot(v) : uEm3.x == 1 ? inferno(v) : vec3(clamp(v, 0.0, 1.0));
   } else if (mode == V_HAM) {
     if (uView.w == 0) c = vec3(0.3);
     else {

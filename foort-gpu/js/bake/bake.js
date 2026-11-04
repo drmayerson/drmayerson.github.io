@@ -12,14 +12,9 @@
 //   B0 = -(1 + 2M/r + 4M^2/r^2), B1 = 0, B2 = B4 = 1/r^2, B3 = r / ((r + 2M) ((r - r0)^2 + M^2)).
 // Packed per node as the Hermite data (f, f_x, f_theta, f_xtheta) of each function: a 5-layer
 // RGBA32F array, layer k = G_k, row j = theta node, column i = x node.
-// Also a 1D equatorial table (1/u^t, Omega) of prograde circular orbits for the redshift placeholder,
-// on its own finer x grid (EQUATOR_NODES over the same x range); 1/u^t -> 0 continuously at the photon
-// orbit (u^t itself diverges there), -1 marks radii without circular orbits.
+// The fluid four-velocity for the redshift is a separate 1D table (js/fluid/fluidTable.js).
 // Pure math, DOM-free (runs in a Web Worker and in node).
 import { EPS_HORIZON, inverseMetric, pointValidity } from '../metrics/common.js';
-
-/** Nodes of the 1D equatorial table. */
-export const EQUATOR_NODES = 2048;
 
 /**
  * Closest approach to the axis at which the metric is evaluated (its formulas are 0 * inf on it).
@@ -44,12 +39,10 @@ const AXIS_EPS = 1e-4;
  * @property {number} rMax
  * @property {boolean} symmetric   table covers [0, pi/2] (equatorially symmetric metric)
  * @property {number} M            mass of the analytic background (M_ADM)
- * @property {number} nEq @property {number} dxEq   nodes and spacing of the equatorial table
  *
  * @typedef {Object} BakedTables
  * @property {TableGrid} grid
  * @property {Float32Array|Float64Array} data  5 * nth * nx * 4 floats, [layer][j][i][f, f_x, f_theta, f_xtheta]
- * @property {Float32Array} equator   EQUATOR_NODES * 4 floats, [i][1/u^t, Omega, 0, 0] (1/u^t = -1: no circular orbit)
  * @property {{ok:boolean, messages:string[], invalidNodes:number}} validation
  * @property {{evalMs:number, totalMs:number}} timing
  */
@@ -96,32 +89,6 @@ function derivLineEven(f, off, stride, n, h, out) {
   const at = (k) => f[off + (k < 0 ? -k : k > n - 1 ? 2 * (n - 1) - k : k) * stride];
   for (let k = 0; k < n; k++) out[off + k * stride] = (at(k - 2) - 8 * at(k - 1) + 8 * at(k + 1) - at(k + 2)) / (12 * h);
 }
-
-/**
- * Prograde circular equatorial orbit at radius r: Omega and u^t from g_dd and its r-derivatives
- * (4th-order finite differences). u^t = 0 where no timelike circular orbit exists.
- * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m
- */
-export function keplerOrbit(m) {
-  const th = Math.PI / 2;
-  return (/** @type {number} */ r) => {
-    const h = 1e-4 * r;
-    const g = (/** @type {number} */ rr) => m.g_dd(rr, th);
-    const g2 = g(r - 2 * h), g1 = g(r - h), g3 = g(r + h), g4 = g(r + 2 * h);
-    const d = (/** @type {'gtt'|'gtphi'|'gphiphi'} */ k) => (g2[k] - 8 * g1[k] + 8 * g3[k] - g4[k]) / (12 * h);
-    const tt = d('gtt'), tp = d('gtphi'), pp = d('gphiphi');
-    const disc = tp * tp - tt * pp;
-    if (!(disc >= 0) || pp === 0) return { ut: 0, Om: 0 };
-    const Om = (-tp + Math.sqrt(disc)) / pp;
-    const g0 = g(r);
-    const n = -(g0.gtt + 2 * Om * g0.gtphi + Om * Om * g0.gphiphi);
-    return n > 0 ? { ut: 1 / Math.sqrt(n), Om } : { ut: 0, Om };
-  };
-}
-
-/** Redshift g = 1 / (u^t (p_t + Omega p_phi)) of the equatorial emitter (FOORT convention, p_t = 1 past-pointing). */
-export const emitterRedshift = (/** @type {{ut:number, Om:number}} */ o, /** @type {number} */ pt, /** @type {number} */ pphi) =>
-  (o.ut > 0 ? 1 / (o.ut * (pt + o.Om * pphi)) : 0);
 
 /**
  * Bake the tables of a metric.
@@ -177,21 +144,13 @@ export function bakeTables(m, spec) {
     }
   }
 
-  const equator = new Float32Array(EQUATOR_NODES * 4);
-  const orbit = keplerOrbit(m);
-  const dxEq = (xMax - xMin) / (EQUATOR_NODES - 1);
-  for (let i = 0; i < EQUATOR_NODES; i++) {
-    const o = orbit(r0 + Math.exp(xMin + i * dxEq));
-    equator[4 * i] = o.ut > 0 ? 1 / o.ut : -1; equator[4 * i + 1] = o.Om;
-  }
-
   const messages = [];
   if (invalid) messages.push(`${invalid} of ${n} table nodes outside the termination radius are not a valid metric (first: ${firstBad})`);
   if (nonfinite) messages.push(`${nonfinite} table entries are not finite in float32`);
   const t2 = performance.now();
   return {
-    grid: { nx, nth, xMin, dx, thMax, dth, r0, rTerm, rMax, symmetric, M, nEq: EQUATOR_NODES, dxEq },
-    data, equator,
+    grid: { nx, nth, xMin, dx, thMax, dth, r0, rTerm, rMax, symmetric, M },
+    data,
     validation: { ok: !invalid && !nonfinite, messages, invalidNodes: invalid },
     timing: { evalMs: t1 - t0, totalMs: t2 - t0 },
   };

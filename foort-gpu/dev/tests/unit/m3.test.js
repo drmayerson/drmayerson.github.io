@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { gpuTraceSetup, cpuTraceOptions, decodeRecord } from '../../../js/gpu/traceConfig.js';
+import { gpuTraceSetup, cpuTraceOptions, decodeRecord, fluidSpec } from '../../../js/gpu/traceConfig.js';
+import { bakeFluid } from '../../../js/fluid/fluidTable.js';
+import { createKerr as createKerrM } from '../../../js/metrics/kerr.js';
 import { tilesCentreOut } from '../../../js/gpu/pipeline.js';
 import { prepareImage, TERM } from '../../../js/ref/cpuTracer.js';
 import { capturedAnalytic, conserved, kerrCore, RF } from '../../scripts/kerrAnalytic.mjs';
@@ -11,7 +13,8 @@ const angle = (t1, p1, t2, p2) => Math.acos(Math.min(1, Math.sin(t1) * Math.sin(
 describe('trace configuration', () => {
   const view = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 }, N: 64, path: 'analytic' };
   it('GPU uniforms and CPU options describe the same rays', () => {
-    const g = gpuTraceSetup(view), c = cpuTraceOptions(view);
+    const fs = fluidSpec(view);
+    const g = gpuTraceSetup(view, undefined, bakeFluid(createKerrM({ a: 0.94 }), fs.spec.fluid, fs.spec.range)), c = cpuTraceOptions(view);
     const rh = 1 + Math.sqrt(1 - 0.94 ** 2);
     expect(g.program).toBe('trace_kerr_analytic');
     expect(g.uniforms.uStep[1][2]).toBeCloseTo(1.01 * rh, 12);

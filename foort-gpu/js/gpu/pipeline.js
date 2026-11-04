@@ -45,6 +45,8 @@ export class TracePipeline {
     this.onStage = opts.onStage ?? (() => {});
     /** trace programs compiled so far */
     this.compiled = new Set();
+    /** key of the fluid table on the GPU */
+    this.fluidKey = /** @type {string|null} */ (null);
     /** key of the metric tables on the GPU */
     this.tableKey = /** @type {string|null} */ (null);
   }
@@ -54,7 +56,7 @@ export class TracePipeline {
 
   /**
    * Trace an image. Starting a new trace cancels the running one.
-   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null}} setup
+   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null, fluid?:any, fluidKey?:string|null}} setup
    *   from traceConfig.gpuTraceSetup
    * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean}} [opts]
    * @returns {Promise<TraceStats|null>}  null if cancelled
@@ -71,6 +73,7 @@ export class TracePipeline {
       this.compiled.add(setup.program);
       if (gen !== this.generation) return null;
       if (setup.tables && setup.tableKey !== this.tableKey) { be.uploadTables(setup.tables); this.tableKey = setup.tableKey ?? null; }
+      if (setup.fluid && setup.fluidKey !== this.fluidKey) { be.uploadFluid(setup.fluid); this.fluidKey = setup.fluidKey ?? null; }
       be.resize(setup.N, setup.N);
       be.uploadUniforms(setup.uniforms);
       be.clearRecords();

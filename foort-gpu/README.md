@@ -21,6 +21,7 @@ then open <http://127.0.0.1:8765/> (the viewer), <http://127.0.0.1:8765/caps.htm
 - `bench/`: the M0 WebGL2-vs-WebGPU benchmark (throwaway quality).
 - `shaders/glsl/`: WebGL2 shaders: `common.glsl` (tracer core), `trace.glsl` (tabulated metrics), `trace_kerr_analytic.glsl` (closed-form Kerr, validation), `display.glsl` (views).
 - `js/bake/`: metric tables (bake in a Web Worker, Hermite lookup in JS for the tests).
+- `js/fluid/`: FOORT's fluid model (port), its GPU table, Johnson-SU and the disc emission.
 - `tools/`: offline tools (FOORT parity harness, noise generation); not loaded by the app.
 - `dev/`: dev-only tooling. Needs Node.js ≥ 18:
 
@@ -38,5 +39,8 @@ node scripts/m4Level4.mjs          # tabulated vs closed-form Kerr on the GPU, b
 node scripts/m4TableError.mjs      # table interpolation error vs the closed-form metric (double precision)
 node scripts/m4TableRays.mjs       # effect of the tables on rays, isolated from float32 arithmetic
 node scripts/m4Perf.mjs            # bake and trace timings
+node scripts/fluidParity.mjs       # fluid model (ISCO, four-velocity) vs FOORT (needs tools/foort_parity/build.sh)
+node scripts/m5FoortEmission.mjs   # CPU-reference disc intensities vs FOORT's M2 runs (--mode parity|app)
+node scripts/m5GpuVsFoort.mjs      # GPU disc images vs FOORT (--parity: closed-form Kerr in FOORT's coordinate)
 npm run typecheck                  # optional tsc --checkJs
 ```

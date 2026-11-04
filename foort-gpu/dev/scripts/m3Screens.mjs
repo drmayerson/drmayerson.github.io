@@ -5,8 +5,8 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openViewer } from './gpuRunner.mjs';
 
-const m4 = process.argv.includes('--m4');
-const out = resolve(dirname(fileURLToPath(import.meta.url)), m4 ? '../reports/m4/views' : '../reports/m3/views');
+const m4 = process.argv.includes('--m4'), m5 = process.argv.includes('--m5');
+const out = resolve(dirname(fileURLToPath(import.meta.url)), m5 ? '../reports/m5/views' : m4 ? '../reports/m4/views' : '../reports/m3/views');
 mkdirSync(out, { recursive: true });
 const SHOTS = {
   'fourColor_a0.94_inc17': 'a=0.94&inc=17',
@@ -26,10 +26,21 @@ const SHOTS_M4 = {
   'g1_mankoNovikov_a0.94_a3_1_inc80': 'metric=mankoNovikov&a=0.94&alpha3=1&inc=80&view=g1',
   'sky_kerr_tabulated_faceon': 'a=0.94&inc=0.01&view=sky',
 };
+// M5: disc emission (FOORT presets as URL parameters; afmhot, sqrt tone map, auto exposure)
+const SHOTS_M5 = {
+  'emission_KerrExample': 'a=0.94&inc=17',
+  'emission_kerr_a0.94_inc80': 'a=0.94&inc=80',
+  'emission_kerr_a0_inc80': 'a=0&inc=80',
+  'emission_JohannsenExample': 'metric=johannsen&a=0.94&alpha13=5.5',
+  'emission_Test_MNrun_a3_1': 'metric=mankoNovikov&a=0.94&alpha3=1&inc=30&mu=0.658826&gamma=-1.5',
+  'emission_kerr_a0.94_inc80_subkeplerian': 'a=0.94&inc=80&xi=0.5&betaR=0.5&betaPhi=0.5',
+  'emission_kerr_a0.94_inc80_log': 'a=0.94&inc=80&toneMap=2&colorMap=1',
+  'g1_kerr_a0.94_inc80': 'a=0.94&inc=80&view=g1',
+};
 const v = await openViewer();
 const base = v.page.url().replace(/index\.html.*$/, 'index.html');
 try {
-  for (const [name, q] of Object.entries(m4 ? SHOTS_M4 : SHOTS)) {
+  for (const [name, q] of Object.entries(m5 ? SHOTS_M5 : m4 ? SHOTS_M4 : SHOTS)) {
     await v.page.goto(`${base}?N=512&${q}`);
     await v.page.waitForFunction(() => window.__foort && /done/.test(document.getElementById('status').textContent), null, { timeout: 120_000 });
     await v.page.waitForTimeout(100);

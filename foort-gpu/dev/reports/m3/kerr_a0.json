@@ -20,12 +20,12 @@
   "levels": [
    1
   ],
-  "wallMs": 219,
-  "gpuMs": 29.64352,
+  "wallMs": 178.80000019073486,
+  "gpuMs": 59.780429999999996,
   "tiles": 4,
   "steps": 44840508
  },
- "cpuSeconds": 41.02,
+ "cpuSeconds": 16.516,
  "N": 256,
  "pixels": 65536,
  "terminationAgreement": 1,
@@ -49,8 +49,8 @@
    "p99": 0.0029972510880043046
   },
   "relG": {
-   "median": 5.767143881033888e-7,
-   "p99": 0.000024495231139436335
+   "median": 7.904006414863875e-7,
+   "p99": 0.000019914204828844786
   },
   "count": 57980
  },
@@ -59,7 +59,7 @@
   "capturedCPU": 24668,
   "radiusRatio": 1
  },
- "emissionProxyRelL1": 0.0000046378186035892034,
+ "emissionProxyRelL1": 0.000005262540015377321,
  "nanGPU": 0,
  "timeoutGPU": 0
 }

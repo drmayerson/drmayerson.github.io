@@ -1,0 +1,16 @@
+{
+ "case": "johannsen",
+ "mode": "app",
+ "fdStep": 0.001,
+ "pixels": 16384,
+ "withinRounding": 0.1529541015625,
+ "relL1": 0.007027444830688517,
+ "relDiff": {
+  "median": 0.0054171919352740934,
+  "p99": 0.12745090680769983,
+  "max": 0.22527479363061187
+ },
+ "passCountDiffers": 11,
+ "largeDiffSamePasses": 12541,
+ "cpuSeconds": 4.981
+}

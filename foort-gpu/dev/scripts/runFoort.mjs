@@ -1,5 +1,5 @@
 // Run FOORT (unmodified local clone, its own build) on the M2 parity cases.
-// Usage (from dev/): node scripts/runFoort.mjs [caseName ...] [--N 64]
+// Usage (from dev/): node scripts/runFoort.mjs [caseName ...] [--N 64] [--derivh 1e-5]  (FOORT DerivativeH; output dir <case>_h<derivh>)
 // Output: tools/foort_parity/build/runs/<case>/ (git-ignored): <case>.cfg, <case>_<Diagnostic>.dat, time.json
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -13,13 +13,15 @@ const exe = join(foortDir, 'FOORT', 'bin', process.platform === 'win32' ? 'FOORT
 const args = process.argv.slice(2);
 const iN = args.indexOf('--N');
 const Nover = iN >= 0 ? Number(args[iN + 1]) : null;
-const names = args.filter((a, i) => !a.startsWith('--') && (iN < 0 || i !== iN + 1));
+const iH = args.indexOf('--derivh');
+const derivativeH = iH >= 0 ? Number(args[iH + 1]) : null;
+const names = args.filter((a, i) => !a.startsWith('--') && (iN < 0 || i !== iN + 1) && (iH < 0 || i !== iH + 1));
 for (const c of CASES.filter((c) => !names.length || names.includes(c.name))) {
   const cc = Nover ? { ...c, N: Nover } : c;
-  const dir = resolve(here, '../../tools/foort_parity/build/runs', c.name);
+  const dir = resolve(here, '../../tools/foort_parity/build/runs', derivativeH ? `${c.name}_h${derivativeH}` : c.name);
   mkdirSync(dir, { recursive: true });
   const cfg = join(dir, `${c.name}.cfg`);
-  writeFileSync(cfg, foortConfig(cc, join(dir, c.name).split('\\').join('/')));
+  writeFileSync(cfg, foortConfig(cc, join(dir, c.name).split('\\').join('/'), derivativeH ? { derivativeH } : {}));
   const t0 = Date.now();
   const res = spawnSync(exe, [cfg], { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 26 });
   const secs = (Date.now() - t0) / 1000;

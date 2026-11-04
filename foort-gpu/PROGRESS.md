@@ -556,3 +556,88 @@ The GPU on tables matches the double-precision reference as well as the closed-f
 
 ### M4 checkpoint decision (2026-11-04)
 The tabulated-trace speed is accepted for now; optimisation is deferred to M9 (user: "Yes, defer to M9"). Still open: the Manko–Novikov α3 slider range, and publishing (merge to `main`).
+
+## CHECKPOINT M5 — equatorial disc with static emission (2026-11-04)
+
+### Done
+
+- **Fluid model** (`js/fluid/generalCircularRadial.js`): a port of FOORT's `GeneralCircularRadialFluid`:
+  - circular geodesics from the r-Christoffels;
+  - sub-Keplerian rescaling (ξ);
+  - the bisection ISCO search, between r_h and 10 r_h in log r, as FOORT;
+  - the Cunningham plunge inside the ISCO, with the ISCO energy and angular momentum;
+  - the radial-infall mix (β_r, β_φ) and FOORT's fallbacks;
+  - plus Johnson-SU and the analytic Kerr ISCO.
+- **Fluid table** (`js/fluid/fluidTable.js`): (1/u^t, u^r/u^t, Ω) at 2048 nodes in x = log(r − r₊), from the termination radius to r_max.
+  - It is baked in the worker with its own cache key, in 5–10 ms, so fluid sliders do not re-bake the metric.
+  - Both GPU tracers read it in `common.glsl`. The redshift now uses the full photon momentum, g = 1/(u^t p_t + u^r p_r + u^φ p_φ). The p_r term was missing in the M3/M4 Keplerian placeholder, which is now removed.
+- **Display** (`display.glsl`, `js/fluid/emission.js`):
+  - the disc emission I = Σₖ Fₖ gₖ^p J(rₖ) over the stored crossings, with redshift power, fudge factor and a pass bound;
+  - exposure, with auto exposure from the 99.5th percentile of the coarse level;
+  - tone maps (linear / sqrt / log / asinh) and colour maps (afmhot / inferno / grey).
+  - Emission parameters only redraw; fluid parameters retrace.
+  - The four record attachments of every level are bound: 16 texture units, the WebGL2 minimum.
+- **Viewer:** the emission view is the default; there is a "Disc emission" control group and the FOORT presets KerrExample, JohannsenExample and Test_MNrun. The legend and performance table report the ISCO.
+- **Harness:** `tools/foort_parity/fluid_dump.cpp` builds FOORT's fluid model against the unmodified clone. `runFoort.mjs --derivh` sets FOORT's `DerivativeH`.
+- **Tests:** Vitest 70 passed (new `fluid.test.js`); Playwright 10 passed (new `m5.spec.js`: emission view, redraw vs retrace, presets); `tsc --checkJs` clean.
+
+### Bug found and fixed during M5
+
+**The GPU occasionally dropped an equatorial crossing**: one ray at 512² in the KerrExample view, visible as an isolated dark pixel. After the hemisphere flip, the stored δ = π − δ₁ rounded to exactly π/2 in float32, so the sign test on the equator distance saw 0. The hemisphere flip itself is now the crossing criterion. A search over four 512² views finds no isolated dark pixels and no rays that end south of the equator without a recorded pass.
+
+### Fluid model vs FOORT (`dev/reports/m5/fluid_parity.json`)
+
+8 metric cases × 4 fluid settings (ξ/β_r/β_φ = 1/1/1, 0.7/0.5/0.3, 0.5/0/1, 1/0/0), at 400 radii from the termination radius to 1000:
+
+- **ISCO:** agrees with FOORT to about 1e-6 relative. The port is the closer of the two to the analytic Kerr ISCO, at about 1e-7 against FOORT's few e-6; FOORT differentiates with h = 1e-7. Values:
+
+  | Kerr a = 0 | 0.5 | 0.94 | 0.998 | Johannsen 0.94 / 5.5 | MN 0.94 / 2 |
+  |---|---|---|---|---|---|
+  | 6.000001 | 4.233003 | 2.023593 | 1.236971 | 5.5417 | 1.4428 |
+
+  The Manko–Novikov (0.94, 2) ISCO lies inside its termination radius, 1.507. FOORT's search runs through the invalid band too; the plunge region is cut off by the termination.
+- **Four-velocity:** agrees to ≤ 1e-7 everywhere except a thin shell between the two codes' ISCO values. There the plunge uses slightly different ISCO E and L, giving up to 2e-5 for the mixed parameters.
+
+### Level 1 (deferred from M2): disc intensities vs FOORT, M2 parity runs, 128², FOORT mesh
+
+| comparison | Kerr a = 0 | Kerr a = 0.94 | Johannsen | Manko–Novikov |
+|---|---|---|---|---|
+| CPU parity mode (FOORT steps and crossings), relative difference median / p99 | 4.7e-5 / 3.0e-4 | 3.8e-5 / 2.5e-4 | 4.2e-5 / 2.8e-4 | 6.6e-5 / 3.0e-3 |
+| GPU parity (closed-form shader in x = log r, FOORT crossings), median / p99 | 4.8e-5 / 3.1e-4 | 3.8e-5 / 2.5e-4 | — | — |
+| GPU app tracer with FOORT crossings, relative L1 | 4.1e-3 | 4.5e-3 | 4.1e-3 | 4.6e-3 |
+| GPU app tracer with interpolated crossings, relative L1 | 7.1e-3 | 7.2e-3 | 7.0e-3 | 7.2e-3 |
+
+The images are `dev/reports/m5/foort_*.png` and `gpu_*.png`. Each panel set shows FOORT, then ours, then the relative difference on a log scale from 1e-7 to 1e-1.
+
+- **Parity: a median of 4e-5 in both the CPU and the GPU.** That is about 3× FOORT's printed rounding (it writes intensities with 6 decimals, so the plan's 1e-6 target cannot be tested on its output). The remaining difference comes from integrating different equations: FOORT's second-order geodesic equation against our Hamilton equations, with the same steps.
+  - For scale, FOORT-style crossings (recorded at the first step after the equator) make the intensity depend on where the steps land: the CPU at ε = 0.03 differs from itself at ε = 0.01 by 3e-3.
+  - The GPU's float32 and its fluid table add nothing measurable.
+- **The app tracer differs from FOORT by about 0.5% in L1, as expected.** Its radial coordinate log(r − r₊) puts the steps elsewhere (0.4% with FOORT crossings). Interpolated crossings remove FOORT's step-sized offset of the crossing position (0.7%). The CPU reference in app mode shows the same 0.7%, so this is FOORT's own crossing bias, not a GPU error.
+- **Manko–Novikov in the strong field: unresolved, but bounded.** For crossings at r < 3, the CPU parity intensities differ from FOORT by more than 1e-3 at 1.5% of pixels, up to 0.23 at a few. Kerr has no such pixels even at r < 2.
+  - **Both codes are internally consistent.** FOORT does not change with its derivative step (h = 1e-7 vs 1e-5: median 0, max 9e-4). The CPU does not change with its step either (1e-3, 3e-4 and 1e-4 give identical results), and it is converged: ε = 0.03 vs 0.003 differ by 1.5e-5 at r < 3.
+  - So, within about 1e-5, the CPU reference is right there. The likeliest cause is FOORT's second-order integration at ε = 0.03 in Manko–Novikov's steep near-horizon field; I have not confirmed that inside FOORT.
+
+### Level 2: GPU vs CPU reference, disc emission, same rays, 256², interpolated crossings
+
+All 13 views of M3/M4: Kerr a = 0–0.998 at 17°, 80° and face-on; Johannsen; Manko–Novikov; tabulated Kerr. The emission uses the Johnson-SU parameters of KerrExample.cfg.
+
+- **Emission relative L1: 3.7e-6 to 1.0e-5**, against the 2% target.
+- **Redshift g at crossing 1:** median about 5e-7, p99 ≤ 4e-5.
+- **Four-colour, shadow and escape directions:** unchanged from M3/M4.
+
+**Level 4 emission** (tabulated vs closed-form Kerr, 8 views): relative L1 1.3e-6 to 3.5e-6, against the 0.5% target.
+
+### Images for the user (`dev/reports/m5/views/`, 512²)
+
+- `emission_KerrExample.png`, `emission_kerr_a0.94_inc80.png`, `emission_kerr_a0_inc80.png`
+- `emission_JohannsenExample.png`, `emission_Test_MNrun_a3_1.png` (Manko–Novikov at α3 = 1, the edge of the viewer's slider range)
+- `emission_kerr_a0.94_inc80_subkeplerian.png` (ξ = β_r = β_φ = 0.5), `emission_kerr_a0.94_inc80_log.png` (log tone map, inferno), `g1_kerr_a0.94_inc80.png`
+
+Side by side with FOORT: `dev/reports/m5/gpu_<case>_interpolate.png` and `gpu_kerr_*_foort_parity.png`.
+
+### Open issues / for the user
+
+1. **Visual judgement** (the checkpoint): compare the static disc images with FOORT's (`gpu_*`, `foort_*`) and try the presets and emission controls in the viewer.
+2. **Stored crossings:** the record holds 3 crossings, while FOORT sums all passes. In these 128² views 2–17 rays have more than 3 passes; they make up most of the L1 outliers in exact parity, along with axis handling. A 4th crossing slot would cost the |H| debug slot or a fifth render target. Is that worth doing?
+3. **The Manko–Novikov strong-field difference against FOORT** (above): I can instrument FOORT's integrator in the harness if you want it settled.
+4. **Deploy:** merging to `main` needs your approval.

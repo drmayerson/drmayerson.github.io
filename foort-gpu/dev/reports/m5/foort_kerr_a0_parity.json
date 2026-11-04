@@ -1,0 +1,15 @@
+{
+ "case": "kerr_a0",
+ "mode": "parity",
+ "pixels": 16384,
+ "withinRounding": 0.33642578125,
+ "relL1": 0.00007677405817159869,
+ "relDiff": {
+  "median": 0.000047387300006381424,
+  "p99": 0.00030062104870602326,
+  "max": 0.002677011688905103
+ },
+ "passCountDiffers": 8,
+ "largeDiffSamePasses": 2,
+ "cpuSeconds": 2.999
+}

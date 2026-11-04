@@ -1,0 +1,14 @@
+{
+ "case": "johannsen",
+ "crossing": "interpolate",
+ "path": "tabulated",
+ "N": 128,
+ "relL1": 0.007028618963444106,
+ "relDiff": {
+  "median": 0.005411831559147126,
+  "p90": 0.032819256120204615,
+  "p99": 0.12749255006135773
+ },
+ "raysWithMoreThan3Passes": 2,
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

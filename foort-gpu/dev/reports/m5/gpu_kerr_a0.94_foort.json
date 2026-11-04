@@ -1,0 +1,14 @@
+{
+ "case": "kerr_a0.94",
+ "crossing": "foort",
+ "path": "tabulated",
+ "N": 128,
+ "relL1": 0.004544760420976294,
+ "relDiff": {
+  "median": 0.002868734842813973,
+  "p90": 0.012518212455201728,
+  "p99": 0.054575589164003534
+ },
+ "raysWithMoreThan3Passes": 17,
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

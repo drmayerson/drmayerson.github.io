@@ -1,6 +1,6 @@
 // Analytic Kerr (Boyer-Lindquist, M = 1): the validation and benchmarking path of the GPU tracer
 // (plan Section 3.3). Provides the metric interface that common.glsl uses:
-//   radiusOf, geodesicRHS, hamiltonianRel, crossingRedshift, nearSingularity.
+//   radiusOf, geodesicRHS, hamiltonianRel, nearSingularity.
 // Radial coordinate x = log(r - r0); r0 = r_+ in app mode, 0 in FOORT parity mode (x = log r).
 // Hamiltonian H = W / (2 Sigma) with
 //   W = Delta p_r^2 + p_th^2 - R_t^2 / Delta + A^2 / sin^2(th),
@@ -53,19 +53,6 @@ float hamiltonianRel(vec4 pos, vec2 mom, float hemi, float pt, float pphi) {
   float A = pphi + a * s2 * pt;
   float t1 = Del * pr * pr, t2 = mom.y * mom.y, t3 = Rt * Rt / Del, t4 = A * A / s2;
   return abs(t1 + t2 - t3 + t4) / (abs(t1) + t2 + abs(t3) + t4);
-}
-
-// Redshift g = 1 / (u^t (p_t + Omega p_phi)) (FOORT convention, past-pointing p with p_t = 1)
-// of a prograde Keplerian emitter on the equator. M3 placeholder for the fluid model, which
-// arrives in M5 (GeneralCircularRadialFluid table). 0 where no circular orbit exists (r <= r_photon).
-float crossingRedshift(float r, float pt, float pphi) {
-  float a = uMetric.x;
-  float sr = sqrt(r);
-  float q = r * sr - 3.0 * sr + 2.0 * a;
-  if (q <= 0.0) return 0.0;
-  float ut = (r * sr + a) / (pow(r, 0.75) * sqrt(q));
-  float Om = 1.0 / (r * sr + a);
-  return 1.0 / (ut * (pt + Om * pphi));
 }
 
 bool nearSingularity(float r, float delta, float hemi) { return false; }

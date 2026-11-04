@@ -21,9 +21,9 @@ export class BakeClient {
   }
 
   /**
-   * Baked tables for a spec from traceConfig.tableSpec (cached by key).
-   * @param {{metric:string, params:Record<string, number>, spec:any, key:string}} ts
-   * @returns {Promise<{tables: import('./bake.js').BakedTables, cached: boolean, ms: number}>}
+   * Baked tables for a spec from traceConfig.tableSpec / fluidSpec (cached by key).
+   * @param {{kind?:'metric'|'fluid', metric:string, params:Record<string, number>, spec:any, key:string}} ts
+   * @returns {Promise<{tables: any, cached: boolean, ms: number}>}
    */
   async get(ts) {
     const hit = this.cache.get(ts.key);
@@ -32,7 +32,7 @@ export class BakeClient {
     const id = this.nextId++;
     const tables = await new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ id, metric: ts.metric, params: ts.params, spec: ts.spec });
+      this.worker.postMessage({ id, kind: ts.kind ?? 'metric', metric: ts.metric, params: ts.params, spec: ts.spec });
     });
     this.cache.set(ts.key, tables);
     while (this.cache.size > this.cacheSize) this.cache.delete(/** @type {string} */ (this.cache.keys().next().value));

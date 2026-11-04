@@ -31,7 +31,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   if (!gl) throw new Error('WebGL2 is not available in this browser.');
   if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('WebGL2 is available but EXT_color_buffer_float is missing (needed for float records).');
   if (gl.getParameter(gl.MAX_DRAW_BUFFERS) < 4) throw new Error('WebGL2 MAX_DRAW_BUFFERS < 4.');
-  if (gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) < 12) throw new Error('WebGL2 MAX_TEXTURE_IMAGE_UNITS < 12.');
+  if (gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) < 16) throw new Error('WebGL2 MAX_TEXTURE_IMAGE_UNITS < 16.');
   const timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
@@ -84,7 +84,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
   /** @type {WebGLTexture|null} */
-  let tableTex = null, equatorTex = null;
+  let tableTex = null, fluidTex = null;
   /** @type {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} */
   let traceUniforms = {};
   let lastTraceMs = /** @type {number|null} */ (null), lastDisplayMs = /** @type {number|null} */ (null);
@@ -170,11 +170,15 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nx, 5 * g.nth);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RGBA, gl.FLOAT, packed);
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
-      if (equatorTex) gl.deleteTexture(equatorTex);
-      equatorTex = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, equatorTex);
-      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nEq, 1);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nEq, 1, gl.RGBA, gl.FLOAT, T.equator);
+    },
+
+    uploadFluid(F) {
+      gl.activeTexture(gl.TEXTURE0);
+      if (fluidTex) gl.deleteTexture(fluidTex);
+      fluidTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, fluidTex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, F.grid.n, 1);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, F.grid.n, 1, gl.RGBA, gl.FLOAT, F.data);
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
     },
 
@@ -202,10 +206,11 @@ export async function createWebGL2Backend(canvas, opts = {}) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tableTex);
         gl.uniform1i(tracer.loc('uTables'), 0);
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, equatorTex);
-        gl.uniform1i(tracer.loc('uEquator'), 1);
       }
+      if (!fluidTex) throw new Error('uploadFluid first');
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, fluidTex);
+      gl.uniform1i(tracer.loc('uFluid'), 1);
       gl.uniform4i(tracer.loc('uImg'), L.w, L.h, 0, 0);
       /** @type {Promise<number|null>} */
       let gpu = Promise.resolve(null);
@@ -241,11 +246,11 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.viewport(0, 0, W, H);
       gl.useProgram(display.prog);
       gl.bindVertexArray(vao);
-      // per level the attachments the views read: 0 (all), 1 (crossing 1), 3 (|H|)
+      // the four record attachments of every level (16 texture units, the WebGL2 minimum)
       let unit = 0;
       STRIDES.forEach((st, li) => {
         const L = /** @type {{tex: WebGLTexture[]}} */ (levels.get(st));
-        for (const k of [0, 1, 3]) {
+        for (const k of [0, 1, 2, 3]) {
           gl.activeTexture(gl.TEXTURE0 + unit);
           gl.bindTexture(gl.TEXTURE_2D, L.tex[k]);
           gl.uniform1i(display.loc(`uL${li}R${k}`), unit++);
@@ -253,18 +258,23 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       });
       gl.uniform4i(display.loc('uView'), view.mode, W, H, view.storeH ? 1 : 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
+      const em = view.emission ?? { mu: 0, gamma: 0, sigma: 1, redshiftPower: 3, fudge: 1, maxPasses: 0 };
+      gl.uniform4f(display.loc('uEm'), em.mu, em.gamma, em.sigma, em.redshiftPower);
+      gl.uniform4f(display.loc('uEm2'), em.fudge, em.maxPasses, view.exposure ?? 1, view.toneMap ?? 0);
+      gl.uniform4i(display.loc('uEm3'), view.colorMap ?? 0, 0, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       lastDisplayMs = performance.now() - t0;
     },
 
-    async readRecords() {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, /** @type {{fbo: WebGLFramebuffer}} */ (levels.get(1)).fbo);
-      const out = new Float32Array(16 * W * H);
-      const one = new Float32Array(4 * W * H);
+    async readRecords(stride = 1) {
+      const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
+      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
+      const out = new Float32Array(16 * L.w * L.h);
+      const one = new Float32Array(4 * L.w * L.h);
       for (let k = 0; k < 4; k++) {
         gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
-        gl.readPixels(0, 0, W, H, gl.RGBA, gl.FLOAT, one);
-        for (let p = 0; p < W * H; p++) for (let c = 0; c < 4; c++) out[16 * p + 4 * k + c] = one[4 * p + c];
+        gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, one);
+        for (let p = 0; p < L.w * L.h; p++) for (let c = 0; c < 4; c++) out[16 * p + 4 * k + c] = one[4 * p + c];
       }
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
