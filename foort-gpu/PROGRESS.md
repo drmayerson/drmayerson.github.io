@@ -641,3 +641,5 @@ Side by side with FOORT: `dev/reports/m5/gpu_<case>_interpolate.png` and `gpu_ke
 2. **Stored crossings:** the record holds 3 crossings, while FOORT sums all passes. In these 128² views 2–17 rays have more than 3 passes; they make up most of the L1 outliers in exact parity, along with axis handling. A 4th crossing slot would cost the |H| debug slot or a fifth render target. Is that worth doing?
 3. **The Manko–Novikov strong-field difference against FOORT** (above): I can instrument FOORT's integrator in the harness if you want it settled.
 4. **Deploy:** merging to `main` needs your approval.
+
+**Decision (2026-11-04):** M5 accepted by the user ("Accept, merge and push"); merged into `main` and pushed. M6 not started; awaiting the go-ahead.
