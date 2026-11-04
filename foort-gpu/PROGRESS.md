@@ -304,3 +304,10 @@ Related observation: 358 escaping ST3Cr CPU rays (9%) end with a relative constr
 1. **ST3Cr Level 1:** accept the diagnosis above, or ask for a convergence study. The study would run FOORT and the CPU reference at ε = 0.01 (FOORT alone about 100 min) and compare only pixels whose outcome is ε-converged in both codes.
 2. **Emission-intensity parity** (part of Level 1 in plan Section 6) is **deferred to M5**, where FOORT's fluid model is ported. FOORT's intensities are already stored with the runs and the golden pixels.
 3. Visual check of the side-by-side images.
+
+### M2 closed (2026-11-04)
+The user accepted the ST3Cr diagnosis ("Accept, close M2"): the 218 mismatched pixels are rays not converged at ε = 0.03 in either code, so no convergence study is run. Carried forward:
+- emission-intensity parity is done in M5;
+- the constraint-drift finding (9% of escaping ST3Cr rays with relative |H| > 1e-4) is input for M6.
+
+Next: M3, after the user's go-ahead.
