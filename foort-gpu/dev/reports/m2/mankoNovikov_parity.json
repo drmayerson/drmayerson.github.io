@@ -1,0 +1,28 @@
+{
+ "case": "mankoNovikov",
+ "mode": "parity",
+ "pixels": 16384,
+ "stride": 1,
+ "cpuSeconds": 54.601,
+ "fourColorAgreement": 0.99993896484375,
+ "fourColorMismatches": 1,
+ "passesAgreement": 0.99993896484375,
+ "passesMismatches": 1,
+ "escapeAngle": {
+  "median": 5.389196074016495e-7,
+  "p90": 0.0000024744005205717885,
+  "p99": 0.000030188744932718273,
+  "max": 0.018322997076508016,
+  "count": 10979
+ },
+ "confusion": {
+  "escape->escape": 10979,
+  "horizon->horizon": 5404,
+  "escape->horizon": 1
+ },
+ "meanSteps": 600.96728515625,
+ "hEscape": {
+  "median": 8.262353425771985e-9,
+  "max": 1.1210427935216426e-7
+ }
+}

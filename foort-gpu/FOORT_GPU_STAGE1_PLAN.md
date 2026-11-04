@@ -393,7 +393,7 @@ No moving observers, no thrust, no cubemaps, no volumetric emission, no polariza
 | ID | Decision | Proposed default | Alternatives |
 |---|---|---|---|
 | D1 | Repo and tooling | **Confirmed:** folder `foort-gpu/` in `drmayerson.github.io`, plain ES modules + JSDoc, no build step; dev tooling isolated in `foort-gpu/dev/` | — |
-| D2 | Graphics API | **Decided at CHECKPOINT M0 from benchmarks of both.** Expected/default: WebGL2-first for Stage 1 behind a backend interface; WebGPU added as M10 or in Stage 2 | WebGPU-first if > ~1.5× faster on the user's main laptop |
+| D2 | Graphics API | **Confirmed at CHECKPOINT M0 (2026-11-03): WebGL2** for Stage 1 behind a backend interface; WebGPU added as M10 or in Stage 2 (benchmark numbers in `PROGRESS.md`) | WebGPU-first if > ~1.5× faster on the user's main laptop |
 | D3 | Radial variable for Johnson envelope | **Confirmed:** FOORT's coordinate `r` (parity with FOORT); noise sampled at `log(r/M_ADM)` with the same `r` | circumferential radius as a later option |
 | D4 | Noise generation | **Confirmed:** placeholder FFT field in M7; the agent builds inoisy and produces real fields in M8 | one field per metric matched to its fluid `Omega(r)` via pynoisy (later) |
 | D5 | Fixed fuzzball charges | `P = 2`, `q0 = 50` (FOORT `Test_FBdetail.cfg`, *Fuzzball Shadows*) | other |

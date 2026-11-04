@@ -1,0 +1,31 @@
+{
+ "case": "st3cr_l0.005",
+ "mode": "parity",
+ "pixels": 4096,
+ "stride": 2,
+ "cpuSeconds": 616.005,
+ "fourColorAgreement": 0.94677734375,
+ "fourColorMismatches": 218,
+ "passesAgreement": 0.938720703125,
+ "passesMismatches": 251,
+ "escapeAngle": {
+  "median": 4.196205091574438e-7,
+  "p90": 0.00013599138849513758,
+  "p99": 0.8903428713137133,
+  "max": 2.928181556610286,
+  "count": 3829
+ },
+ "confusion": {
+  "escape->escape": 3829,
+  "other->other": 84,
+  "other->escape": 61,
+  "escape->other": 71,
+  "escape->horizon": 42,
+  "other->horizon": 9
+ },
+ "meanSteps": 1144.120361328125,
+ "hEscape": {
+  "median": 6.684336618559949e-10,
+  "max": 0.9986662663593978
+ }
+}

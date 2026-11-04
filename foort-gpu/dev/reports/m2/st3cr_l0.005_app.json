@@ -1,0 +1,31 @@
+{
+ "case": "st3cr_l0.005",
+ "mode": "app",
+ "pixels": 4096,
+ "stride": 2,
+ "cpuSeconds": 483.471,
+ "fourColorAgreement": 0.947265625,
+ "fourColorMismatches": 216,
+ "passesAgreement": 0.9365234375,
+ "passesMismatches": 260,
+ "escapeAngle": {
+  "median": 4.193558478197572e-7,
+  "p90": 0.00013032176580499388,
+  "p99": 0.845957959593192,
+  "max": 2.8534646929758787,
+  "count": 3822
+ },
+ "confusion": {
+  "escape->escape": 3822,
+  "other->other": 88,
+  "other->escape": 58,
+  "escape->other": 79,
+  "escape->horizon": 41,
+  "other->horizon": 8
+ },
+ "meanSteps": 1117.92822265625,
+ "hEscape": {
+  "median": 6.597931215949402e-10,
+  "max": 0.9986662663593978
+ }
+}

@@ -1,0 +1,27 @@
+{
+ "case": "johannsen",
+ "mode": "parity",
+ "pixels": 16384,
+ "stride": 1,
+ "cpuSeconds": 18.757,
+ "fourColorAgreement": 1,
+ "fourColorMismatches": 0,
+ "passesAgreement": 1,
+ "passesMismatches": 0,
+ "escapeAngle": {
+  "median": 5.595381067847857e-7,
+  "p90": 0.000002664517629492654,
+  "p99": 0.0000303938835483766,
+  "max": 0.0007185799556107206,
+  "count": 8352
+ },
+ "confusion": {
+  "escape->escape": 8352,
+  "horizon->horizon": 8032
+ },
+ "meanSteps": 660.5526733398438,
+ "hEscape": {
+  "median": 2.6610439833541604e-8,
+  "max": 7.342339040494919e-8
+ }
+}

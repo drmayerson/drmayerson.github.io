@@ -59,3 +59,255 @@ So the two backends perform the same here: GPU time is equal to within about 10%
    - The default resolutions, tile size and step budgets.
 5. **Visual check:** not done by the agent. Screenshots of the hidden browser pane were blank, so the four-colour images have only been checked numerically. Please look at them on the benchmark page.
 6. **Throwaway caveat:** the benchmark computes `Rt²/Δ` in float32 at r ~ 1000, where large terms cancel. Both backends agree, but whether this is accurate enough against a double-precision reference is tested in M3, not here.
+
+### User-reported runs
+
+**2026-11-03, Firefox 158 on Windows** (deployed page, defaults, tile 256). Firefox reports the GPU only by its generic bucket, "Radeon R9 200 Series, or similar", which may be the same AMD laptop. WebGL2 has no timer queries in Firefox, so it is wall-clock only. User confirmed: the four-colour images look fine.
+
+| size | WebGL2 wall | WebGPU wall / GPU | Msteps/s: WebGL2 wall, WebGPU GPU |
+|---|---|---|---|
+| 512² | 107 ms | 402 / 98 ms | 1860, 2030 |
+| 1024² | 355 ms | 1606 / 382 ms | 2240, 2080 |
+
+- **Agreement:** termination 100%. Four-colour agreement is 100% at 512² and 99.9996% at 1024² (4 px differ). The median escape-direction difference is 8e-7 rad.
+- **Reading:** the shader cost is the same in both backends; WebGL2 wall time ≈ WebGPU GPU time. Firefox's WebGPU wall time is about 4× its GPU time. This is a fixed latency of roughly 75–100 ms per `onSubmittedWorkDone`: 4 tiles at 512² add about 300 ms, 16 tiles at 1024² add about 1.2 s. For an interactive app that has to wait on each tile, that latency rules out WebGPU in Firefox today.
+- **Status:** the user chose **D2 = WebGL2** (2026-11-03; see `DECISIONS.md`).
+
+### M0 closed (2026-11-03)
+
+- D2 = WebGL2 was confirmed by the user, and the four-colour images were approved visually.
+- Default resolutions, tile size and step budgets use the agent defaults listed in `DECISIONS.md` ("Still open").
+- Not done in M0:
+  - no phone run;
+  - Vitest and Playwright not run, because Node.js is not installed. These tests need to run before or during M1.
+- Next: M1 (metric library + FOORT parity harness), awaiting the user's go-ahead.
+- Update during M1: Vitest and Playwright now run and pass (Playwright: 2 of 2 in headless Chrome on the AMD GPU).
+
+## CHECKPOINT M1 — metric library + FOORT parity harness (2026-11-03)
+
+### Done
+
+- `js/metrics/`:
+  - `kerr.js`, `johannsen.js` (all five FOORT parameters; the UI exposes `a` and `alpha13`), `mankoNovikov.js`, `st3cr.js`: verbatim ports of FOORT's `getMetric_dd` / `getMetric_uu`;
+  - `st3crBH.js`: the new λ = 0 class;
+  - `common.js`: generic circular inversion, Carlson `R_F`, the elliptic integral K(k), singularity distances, pointwise and sampled validity, `validityRadius`;
+  - `registry.js`: menus and sliders, with D5 charges P = 2, q0 = 50.
+- `validate()` for every metric:
+  - FOORT's parameter-range checks;
+  - a sampled check (finite components, Lorentzian signature, no CTCs) outside the termination radius.
+- `tools/foort_parity/`: `metric_dump.cpp` + `build.sh` + README. It links FOORT's own `Metric.cpp` from the unmodified local clone (commit `cfff2d5`) and dumps g_dd and g_uu as CSV.
+- `dev/scripts/`:
+  - `metricParity.mjs` (Level 0, 1e4 random points per set) and `parityLib.mjs`;
+  - `validityScan.mjs`: Johannsen α13 and MN α3 ranges;
+  - `st3crChecks.mjs`: M_ADM, λ → 0, inverses, b_c.
+
+  The reports are in `dev/reports/m1_*.json`. Golden values (50 points per set) are in `dev/tests/golden/metric_parity/`.
+- Tests:
+  - `dev/tests/unit/metrics.test.js`, 28 tests;
+  - all 40 Vitest tests pass;
+  - `tsc --checkJs` is clean.
+
+### Level 0: JS vs FOORT, 10 000 points per set
+
+The **scaled** column is the one checked against the target (see `DECISIONS.md`). It applies only to points where FOORT's own metric is valid.
+
+| set | g_dd raw | g_dd scaled | g_uu (closed) scaled | g_uu (generic) scaled | points in invalid region |
+|---|---|---|---|---|---|
+| Kerr a = 0 / 0.5 / 0.94 / 0.998 | ≤ 2.7e-14 | ≤ 2.7e-14 | ≤ 1.3e-13 | ≤ 1.1e-12 | 0 |
+| Johannsen (4 sets, incl. all 5 parameters ≠ 0) | ≤ 9.7e-15 | ≤ 9.7e-15 | ≤ 9.6e-15 | ≤ 2.3e-14 | 0 |
+| MN a = 0, α3 = 0.2 | 7.9e-16 | 7.9e-16 | 7.8e-16 | 9.3e-16 | 0 |
+| MN a = 0.5, α3 = 0.1 | 2.0e-10 | 4.7e-15 | 5.3e-15 | 8.8e-15 | 3 |
+| MN a = 0.9, α3 = −0.5 | 3.0e-11 | 1.8e-13 | 1.4e-13 | 3.8e-13 | 15 |
+| MN a = 0.3, α3 = 1 | 4.7e-10 | 2.8e-14 | 2.8e-14 | 4.7e-10 | 36 (+6 non-finite in both) |
+| ST3Cr λ = 0.15 / 0.05 / 0.005 / 1e-4 | 3.0e-12 / 4.2e-11 / 2.3e-10 / 5.5e-7 | ≤ 5.3e-14 | ≤ 5.3e-14 | ≤ 5.3e-14 | 0 |
+
+- **Target met:** every closed form agrees with FOORT to ≤ 1.8e-13 (scaled) on valid points.
+- **Raw-measure misses** occur only in g_tφ, for MN and ST3Cr. They are explained by cancellation: at the worst ST3Cr point the condition number is about 1.5e7 × 1e3, so a rounding floor of ~1e-6 relative is expected even in double precision.
+- **Generic inversion** is worse near horizons, because det(t–φ) → 0 there: up to 1.1e-12 for Kerr a = 0.998 and 4.7e-10 for MN. Closed forms are therefore used everywhere.
+- **MN invalid region:** at points within about 1.05 r₊, FOORT itself has g_φφ < 0, with g_tt ~ −2e6 and det(g) formed from products ~1e12. No double-precision inverse is accurate there (both residuals are ~1e-3).
+- **MN non-finite points:** the 6 points that are non-finite in both codes are `exp(2γ′)` overflowing through the 1/R⁸ terms near the equatorial horizon (plan gotcha 8).
+- **Circularity:** FOORT returns exactly 0 for every off-block component at all points. This was checked from FOORT's side, as plan Section 3.3 asks.
+
+### ST3Cr (P = 2, q0 = 50)
+
+- **M_ADM** = 24.000 from g_tt asymptotics (23.9994 at r = 2e6, 1/r drift), for λ = 0.15, 0.05, 0.005, 1e-4 and 0. This matches (3P + q0 − P³)/2.
+- **J** ≈ 176 λ.
+- **λ_max** = 0.193182: λ = 0.19 validates, λ = 0.194 is rejected.
+- **λ → 0** (deviation from the BH at fixed r, maximized over θ):
+
+  | λ | r = 0.1 M | r = 1 M | r = 10 M |
+  |---|---|---|---|
+  | 1e-2 | 5e-2 / 7e-3 | 5e-4 / 2e-3 | 2e-6 / 5e-5 |
+  | 1e-4 | 7.5e-6 / 7e-5 | 7e-8 / 2e-5 | 2e-10 / 5e-7 |
+  | 1e-6 | 7.5e-10 / 7e-7 | 7e-12 / 2e-7 | 2e-14 / 5e-9 |
+
+  Each entry is |Q/Q_BH − 1| / scaled |g_tφ|. Q converges as λ², g_tφ as λ, so the limit is continuous away from the throat.
+- **Closed-form inverse** (plan Section 4.1) vs generic inversion: ≤ 8.9e-16 (20 000 points per λ).
+- **ST3Cr BH b_c** = 49.7146 = **2.0714 M_ADM**, with the photon sphere at base r = 7.129 = 0.297 M_ADM; throat L² = 73.32.
+  - Q = (1 + 4/r)³(1 + 84/r) is a 4-charge static extremal BH with charges (4, 4, 4, 84).
+  - b_c is governed by roughly the geometric mean of the charges, M by their arithmetic mean. For equal charges the same formula gives the extremal-RN value 4M.
+  - So b_c ≈ 2.07 M (well below Schwarzschild's 5.2 M) is expected for such unequal charges. It is checked analytically in the tests.
+
+### Validity ranges
+
+Scan: 600 radii log-spaced in r − r₊, 181 θ, up to r = 1000. Table: `dev/reports/m1_validity.json`; method: `dev/scripts/validityScan.mjs`.
+
+- **Johannsen:** valid down to the horizon for every α13 tested, from −8 up to 100, for a ∈ [0, 0.998] (**corrected below**: this grid missed a thin strip next to −r₊³). There is **no upper bound**. The lower bound is −r₊³(a): −8 at a = 0, −2.96 at a = 0.9, −1.20 at a = 0.998. Proposed slider: (−r₊³(a), 10], lower end clamped per spin.
+- **Manko–Novikov:** for **every α3 ≠ 0** there is a region just outside r₊ with CTCs (g_φφ ≤ 0), or with non-finite values at a = 0 (overflow). Its outer edge, r_valid / r₊ − 1, is symmetric in ±α3:
+
+  | a \ abs(α3) | 0.01 | 0.03 | 0.1 | 0.2 | 0.5 | 1 | 2 |
+  |---|---|---|---|---|---|---|---|
+  | 0 | 4e-3 | 7e-3 | 1.3e-2 | 1.9e-2 | 3.0e-2 | 4.1e-2 | 5.8e-2 |
+  | 0.5 | 1.1e-2 | 2.0e-2 | 3.8e-2 | 5.4e-2 | 9.0e-2 | 0.13 | 0.18 |
+  | 0.94 | 6.9e-3 | 1.2e-2 | 2.4e-2 | 3.5e-2 | 5.7e-2 | 8.0e-2 | 0.11 |
+  | 0.998 | 1.6e-3 | 2.9e-3 | 5.6e-3 | 8.1e-3 | 1.3e-2 | 1.9e-2 | 2.6e-2 |
+
+  FOORT's horizon termination at 1.01 r₊ therefore lies **inside** the pathological region for most α3 ≠ 0. This includes the MN registry default (a = 0.5, α3 = 0.1), which `validate()` currently rejects.
+
+### Open issues / decisions for the user
+
+1. **MN termination (needs a decision).** Options:
+   - (a) terminate MN rays at r_term = r_valid(a, α3) × (1 + margin), computed at bake time. A margin of 1% is proposed. This keeps rays out of the CTC region.
+   - (b) keep FOORT's 1.01 r₊ for parity and let rays enter the CTC band.
+   - (c) restrict α3 to the tiny range where the band lies inside 1.01 r₊.
+
+   Recommendation: (a) for the app. M2 parity runs would then use the same r_term on the FOORT side, as a FOORT `Epsilon_Horizon` setting. The α3 slider could be [−1, 1], where r_valid ≤ 1.13 r₊.
+2. **Johannsen α13 slider:** proposed (−r₊³(a), 10]. Confirm, or name a different upper end.
+3. The parity target is judged on the **scaled** measure (see `DECISIONS.md`). Confirm this is acceptable; raw-measure numbers are reported above.
+4. `dev/node_modules` is inside Dropbox (git-ignored), so Dropbox syncs ~100 MB of packages. It could be excluded with Dropbox's "ignore" attribute if you prefer.
+
+### MN termination decision implemented (2026-11-03)
+
+- The user chose option (a). `createMankoNovikov(...).terminationRadius()` returns max(1.01 r₊, 1.01 r_valid). It is computed lazily with `validityRadius`: 600 radii × 181 θ, scanning inwards and stopping at the first invalid sample, so it takes 6–12 ms.
+- r_term / r₊ for sample parameters:
+
+  | a | α3 | r_term / r₊ |
+  |---|---|---|
+  | 0.5 | 0.1 | 1.048 |
+  | 0.5 | ±1 | 1.137 |
+  | 0.94 | 0.5 | 1.067 |
+  | 0.998 | 1 | 1.029 |
+  | 0 | 1 | 1.052 |
+
+- `validate()` now samples from r_term, so all registry defaults validate.
+- New test: no invalid point outside r_term on a much finer 2000 × 721 sampling, for five (a, α3) pairs. 41 of 41 Vitest tests pass.
+- Still open from the M1 checkpoint:
+  - the Johannsen α13 slider range;
+  - confirmation of the scaled parity measure;
+  - excluding `dev/node_modules` from Dropbox sync.
+
+### Correction: Johannsen lower bound (2026-11-03, after CHECKPOINT M1)
+
+The slider test showed that the M1 claim "Johannsen is valid for every α13 > −r₊³" is **wrong** close to the bound. The α13 grid of the scan (−8, −4, −2, −1, …) missed that strip.
+
+- For spinning holes, with α13 within about 0.6% of −r₊³, a thin CTC band (g_φφ ≤ 0) appears just outside the horizon. At a = 0.9 and α13 = −0.999 r₊³ it reaches 1.014 r₊, beyond the 1.01 r₊ termination.
+- The true lower bound for "valid outside 1.01 r₊" (bisection; 800 radii × 361 θ):
+
+  | a | −r₊³ | valid for α13 ≥ |
+  |---|---|---|
+  | 0, 0.3, 0.5 | −8, −7.460, −6.498 | the whole range > −r₊³ |
+  | 0.7 | −5.0366 | −5.0253 (0.9978 × −r₊³) |
+  | 0.9 | −2.9605 | −2.9439 (0.9944 × −r₊³) |
+  | 0.94 | −2.4124 | −2.4025 (0.9959 × −r₊³) |
+  | 0.99, 0.998, 0.999 | −1.486, −1.202, −1.140 | the whole range > −r₊³ |
+
+  At a = 0.9, a 0.01-step sweep from −2.96 to 10 finds only α13 = −2.96 and −2.95 invalid.
+- So α13 ≥ −0.99 r₊³ is valid at every tested spin. The slider bound (−r₊³(a), 10] accepted at the checkpoint therefore needs a small change; the user is asked.
+- **Resolved:** the user chose a lower end of **−0.99 r₊³(a)**, and the slider is now [−0.99 r₊³(a), 10].
+  - Fine check at that endpoint: 800 radii × 361 θ, for every a from 0 to 0.999 in steps of 0.01.
+  - No point is invalid outside 1.01 r₊.
+  - The widest CTC band reaches 1.0056 r₊, at a = 0.87, so the margin to the termination radius is 0.4%.
+  - Johannsen keeps FOORT's 1.01 r₊ termination. 42 of 42 Vitest tests pass.
+
+### M1 closed (2026-11-03)
+
+User decisions at this checkpoint, all recorded in `DECISIONS.md`:
+- MN termination at 1.01 r_valid;
+- Johannsen α13 ∈ [−0.99 r₊³, 10];
+- parity judged on the scaled measure.
+
+Still optional: excluding `dev/node_modules` from Dropbox sync. Next is M2 (CPU reference tracer + FOORT golden images), which waits for the user's go-ahead.
+
+## CHECKPOINT M2 — CPU reference tracer + FOORT golden images (2026-11-03)
+
+### Done
+
+- `js/ref/cpuTracer.js`: the GPU algorithm in double precision.
+  - Hamiltonian on the five table functions G0–G4, with derivatives from 4th-order finite differences.
+  - FOORT RK4 with its adaptive step, FOORT camera, terminations, and both crossing modes.
+  - Every FOORT-specific behaviour is a switch: mesh, radial coordinate, axis handling, crossings, singularity distance.
+  - The "parity" mode mimics FOORT; the "app" mode is what the GPU will do. See `DECISIONS.md`.
+- **FOORT runs**, made with the unmodified FOORT executable, configs generated by `dev/scripts/foortCases.mjs` + `runFoort.mjs`. Settings: RK4, ε = 0.03, `SimpleSquareMesh` 128², boundary 1.01 r_cam. Cases:
+
+  | case | parameters | camera |
+  |---|---|---|
+  | Kerr | a = 0 and a = 0.94 (`KerrExample.cfg`) | r = 1000, θ = 0.2967, 15 × 15 |
+  | Johannsen | a = 0.94, α13 = 5.5 (`JohannsenExample.cfg`) | same as Kerr |
+  | Manko–Novikov | a = 0.94, α3 = 2 (`Test_MNrun.cfg`) | θ = π/6; ε_h = 0.122 from decision (a) |
+  | ST3Cr | λ = 0.005 (`Test_FBdetail.cfg`) | r = 250, θ = 1.5, 150 × 150 |
+
+  FOORT run times: 112 / 151 / 221 / 170 / 1974 s, in the table's order.
+- **Parsers** for FOORT `.dat` output (`foortDat.mjs`).
+- **Comparisons:** a parallel CPU runner (`runCpuRef.mjs`, worker threads) and the comparison with images (`compareFoort.mjs`, `png.mjs`, `m2Summary.mjs`). Reports and side-by-side PNGs are in `dev/reports/m2/`.
+- **Golden data:** 24–30 stratified FOORT pixels per case (6 for ST3Cr), in `dev/tests/golden/foort_images/`.
+- **Tests:** `dev/tests/unit/cpuTracer.test.js` covers Level 1 golden pixels and three Level 3 analytic checks:
+  - the Schwarzschild b_c = 3√3 from the capture edge, recovered to 2.5e-5;
+  - the ST3Cr λ = 0 BH shadow edge at b_c;
+  - a face-on axis-reflection test.
+
+  All 50 Vitest tests pass and `tsc --checkJs` is clean.
+
+### Level 1 results
+
+Every FOORT pixel is compared for the BH cases. For ST3Cr, every second pixel in each direction is compared (64² of the 128² mesh), because the CPU reference costs about 2 ms per step for ST3Cr.
+
+| case | mode | four-colour agreement | pass-count agreement | escape-direction diff, median / p99 (rad) | escape/capture confusion |
+|---|---|---|---|---|---|
+| Kerr a = 0 | parity | **100%** | 99.95% (8 px) | 4.7e-7 / 1.9e-5 | none |
+| Kerr a = 0 | app | **100%** | 99.72% (46 px) | 5.9e-5 / 2.1e-4 | none |
+| Kerr a = 0.94 | parity | **100%** | 100% | 4.7e-7 / 2.2e-5 | none |
+| Kerr a = 0.94 | app | **100%** | 99.95% (9 px) | 5.7e-5 / 2.0e-4 | none |
+| Johannsen | parity | **100%** | 100% | 5.6e-7 / 3.0e-5 | none |
+| Johannsen | app | **99.994%** (1 px) | 99.93% (11 px) | 6.2e-5 / 2.1e-4 | none |
+| Manko–Novikov | parity | **99.994%** (1 px) | 99.994% | 5.4e-7 / 3.0e-5 | 1 escape→capture |
+| Manko–Novikov | app | **100%** | 99.89% (18 px) | 5.6e-5 / 2.1e-4 | none |
+| ST3Cr λ = 0.005 | parity | **94.68%** (218 px) | 93.87% | 4.2e-7 / 0.89 | see below |
+| ST3Cr λ = 0.005 | app | **94.73%** (216 px) | 93.65% | 4.2e-7 / 0.85 | see below |
+
+- **All four BH cases meet the 99.5% target in both modes.**
+  - In parity mode, escape directions agree to ~5e-7 rad (median). That matches the 6-digit precision of FOORT's printed angles.
+  - In app mode the agreement is ~6e-5 rad. That is ordinary truncation error from the different radial coordinate, log(r − r₊) instead of log r.
+- **Pass-count differences** occur at isolated pixels whose rays graze the equatorial plane. In app mode, interpolated crossings and FOORT's threshold band then count passes differently; this is the known O(step) effect of plan gotcha 10.
+- **Relative constraint drift** |H| / Σ|terms|: ~2.5e-8 median and ≤ 1.2e-7 for escaping BH rays. The one exception is a single MN app-mode ray at 3.3e-3, in the strong-field region near the CTC band; it is not investigated further.
+
+**ST3Cr misses the 99.5% target (94.7%). Diagnosis: the mismatched pixels are unconverged at ε = 0.03 in both codes.**
+
+- **Chaotic regions:** all 218 mismatched pixels lie where FOORT's own 3×3 neighbourhood contains more than one colour. Only 33% of all pixels do.
+- **Long rays:** they are long, nearly trapped rays, with a median of 5,765 steps against 1,144 overall.
+- **ε-sensitivity:** retraced with the CPU reference at ε = 0.01, **54% of the mismatched pixels change their own outcome**. Of a control set of 218 pixels that agreed with FOORT, **0% change, and all 218 still agree with FOORT**.
+
+So neither FOORT nor the CPU reference resolves these rays at the plan's default step size. The two integrators (FOORT's Christoffel form vs our Hamiltonian form) amplify their different truncation errors differently in the chaotic scattering inside the fuzzball. Outside the fuzzball interior the images agree pixel for pixel (`dev/reports/m2/st3cr_l0.005_*.png`).
+
+Related observation: 358 escaping ST3Cr CPU rays (9%) end with a relative constraint drift above 1e-4. Constraint projection or a smaller ε in the throat may be worth testing in M6, where plan Section 3.5 already asks for an |H| debug view.
+
+### Images
+
+`dev/reports/m2/<case>_<mode>.png` shows five panels, left to right:
+1. FOORT four-colour;
+2. CPU four-colour;
+3. disagreement map (red = four-colour differs, yellow = pass count differs);
+4. FOORT pass count;
+5. CPU pass count.
+
+### Open issues / for the user
+
+1. **ST3Cr Level 1:** accept the diagnosis above, or ask for a convergence study. The study would run FOORT and the CPU reference at ε = 0.01 (FOORT alone about 100 min) and compare only pixels whose outcome is ε-converged in both codes.
+2. **Emission-intensity parity** (part of Level 1 in plan Section 6) is **deferred to M5**, where FOORT's fluid model is ported. FOORT's intensities are already stored with the runs and the golden pixels.
+3. Visual check of the side-by-side images.
+
+### M2 closed (2026-11-04)
+The user accepted the ST3Cr diagnosis ("Accept, close M2"): the 218 mismatched pixels are rays not converged at ε = 0.03 in either code, so no convergence study is run. Carried forward:
+- emission-intensity parity is done in M5;
+- the constraint-drift finding (9% of escaping ST3Cr rays with relative |H| > 1e-4) is input for M6.
+
+Next: M3, after the user's go-ahead.
