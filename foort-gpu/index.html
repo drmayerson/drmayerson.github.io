@@ -7,23 +7,28 @@
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<main>
-  <h1>FOORT-GPU</h1>
-  <p>Real-time GPU ray tracing of black holes and fuzzballs with an equatorial disc, after
-    <a href="https://github.com/drmayerson/foort">FOORT</a>. Under construction (Stage 1, milestone M0).</p>
-  <p><a href="./bench/">Backend benchmark →</a></p>
-
-  <section>
-    <h2>This device</h2>
-    <table id="summary"><tr><td>checking…</td></tr></table>
+<main class="viewer">
+  <header>
+    <h1>FOORT-GPU</h1>
+    <p>Real-time GPU ray tracing of black holes and fuzzballs, after
+      <a href="https://github.com/drmayerson/foort">FOORT</a>. Stage 1, milestone M3: analytic Kerr, debug views.
+      <a href="./caps.html">Device capabilities</a> · <a href="./bench/">Benchmark</a></p>
+  </header>
+  <div class="layout">
+    <figure class="stage">
+      <canvas id="view" width="512" height="512" aria-label="ray-traced image"></canvas>
+      <figcaption id="status">starting…</figcaption>
+      <div id="legend" class="legend"></div>
+    </figure>
+    <form id="controls" class="controls" autocomplete="off" onsubmit="return false"></form>
+  </div>
+  <section id="perfBox">
+    <h2>Performance</h2>
+    <table id="perf"><tr><td>no trace yet</td></tr></table>
   </section>
-  <section>
-    <h2>WebGL2 details</h2>
-    <pre id="gl"></pre>
-  </section>
-  <section>
-    <h2>WebGPU details</h2>
-    <pre id="gpu"></pre>
+  <section id="errorBox" hidden>
+    <h2>Error</h2>
+    <pre id="error"></pre>
   </section>
 </main>
 <script type="module" src="./js/main.js"></script>

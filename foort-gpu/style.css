@@ -33,3 +33,23 @@ button:disabled { opacity: 0.5; cursor: default; }
 figcaption { font-size: 0.85rem; color: var(--soft); margin-top: 4px; }
 tr.cmp td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .legend span { display: inline-block; width: 0.9em; height: 0.9em; border-radius: 2px; vertical-align: -0.1em; margin: 0 4px 0 10px; }
+
+/* viewer (M3) */
+main.viewer { max-width: 1400px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+.stage { margin: 0; }
+.stage canvas { width: 100%; max-width: min(100%, 82vh); aspect-ratio: 1; display: block; background: #000; border-radius: 6px; image-rendering: pixelated; }
+#status { font-variant-numeric: tabular-nums; }
+.controls fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 10px; padding: 6px 12px 10px; background: var(--panel); }
+.controls legend { font-weight: 600; font-size: 0.9rem; padding: 0 4px; }
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin: 6px 0; }
+.ctl > span { grid-column: 1 / -1; }
+.ctl-range input { width: 100%; }
+.ctl output { font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; color: var(--fg); }
+.ctl-checkbox { grid-template-columns: auto 1fr; align-items: center; }
+.ctl-checkbox > span { grid-column: 2; grid-row: 1; }
+.ctl-checkbox input { grid-column: 1; grid-row: 1; }
+.ctl select, .ctl input[type=number] { grid-column: 1 / -1; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.ctl[hidden] { display: none; }
+.legend { font-size: 0.8rem; color: var(--soft); margin-top: 6px; }

@@ -1,0 +1,91 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "viewer": [
+  {
+   "N": 512,
+   "levels": [
+    1
+   ],
+   "wallMs": 121.09999990463257,
+   "gpuMs": 108.46516,
+   "stepsPerRay": 758.6596565246582,
+   "tiles": 4,
+   "mStepsPerSecGPU": 1833.566437370304
+  },
+  {
+   "N": 512,
+   "levels": [
+    4,
+    2,
+    1
+   ],
+   "wallMs": 152.70000004768372,
+   "gpuMs": 136.92524,
+   "stepsPerRay": 758.6596565246582,
+   "tiles": 6,
+   "mStepsPerSecGPU": 1452.4573920776038
+  },
+  {
+   "N": 1024,
+   "levels": [
+    1
+   ],
+   "wallMs": 482.7000000476837,
+   "gpuMs": 422.60540000000003,
+   "stepsPerRay": 758.6525163650513,
+   "tiles": 16,
+   "mStepsPerSecGPU": 1882.3820542756907
+  },
+  {
+   "N": 1024,
+   "levels": [
+    4,
+    2,
+    1
+   ],
+   "wallMs": 633.9000000953674,
+   "gpuMs": 557.6448400000002,
+   "stepsPerRay": 758.6525163650513,
+   "tiles": 21,
+   "mStepsPerSecGPU": 1426.5438571977097
+  }
+ ],
+ "bench": [
+  {
+   "backend": "WebGL2",
+   "N": 512,
+   "tile": 256,
+   "wallMsMedian": 113.79999995231628,
+   "wallMsMin": 109.90000009536743,
+   "gpuMsMedian": 98.81196000000001,
+   "photonSteps": 198880693,
+   "stepsPerPixel": 758.6696357727051,
+   "MstepsPerSecWall": 1747.633506883424,
+   "MstepsPerSecGpu": 2012.7188348454981,
+   "codes": {
+    "horizon": 87430,
+    "escape": 174714,
+    "timeout": 0,
+    "nan": 0
+   }
+  },
+  {
+   "backend": "WebGL2",
+   "N": 1024,
+   "tile": 256,
+   "wallMsMedian": 494.7999999523163,
+   "wallMsMin": 473.59999990463257,
+   "gpuMsMedian": 409.01984,
+   "photonSteps": 795542963,
+   "stepsPerPixel": 758.6888914108276,
+   "MstepsPerSecWall": 1607.8071202034482,
+   "MstepsPerSecGpu": 1944.9984700008683,
+   "codes": {
+    "horizon": 349653,
+    "escape": 698923,
+    "timeout": 0,
+    "nan": 0
+   }
+  }
+ ]
+}

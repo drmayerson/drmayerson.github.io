@@ -311,3 +311,136 @@ The user accepted the ST3Cr diagnosis ("Accept, close M2"): the 218 mismatched p
 - the constraint-drift finding (9% of escaping ST3Cr rays with relative |H| > 1e-4) is input for M6.
 
 Next: M3, after the user's go-ahead.
+
+## CHECKPOINT M3 — GPU tracer, analytic Kerr path (2026-11-04)
+
+### Done
+
+- **Viewer** (`index.html`, `js/main.js`, `js/ui/controls.js`): the WebGL2 tracer with live controls.
+  - Spin a.
+  - Camera distance, inclination, screen size (field of view) and screen-centre offset.
+  - Resolution 128²–2048², ε, max steps, crossing mode (interpolated / FOORT parity), optional |H| record.
+  - Eight debug views: four-colour, termination, steps, g₁, dt₁, crossings count, sky grid (escape direction on a 15° grid), |H|.
+  - While a slider is dragged, a coarse preview is traced; on release, the image refines.
+  - The state is in the URL, e.g. `?a=0.998&inc=80&view=sky`.
+  - The M0 capability page moved to `caps.html`.
+- **Shaders** (`shaders/glsl/`):
+  - `common.glsl` is metric-agnostic: FOORT camera, RK4 with FOORT's step rule, axis reflection, terminations, interpolated and FOORT-parity equatorial crossings, and the 16-float record.
+  - `trace_kerr_analytic.glsl` holds the closed-form Kerr equations.
+  - `display.glsl` draws the views.
+  - M4's tabulated tracer will provide the same five metric functions (`DECISIONS.md`).
+- **Backend and pipeline** (`js/gpu/backendWebGL2.js`, `js/gpu/pipeline.js`, `js/gpu/traceConfig.js`):
+  - Four RGBA32F MRT targets per progressive level (strides 1, 2, 4, 8, each traced as its own smaller image).
+  - Fence-polled tiles of about 256² rays, adapted towards about 30 ms per tile and traced centre-out.
+  - GPU timer queries; cancellation when parameters change.
+  - `traceConfig.js` turns one view description into both the GPU uniforms and the CPU-reference options, so Level 2 compares the same rays.
+- **Dev tooling** (`dev/scripts/`):
+  - `gpuRunner.mjs` drives the viewer in Chrome via Playwright.
+  - `cpuPool.mjs` runs the CPU reference on worker threads.
+  - `m3Level2.mjs`, `m3Level3.mjs`, `m3Perf.mjs`, `m3Screens.mjs` produce the checks below.
+  - `kerrAnalytic.mjs` is a double-precision port of zwart-gat-camera's analytic `kerrCore` (zwart-gat-camera itself is untouched), plus an exact capture test from the conserved quantities (λ, η).
+- **Tests:**
+  - Vitest: 57 passed, including the new `m3.test.js` (trace config, record layout, tiling, analytic references vs CPU tracer).
+  - Playwright in Chrome: 5 passed (new `m3.spec.js`: viewer and views, GPU vs CPU sample, face-on axis test).
+  - `tsc --checkJs`: clean.
+
+### Bugs found and fixed during M3
+
+1. **South-pole precision (float32).** Rays passing close to θ = π, which is every ray in the α ≈ 0 column of an image, came out wrong by up to 0.5 rad.
+   - Cause: near π, float32 spacing is 2.4e-7, which swallows the small θ steps near the pole. It also happens at 17° inclination.
+   - Fix: the GPU state now holds the distance to the nearer pole, δ, plus a hemisphere sign. The axis is a reflection δ → −δ at both poles; the equator flips the hemisphere.
+2. **Rays aimed straight at the axis never crossed it.** FOORT's step rule h₂ ∝ θ makes the steps shrink geometrically (Zeno). FOORT avoids this only by terminating such rays (ThetaSingularity).
+   - Fix: the axis distance in the step rule is floored at 1e-3, on GPU and CPU alike in app mode.
+   - These two fixes removed the visible seam in face-on views.
+3. **float32 overflow beyond r ≈ 1e7** in the analytic Kerr force term (Δ² ~ r⁴). The resulting NaNs were partly classified as captured, because GLSL `min()` and comparisons with NaN are undefined.
+   - Fix: the term is rewritten with R_t/Δ, and NaN is tested before the other terminations on the GPU.
+   - It only affects boundary spheres far beyond the app's range (camera up to 1e5).
+4. **Progressive refinement cost 3× a single pass.** The coarse levels were strided passes over the full image, and a SIMD wave runs as long as its longest ray, discarded lanes included.
+   - Fix: each level is now a compact image. The total cost is 1.3× a single pass (expected 1 + 1/4 + 1/16).
+
+### Level 2: GPU (float32) vs CPU reference (double), 256², same rays
+
+The cameras use the KerrExample setup: r = 1000, inclination 17°, 15 × 15 screen, ε = 0.03. The "inc80" rows use inclination 80°, and the "faceon" rows 0.01°.
+
+- **Escape direction** is compared on rays that escaped in both codes.
+- **Crossing 1** compares r and g at the first equatorial crossing; g is the Keplerian placeholder.
+- **Emission proxy** is Σₖ gₖ³ J(rₖ), using the Johnson-SU parameters of KerrExample.cfg. It stands in for the M5 emission until the fluid model exists.
+
+| case | four-colour agreement (px) | termination agreement | escape direction median / p99 / max (rad) | pass count agreement | crossing 1: Δr/r median / p99 | crossing 1: Δg/g median / p99 | emission proxy, relative L1 | shadow radius, GPU/CPU | time, GPU / CPU (15 threads) |
+|---|---|---|---|---|---|---|---|---|---|
+| a = 0 | 100.000% (0) | 100.000% | 2.0e-6 / 6.6e-5 / 4.5e-3 | 100.00% | 1.0e-6 / 4.0e-6 | 5.7e-7 / 2.4e-5 | 4.7e-6 | 1.00000 | 42 ms / 41 s |
+| a = 0.5 | 100.000% (0) | 100.000% | 1.9e-6 / 6.7e-5 / 4.4e-2 | 100.00% | 1.0e-6 / 4.0e-6 | 4.9e-7 / 1.4e-5 | 4.0e-6 | 1.00000 | 28 ms / 34 s |
+| a = 0.94 | 100.000% (0) | 100.000% | 1.9e-6 / 6.2e-5 / 2.1e-2 | 100.00% | 1.0e-6 / 4.0e-6 | 4.3e-7 / 8.2e-6 | 1.2e-5 | 1.00000 | 31 ms / 45 s |
+| a = 0.998 | 100.000% (0) | 100.000% | 1.9e-6 / 6.7e-5 / 1.6e-1 | 100.00% | 1.0e-6 / 4.1e-6 | 4.1e-7 / 8.4e-6 | 4.1e-6 | 1.00000 | 37 ms / 66 s |
+| a = 0.94, inc80 | 100.000% (0) | 100.000% | 1.4e-6 / 5.3e-5 / 9.4e-3 | 100.00% | 1.5e-6 / 6.5e-6 | 3.5e-7 / 1.0e-5 | 6.5e-6 | 1.00000 | 26 ms / 50 s |
+| a = 0.998, inc80 | 100.000% (0) | 100.000% | 1.4e-6 / 6.3e-5 / 8.3e-2 | 99.99% | 1.4e-6 / 6.4e-6 | 3.5e-7 / 1.2e-5 | 1.6e-5 | 1.00000 | 35 ms / 46 s |
+| a = 0, faceon | 99.997% (2) | 100.000% | 3.5e-6 / 1.1e-4 / 8.0e-3 | 100.00% | 1.6e-6 / 6.0e-6 | 1.0e-6 / 3.7e-5 | 7.0e-6 | 1.00000 | 48 ms / 70 s |
+| a = 0.94, faceon | 100.000% (0) | 100.000% | 3.2e-6 / 1.2e-4 / 2.8e-2 | 100.00% | 1.7e-6 / 6.4e-6 | 7.2e-7 / 1.4e-5 | 6.0e-6 | 1.00000 | 51 ms / 71 s |
+
+**Against the Level 2 targets** (four-colour ≥ 99%, critical curve within 0.5%, emission L1 ≤ 2%):
+
+- **Four-colour:** met by a wide margin. The 2 mismatched face-on pixels both lie on a class boundary of the CPU image.
+- **Critical curve:** met; the shadow areas are equal to the pixel.
+- **Emission:** the proxy is at 1e-5, though the real emission waits for M5.
+- **Escape directions:** the p99 is set by ordinary step error. The isolated large maxima are rays near the photon ring, where the image is chaotic.
+
+The images are `dev/reports/m3/<case>.png`. Each has four panels: GPU four-colour, CPU four-colour, mismatches (red, with the CPU class boundaries in grey), and the escape-direction error on a log colour scale from 1e-7 to 1e-1 rad.
+
+### Level 3: analytic checks (`dev/reports/m3/level3.json`)
+
+- **Schwarzschild shadow** (static camera at r = 1000, edge-on, 1024², screen 12):
+  - expected radius on the screen: r tan(asin(3√3 √(1 − 2/r)/r)) = 5.19102;
+  - GPU, from the shadow area: 5.19096;
+  - relative difference −1.3e-5. The pixel size is 2.3e-3 of the radius.
+- **Critical curve (Bardeen):** each pixel's capture compared with the exact test from its conserved quantities (λ, η); captured means R(r) has no turning point outside r₊. This is equivalent to the Bardeen curve and exact at any camera distance.
+  - Cases: a = 0.5, 0.94, 0.998 at 17°, and a = 0.94, 0.998 at 80°; 512².
+  - **Result: 0 mismatched pixels in all five.** Maps in `capture_*.png`.
+- **kerrLens escape directions:** compared with `kerrCore` for a camera at r = 1e5, boundary 1e8, 128². The expected residual from the finite camera distance is b/r ≈ 7.5e-5.
+
+  | case | GPU vs kerrCore, median / p99 (rad) | CPU reference vs kerrCore, median / p99 (rad) |
+  |---|---|---|
+  | a = 0.5, 17° | 7.4e-5 / 1.4e-4 | 7.0e-5 / 9.9e-5 |
+  | a = 0.94, 17° | 7.3e-5 / 1.3e-4 | 6.9e-5 / 9.9e-5 |
+  | a = 0.94, 80° | 7.3e-5 / 1.1e-4 | 7.0e-5 / 1.0e-4 |
+  | a = 0.998, 80° | 7.3e-5 / 1.2e-4 | 6.9e-5 / 1.0e-4 |
+
+  Both tracers agree with kerrCore at the finite-distance level, so the camera, momenta and sign conventions are right. The large GPU maxima are isolated photon-ring rays.
+- **Face-on axis crossing** (inclination 0.01°, 256², |H| recorded):
+  - 0 NaN and 0 timeouts, for a = 0 and a = 0.94.
+  - Constraint drift |H|_rel on escaping rays: median 2.4e-6, p99 1e-5, max 2.7e-4.
+  - **No seam:** the escape-direction error against the CPU on the two columns next to α = 0 is the same as on a column at α = −S/4. Medians 1e-5 / 4e-6 for a = 0 and 4e-6 / 3e-6 for a = 0.94.
+  - Images: `views/sky_faceon_a0.png`, `views/sky_faceon_a0.94.png`. The one vertical line is the φ = 0/π meridian, where FOORT's quadrant colour changes.
+
+### Performance vs M0 (same Chrome, AMD Radeon integrated GPU, ANGLE/D3D11; KerrExample, 759 steps per ray)
+
+| | 512² wall / GPU | 1024² wall / GPU |
+|---|---|---|
+| M0 benchmark shader (one level) | 114 / 99 ms | 495 / 409 ms |
+| viewer, one level | 121 / 108 ms | 483 / 423 ms |
+| viewer, progressive 4 → 2 → 1 | 153 / 137 ms | 634 / 558 ms |
+
+- **Speed:** the full tracer costs the same as the M0 benchmark shader, about 1.9 G RK4 steps/s, even though it now records three crossings, the redshift and the termination and pass information.
+- **Progressive refinement** adds 30%. In return, the stride-4 preview appears after about 1/16 of the time.
+- **Caveat:** timings vary by about ±20% between runs here (shared integrated GPU).
+
+### Images for the user (`dev/reports/m3/views/`, 512²)
+
+- `fourColor_a0.94_inc17.png` (KerrExample) and `fourColor_a0.998_inc80.png`
+- `sky_faceon_a0.png`, `sky_faceon_a0.94.png`: axis-crossing views
+- `sky_a0.94_inc80.png`, `g1_a0.94_inc80.png`, `passes_a0.94_inc80.png`, `steps_a0.94_inc80.png`
+
+Error maps: `dev/reports/m3/kerr_*.png` and `capture_*.png`.
+
+To try it yourself, serve with `sh dev/serve.sh` (or `dev\serve.ps1`) and open <http://127.0.0.1:8765/>.
+
+### Open issues / for the user
+
+1. **Visual check.** Please look at the four-colour images, the face-on sky-grid views and the error maps, and try the sliders in the viewer.
+2. **Deploy:** merging to `main` would publish the viewer at `drmayerson.github.io/foort-gpu/`; there is still no link from the root page. This needs your approval.
+3. **Precision note for small ε:** at ε = 0.003, rays passing within about 1e-3 rad of the axis keep a float32 error floor of about 1e-4 rad, with one probe ray at 3e-3. The CPU at that ε reaches about 1e-5. At the default ε = 0.03 the GPU equals the CPU to within the step error everywhere.
+4. **Face-on images are less step-converged** at ε = 0.03 than inclined ones: about 5e-4 rad against a converged reference, against about 1e-4 at 17°. This is the same in both codes, so it is not a GPU issue. A smaller default ε could be considered for near-polar cameras.
+5. **Redshift placeholder:** g is Keplerian until M5.
+6. **M2 app-mode numbers:** the axis step floor (now on in app mode) slightly changes rays that pass within 1e-3 rad of the axis. The M2 app-mode comparisons were not rerun; the parity mode is unchanged.
+
+### M3 closed (2026-11-04)
+The user accepted M3 ("Accept, merge and push"). It is merged to `main` and pushed. Next: M4 (tabulated metric path), after the user's go-ahead.

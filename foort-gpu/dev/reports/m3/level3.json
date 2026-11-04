@@ -1,0 +1,183 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "shadow": {
+  "N": 1024,
+  "screen": 12,
+  "captured": 616428,
+  "radiusGPU": 5.19095820037426,
+  "radiusExact": 5.191023608738614,
+  "relErr": -0.000012600282580876865,
+  "pixelRel": 0.002257502736121746
+ },
+ "capture": [
+  {
+   "a": 0.5,
+   "inc": 17,
+   "N": 512,
+   "screen": 12,
+   "capturedAnalytic": 149830,
+   "capturedGPU": 149830,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1
+  },
+  {
+   "a": 0.94,
+   "inc": 17,
+   "N": 512,
+   "screen": 12,
+   "capturedAnalytic": 136592,
+   "capturedGPU": 136592,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1
+  },
+  {
+   "a": 0.998,
+   "inc": 17,
+   "N": 512,
+   "screen": 12,
+   "capturedAnalytic": 133542,
+   "capturedGPU": 133542,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1
+  },
+  {
+   "a": 0.94,
+   "inc": 80,
+   "N": 512,
+   "screen": 12,
+   "capturedAnalytic": 136674,
+   "capturedGPU": 136674,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1
+  },
+  {
+   "a": 0.998,
+   "inc": 80,
+   "N": 512,
+   "screen": 12,
+   "capturedAnalytic": 131682,
+   "capturedGPU": 131682,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1
+  }
+ ],
+ "lens": [
+  {
+   "a": 0.5,
+   "inc": 17,
+   "rCam": 100000,
+   "N": 128,
+   "escapes": 10376,
+   "gpu": {
+    "median": 0.00007409035068164804,
+    "p99": 0.00013759718379188757,
+    "max": 0.005664484157271703
+   },
+   "cpuSample": {
+    "n": 608,
+    "median": 0.0000695843065009815,
+    "p99": 0.00009940517169797181,
+    "max": 0.00010523481094633298
+   }
+  },
+  {
+   "a": 0.94,
+   "inc": 17,
+   "rCam": 100000,
+   "N": 128,
+   "escapes": 10904,
+   "gpu": {
+    "median": 0.00007271913994885203,
+    "p99": 0.0001299092386745317,
+    "max": 0.01772930840199758
+   },
+   "cpuSample": {
+    "n": 640,
+    "median": 0.00006884051183952112,
+    "p99": 0.00009924546552412056,
+    "max": 0.00010512716317812451
+   }
+  },
+  {
+   "a": 0.94,
+   "inc": 80,
+   "rCam": 100000,
+   "N": 128,
+   "escapes": 10652,
+   "gpu": {
+    "median": 0.00007263138108607306,
+    "p99": 0.0001117110101500807,
+    "max": 0.392264987871003
+   },
+   "cpuSample": {
+    "n": 624,
+    "median": 0.00006954602931450306,
+    "p99": 0.00009949326794432168,
+    "max": 0.0019733066662310644
+   }
+  },
+  {
+   "a": 0.998,
+   "inc": 80,
+   "rCam": 100000,
+   "N": 128,
+   "escapes": 10826,
+   "gpu": {
+    "median": 0.00007255755633489882,
+    "p99": 0.0001241142164028311,
+    "max": 0.3202973068719218
+   },
+   "cpuSample": {
+    "n": 634,
+    "median": 0.00006928706675227206,
+    "p99": 0.00009949232167567153,
+    "max": 0.0010202969872898577
+   }
+  }
+ ],
+ "faceon": [
+  {
+   "a": 0,
+   "N": 256,
+   "nan": 0,
+   "timeout": 0,
+   "escapedHrel": {
+    "median": 0.0000023119600882637314,
+    "p99": 0.000010150581147172488,
+    "max": 0.0001893715962069109
+   },
+   "escapeErrCentreColumns": {
+    "median": 0.000010496278941923383,
+    "max": 0.0000457638750930795
+   },
+   "escapeErrQuarterColumn": {
+    "median": 0.000004295516567316278,
+    "max": 0.0004541737614448154
+   }
+  },
+  {
+   "a": 0.94,
+   "N": 256,
+   "nan": 0,
+   "timeout": 0,
+   "escapedHrel": {
+    "median": 0.0000024102473616949283,
+    "p99": 0.000010454829862283077,
+    "max": 0.000272363395197317
+   },
+   "escapeErrCentreColumns": {
+    "median": 0.000003819583579660484,
+    "max": 0.00033618477696159993
+   },
+   "escapeErrQuarterColumn": {
+    "median": 0.0000031742271559690882,
+    "max": 0.0003233871782356732
+   }
+  }
+ ]
+}
