@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('capability page loads and reports both backends', async ({ page }) => {
-  await page.goto('index.html');
+  await page.goto('caps.html');
   await page.waitForFunction(() => /** @type {any} */ (window).__caps);
   const caps = await page.evaluate(() => /** @type {any} */ (window).__caps);
   console.log('WebGL2:', caps.webgl2.renderer ?? caps.webgl2.reason);

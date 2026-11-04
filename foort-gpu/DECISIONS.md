@@ -76,3 +76,29 @@ non-trivial implementation choice.
 - 2026-11-03 — **Emission-intensity parity (part of Level 1) is deferred to M5**, where FOORT's `GeneralCircularRadialFluid` (about 450 lines: ISCO search, plunge, FD Christoffels) is ported anyway. FOORT's intensities are already in the M2 run outputs and golden files, so M5 does not need new FOORT runs. **Flagged at CHECKPOINT M2.**
 - 2026-11-03 — The relative constraint drift is reported as |H| / Σ|terms of H|, on escaping rays only. Captured rays end at a coordinate singularity, where the terms of H diverge.
 - 2026-11-04 — **CHECKPOINT M2: ST3Cr diagnosis accepted, M2 closed** (user: "Accept, close M2"). The ST3Cr λ = 0.005 four-colour agreement of 94.7% (below the 99.5% target) is accepted as a step-size convergence limit shared by both codes, not a tracer discrepancy. No ε = 0.01 convergence study is run. The four BH cases meet the target in both modes.
+- 2026-11-04 — **M3 GPU tracer structure.**
+  - The trace program is `shaders/glsl/<metric>.glsl` + `common.glsl`, concatenated at load time after the `#version`/precision header.
+    - The metric file provides `radiusOf`, `geodesicRHS`, `hamiltonianRel`, `crossingRedshift` and `nearSingularity`.
+    - `common.glsl` holds the camera, RK4 + FOORT step, terminations, crossings and the record.
+    - M4's tabulated `trace.glsl` implements the same five functions.
+  - **Record** (4 × RGBA32F, 16 floats):
+    - `(termCode + 16·passes, steps, θ_end, φ_end mod 2π)`;
+    - then three crossings `(r, φ mod 2π, dt = t − t_cam, g)`, with r = 0 meaning no crossing.
+    - With "record |H|" on, the third crossing is replaced by `(|H|_rel, t_end, 0, 0)`.
+  - **Progressive refinement:** strides 4 → 2 → 1 (8 for previews of large images). Each level is traced as its own compact image of ceil(N/s)² rays, with its own record set. The display shows, per pixel, the finest level that has traced it (steps > 0 after a clear).
+    - **Reason:** a strided pass over the full image costs as much as a full trace, because a SIMD wave runs as long as its longest ray, discarded lanes included. Measured: 3× a single pass with discards, 1.3× with compact levels.
+    - Coarse levels are not reused by finer ones (1/4 + 1/16 extra rays), which keeps them independent.
+  - **Tiles:** about 256² rays each, sized adaptively towards about 30 ms per tile, traced centre-out.
+  - **Interaction:** while a slider is dragged, only one coarse level is traced; on release, the full sequence runs.
+  - The capability page moved from `index.html` to `caps.html`; `index.html` is now the viewer.
+- 2026-11-04 — **Pole-distance polar coordinate on the GPU.** The float32 state holds δ = min(θ, π − θ) and a hemisphere sign, with p_δ = ±p_θ.
+  - Crossing the axis is δ → −δ (φ += π, p_δ → −p_δ) at both poles; crossing the equator flips the hemisphere.
+  - **Reason:** near θ = π, float32 spacing is 2.4e-7. Rays passing close to the south pole (the α ≈ 0 column of every image) came out wrong by up to 0.5 rad. Near θ = 0 floats are dense, hence the asymmetry.
+  - Equatorially symmetric metrics use their θ formulas with θ := δ.
+  - **M4 tables:** look up θ = δ or π − δ. The hemisphere sign multiplies the θ-derivative.
+  - The CPU reference (double) keeps θ.
+- 2026-11-04 — **Axis step floor.** In FOORT's step rule, min(θ, π − θ) is floored at 1e-3 when axis reflection is on: app mode on the GPU and in the CPU reference; parity (`axis: 'foort'`) keeps 0.
+  - **Reason:** with h₂ ∝ θ, a ray aimed straight at the axis (p_φ = 0) takes geometrically shrinking steps and never crosses it. FOORT ends such rays with ThetaSingularity.
+  - With the floor, the RK4 step across the axis moves θ by about 3e-5 rad, and the equations are smooth there.
+  - **Consequence:** the M2 app-mode numbers would change slightly for rays passing within 1e-3 rad of the axis. They were not rerun.
+- 2026-11-04 — **Redshift placeholder in M3.** g at a crossing is computed for a prograde Keplerian emitter on the equator, with g = 0 inside the photon orbit, so that the g₁ debug view and the record layout can be tested. M5 replaces it with FOORT's `GeneralCircularRadialFluid`.

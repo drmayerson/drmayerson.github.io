@@ -1,0 +1,64 @@
+{
+ "case": "kerr_a0.94_faceon",
+ "view": {
+  "metric": "kerr",
+  "metricParams": {
+   "a": 0.94
+  },
+  "camera": {
+   "r": 1000,
+   "theta": 0.00017453292519943296,
+   "screen": 15
+  },
+  "N": 256,
+  "maxSteps": 20000
+ },
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "gpu": {
+  "N": 256,
+  "levels": [
+   1
+  ],
+  "wallMs": 51.10000014305115,
+  "gpuMs": 48.529,
+  "tiles": 1,
+  "steps": 86114290
+ },
+ "cpuSeconds": 70.518,
+ "N": 256,
+ "pixels": 65536,
+ "terminationAgreement": 1,
+ "fourColorAgreement": 1,
+ "fourColorMismatches": 0,
+ "mismatchesInHeterogeneousNeighbourhood": 0,
+ "passesAgreement": 1,
+ "escapeAngle": {
+  "median": 0.000003230907143008702,
+  "p99": 0.00012358043456494407,
+  "max": 0.027874234252949007,
+  "count": 43772
+ },
+ "crossing1": {
+  "relR": {
+   "median": 0.0000016601772083483795,
+   "p99": 0.00000643049643845272
+  },
+  "absDt": {
+   "median": 0.002087495903083436,
+   "p99": 0.008256523179170472
+  },
+  "relG": {
+   "median": 7.151371559017149e-7,
+   "p99": 0.00001406409974808073
+  },
+  "count": 60448
+ },
+ "shadow": {
+  "capturedGPU": 21764,
+  "capturedCPU": 21764,
+  "radiusRatio": 1
+ },
+ "emissionProxyRelL1": 0.000005994838947364022,
+ "nanGPU": 0,
+ "timeoutGPU": 0
+}

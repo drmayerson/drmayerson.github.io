@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOORT-GPU capabilities</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+  <h1>FOORT-GPU</h1>
+  <p>Real-time GPU ray tracing of black holes and fuzzballs with an equatorial disc, after
+    <a href="https://github.com/drmayerson/foort">FOORT</a>. This page reports the GPU capabilities of this device. <a href="./">Viewer</a>.</p>
+  <p><a href="./bench/">Backend benchmark →</a></p>
+
+  <section>
+    <h2>This device</h2>
+    <table id="summary"><tr><td>checking…</td></tr></table>
+  </section>
+  <section>
+    <h2>WebGL2 details</h2>
+    <pre id="gl"></pre>
+  </section>
+  <section>
+    <h2>WebGPU details</h2>
+    <pre id="gpu"></pre>
+  </section>
+</main>
+<script type="module" src="./js/capsPage.js"></script>
+</body>
+</html>

@@ -35,6 +35,8 @@ export const TERM = { horizon: 1, boundary: 2, timeout: 3, nan: 4, thetaSing: 5,
  * @property {number} [threshold]               FOORT EquatorialPasses threshold (0.001)
  * @property {number} [ncross]                  crossings stored per ray (3)
  * @property {number} [fdStep]                  finite-difference step in x and theta (1e-3)
+ * @property {number} [axisStepFloor]           floor of min(theta, pi - theta) in the step rule (default 1e-3 with
+ *                                              axis 'reflect', 0 = FOORT with axis 'foort')
  *
  * @typedef {Object} Crossing
  * @property {number} r @property {number} theta @property {number} phi @property {number} t
@@ -132,10 +134,11 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
   let term = TERM.timeout, steps = 0;
   for (;;) {
     rhs(y, k1);
-    // FOORT Integrators::GetAdaptiveStep on the contravariant velocities (dx, dtheta, dphi)/dlambda
+    // FOORT Integrators::GetAdaptiveStep on the contravariant velocities (dx, dtheta, dphi)/dlambda;
+    // with axis reflection the axis distance is floored, else a ray aimed at the axis never crosses it
     const d = 1e-20;
     const h1 = o.eps / (Math.abs(k1[0]) + d);
-    const h2 = o.eps * Math.min(y[1], PI - y[1]) / (Math.abs(k1[1]) + d);
+    const h2 = o.eps * Math.max(Math.min(y[1], PI - y[1]), o.axisStepFloor) / (Math.abs(k1[1]) + d);
     const h3 = o.eps / (Math.abs(k1[2]) + d);
     const h = Math.max(1 / (1 / Math.abs(h1) + 1 / Math.abs(h2) + 1 / Math.abs(h3)), o.hmin);
     // xStageMin: an RK stage inside the termination radius means the ray reaches it within this step.
@@ -204,6 +207,7 @@ export function prepareImage(metric, opts) {
     mesh: 'centers', radial: 'logShifted', eps: 0.03, hmin: 1e-12, axis: 'reflect', thetaSingEps: null,
     singularity: null, crossing: 'interpolate', threshold: 0.001, ncross: 3, fdStep: 1e-3, ...opts,
   };
+  if (o.axisStepFloor === undefined) o.axisStepFloor = o.axis === 'reflect' ? 1e-3 : 0;
   const r0 = o.radial === 'log' || metric.horizon.kind !== 'sphere' ? 0 : metric.horizon.r;
   const F = makeFunctions(metric, r0, o.fdStep);
   const { r, theta } = o.camera;
