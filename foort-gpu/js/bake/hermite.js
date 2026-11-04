@@ -51,14 +51,3 @@ export function lookupTables(T, x, delta, hemi) {
   for (let l = 0; l < 5; l++) { v[l] += bg.B[l]; dx[l] += bg.dB[l]; }
   return { v, dx, dd };
 }
-
-/** Equatorial emitter (u^t, Omega) at x: 1/u^t and Omega linear in x (shaders/glsl/trace.glsl). @param {import('./bake.js').BakedTables} T @param {number} x */
-export function lookupEquator(T, x) {
-  const g = T.grid;
-  const f = Math.min(Math.max((x - g.xMin) / g.dxEq, 0), g.nEq - 1);
-  const i = Math.min(Math.floor(f), g.nEq - 2), u = f - i;
-  const e = T.equator;
-  if (!(e[4 * i] >= 0 && e[4 * i + 4] >= 0)) return { ut: 0, Om: 0 };   // no circular orbit in this cell
-  const iut = e[4 * i] * (1 - u) + e[4 * i + 4] * u;
-  return { ut: iut > 0 ? 1 / iut : 0, Om: e[4 * i + 1] * (1 - u) + e[4 * i + 5] * u };
-}

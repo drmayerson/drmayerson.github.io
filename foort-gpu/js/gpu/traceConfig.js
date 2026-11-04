@@ -7,6 +7,9 @@ import { createMetric } from '../metrics/registry.js';
 import { inverseMetric, toMat4 } from '../metrics/common.js';
 import { tableRadiusFor } from '../bake/bake.js';
 
+/** FOORT defaults of GeneralCircularRadialFluid (KerrExample.cfg). */
+export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
+
 /**
  * @typedef {Object} ViewParams
  * @property {string} metric                       registry id (BH mode in M4: kerr, johannsen, mankoNovikov)
@@ -26,11 +29,12 @@ import { tableRadiusFor } from '../bake/bake.js';
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
  * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
+ * @property {{xi:number, betaR:number, betaPhi:number}} [fluid]   GeneralCircularRadialFluid parameters
  */
 
 export const VIEW_DEFAULTS = {
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
-  mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 },
+  mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 }, fluid: FLUID_DEFAULTS,
 };
 
 /** @param {ViewParams} view */
@@ -60,6 +64,18 @@ export function viewTerminationRadius(m, v) {
 }
 
 /**
+ * Fluid-table specification of a view (both tracers), with a cache key.
+ * @param {ViewParams} viewIn
+ */
+export function fluidSpec(viewIn) {
+  const v = normalizeView(viewIn);
+  const m = createMetric(v.metric, v.metricParams);
+  const fluid = { ...FLUID_DEFAULTS, ...v.fluid };
+  const spec = { fluid, range: { rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) } };
+  return { kind: /** @type {'fluid'} */ ('fluid'), metric: v.metric, params: m.params, spec, key: JSON.stringify(['fluid', v.metric, m.params, spec]) };
+}
+
+/**
  * Table specification of a view (null for the analytic path): what the bake worker needs, and a cache key.
  * @param {ViewParams} viewIn
  */
@@ -74,9 +90,10 @@ export function tableSpec(viewIn) {
 /**
  * GPU uniforms for a view. Values are [type, data] with type '4f' | '4i' | 'm4'.
  * @param {ViewParams} viewIn
- * @param {import('../bake/bake.js').BakedTables} [tables]  required for the tabulated path (from tableSpec(view))
+ * @param {import('../bake/bake.js').BakedTables|undefined} tables  required for the tabulated path (from tableSpec(view))
+ * @param {import('../fluid/fluidTable.js').FluidTable} fluid  from fluidSpec(view)
  */
-export function gpuTraceSetup(viewIn, tables) {
+export function gpuTraceSetup(viewIn, tables, fluid) {
   const v = normalizeView(viewIn);
   const program = tracerFor(v);
   const metric = createMetric(v.metric, v.metricParams);
@@ -111,11 +128,14 @@ export function gpuTraceSetup(viewIn, tables) {
     if (Math.abs(g.r0 - r0) > 1e-12 * r0 || g.rTerm > rTerm * (1 + 1e-12) || g.rMax < v.rBoundary) throw new Error('gpuTraceSetup: tables do not cover this view');
     uniforms.uTab = ['4f', [g.xMin, g.dx, g.thMax, g.dth]];
     uniforms.uTabN = ['4i', [g.nx, g.nth, g.symmetric ? 1 : 0, 0]];
-    uniforms.uEq = ['4f', [g.dxEq, g.nEq, 0, 0]];
     uniforms.uMetric = ['4f', [r0, g.M, 0, 0]];
     tableKey = ts.key;
   }
-  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey };
+  if (!fluid) throw new Error('gpuTraceSetup: the fluid table is required');
+  const fs = fluidSpec(v);
+  if (Math.abs(fluid.grid.r0 - rh) > 1e-12 * Math.max(rh, 1) || Math.exp(fluid.grid.xMin) + fluid.grid.r0 > rTerm * (1 + 1e-9)) throw new Error('gpuTraceSetup: fluid table does not cover this view');
+  uniforms.uFluidX = ['4f', [fluid.grid.xMin, fluid.grid.dx, fluid.grid.n, fluid.grid.r0]];
+  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key };
 }
 
 /**

@@ -12,7 +12,6 @@
 //   float radiusOf(float x);
 //   void  geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom);
 //   float hamiltonianRel(vec4 pos, vec2 mom, float hemi, float pt, float pphi);
-//   float crossingRedshift(float r, float pt, float pphi);
 //   bool  nearSingularity(float r, float delta, float hemi);
 // State: pos = (x, delta, phi, t), mom = (p_x, p_delta); constants p_t (= 1, past-pointing) and p_phi.
 
@@ -24,6 +23,8 @@ uniform vec4 uStep;     // eps, hmin, rTerm, rBoundary
 uniform vec4 uAux;      // FOORT crossing threshold (fraction of pi/2), axis step floor, camera hemisphere (+-1), 0
 uniform ivec4 uImg;     // Nx, Ny of the image being traced (a progressive level is a smaller image), 0, 0
 uniform ivec4 uOpt;     // maxSteps, crossing mode (0 interpolate, 1 FOORT), mesh (0 centres, 1 FOORT), store |H|
+uniform highp sampler2D uFluid;   // fluid four-velocity (1/u^t, u^r/u^t, Omega, 0) at nodes x_i = log(r - r0) (row 0)
+uniform vec4 uFluidX;             // fluid table: xMin, dx, nodes, r0 (js/fluid/fluidTable.js)
 
 layout(location = 0) out vec4 outRec0;  // termCode + 16 * passes, steps, theta_end, phi_end (mod 2 pi)
 layout(location = 1) out vec4 outRec1;  // crossing 1: r, phi (mod 2 pi), dt = t - t_cam, g; r = 0 if none
@@ -50,9 +51,20 @@ float adaptiveStep(vec4 pos, vec4 v) {
 
 bool finite4(vec4 v) { return all(lessThan(abs(v), vec4(1e30))); }
 
-vec4 crossingRecord(vec4 pos, float pt, float pphi) {
+// Redshift g = 1 / (u^mu p_mu) of the equatorial fluid (FOORT GeneralCircularRadialFluid, past-directed p with
+// p_t = 1) for the photon momenta at a crossing: (1/u^t) / (p_t + (u^r/u^t) p_r + Omega p_phi); p_r = p_x dx/dr.
+float fluidRedshift(float r, float pr, float pt, float pphi) {
+  float f = clamp((log(r - uFluidX.w) - uFluidX.x) / uFluidX.y, 0.0, uFluidX.z - 1.0);
+  int i = min(int(floor(f)), int(uFluidX.z) - 2);
+  vec3 a = texelFetch(uFluid, ivec2(i, 0), 0).xyz, b = texelFetch(uFluid, ivec2(i + 1, 0), 0).xyz;
+  vec3 e = mix(a, b, f - float(i));
+  return e.x / (pt + e.y * pr + e.z * pphi);
+}
+
+vec4 crossingRecord(vec4 pos, vec2 mom, float pt, float pphi) {
   float r = radiusOf(pos.x);
-  return vec4(r, mod(pos.z, 2.0 * PI), pos.w, crossingRedshift(r, pt, pphi));
+  float pr = mom.x / exp(pos.x);   // x = log(r - r0) of the tracer
+  return vec4(r, mod(pos.z, 2.0 * PI), pos.w, fluidRedshift(r, pr, pt, pphi));
 }
 
 void main() {
@@ -107,6 +119,7 @@ void main() {
       }
     }
     vec4 prevPos = pos;
+    vec2 prevMom = mom;
     float prevHemi = hemi;
     pos += h / 6.0 * accP;
     mom += h / 6.0 * accM;
@@ -134,7 +147,7 @@ void main() {
         // FOORT EquatorialPassesDiagnostic: outside the threshold band, post-step position
         if (abs(z) > band) {
           if (havePrev && prevZeta * z < 0.0) {
-            if (passes < 3) cr[passes] = crossingRecord(pos, pt, pphi);
+            if (passes < 3) cr[passes] = crossingRecord(pos, mom, pt, pphi);
             passes++;
           }
           havePrev = true;
@@ -142,11 +155,15 @@ void main() {
         }
       } else {
         float z0 = prevHemi * (HALF_PI - prevPos.y);
-        if (z0 * z < 0.0) {
+        // the hemisphere flip is the crossing: a sign test on z misses rays whose flipped delta = pi - delta
+        // rounds to exactly pi/2 in float32 (z = 0)
+        if (hemi != prevHemi) {
           // linear interpolation in lambda between the two step ends
-          float f = z0 / (z0 - z);
+          float az = abs(z0) + abs(z);
+          float f = az > 0.0 ? abs(z0) / az : 1.0;
           vec4 q = prevPos + f * (pos - prevPos);
-          if (passes < 3) cr[passes] = crossingRecord(q, pt, pphi);
+          vec2 qm = prevMom + f * (mom - prevMom);
+          if (passes < 3) cr[passes] = crossingRecord(q, qm, pt, pphi);
           passes++;
         }
       }

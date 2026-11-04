@@ -1,0 +1,15 @@
+{
+ "case": "johannsen",
+ "mode": "parity",
+ "pixels": 16384,
+ "withinRounding": 0.39154052734375,
+ "relL1": 0.00007063186510583767,
+ "relDiff": {
+  "median": 0.00004238783659017859,
+  "p99": 0.00027681641479542597,
+  "max": 0.0007037553186566036
+ },
+ "passCountDiffers": 0,
+ "largeDiffSamePasses": 0,
+ "cpuSeconds": 3.661
+}

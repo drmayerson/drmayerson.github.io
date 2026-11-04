@@ -20,19 +20,19 @@
   "levels": [
    1
   ],
-  "wallMs": 50.59999990463257,
-  "gpuMs": 42.52896,
+  "wallMs": 49.200000047683716,
+  "gpuMs": 42.43732,
   "tiles": 4,
   "steps": 60782461
  },
- "cpuSeconds": 66.081,
+ "cpuSeconds": 24.854,
  "N": 256,
  "pixels": 65536,
  "terminationAgreement": 1,
  "fourColorAgreement": 1,
  "fourColorMismatches": 0,
  "mismatchesInHeterogeneousNeighbourhood": 0,
- "passesAgreement": 0.999969482421875,
+ "passesAgreement": 1,
  "escapeAngle": {
   "median": 0.0000019128123274267607,
   "p99": 0.00006704682225911866,
@@ -49,8 +49,8 @@
    "p99": 0.003015349797010458
   },
   "relG": {
-   "median": 4.157986623052257e-7,
-   "p99": 0.000008404386897745925
+   "median": 5.352332305593592e-7,
+   "p99": 0.00000909254958207624
   },
   "count": 61446
  },
@@ -59,7 +59,7 @@
   "capturedCPU": 21374,
   "radiusRatio": 1
  },
- "emissionProxyRelL1": 0.000004064882493137255,
+ "emissionProxyRelL1": 0.000003954927172579683,
  "nanGPU": 0,
  "timeoutGPU": 0
 }

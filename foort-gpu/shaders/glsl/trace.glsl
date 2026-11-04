@@ -9,8 +9,6 @@
 
 uniform highp sampler2D uTables;        // texel (i, 5 j + k) = G_k at node (x_i, theta_j): the five functions
                                         // of a node are adjacent rows, so a lookup's 20 texels are close in memory
-uniform highp sampler2D uEquator;       // (1/u^t, Omega, 0, 0) of prograde circular orbits (row 0); 1/u^t = -1: none
-uniform vec4 uEq;                       // equatorial table: dx, nodes, 0, 0 (same xMin as the 2D table)
 uniform vec4 uTab;                      // xMin, dx, thMax (pi/2: symmetric half table, or pi), dtheta
 uniform ivec4 uTabN;                    // nx, ntheta, symmetric (1/0), 0
 uniform vec4 uMetric;                   // r0, background mass M, 0, 0
@@ -87,18 +85,6 @@ float hamiltonianRel(vec4 pos, vec2 mom, float hemi, float pt, float pphi) {
   float t0 = v[0] * pt * pt, t1 = 2.0 * v[1] * pt * pphi, t2 = v[2] * pphi * pphi / (s * s);
   float t3 = v[3] * mom.x * mom.x, t4 = v[4] * mom.y * mom.y;
   return abs(t0 + t1 + t2 + t3 + t4) / (abs(t0) + abs(t1) + abs(t2) + abs(t3) + abs(t4));
-}
-
-// Redshift g = 1 / (u^t (p_t + Omega p_phi)) of a prograde circular equatorial emitter (M3/M4 placeholder;
-// M5 replaces the table with FOORT's GeneralCircularRadialFluid). 0 where no circular orbit exists.
-float crossingRedshift(float r, float pt, float pphi) {
-  float f = clamp((log(r - uMetric.x) - uTab.x) / uEq.x, 0.0, uEq.y - 1.0);
-  int i = min(int(floor(f)), int(uEq.y) - 2);
-  float u = f - float(i);
-  vec4 a = texelFetch(uEquator, ivec2(i, 0), 0), b = texelFetch(uEquator, ivec2(i + 1, 0), 0);
-  if (!(a.x >= 0.0 && b.x >= 0.0)) return 0.0;
-  vec2 e = mix(a.xy, b.xy, u);   // (1/u^t, Omega)
-  return e.x / (pt + e.y * pphi);
 }
 
 bool nearSingularity(float r, float delta, float hemi) { return false; }

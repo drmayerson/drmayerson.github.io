@@ -3,9 +3,11 @@
 // shader), progressive refinement, live re-bake of the metric tables, debug views.
 import { createBackend } from './gpu/backend.js';
 import { TracePipeline } from './gpu/pipeline.js';
-import { gpuTraceSetup, tableSpec } from './gpu/traceConfig.js';
+import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds } from './metrics/registry.js';
+import { decodeRecord } from './gpu/traceConfig.js';
+import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -40,8 +42,12 @@ export function viewFromState(s, coarseTables = false) {
     path: s.metric === 'kerr' ? s.path : 'tabulated', grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r, theta: s.inc * DEG, screen: s.screen, cx: s.cx, cy: s.cy },
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
+    fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
   };
 }
+
+/** @param {Record<string, any>} s @returns {import('./fluid/emission.js').EmissionParams} */
+export const emissionFromState = (s) => ({ mu: s.mu, gamma: s.gamma, sigma: s.sigma, redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) });
 
 const LEGENDS = {
   fourColor: [['#e44a40', 'θ < π/2, φ < π'], ['#409ce4', 'θ < π/2, φ > π'], ['#f0c83c', 'θ > π/2, φ < π'], ['#5abe6e', 'θ > π/2, φ > π'], ['#000', 'horizon']],
@@ -61,6 +67,21 @@ async function main() {
     onProgress: (p) => { level = p.level; $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`; requestDraw(); },
   });
 
+  let autoExposure = 1;
+  /** coarse-level records of the last full trace, for auto exposure */
+  let coarse = /** @type {Float32Array|null} */ (null);
+  const updateExposure = () => {
+    if (!coarse) return;
+    const em = emissionFromState(state), I = [];
+    for (let k = 0; k < coarse.length / 16; k++) {
+      const d = decodeRecord(coarse, k);
+      const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em);
+      if (v > 0) I.push(v);
+    }
+    I.sort((a, b) => a - b);
+    const top = I.length ? I[Math.min(I.length - 1, Math.floor(0.995 * I.length))] : 0;
+    autoExposure = top > 0 ? 1 / top : 1;
+  };
   let drawQueued = false;
   const requestDraw = () => {
     if (drawQueued) return;
@@ -71,7 +92,8 @@ async function main() {
     const v = VIEWS[/** @type {keyof typeof VIEWS} */ (state.view)];
     const lo = Number.isNaN(state.lo) ? /** @type {any} */ (v).lo ?? 0 : state.lo;
     const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
-    backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r, storeH: !!state.storeH });
+    backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r, storeH: !!state.storeH,
+      emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap) });
   };
 
   const legend = () => {
@@ -80,6 +102,7 @@ async function main() {
     $('legend').innerHTML = items
       ? items.map(([c, t]) => `<span style="background:${c}"></span>${t}`).join('')
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
+        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}` : ''}`
         : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
           : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon' : '';
   };
@@ -91,6 +114,7 @@ async function main() {
     $('perf').innerHTML =
       perfRow('GPU', String(caps.renderer)) +
       perfRow('metric tables', bake) +
+      perfRow('fluid', lastFluid ? `ξ = ${lastFluid.params.xi}, β_r = ${lastFluid.params.betaR}, β_φ = ${lastFluid.params.betaPhi}; ISCO ${lastFluid.isco ? 'r = ' + lastFluid.isco.toFixed(4) : 'not found'} (${lastFluid.ms.toFixed(0)} ms)` : '') +
       perfRow('image', `${st.N}² (levels ${st.levels.join(' → ')}, ${st.tiles} tiles)`) +
       perfRow('trace time', `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
@@ -100,6 +124,8 @@ async function main() {
   const bakes = new BakeClient();
   let runId = 0;
   let lastBake = '';
+  /** @type {import('./fluid/fluidTable.js').FluidTable|null} */
+  let lastFluid = null;
   /** @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged */
   const run = async (final, metricDrag = false) => {
     const id = ++runId;
@@ -118,12 +144,17 @@ async function main() {
         if (!tables.validation.ok) throw new Error(`metric not valid on its table: ${tables.validation.messages.join('; ')}`);
         if (!bk.cached) lastBake = `${tables.grid.nx} × ${tables.grid.nth} nodes${tables.grid.symmetric ? ' (θ ≤ π/2)' : ''}, ${bk.ms.toFixed(0)} ms in the worker (bake ${tables.timing.totalMs.toFixed(0)} ms)`;
       }
-      setup = gpuTraceSetup(view, tables);
+      const fs = fluidSpec(view);
+      const fb = await bakes.get(fs);
+      if (id !== runId) return;
+      lastFluid = fb.tables;
+      setup = gpuTraceSetup(view, tables, fb.tables);
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return; }
     const levels = final ? [4, 2, 1] : [Math.min(8, Math.max(1, state.N / 128))];
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
     if (!st) return;
     lastStats = st;
+    if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); }
     requestDraw();
     const note = clamped.length ? ` (${clamped.join(', ')})` : '';
     $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms` : `preview (stride ${levels[0]}); release to refine`) + note;
@@ -132,6 +163,16 @@ async function main() {
 
   const controls = buildControls(/** @type {HTMLFormElement} */ ($('controls')), state, (key, final, retrace) => {
     if (key === 'view') { controls.set('lo', NaN); controls.set('hi', NaN); legend(); }
+    if (key === 'preset' && state.preset !== 'custom') {
+      const p = /** @type {any} */ (EMISSION_PRESETS)[state.preset];
+      controls.set('metric', p.metric);
+      for (const [k, v] of Object.entries(p.params)) controls.set(k, v);
+      for (const [k, v] of Object.entries(p.emission)) controls.set(k, v);
+      controls.set('inc', p.inc); controls.set('r', p.r); controls.set('screen', p.screen);
+      run(true);
+      return;
+    }
+    if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure'].includes(key)) { updateExposure(); legend(); }
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;
     if (retrace) run(final, isParam && !final); else { history.replaceState(null, '', `?${stateToQuery(state)}`); legend(); requestDraw(); }
   });
@@ -146,14 +187,15 @@ async function main() {
     async trace(view, o = {}) {
       const ts = tableSpec(view);
       const tables = ts ? (await bakes.get(ts)).tables : undefined;
-      const setup = gpuTraceSetup(view, tables);
+      const fluid = (await bakes.get(fluidSpec(view))).tables;
+      const setup = gpuTraceSetup(view, tables, fluid);
       const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: true, adaptTiles: false });
       const rec = await backend.readRecords();
       requestDraw();
       const bytes = new Uint8Array(rec.buffer);
       let bin = '';
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      return { stats, records: btoa(bin), level, bake: tables ? { grid: tables.grid, timing: tables.timing, validation: tables.validation } : null };
+      return { stats, records: btoa(bin), level, isco: fluid.isco, bake: tables ? { grid: tables.grid, timing: tables.timing, validation: tables.validation } : null };
     },
   };
 }

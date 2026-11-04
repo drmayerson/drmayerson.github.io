@@ -6,7 +6,8 @@
 /**
  * @typedef {{x:number, y:number, w:number, h:number}} Rect
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
- * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean}} DisplayView
+ * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
+ *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number}} DisplayView
  *
  * @typedef {Object} Backend
  * @property {'webgl2'|'webgpu'} kind
@@ -14,12 +15,13 @@
  * @property {(w:number, h:number) => void} resize                    record (and canvas) size in pixels
  * @property {(u:Uniforms) => void} uploadUniforms                    trace uniforms for the next tiles
  * @property {(t:import('../bake/bake.js').BakedTables) => void} uploadTables  metric tables of the tabulated tracer
+ * @property {(f:import('../fluid/fluidTable.js').FluidTable) => void} uploadFluid  fluid four-velocity table (both tracers)
  * @property {() => void} clearRecords                                mark every pixel untraced
  * @property {(stride:number) => {w:number, h:number}} levelSize   size of the progressive level `stride` (1, 2, 4, 8)
  * @property {(rect:Rect, stride:number) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
  *   trace the pixels of `rect` (in that level's pixels) of the level image `stride`
  * @property {(view:DisplayView) => void} display
- * @property {() => Promise<Float32Array>} readRecords                full-resolution level, 16 floats per pixel, row 0 = bottom (tests)
+ * @property {(stride?:number) => Promise<Float32Array>} readRecords  one level (default full resolution), 16 floats per pixel, row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image
  * @property {() => void} pollTiming                                  resolve finished GPU timer queries
  * @property {() => Record<string, unknown>} capabilities

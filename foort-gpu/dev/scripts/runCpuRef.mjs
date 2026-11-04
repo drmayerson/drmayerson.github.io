@@ -41,7 +41,7 @@ if (isMainThread && process.argv[1] && fileURLToPath(import.meta.url) === resolv
   const chunks = Array.from({ length: threads }, (_, w) => pixels.filter((_, k) => k % threads === w));
   const t0 = Date.now();
   const parts = await Promise.all(chunks.map((px) => new Promise((res, rej) => {
-    const w = new Worker(fileURLToPath(import.meta.url), { workerData: { name, mode, pixels: px, eps: epsOverride ? Number(epsOverride) : null } });
+    const w = new Worker(fileURLToPath(import.meta.url), { workerData: { runCpuRef: true, name, mode, pixels: px, eps: epsOverride ? Number(epsOverride) : null } });
     w.on('message', res); w.on('error', rej);
   })));
   const results = parts.flat().sort((a, b) => a.i - b.i || a.j - b.j);
@@ -51,7 +51,7 @@ if (isMainThread && process.argv[1] && fileURLToPath(import.meta.url) === resolv
   writeFileSync(join(dir, `cpu_${mode}${tag ? '_' + tag : ''}.json`), JSON.stringify({ case: name, mode, N: c.N, stride, eps: epsOverride ? Number(epsOverride) : 0.03, seconds: secs, threads, results }));
   const steps = results.reduce((s, r) => s + r.steps, 0);
   console.log(`${name} [${mode}] ${results.length} rays in ${secs.toFixed(1)} s on ${threads} threads, ${(steps / results.length).toFixed(0)} steps/ray`);
-} else if (!isMainThread) {
+} else if (!isMainThread && workerData?.runCpuRef) {   // (other scripts' workers import traceOptions from here)
   const { name, mode, pixels, eps } = workerData;
   const c = CASES.find((x) => x.name === name);
   const opts = traceOptions(c, mode);

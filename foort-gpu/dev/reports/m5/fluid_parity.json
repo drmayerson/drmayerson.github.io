@@ -1,0 +1,530 @@
+[
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 6.000000536388695,
+  "maxRelVelocityDiff": 2.1308520279019047e-8,
+  "atR": 5.9998469277692115,
+  "iscoKerr": 6,
+  "iscoFOORT": 5.999995
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 6.000000536388695,
+  "maxRelVelocityDiff": 0.0000207769668099398,
+  "atR": 5.9998469277692115,
+  "iscoKerr": 6,
+  "iscoFOORT": 5.999995
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 6.000000536388695,
+  "maxRelVelocityDiff": 3.528258957035157e-8,
+  "atR": 3.481508690664611,
+  "iscoKerr": 6,
+  "iscoFOORT": 5.999995
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 6.000000536388695,
+  "maxRelVelocityDiff": 2.721098795668191e-15,
+  "atR": 969.4745585774572,
+  "iscoKerr": 6,
+  "iscoFOORT": 5.999995
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 4.233002863938952,
+  "maxRelVelocityDiff": 4.152444994806582e-9,
+  "atR": 4.203006718610747,
+  "iscoKerr": 4.233002529530826,
+  "iscoFOORT": 4.233006
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.5
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 4.233002863938952,
+  "maxRelVelocityDiff": 0.0000012519716470165699,
+  "atR": 4.203006718610747,
+  "iscoKerr": 4.233002529530826,
+  "iscoFOORT": 4.233006
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.5
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 4.233002863938952,
+  "maxRelVelocityDiff": 4.459923314967564e-8,
+  "atR": 2.9738744625750813,
+  "iscoKerr": 4.233002529530826,
+  "iscoFOORT": 4.233006
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 4.233002863938952,
+  "maxRelVelocityDiff": 3.4980573067695976e-15,
+  "atR": 707.6295730986637,
+  "iscoKerr": 4.233002529530826,
+  "iscoFOORT": 4.233006
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.94
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 2.0235931033091377,
+  "maxRelVelocityDiff": 2.0570701123322223e-8,
+  "atR": 2.0154544090746986,
+  "iscoKerr": 2.023593104700402,
+  "iscoFOORT": 2.02359
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.94
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 2.0235931033091377,
+  "maxRelVelocityDiff": 0.00000364230592828308,
+  "atR": 2.0154544090746986,
+  "iscoKerr": 2.023593104700402,
+  "iscoFOORT": 2.02359
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.94
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 2.0235931033091377,
+  "maxRelVelocityDiff": 1.9895562114709336e-7,
+  "atR": 1.9823691204509726,
+  "iscoKerr": 2.023593104700402,
+  "iscoFOORT": 2.02359
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.94
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 2.0235931033091377,
+  "maxRelVelocityDiff": 2.890645033070642e-15,
+  "atR": 694.8601849926316,
+  "iscoKerr": 2.023593104700402,
+  "iscoFOORT": 2.02359
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.998
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 1.2369708124326388,
+  "maxRelVelocityDiff": 0.0000010902044580740085,
+  "atR": 1.2317297764263657,
+  "iscoKerr": 1.2369706551751847,
+  "iscoFOORT": 1.236967
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.998
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 1.2369708124326388,
+  "maxRelVelocityDiff": 0.000003847686871621534,
+  "atR": 1.2317297764263657,
+  "iscoKerr": 1.2369706551751847,
+  "iscoFOORT": 1.236967
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.998
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 1.2369708124326388,
+  "maxRelVelocityDiff": 6.274675953139598e-7,
+  "atR": 1.2317297764263657,
+  "iscoKerr": 1.2369706551751847,
+  "iscoFOORT": 1.236967
+ },
+ {
+  "metric": "kerr",
+  "params": {
+   "a": 0.998
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 1.2369708124326388,
+  "maxRelVelocityDiff": 3.5378761236255583e-15,
+  "atR": 709.9348018204917,
+  "iscoKerr": 1.2369706551751847,
+  "iscoFOORT": 1.236967
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.94,
+   "alpha13": 5.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 5.541695025693652,
+  "maxRelVelocityDiff": 2.1399345516984898e-8,
+  "atR": 806.4798452271235,
+  "iscoKerr": null,
+  "iscoFOORT": 5.541673
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.94,
+   "alpha13": 5.5
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 5.541695025693652,
+  "maxRelVelocityDiff": 0.000010964993202417927,
+  "atR": 5.531828467142667,
+  "iscoKerr": null,
+  "iscoFOORT": 5.541673
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.94,
+   "alpha13": 5.5
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 5.541695025693652,
+  "maxRelVelocityDiff": 1.9631674563273657e-7,
+  "atR": 3.048486961141341,
+  "iscoKerr": null,
+  "iscoFOORT": 5.541673
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.94,
+   "alpha13": 5.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 5.541695025693652,
+  "maxRelVelocityDiff": 2.9467670460150065e-15,
+  "atR": 524.437454325134,
+  "iscoKerr": null,
+  "iscoFOORT": 5.541673
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.5,
+   "alpha13": -5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 2.2777449903358837,
+  "maxRelVelocityDiff": 4.147673748026893e-8,
+  "atR": 2.276302914325301,
+  "iscoKerr": null,
+  "iscoFOORT": 2.277745
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.5,
+   "alpha13": -5
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 2.2777449903358837,
+  "maxRelVelocityDiff": 5.100136565713275e-7,
+  "atR": 2.276302914325301,
+  "iscoKerr": null,
+  "iscoFOORT": 2.277745
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.5,
+   "alpha13": -5
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 2.2777449903358837,
+  "maxRelVelocityDiff": 5.9588298981597996e-9,
+  "atR": 623.9850341676639,
+  "iscoKerr": null,
+  "iscoFOORT": 2.277745
+ },
+ {
+  "metric": "johannsen",
+  "params": {
+   "a": 0.5,
+   "alpha13": -5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 2.2777449903358837,
+  "maxRelVelocityDiff": 3.0652429475247394e-15,
+  "atR": 868.1257757498717,
+  "iscoKerr": null,
+  "iscoFOORT": 2.277745
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.94,
+   "alpha3": 2
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 1.4428449898360522,
+  "maxRelVelocityDiff": 8.092524016790456e-8,
+  "atR": 1.9876082890185631,
+  "iscoKerr": null,
+  "iscoFOORT": 1.442847
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.94,
+   "alpha3": 2
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 1.4428449898360522,
+  "maxRelVelocityDiff": 9.12377607210098e-9,
+  "atR": 1.9876082890185631,
+  "iscoKerr": null,
+  "iscoFOORT": 1.442847
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.94,
+   "alpha3": 2
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 1.4428449898360522,
+  "maxRelVelocityDiff": 2.3821907091787405e-8,
+  "atR": 1.9876082890185631,
+  "iscoKerr": null,
+  "iscoFOORT": 1.442847
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.94,
+   "alpha3": 2
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 1.4428449898360522,
+  "maxRelVelocityDiff": 5.87548690385187e-15,
+  "atR": 983.9451313314725,
+  "iscoKerr": null,
+  "iscoFOORT": 1.442847
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.5,
+   "alpha3": 0.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 1,
+   "betaPhi": 1
+  },
+  "iscoJS": 4.232705424154746,
+  "maxRelVelocityDiff": 7.434246303124101e-8,
+  "atR": 4.1930441008118375,
+  "iscoKerr": null,
+  "iscoFOORT": 4.232718
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.5,
+   "alpha3": 0.5
+  },
+  "fluid": {
+   "xi": 0.7,
+   "betaR": 0.5,
+   "betaPhi": 0.3
+  },
+  "iscoJS": 4.232705424154746,
+  "maxRelVelocityDiff": 0.00000397396940905357,
+  "atR": 4.1930441008118375,
+  "iscoKerr": null,
+  "iscoFOORT": 4.232718
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.5,
+   "alpha3": 0.5
+  },
+  "fluid": {
+   "xi": 0.5,
+   "betaR": 0,
+   "betaPhi": 1
+  },
+  "iscoJS": 4.232705424154746,
+  "maxRelVelocityDiff": 1.6489225194544756e-7,
+  "atR": 2.9809572873960684,
+  "iscoKerr": null,
+  "iscoFOORT": 4.232718
+ },
+ {
+  "metric": "mankoNovikov",
+  "params": {
+   "a": 0.5,
+   "alpha3": 0.5
+  },
+  "fluid": {
+   "xi": 1,
+   "betaR": 0,
+   "betaPhi": 0
+  },
+  "iscoJS": 4.232705424154746,
+  "maxRelVelocityDiff": 4.250135013184133e-15,
+  "atR": 537.8197445042757,
+  "iscoKerr": null,
+  "iscoFOORT": 4.232718
+ }
+]

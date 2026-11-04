@@ -1,0 +1,14 @@
+{
+ "case": "mankoNovikov",
+ "crossing": "foort",
+ "path": "tabulated",
+ "N": 128,
+ "relL1": 0.004554632252337668,
+ "relDiff": {
+  "median": 0.002411129357758923,
+  "p90": 0.014477378628631136,
+  "p99": 0.051705730771542856
+ },
+ "raysWithMoreThan3Passes": 15,
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { cpus } from 'node:os';
 import { cpuTraceOptions } from '../../js/gpu/traceConfig.js';
 import { prepareImage } from '../../js/ref/cpuTracer.js';
-import { keplerOrbit, emitterRedshift } from '../../js/bake/bake.js';
+import { createFluid } from '../../js/fluid/generalCircularRadial.js';
+import { FLUID_DEFAULTS } from '../../js/gpu/traceConfig.js';
 
 /**
  * @param {import('../../js/gpu/traceConfig.js').ViewParams} view
@@ -26,14 +27,15 @@ if (!isMainThread && workerData?.view) {
   const { view, pixels } = workerData;
   const { metric, options } = cpuTraceOptions(view);
   const { tracePixel } = prepareImage(metric, options);
-  // redshift placeholder: prograde circular equatorial emitter, as the GPU tables (js/bake/bake.js)
-  const orbit = keplerOrbit(metric);
+  // redshift from the fluid model, evaluated directly (the GPU interpolates js/fluid/fluidTable.js)
+  const fluid = createFluid(metric, { ...FLUID_DEFAULTS, ...view.fluid });
+  const r0 = options.radial === 'log' || metric.horizon.kind !== 'sphere' ? 0 : metric.horizon.r;
   const out = pixels.map(([i, j]) => {
     const r = tracePixel(i, j);
     let ph = r.phi % (2 * Math.PI); if (ph < 0) ph += 2 * Math.PI;
     return {
       i, j, term: r.term, passes: r.passes, steps: r.steps, theta: r.theta, phi: ph, H: r.hamiltonian,
-      crossings: r.crossings.map((c) => ({ r: c.r, phi: ((c.phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), dt: c.t, g: emitterRedshift(orbit(c.r), r.pt, r.pphi) })),
+      crossings: r.crossings.map((c) => ({ r: c.r, phi: ((c.phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), dt: c.t, g: fluid.redshift(c.r, r.pt, c.px / (c.r - r0), r.pphi) })),
     };
   });
   parentPort?.postMessage(out);

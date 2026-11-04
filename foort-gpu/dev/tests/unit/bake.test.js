@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { bakeTables, backgroundG, keplerOrbit, emitterRedshift, tableRadiusFor } from '../../../js/bake/bake.js';
-import { lookupTables, lookupEquator } from '../../../js/bake/hermite.js';
+import { bakeTables, backgroundG, tableRadiusFor } from '../../../js/bake/bake.js';
+import { lookupTables } from '../../../js/bake/hermite.js';
+import { bakeFluid } from '../../../js/fluid/fluidTable.js';
 import { createKerr } from '../../../js/metrics/kerr.js';
 import { createMankoNovikov } from '../../../js/metrics/mankoNovikov.js';
 import { createJohannsen } from '../../../js/metrics/johannsen.js';
-import { tableSpec, gpuTraceSetup } from '../../../js/gpu/traceConfig.js';
+import { tableSpec, fluidSpec, gpuTraceSetup } from '../../../js/gpu/traceConfig.js';
 
 /** Closed-form Kerr G0..G4 at (x, theta), x = log(r - r_+). */
 const kerrG = (a, x, th) => {
@@ -85,29 +86,19 @@ describe('metric tables (js/bake)', () => {
     expect(near.B.every(Number.isFinite) && near.dB.every(Number.isFinite)).toBe(true);
   });
 
-  it('equatorial emitter: Kerr Keplerian orbit and its table', () => {
-    const orbit = keplerOrbit(createKerr({ a }));
-    for (const r of [4, 10, 100]) {
-      const o = orbit(r), Om = 1 / (r ** 1.5 + a);
-      expect(o.Om).toBeCloseTo(Om, 9);
-      const ut = (r ** 1.5 + a) / (r ** 0.75 * Math.sqrt(r ** 1.5 - 3 * Math.sqrt(r) + 2 * a));
-      expect(o.ut / ut - 1).toBeLessThan(1e-8);
-      const L = lookupEquator(T, Math.log(r - g.r0));
-      expect(L.ut / ut - 1).toBeLessThan(1e-5);
-      expect(emitterRedshift(L, 1, -2)).toBeCloseTo(emitterRedshift(o, 1, -2), 5);
-    }
-    expect(orbit(1.3).ut).toBe(0);   // inside the photon orbit
-  });
-
   it('table radius steps by decades; traceConfig connects tables and uniforms', () => {
     expect(tableRadiusFor(1010)).toBe(1100);
     expect(tableRadiusFor(1.01e5)).toBeCloseTo(1.1e5, 6);
     const view = { metric: 'johannsen', metricParams: { a: 0.5, alpha13: 2 }, camera: { r: 1000, theta: 1, screen: 15 }, N: 16 };
     const ts = tableSpec(view);
     const TJ = bakeTables(createJohannsen({ a: 0.5, alpha13: 2 }), ts.spec);
-    const setup = gpuTraceSetup(view, TJ);
+    const fs = fluidSpec(view);
+    const F = bakeFluid(createJohannsen({ a: 0.5, alpha13: 2 }), fs.spec.fluid, fs.spec.range);
+    const setup = gpuTraceSetup(view, TJ, F);
+    expect(setup.fluidKey).toBe(fs.key);
     expect(setup.program).toBe('trace');
     expect(setup.tableKey).toBe(ts.key);
-    expect(() => gpuTraceSetup({ ...view, camera: { ...view.camera, r: 5000 } }, TJ)).toThrow(/cover/);
+    expect(() => gpuTraceSetup({ ...view, camera: { ...view.camera, r: 5000 } }, TJ, F)).toThrow(/cover/);
+    expect(() => gpuTraceSetup(view, TJ, undefined)).toThrow(/fluid/);
   });
 });

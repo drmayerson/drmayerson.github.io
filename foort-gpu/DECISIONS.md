@@ -124,3 +124,15 @@ non-trivial implementation choice.
 - 2026-11-04 — **Viewer startup stages:** the status line names each stage, and the shader files are fetched in parallel (the user asked how long "starting…" should last).
 - 2026-11-04 — **Table axis nodes are evaluated at θ = 1e-4** (was 1e-6). Manko–Novikov's prolate coordinate loses digits in 1 − cos²θ closer to the axis. The even-function error at the node, about 1e-8 relative, is below float32.
 - 2026-11-04 — **CHECKPOINT M4: tabulated-trace speed accepted for now; optimisation deferred to M9** (user: "Yes, defer to M9"). On the AMD integrated GPU, the tabulated trace is 4–8× slower than closed-form Kerr (0.45 s at 512², 1.9 s at 1024²), limited by RGBA32F texel fetches. M9 should try half-float derivative channels (fewer bytes per node) and an analytic far field.
+- 2026-11-04 — **M5 fluid model and emission.**
+  - **Fluid:** `js/fluid/generalCircularRadial.js` ports FOORT's `GeneralCircularRadialFluid` in the true r.
+    - Christoffels are 4th-order finite differences with h = 1e-4 r (FOORT uses central differences with h = 1e-7 in its coordinate).
+    - The ISCO bisection runs in log r with FOORT's bracket of 2 × 1e-7, and FOORT's default bounds (r_h, 10 r_h).
+    - The four-velocity is a vector, so the redshift does not depend on FOORT's log-r coordinate.
+  - **Fluid table:** (1/u^t, u^r/u^t, Ω) at 2048 nodes, linear in x. It is shared by both GPU tracers (`common.glsl`) and baked in the worker under its own cache key.
+  - **Redshift:** uses the photon's p_r (p_x dx/dr). For interpolated crossings the momenta are interpolated too.
+  - **Emission:** computed in the display pass from the stored crossings, so emission parameters, exposure, tone map and colour map only redraw.
+  - **Removed:** the M3/M4 Keplerian placeholder (`keplerOrbit`, the equatorial table).
+- 2026-11-04 — **Equator crossings on the GPU are detected by the hemisphere flip** of the pole-distance state, not by a sign change of the equator distance. In float32, δ = π − δ₁ can round to exactly π/2 after the flip, and the sign test then missed the crossing (an isolated dark pixel in the disc images). The interpolation fraction is |z₀| / (|z₀| + |z|).
+- 2026-11-04 — **Level 1 emission criterion:** FOORT prints intensities with 6 decimals, so the plan's "median relative difference ≤ 1e-6" cannot be tested on its output. The report gives the median relative difference (4e-5 in parity mode) and the fraction within FOORT's rounding.
+- 2026-11-04 — **CHECKPOINT M5 accepted; merged to `main` and pushed** (user: "Accept, merge and push"). Left open for later: a 4th crossing slot, instrumenting FOORT for the Manko–Novikov strong-field difference, and the α3 slider range [−1, 1].

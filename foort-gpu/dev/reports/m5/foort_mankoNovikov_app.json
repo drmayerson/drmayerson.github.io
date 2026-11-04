@@ -1,0 +1,16 @@
+{
+ "case": "mankoNovikov",
+ "mode": "app",
+ "fdStep": 0.001,
+ "pixels": 16384,
+ "withinRounding": 0.0938720703125,
+ "relL1": 0.006514383898523049,
+ "relDiff": {
+  "median": 0.004649628086732348,
+  "p99": 0.0932729443313784,
+  "max": 0.17267805828773988
+ },
+ "passCountDiffers": 18,
+ "largeDiffSamePasses": 12365,
+ "cpuSeconds": 12.436
+}
