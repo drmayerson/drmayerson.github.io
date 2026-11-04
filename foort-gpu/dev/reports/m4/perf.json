@@ -1,0 +1,205 @@
+{
+ "node": [
+  {
+   "metric": "kerr",
+   "nx": 128,
+   "nth": 64,
+   "ms": 11.03830000000005
+  },
+  {
+   "metric": "kerr",
+   "nx": 256,
+   "nth": 128,
+   "ms": 21.33669999999995
+  },
+  {
+   "metric": "kerr",
+   "nx": 512,
+   "nth": 128,
+   "ms": 26.48969999999997
+  },
+  {
+   "metric": "kerr",
+   "nx": 512,
+   "nth": 256,
+   "ms": 81.8721999999999
+  },
+  {
+   "metric": "kerr",
+   "nx": 1024,
+   "nth": 256,
+   "ms": 147.07420000000002
+  },
+  {
+   "metric": "johannsen",
+   "nx": 128,
+   "nth": 64,
+   "ms": 8.424199999999928
+  },
+  {
+   "metric": "johannsen",
+   "nx": 256,
+   "nth": 128,
+   "ms": 19.74440000000004
+  },
+  {
+   "metric": "johannsen",
+   "nx": 512,
+   "nth": 128,
+   "ms": 30.17549999999983
+  },
+  {
+   "metric": "johannsen",
+   "nx": 512,
+   "nth": 256,
+   "ms": 83.52859999999987
+  },
+  {
+   "metric": "johannsen",
+   "nx": 1024,
+   "nth": 256,
+   "ms": 178.98379999999997
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 128,
+   "nth": 64,
+   "ms": 18.441499999999905
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 256,
+   "nth": 128,
+   "ms": 54.996399999999994
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 512,
+   "nth": 128,
+   "ms": 129.2422999999999
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 512,
+   "nth": 256,
+   "ms": 264.46489999999994
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 1024,
+   "nth": 256,
+   "ms": 536.2893000000004
+  }
+ ],
+ "browser": [
+  {
+   "metric": "kerr",
+   "nx": 512,
+   "nth": 128,
+   "bakeInWorkerMs": 57.799999952316284,
+   "bakeAndCoarseTraceMs": 150.60000014305115
+  },
+  {
+   "metric": "kerr",
+   "nx": 512,
+   "nth": 256,
+   "bakeInWorkerMs": 85.40000009536743,
+   "bakeAndCoarseTraceMs": 182.79999995231628
+  },
+  {
+   "metric": "johannsen",
+   "nx": 512,
+   "nth": 128,
+   "bakeInWorkerMs": 59.09999990463257,
+   "bakeAndCoarseTraceMs": 139.40000009536743
+  },
+  {
+   "metric": "johannsen",
+   "nx": 512,
+   "nth": 256,
+   "bakeInWorkerMs": 107.59999990463257,
+   "bakeAndCoarseTraceMs": 210.59999990463257
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 512,
+   "nth": 128,
+   "bakeInWorkerMs": 182.30000019073486,
+   "bakeAndCoarseTraceMs": 325.59999990463257
+  },
+  {
+   "metric": "mankoNovikov",
+   "nx": 512,
+   "nth": 256,
+   "bakeInWorkerMs": 307,
+   "bakeAndCoarseTraceMs": 500.59999990463257
+  }
+ ],
+ "trace": [
+  {
+   "N": 512,
+   "path": "analytic",
+   "metric": "kerr",
+   "wallMs": 98.5,
+   "gpuMs": 88.41644,
+   "stepsPerRay": 758.6596565246582
+  },
+  {
+   "N": 512,
+   "path": "tabulated",
+   "metric": "kerr",
+   "wallMs": 440.7999999523163,
+   "gpuMs": 429.93388000000004,
+   "stepsPerRay": 758.6597480773926
+  },
+  {
+   "N": 512,
+   "path": "tabulated",
+   "metric": "johannsen",
+   "wallMs": 456.2999999523163,
+   "gpuMs": 445.17283999999995,
+   "stepsPerRay": 746.0552215576172
+  },
+  {
+   "N": 512,
+   "path": "tabulated",
+   "metric": "mankoNovikov",
+   "wallMs": 500.40000009536743,
+   "gpuMs": 487.06572,
+   "stepsPerRay": 692.9942321777344
+  },
+  {
+   "N": 1024,
+   "path": "analytic",
+   "metric": "kerr",
+   "wallMs": 287.80000019073486,
+   "gpuMs": 240.20027999999996,
+   "stepsPerRay": 758.65247631073
+  },
+  {
+   "N": 1024,
+   "path": "tabulated",
+   "metric": "kerr",
+   "wallMs": 1991.7999999523163,
+   "gpuMs": 1901.49532,
+   "stepsPerRay": 758.6524868011475
+  },
+  {
+   "N": 1024,
+   "path": "tabulated",
+   "metric": "johannsen",
+   "wallMs": 2059.2000000476837,
+   "gpuMs": 1734.5341199999998,
+   "stepsPerRay": 746.0753917694092
+  },
+  {
+   "N": 1024,
+   "path": "tabulated",
+   "metric": "mankoNovikov",
+   "wallMs": 1985.7000000476837,
+   "gpuMs": 1918.85504,
+   "stepsPerRay": 693.0173330307007
+  }
+ ],
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

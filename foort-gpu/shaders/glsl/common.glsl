@@ -89,25 +89,27 @@ void main() {
   int maxSteps = uOpt.x;
 
   for (int n = 0; n <= maxSteps; n++) {
-    vec4 k1p; vec2 k1m;
-    geodesicRHS(pos, mom, hemi, pt, pphi, k1p, k1m);
-    float h = adaptiveStep(pos, k1p);
-    vec4 k2p; vec2 k2m;
-    vec4 sp = pos + 0.5 * h * k1p;
-    float xStageMin = sp.x;
-    geodesicRHS(sp, mom + 0.5 * h * k1m, hemi, pt, pphi, k2p, k2m);
-    vec4 k3p; vec2 k3m;
-    sp = pos + 0.5 * h * k2p;
-    xStageMin = min(xStageMin, sp.x);
-    geodesicRHS(sp, mom + 0.5 * h * k2m, hemi, pt, pphi, k3p, k3m);
-    vec4 k4p; vec2 k4m;
-    sp = pos + h * k3p;
-    xStageMin = min(xStageMin, sp.x);
-    geodesicRHS(sp, mom + h * k3m, hemi, pt, pphi, k4p, k4m);
+    // RK4 as a loop over the stages: one call site of the metric functions keeps the compiled
+    // shader small (ANGLE/D3D inlines every call; four call sites of the tabulated lookup took ~30 s to compile)
+    vec4 sp = pos, accP = vec4(0.0);
+    vec2 sm = mom, accM = vec2(0.0);
+    float h = 0.0, xStageMin = 1e30;
+    for (int st = 0; st < 4; st++) {
+      vec4 kp; vec2 km;
+      geodesicRHS(sp, sm, hemi, pt, pphi, kp, km);
+      if (st == 0) h = adaptiveStep(pos, kp);
+      float wgt = (st == 0 || st == 3) ? 1.0 : 2.0;
+      accP += wgt * kp; accM += wgt * km;
+      if (st < 3) {
+        float cst = st == 2 ? h : 0.5 * h;
+        sp = pos + cst * kp; sm = mom + cst * km;
+        xStageMin = min(xStageMin, sp.x);   // stage positions (any one inside the cut means capture)
+      }
+    }
     vec4 prevPos = pos;
     float prevHemi = hemi;
-    pos += h / 6.0 * (k1p + 2.0 * k2p + 2.0 * k3p + k4p);
-    mom += h / 6.0 * (k1m + 2.0 * k2m + 2.0 * k3m + k4m);
+    pos += h / 6.0 * accP;
+    mom += h / 6.0 * accM;
     steps = n + 1;
 
     // axis reflection (plan Section 3.5), the same at both poles

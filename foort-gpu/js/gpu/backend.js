@@ -13,6 +13,7 @@
  * @property {(name:string) => Promise<void>} setTracer             trace program, e.g. 'trace_kerr_analytic'
  * @property {(w:number, h:number) => void} resize                    record (and canvas) size in pixels
  * @property {(u:Uniforms) => void} uploadUniforms                    trace uniforms for the next tiles
+ * @property {(t:import('../bake/bake.js').BakedTables) => void} uploadTables  metric tables of the tabulated tracer
  * @property {() => void} clearRecords                                mark every pixel untraced
  * @property {(stride:number) => {w:number, h:number}} levelSize   size of the progressive level `stride` (1, 2, 4, 8)
  * @property {(rect:Rect, stride:number) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
@@ -27,9 +28,10 @@
 
 /**
  * @param {HTMLCanvasElement} canvas
+ * @param {{onStage?: (stage: string) => void}} [opts]  startup progress messages
  * @returns {Promise<Backend>}
  */
-export async function createBackend(canvas) {
+export async function createBackend(canvas, opts = {}) {
   const { createWebGL2Backend } = await import('./backendWebGL2.js');
-  return createWebGL2Backend(canvas);
+  return createWebGL2Backend(canvas, opts);
 }
