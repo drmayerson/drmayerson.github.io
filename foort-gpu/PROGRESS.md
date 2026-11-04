@@ -441,3 +441,6 @@ To try it yourself, serve with `sh dev/serve.sh` (or `dev\serve.ps1`) and open <
 4. **Face-on images are less step-converged** at ε = 0.03 than inclined ones: about 5e-4 rad against a converged reference, against about 1e-4 at 17°. This is the same in both codes, so it is not a GPU issue. A smaller default ε could be considered for near-polar cameras.
 5. **Redshift placeholder:** g is Keplerian until M5.
 6. **M2 app-mode numbers:** the axis step floor (now on in app mode) slightly changes rays that pass within 1e-3 rad of the axis. The M2 app-mode comparisons were not rerun; the parity mode is unchanged.
+
+### M3 closed (2026-11-04)
+The user accepted M3 ("Accept, merge and push"). It is merged to `main` and pushed. Next: M4 (tabulated metric path), after the user's go-ahead.

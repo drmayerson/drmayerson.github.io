@@ -102,3 +102,4 @@ non-trivial implementation choice.
   - With the floor, the RK4 step across the axis moves θ by about 3e-5 rad, and the equations are smooth there.
   - **Consequence:** the M2 app-mode numbers would change slightly for rays passing within 1e-3 rad of the axis. They were not rerun.
 - 2026-11-04 — **Redshift placeholder in M3.** g at a crossing is computed for a prograde Keplerian emitter on the equator, with g = 0 inside the photon orbit, so that the g₁ debug view and the record layout can be tested. M5 replaces it with FOORT's `GeneralCircularRadialFluid`.
+- 2026-11-04 — **CHECKPOINT M3 accepted** (user: "Accept, merge and push"). The viewer (analytic Kerr) is merged to `main` and published at `drmayerson.github.io/foort-gpu/`, with no link from the root `index.html` (that waits for M9).
