@@ -553,3 +553,6 @@ The GPU on tables matches the double-precision reference as well as the closed-f
 3. **Deploy:** merging to `main` publishes the M4 viewer; this needs your approval.
 4. **Redshift:** it is still the Keplerian placeholder (now generic for all metrics); FOORT's fluid model comes in M5.
 5. **α3 range:** the viewer allows Manko–Novikov α3 in [−1, 1] (M1 decision), while FOORT's example and the Level 2 test use α3 = 2, which works. Should the slider range be widened?
+
+### M4 checkpoint decision (2026-11-04)
+The tabulated-trace speed is accepted for now; optimisation is deferred to M9 (user: "Yes, defer to M9"). Still open: the Manko–Novikov α3 slider range, and publishing (merge to `main`).
