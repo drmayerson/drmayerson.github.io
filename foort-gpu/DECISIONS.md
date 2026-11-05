@@ -177,4 +177,4 @@ non-trivial implementation choice.
   - D defaults to 40 M. The placeholder field has no flow of its own; with advection the pattern shears into spiral streaks.
 - 2026-11-05 — **Time controls:** play (default on), speed in M per second (default 20), slow/fast light (default slow), σ_n, advection. t_obs is not wrapped, so the advection phases stay continuous; texture repeat makes the field periodic. Time, light, σ_n and advection changes only redraw.
 - 2026-11-05 — **Checkpoint animations are not committed:** the GIFs (about 4 MB each) are built by `dev/scripts/m7Frames.mjs` and `tools/noise/frames_to_gif.py` into the git-ignored `tools/foort_parity/build/`.
-- 2026-11-05 — **CHECKPOINT M7 accepted** (user: "Looks right"). Advection stays off by default; merge to `main` not yet approved.
+- 2026-11-05 — **CHECKPOINT M7 accepted** (user: "Looks right"). Advection stays off by default; merged to `main` and pushed (user: "Merge and push").
