@@ -40,8 +40,11 @@ const int TERM_HORIZON = 1, TERM_BOUNDARY = 2, TERM_TIMEOUT = 3, TERM_NAN = 4, T
 // min(theta, pi - theta) = delta. The axis distance is floored (uAux.y): with FOORT's h2 ~ theta a
 // ray aimed straight at the axis (p_phi = 0) takes geometrically shrinking steps and never crosses
 // it (FOORT ends such rays with its ThetaSingularity termination instead).
+uniform vec4 uFar;      // larger steps at large r (M9 accuracy trade): eps *= clamp(r / r_far, 1, k_max); x = r_far (0: off), y = k_max
+
 float adaptiveStep(vec4 pos, vec4 v) {
   float eps = uStep.x;
+  if (uFar.x > 0.0) eps *= clamp(radiusOf(pos.x) / uFar.x, 1.0, uFar.y);
   float d = 1e-20;
   float h1 = eps / (abs(v.x) + d);
   float h2 = eps * max(pos.y, uAux.y) / (abs(v.y) + d);

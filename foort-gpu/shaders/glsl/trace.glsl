@@ -7,8 +7,16 @@
 // both first derivatives; the 1/sin^2 of g^phiphi is applied analytically.
 // lookupTables is line for line js/bake/hermite.js.
 
+#ifdef TABLE_HALF
+// M9 accuracy trade: values in R32F, the (pre-scaled) derivative channels in RGBA16F (12 instead of 16 bytes per texel)
+uniform highp sampler2D uTablesV;       // texel (i, 5 j + k): G_k at node (x_i, theta_j)
+uniform highp sampler2D uTablesD;       // the same texel: (G_x dx, G_theta dth, G_xtheta dx dth, 0), half float
+vec4 tableTexel(ivec2 p) { return vec4(texelFetch(uTablesV, p, 0).x, texelFetch(uTablesD, p, 0).xyz); }
+#else
 uniform highp sampler2D uTables;        // texel (i, 5 j + k) = G_k at node (x_i, theta_j): the five functions
                                         // of a node are adjacent rows, so a lookup's 20 texels are close in memory
+vec4 tableTexel(ivec2 p) { return texelFetch(uTables, p, 0); }
+#endif
 uniform vec4 uTab;                      // xMin, dx, thMax (pi/2: symmetric half table, or pi), dtheta
 uniform ivec4 uTabN;                    // nx, ntheta, symmetric (1/0), 0
 uniform vec4 uMetric;                   // r0 (0: horizonless, x = log r, bounded background), background mass M, 0, 0
@@ -60,8 +68,8 @@ void lookupTables(float x, float delta, float hemi, out float v[5], out float dx
   // Exactly the tensor-product formula of js/bake/hermite.js, with about a third of the arithmetic.
   for (int l = 0; l < 5; l++) {
     int y0 = 5 * j + l;
-    vec4 c00 = texelFetch(uTables, ivec2(i, y0), 0), c10 = texelFetch(uTables, ivec2(i + 1, y0), 0);
-    vec4 c01 = texelFetch(uTables, ivec2(i, y0 + 5), 0), c11 = texelFetch(uTables, ivec2(i + 1, y0 + 5), 0);
+    vec4 c00 = tableTexel(ivec2(i, y0)), c10 = tableTexel(ivec2(i + 1, y0));
+    vec4 c01 = tableTexel(ivec2(i, y0 + 5)), c11 = tableTexel(ivec2(i + 1, y0 + 5));
     vec2 r0 = bu.x * c00.xz + bu.y * c00.yw + bu.z * c10.xz + bu.w * c10.yw;     // row j: (F, F_theta dth) at u
     vec2 r1 = bu.x * c01.xz + bu.y * c01.yw + bu.z * c11.xz + bu.w * c11.yw;     // row j + 1
     vec2 q0 = dbu.x * c00.xz + dbu.y * c00.yw + dbu.z * c10.xz + dbu.w * c10.yw; // their u-derivatives

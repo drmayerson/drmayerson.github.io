@@ -1,0 +1,15 @@
+far4 kerr_a0.94_inc17: speed-up 1.19x (1102 -> 925 ms, steps 759 -> 589); four-colour 99.991%, escape median/p99 3.1e-4/1.1e-3 rad (98.782% within 1e-3), emission L1 5.9e-5, captured ratio 1.00000
+far4 kerr_a0.94_inc80: speed-up 1.23x (866 -> 706 ms, steps 627 -> 475); four-colour 99.992%, escape median/p99 3.0e-4/1.4e-3 rad (98.432% within 1e-3), emission L1 9.2e-5, captured ratio 1.00000
+far4 johannsen_a0.94_a13_5.5: speed-up 1.18x (1241 -> 1054 ms, steps 746 -> 592); four-colour 99.986%, escape median/p99 3.6e-4/1.9e-3 rad (97.782% within 1e-3), emission L1 7.8e-5, captured ratio 1.00006
+far4 mankoNovikov_a0.94_a3_2: speed-up 1.24x (915 -> 738 ms, steps 640 -> 479); four-colour 99.986%, escape median/p99 3.1e-4/1.3e-3 rad (98.604% within 1e-3), emission L1 6.9e-5, captured ratio 1.00005
+far4 st3cr_l0.005: speed-up 1.01x (1324 -> 1315 ms, steps 1193 -> 1193); four-colour 100.000%, escape median/p99 0.0e+0/2.1e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 1.00000
+far4 st3cr_l1e-3: speed-up 1.02x (3340 -> 3266 ms, steps 1574 -> 1574); four-colour 100.000%, escape median/p99 0.0e+0/1.5e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 1.00000
+far8 kerr_a0.94_inc17: speed-up 1.22x (1332 -> 1096 ms, steps 759 -> 572); four-colour 99.905%, escape median/p99 1.0e-3/1.8e-2 rad (48.701% within 1e-3), emission L1 1.0e-3, captured ratio 1.00027
+far8 kerr_a0.94_inc80: speed-up 1.23x (1024 -> 831 ms, steps 627 -> 459); four-colour 99.925%, escape median/p99 9.5e-4/2.0e-2 rad (53.407% within 1e-3), emission L1 1.6e-3, captured ratio 1.00009
+far8 johannsen_a0.94_a13_5.5: speed-up 1.18x (1021 -> 864 ms, steps 746 -> 577); four-colour 99.908%, escape median/p99 1.3e-3/3.1e-2 rad (34.877% within 1e-3), emission L1 1.4e-3, captured ratio 1.00012
+far8 mankoNovikov_a0.94_a3_2: speed-up 1.25x (1077 -> 862 ms, steps 640 -> 462); four-colour 99.889%, escape median/p99 1.0e-3/2.0e-2 rad (47.586% within 1e-3), emission L1 1.2e-3, captured ratio 1.00036
+far8 st3cr_l0.005: speed-up 0.99x (1625 -> 1645 ms, steps 1193 -> 1193); four-colour 100.000%, escape median/p99 0.0e+0/2.1e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 1.00000
+far8 st3cr_l1e-3: speed-up 1.07x (3668 -> 3438 ms, steps 1574 -> 1574); four-colour 100.000%, escape median/p99 0.0e+0/1.5e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 1.00000
+steps5k st3cr_l0.005: speed-up 1.35x (2083 -> 1538 ms, steps 1193 -> 951); four-colour 97.385%, escape median/p99 0.0e+0/2.1e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 0.50000
+steps5k st3cr_l1e-3: speed-up 1.44x (3028 -> 2099 ms, steps 1574 -> 1110); four-colour 97.836%, escape median/p99 0.0e+0/1.5e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 0.78788
+steps5k st3cr_l1e-4: speed-up 2.15x (5008 -> 2334 ms, steps 2472 -> 1470); four-colour 98.773%, escape median/p99 0.0e+0/2.1e-8 rad (100.000% within 1e-3), emission L1 0.0e+0, captured ratio 0.45872

@@ -36,6 +36,7 @@ export const TERM = { horizon: 1, boundary: 2, timeout: 3, nan: 4, thetaSing: 5,
  * @property {number} [ncross]                  crossings stored per ray (3)
  * @property {number} [fdStep]                  finite-difference step in x and theta (1e-3)
  * @property {boolean} [project]                 project the momenta onto the null constraint H = 0 before every step
+ * @property {{r:number, max:number}|null} [farSteps]  step parameter eps * clamp(r / farSteps.r, 1, farSteps.max) (M9 trade)
  * @property {number} [axisStepFloor]           floor of min(theta, pi - theta) in the step rule (default 1e-3 with
  *                                              axis 'reflect', 0 = FOORT with axis 'foort')
  *
@@ -145,9 +146,11 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
     // FOORT Integrators::GetAdaptiveStep on the contravariant velocities (dx, dtheta, dphi)/dlambda;
     // with axis reflection the axis distance is floored, else a ray aimed at the axis never crosses it
     const d = 1e-20;
-    const h1 = o.eps / (Math.abs(k1[0]) + d);
-    const h2 = o.eps * Math.max(Math.min(y[1], PI - y[1]), o.axisStepFloor) / (Math.abs(k1[1]) + d);
-    const h3 = o.eps / (Math.abs(k1[2]) + d);
+    // M9 accuracy trade (off by default): larger steps at large r, as common.glsl
+    const eps = o.farSteps ? o.eps * Math.min(Math.max(rOf(y[0]) / o.farSteps.r, 1), o.farSteps.max) : o.eps;
+    const h1 = eps / (Math.abs(k1[0]) + d);
+    const h2 = eps * Math.max(Math.min(y[1], PI - y[1]), o.axisStepFloor) / (Math.abs(k1[1]) + d);
+    const h3 = eps / (Math.abs(k1[2]) + d);
     const h = Math.max(1 / (1 / Math.abs(h1) + 1 / Math.abs(h2) + 1 / Math.abs(h3)), o.hmin);
     // xStageMin: an RK stage inside the termination radius means the ray reaches it within this step.
     // In x = log r (FOORT-like) p_r ~ 1/Delta diverges at the horizon and a stage beyond it returns garbage.
@@ -213,7 +216,7 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
 export function prepareImage(metric, opts) {
   const o = {
     mesh: 'centers', radial: 'logShifted', eps: 0.03, hmin: 1e-12, axis: 'reflect', thetaSingEps: null,
-    singularity: null, crossing: 'interpolate', threshold: 0.001, ncross: 3, fdStep: 1e-3, project: false, ...opts,
+    singularity: null, crossing: 'interpolate', threshold: 0.001, ncross: 3, fdStep: 1e-3, project: false, farSteps: null, ...opts,
   };
   if (o.axisStepFloor === undefined) o.axisStepFloor = o.axis === 'reflect' ? 1e-3 : 0;
   const r0 = o.radial === 'log' || metric.horizon.kind !== 'sphere' ? 0 : metric.horizon.r;

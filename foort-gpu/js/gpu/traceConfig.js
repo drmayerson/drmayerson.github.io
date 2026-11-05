@@ -29,6 +29,9 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  * @property {'centers'|'foort'} [mesh]            pixel centres (i + 0.5)/N, or FOORT SimpleSquareMesh i/(N - 1)
  * @property {number} [threshold]                  FOORT crossing threshold (0.001)
  * @property {boolean} [storeH]                    record |H| instead of the third crossing
+ * @property {boolean} [tableHalf]                 M9 accuracy trade: half-float derivative channels in the tables
+ * @property {{r:number, max:number}|null} [farSteps]  M9 accuracy trade: step parameter eps * clamp(r / farSteps.r, 1, farSteps.max),
+ *                                                 farSteps.r in units of M_ADM
  * @property {boolean} [project]                   constraint projection onto H = 0 before every step
  *                                                 (default: on for horizonless metrics, whose throat rays lose the constraint)
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
@@ -38,6 +41,7 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  */
 
 export const VIEW_DEFAULTS = {
+  tableHalf: false, farSteps: /** @type {{r:number, max:number}|null} */ (null),
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
   mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 }, fluid: FLUID_DEFAULTS,
 };
@@ -54,7 +58,7 @@ export function tracerFor(v) {
     return 'trace_kerr_analytic';
   }
   if (v.radial === 'log') throw new Error('the tabulated tracer uses x = log(r - r_+) only');
-  return 'trace';
+  return v.tableHalf ? 'trace_half' : 'trace';
 }
 
 /**
@@ -105,7 +109,7 @@ export function fluidSpec(viewIn) {
  */
 export function tableSpec(viewIn) {
   const v = normalizeView(viewIn);
-  if (tracerFor(v) !== 'trace') return null;
+  if (tracerFor(v) === 'trace_kerr_analytic') return null;
   const m = createMetric(v.metric, v.metricParams);
   const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) };
   return { metric: v.metric, params: m.params, spec, key: JSON.stringify([v.metric, m.params, spec]) };
@@ -140,6 +144,7 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     uScreen: ['4f', [v.camera.cx ?? 0, v.camera.cy ?? 0, sx, sx]],
     uStep: ['4f', [v.eps, v.hmin, rTerm, v.rBoundary]],
     uAux: ['4f', [v.threshold, v.axisStepFloor, theta <= Math.PI / 2 ? 1 : -1, viewProjects(metric, v) ? 1 : 0]],
+    uFar: ['4f', v.farSteps ? [v.farSteps.r * metric.massADM, v.farSteps.max, 0, 0] : [0, 1, 0, 0]],
     uOpt: ['4i', [v.maxSteps, v.crossing === 'foort' ? 1 : 0, v.mesh === 'foort' ? 1 : 0, v.storeH ? 1 : 0]],
   };
   /** @type {string|null} */
@@ -182,6 +187,7 @@ export function cpuTraceOptions(viewIn) {
       rTerm: viewTerminationRadius(metric, v), rBoundary: v.rBoundary, axis: /** @type {'reflect'} */ ('reflect'),
       thetaSingEps: null, singularity: viewSingularities(metric, v).eps > 0 ? { mode: /** @type {'euclid'} */ ('euclid'), eps: viewSingularities(metric, v).eps } : null, crossing: v.crossing, threshold: v.threshold, ncross: 3,
       axisStepFloor: v.axisStepFloor, project: viewProjects(metric, v),
+      farSteps: v.farSteps ? { r: v.farSteps.r * metric.massADM, max: v.farSteps.max } : null,
     },
   };
 }

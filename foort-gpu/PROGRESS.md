@@ -998,3 +998,28 @@ These timings run in the viewer's own path: progressive levels 4 → 2 → 1 and
 - a lower fuzzball step limit.
 
 At this point they are the user's choice.
+
+### M9 accuracy trades, each on its own (user: "try all three of these accuracy trades (separately) so that we can judge each one"), 2026-11-05
+
+`dev/scripts/m9Trades.mjs`, `dev/reports/m9/trades_*.json` / `_log.txt`. All three are view options, off by default: `tableHalf`, `farSteps`, and `maxSteps` (already a control).
+
+- **Speed:** GPU time of one full-resolution level (BH 512², fuzzball 256²), baseline and trade alternating, best of 3.
+- **Accuracy:** the trade's image against the baseline's on the same rays (256²). The baseline's own error against the double-precision reference is about 1e-6 rad median for escape directions (M3–M4).
+
+| trade | speed | four-colour vs baseline | escape-direction change, median / p99 (share within 1e-3 rad) | disc emission L1 change |
+|---|---|---|---|---|
+| **1. half-float derivative tables** (values R32F + derivatives RGBA16F) | **0.77–0.89×, slower** | 99.985–99.995% (BH); 93.9–96.5% (fuzzball) | 3.5–6.5e-5 / 2.3–4.0e-3 rad (96–98%) | 1.4–4.2e-4 (BH); 0.8–2.3e-3 (fuzzball) |
+| **2a. larger steps beyond 20 M, up to 4×** | **1.18–1.24×** (BH); none for the Test_FBdetail fuzzball camera, which is inside 20 M | 99.986–99.992% | 3.0–3.6e-4 / 1.1–1.9e-3 rad (97.8–98.8%) | **0.6–0.9e-4** |
+| **2b. the same, up to 8×** | 1.18–1.25× (no gain over 4×) | 99.89–99.93% | 1.0e-3 / 2–3e-2 rad (35–53%) | 1.0–1.6e-3 |
+| **3. fuzzball max steps 5000 instead of 10000** | **1.35× (λ = 0.005), 1.44× (1e-3), 2.15× (1e-4)** | 97.4–98.8%: rays that escape after 5000 steps now end as time-outs | unchanged for every ray that escapes in both | **0** (the stored crossings all happen before step 5000) |
+
+**Reading:**
+
+1. **Half-float tables:** slower and less accurate. Two fetches per texel cost more on this GPU than the 25% fewer bytes save. Not worth it. A fully half-float table (one fetch, values also in 16 bits) would lose about 1e-3 relative in the metric values; not tried.
+2. **Larger far steps (4×):** about 20% faster for distant cameras.
+   - Escape directions (the sky, the four-colour view) shift by about 3e-4 rad. That is 300× the baseline's own error, but invisible at 512² with a 15 M screen, where one pixel is 3e-5 rad.
+   - The disc image changes by about 1e-4.
+   - 8× gains nothing more and costs 10× more accuracy.
+3. **Fuzzball step limit 5000:** 1.35–2.15× faster, with **identical disc images**. Only the four-colour and termination views change, where 1.2–2.6% of the pixels become time-outs instead of late escapes. The disc emission comes from the first 3 crossings, which all happen early.
+
+**Not adopted yet:** the user decides which go into the product.

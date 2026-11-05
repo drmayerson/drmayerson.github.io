@@ -1,0 +1,365 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "rows": [
+  {
+   "trade": "far4",
+   "view": "kerr_a0.94_inc17",
+   "N": 256,
+   "fourColorAgreement": 0.999908447265625,
+   "escape": {
+    "n": 43668,
+    "median": 0.0003123790622846431,
+    "p99": 0.0011403405049857929,
+    "within1e3": 0.9878171658880645
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0.00005935706266294639,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1102.3522999999996,
+    "tradeMs": 924.5635700000001,
+    "speedup": 1.1922947602185963,
+    "stepsPerRay": [
+     758.6597442626953,
+     589.2548027038574
+    ]
+   }
+  },
+  {
+   "trade": "far4",
+   "view": "kerr_a0.94_inc80",
+   "N": 256,
+   "fourColorAgreement": 0.9999237060546875,
+   "escape": {
+    "n": 42678,
+    "median": 0.00030104100878704677,
+    "p99": 0.0013970678355657465,
+    "within1e3": 0.9843244763109799
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0.00009183975524373372,
+   "speed": {
+    "N": 512,
+    "baselineMs": 865.9189200000003,
+    "tradeMs": 706.00428,
+    "speedup": 1.226506615512303,
+    "stepsPerRay": [
+     627.4253158569336,
+     475.0771484375
+    ]
+   }
+  },
+  {
+   "trade": "far4",
+   "view": "johannsen_a0.94_a13_5.5",
+   "N": 256,
+   "fourColorAgreement": 0.9998626708984375,
+   "escape": {
+    "n": 32912,
+    "median": 0.00035755863368089504,
+    "p99": 0.0019327487506481979,
+    "within1e3": 0.9778196402527953
+   },
+   "capturedRatio": 1.0000613083195389,
+   "emissionRelL1": 0.00007781441815508166,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1240.7150199999996,
+    "tradeMs": 1054.1046600000002,
+    "speedup": 1.1770320985014897,
+    "stepsPerRay": [
+     746.0551376342773,
+     592.2144241333008
+    ]
+   }
+  },
+  {
+   "trade": "far4",
+   "view": "mankoNovikov_a0.94_a3_2",
+   "N": 256,
+   "fourColorAgreement": 0.9998626708984375,
+   "escape": {
+    "n": 43541,
+    "median": 0.00031367672643385907,
+    "p99": 0.0012884950148866156,
+    "within1e3": 0.9860361498357869
+   },
+   "capturedRatio": 1.0000454669455305,
+   "emissionRelL1": 0.00006889639111605564,
+   "speed": {
+    "N": 512,
+    "baselineMs": 915.2768399999999,
+    "tradeMs": 737.8494099999998,
+    "speedup": 1.2404656391878122,
+    "stepsPerRay": [
+     639.5908241271973,
+     478.9927062988281
+    ]
+   }
+  },
+  {
+   "trade": "far4",
+   "view": "st3cr_l0.005",
+   "N": 256,
+   "fourColorAgreement": 1,
+   "escape": {
+    "n": 62840,
+    "median": 0,
+    "p99": 2.1073424255447017e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 1324.2142600000004,
+    "tradeMs": 1314.9506,
+    "speedup": 1.007044873016523,
+    "stepsPerRay": [
+     1193.4777526855469,
+     1193.4777526855469
+    ]
+   }
+  },
+  {
+   "trade": "far4",
+   "view": "st3cr_l1e-3",
+   "N": 256,
+   "fourColorAgreement": 1,
+   "escape": {
+    "n": 59076,
+    "median": 0,
+    "p99": 1.4901161193847656e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 3340.18037,
+    "tradeMs": 3265.6660600000005,
+    "speedup": 1.0228174922453643,
+    "stepsPerRay": [
+     1574.0864868164062,
+     1574.0864868164062
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "kerr_a0.94_inc17",
+   "N": 256,
+   "fourColorAgreement": 0.999053955078125,
+   "escape": {
+    "n": 43662,
+    "median": 0.001019460741211518,
+    "p99": 0.017933067669744958,
+    "within1e3": 0.4870138793458843
+   },
+   "capturedRatio": 1.0002743735138102,
+   "emissionRelL1": 0.0010201788488441636,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1332.4960100000005,
+    "tradeMs": 1096.4783199999997,
+    "speedup": 1.2152506672452956,
+    "stepsPerRay": [
+     758.6597442626953,
+     572.3991432189941
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "kerr_a0.94_inc80",
+   "N": 256,
+   "fourColorAgreement": 0.9992523193359375,
+   "escape": {
+    "n": 42676,
+    "median": 0.000948379164892449,
+    "p99": 0.020362472335598403,
+    "within1e3": 0.5340706720404912
+   },
+   "capturedRatio": 1.000087496718873,
+   "emissionRelL1": 0.0015833834154640443,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1024.3567100000002,
+    "tradeMs": 831.3599,
+    "speedup": 1.2321459213993846,
+    "stepsPerRay": [
+     627.4253158569336,
+     459.0146484375
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "johannsen_a0.94_a13_5.5",
+   "N": 256,
+   "fourColorAgreement": 0.99908447265625,
+   "escape": {
+    "n": 32910,
+    "median": 0.0012679182322973938,
+    "p99": 0.03107098486976816,
+    "within1e3": 0.3487693710118505
+   },
+   "capturedRatio": 1.000122616639078,
+   "emissionRelL1": 0.0013882813095914151,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1021.0426700000003,
+    "tradeMs": 863.7707800000002,
+    "speedup": 1.1820759553825149,
+    "stepsPerRay": [
+     746.0551376342773,
+     576.891845703125
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "mankoNovikov_a0.94_a3_2",
+   "N": 256,
+   "fourColorAgreement": 0.9988861083984375,
+   "escape": {
+    "n": 43532,
+    "median": 0.001036182854524943,
+    "p99": 0.01989022623492938,
+    "within1e3": 0.47585684094459246
+   },
+   "capturedRatio": 1.0003637355642447,
+   "emissionRelL1": 0.001158109013259597,
+   "speed": {
+    "N": 512,
+    "baselineMs": 1077.4386300000003,
+    "tradeMs": 861.7993000000002,
+    "speedup": 1.250219894585665,
+    "stepsPerRay": [
+     639.5908241271973,
+     462.4712028503418
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "st3cr_l0.005",
+   "N": 256,
+   "fourColorAgreement": 1,
+   "escape": {
+    "n": 62840,
+    "median": 0,
+    "p99": 2.1073424255447017e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 1625.1445700000004,
+    "tradeMs": 1645.1757,
+    "speedup": 0.9878243217426567,
+    "stepsPerRay": [
+     1193.4777526855469,
+     1193.4777526855469
+    ]
+   }
+  },
+  {
+   "trade": "far8",
+   "view": "st3cr_l1e-3",
+   "N": 256,
+   "fourColorAgreement": 1,
+   "escape": {
+    "n": 59076,
+    "median": 0,
+    "p99": 1.4901161193847656e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 1,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 3667.80757,
+    "tradeMs": 3438.4277899999997,
+    "speedup": 1.066710657896352,
+    "stepsPerRay": [
+     1574.0864868164062,
+     1574.0864868164062
+    ]
+   }
+  },
+  {
+   "trade": "steps5k",
+   "view": "st3cr_l0.005",
+   "N": 256,
+   "fourColorAgreement": 0.973846435546875,
+   "escape": {
+    "n": 61126,
+    "median": 0,
+    "p99": 2.1073424255447017e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 0.5,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 2082.7681199999997,
+    "tradeMs": 1537.9285599999998,
+    "speedup": 1.3542684453431308,
+    "stepsPerRay": [
+     1193.4777526855469,
+     951.4114532470703
+    ]
+   }
+  },
+  {
+   "trade": "steps5k",
+   "view": "st3cr_l1e-3",
+   "N": 256,
+   "fourColorAgreement": 0.978363037109375,
+   "escape": {
+    "n": 57658,
+    "median": 0,
+    "p99": 1.4901161193847656e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 0.7878787878787878,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 3028.20441,
+    "tradeMs": 2099.3558599999997,
+    "speedup": 1.4424445458236892,
+    "stepsPerRay": [
+     1574.0864868164062,
+     1110.3065032958984
+    ]
+   }
+  },
+  {
+   "trade": "steps5k",
+   "view": "st3cr_l1e-4",
+   "N": 256,
+   "fourColorAgreement": 0.98773193359375,
+   "escape": {
+    "n": 50435,
+    "median": 0,
+    "p99": 2.1073424255447017e-8,
+    "within1e3": 1
+   },
+   "capturedRatio": 0.45871559633027525,
+   "emissionRelL1": 0,
+   "speed": {
+    "N": 256,
+    "baselineMs": 5007.96352,
+    "tradeMs": 2334.14113,
+    "speedup": 2.145527301513255,
+    "stepsPerRay": [
+     2472.339080810547,
+     1469.7392272949219
+    ]
+   }
+  }
+ ]
+}
