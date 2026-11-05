@@ -84,7 +84,13 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
   /** @type {WebGLTexture|null} */
-  let tableTex = null, fluidTex = null;
+  let tableTex = null, fluidTex = null, noiseTex = null;
+  /** fluid-table grid (display: Omega for procedural advection) */
+  let fluidGrid = /** @type {{xMin:number, dx:number, n:number, r0:number}|null} */ (null);
+  /** noise field on the GPU */
+  let noiseMeta = /** @type {import('../noise/noiseField.js').NoiseMeta|null} */ (null);
+  /** strides of the current trace (the display binds at most 3 levels, finest first) */
+  let activeStrides = [1, 2, 4];
   /** @type {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} */
   let traceUniforms = {};
   let lastTraceMs = /** @type {number|null} */ (null), lastDisplayMs = /** @type {number|null} */ (null);
@@ -177,12 +183,34 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       if (fluidTex) gl.deleteTexture(fluidTex);
       fluidTex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, fluidTex);
+      fluidGrid = F.grid;
       gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, F.grid.n, 1);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, F.grid.n, 1, gl.RGBA, gl.FLOAT, F.data);
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
     },
 
-    clearRecords() {
+    uploadNoise(F) {
+      const m = F.meta;
+      const max3 = gl.getParameter(gl.MAX_3D_TEXTURE_SIZE);
+      if (Math.max(m.Nt, m.Nx, m.Nphi) > max3) throw new Error(`noise field ${m.Nphi} x ${m.Nx} x ${m.Nt} exceeds MAX_3D_TEXTURE_SIZE ${max3}`);
+      gl.activeTexture(gl.TEXTURE0);
+      if (noiseTex) gl.deleteTexture(noiseTex);
+      noiseTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_3D, noiseTex);
+      // C order (t, x, phi) = texel (phi, x, t): width Nphi, height Nx, depth Nt; R16F is filterable in WebGL2
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+      gl.texImage3D(gl.TEXTURE_3D, 0, gl.R16F, m.Nphi, m.Nx, m.Nt, 0, gl.RED, gl.HALF_FLOAT, F.half);
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.REPEAT);          // phi
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);   // x
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.REPEAT);          // t
+      gl.bindTexture(gl.TEXTURE_3D, null);
+      noiseMeta = m;
+    },
+
+    clearRecords(strides) {
+      if (strides) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 3);
       const z = new Float32Array(4);
       for (const L of levels.values()) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
@@ -246,16 +274,36 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.viewport(0, 0, W, H);
       gl.useProgram(display.prog);
       gl.bindVertexArray(vao);
-      // the four record attachments of every level (16 texture units, the WebGL2 minimum)
+      // the four record attachments of the (at most 3) levels of the current trace, finest first: 12 units,
+      // plus the noise field and the fluid table (16 texture units is the WebGL2 minimum)
       let unit = 0;
-      STRIDES.forEach((st, li) => {
+      const lv = [-1, -1, -1, -1];
+      const bound = activeStrides.filter((st) => levels.has(st));
+      if (!bound.length) return;   // no records yet (before the first resize)
+      bound.forEach((st, li) => {
         const L = /** @type {{tex: WebGLTexture[]}} */ (levels.get(st));
+        lv[li] = Math.round(Math.log2(st));
         for (const k of [0, 1, 2, 3]) {
           gl.activeTexture(gl.TEXTURE0 + unit);
           gl.bindTexture(gl.TEXTURE_2D, L.tex[k]);
-          gl.uniform1i(display.loc(`uL${li}R${k}`), unit++);
+          gl.uniform1i(display.loc(`uS${li}R${k}`), unit++);
         }
       });
+      // unused slots still need a valid 2D texture bound to their samplers
+      for (let li = bound.length; li < 3; li++) for (const k of [0, 1, 2, 3]) gl.uniform1i(display.loc(`uS${li}R${k}`), k);
+      gl.uniform4i(display.loc('uLevels'), lv[0], lv[1], lv[2], -1);
+      gl.activeTexture(gl.TEXTURE0 + 12);
+      gl.bindTexture(gl.TEXTURE_3D, noiseTex);
+      gl.uniform1i(display.loc('uNoise'), 12);
+      gl.activeTexture(gl.TEXTURE0 + 13);
+      gl.bindTexture(gl.TEXTURE_2D, fluidTex);
+      gl.uniform1i(display.loc('uFluidD'), 13);
+      const fg = fluidGrid ?? { xMin: 0, dx: 1, n: 2, r0: 0 };
+      gl.uniform4f(display.loc('uFluidXD'), fg.xMin, fg.dx, fg.n, fg.r0);
+      const nm = noiseMeta, tm = view.time ?? { tObs: 0, slow: true, M: 1, advect: 0, sigma: 0 };
+      gl.uniform4i(display.loc('uNoiseN'), nm?.Nt ?? 2, nm?.Nx ?? 2, nm?.Nphi ?? 2, nm && noiseTex && fluidTex ? 1 : 0);
+      gl.uniform4f(display.loc('uNoiseP'), tm.sigma, nm?.T_over_M ?? 1, nm?.xmin ?? 0, nm?.xmax ?? 1);
+      gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
       gl.uniform4i(display.loc('uView'), view.mode, W, H, view.storeH ? 1 : 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
       const em = view.emission ?? { mu: 0, gamma: 0, sigma: 1, redshiftPower: 3, fudge: 1, maxPasses: 0 };

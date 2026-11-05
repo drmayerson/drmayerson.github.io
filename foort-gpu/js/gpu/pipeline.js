@@ -98,7 +98,7 @@ export class TracePipeline {
       if (setup.fluid && setup.fluidKey !== this.fluidKey) { be.uploadFluid(setup.fluid); this.fluidKey = setup.fluidKey ?? null; }
       be.resize(setup.N, setup.N);
       be.uploadUniforms(setup.uniforms);
-      be.clearRecords();
+      be.clearRecords(levels);
       const t0 = performance.now();
       /** @type {Promise<number|null>[]} */
       const gpu = [];
