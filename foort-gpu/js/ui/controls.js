@@ -79,6 +79,8 @@ export const CONTROLS = [
   { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false },
   { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false },
   { key: 'slowLight', label: 'slow light (each point at its emission time)', type: 'checkbox', group: 'Time', default: true, retrace: false },
+  { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time', options: ['inoisy_lg21', 'placeholder'],
+    optionLabels: { inoisy_lg21: 'inoisy, Lee & Gammie 2021 disc (M8)', placeholder: 'placeholder FFT field (M7)' }, default: 'inoisy_lg21', retrace: false },
   { key: 'sigmaN', label: 'noise amplitude σₙ', type: 'range', group: 'Time', min: 0, max: 2, step: 0.05, default: 1, format: fmt(2), retrace: false },
   { key: 'advect', label: 'procedural advection (rotate the field with the fluid)', type: 'checkbox', group: 'Time', default: false, retrace: false },
   { key: 'advectD', label: 'advection crossfade period D (M)', type: 'range', group: 'Time', min: 2, max: 500, scale: 'log', default: 40, format: sig, retrace: false,

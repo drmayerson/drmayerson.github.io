@@ -854,4 +854,63 @@ Live: the viewer plays by default (Time group).
 4. **Fuzzball emission beyond 3 crossings** (M6) also carries no noise or delay; it is missing altogether, as before.
 5. **Merging** to `main` needs your approval.
 
-**Decision (2026-11-05):** M7 accepted by the user ("Looks right"). Committed on `foort-gpu-dev`; merge to `main` awaits approval. M8 not started.
+**Decision (2026-11-05):** M7 accepted by the user ("Looks right"). Merged to `main` and pushed. M8 not started.
+
+## CHECKPOINT M8 — production inoisy noise field (2026-11-05)
+
+### Done
+
+- **Build:** inoisy (AFD-Illinois/inoisy, `dab29ed`) builds natively on Windows with MSYS2 UCRT64 (HYPRE 2.33, serial HDF5 2.2, GSL 2.8, MS-MPI 10.1). The build is `tools/noise/build_inoisy.sh`, with exact versions and commands in `tools/noise/build_inoisy.md`.
+  - The work tree is `~/foort-gpu-work/inoisy`, outside the repository.
+  - MSYS2's HDF5 has no MPI-IO, so inoisy runs on one rank (`hdf5_utils.c` is compiled with USE_MPI=0).
+- **New inoisy model `foort_logr`** (`tools/noise/inoisy_foort/`): the physics of inoisy's `general_xy` (Lee & Gammie 2021, Section 4.2) on the grid (t, log r, φ), periodic in t and φ.
+  - The current model is Cartesian and periodic in t only.
+  - In log r the spatial correlation tensor is scale free, so one grid covers r = 0.05–200 M.
+- **Converter** `tools/noise/inoisy_to_contract.py`: HDF5 → contract. It reads the file with MSYS2's `h5dump`, so no Python HDF5 package is needed, renormalizes each radius to zero mean and unit variance, and writes float16.
+- **Inspection** `tools/noise/inspect_field.py`: seams, statistics per radius, correlation times (at a fixed point and co-rotating), and pictures.
+- **Field `noise/inoisy_lg21`:**
+  - grid 128 × 128 × 256 (t, log r, φ), 8.4 MB;
+  - parameters lam = 5, r12 = 0.1, θ = −70°, τ = 1, r_ct = 1 M (general_xy's, as in Lee & Gammie Fig. 3);
+  - T = 200 M, r = 0.05–190 M;
+  - solved in 76 s.
+- **Viewer:** a "noise field" selector, defaulting to `inoisy_lg21`, with the M7 placeholder still selectable. Procedural advection stays off: this field carries its own Keplerian flow.
+- **Tests:** Vitest 88 passed (new `m8.test.js`: contract, per-radius normalization, seams), Playwright 17 passed (new: default field and switching), `tsc --checkJs` clean.
+
+### Test results (`dev/reports/m8/inoisy_lg21_stats.json`)
+
+- **Contract:** valid (unit test). Mean 2e-7, standard deviation 1.00000, and 0.99999–1.00001 at every radius after normalization.
+- **Before normalization,** inoisy's variance varies by a factor of about 6000 with radius, from 2.4e-7 at large r to 1.4e-3. It follows inoisy's source scaling with the correlation volume λ₀λ₁λ₂, which grows as r^(3/2) in coordinate units.
+- **Periodicity:**
+
+  | seam | mean jump across it | mean step inside |
+  |---|---|---|
+  | t = T | 0.54 | 0.47 |
+  | φ = 2π | 0.052 | 0.051 |
+
+  - At every radius the t seam lies within the range of steps inside the field (radius by radius: unit test and the radial table in the transcript).
+  - The t steps are large at small r. At r ≲ 1 M the pattern moves by Ω Δt ≈ 1.5 rad per time slice, more than its narrow azimuthal width, so a fixed point decorrelates between slices. A field with twice the time resolution (256 slices) changed this only a little: lag-one correlation at r = 1 M from 0.70 to 0.75. It is the model's physics at that radius, not under-resolution.
+- **Correlation time following the Keplerian flow** (1/e of the co-rotating autocorrelation), against the orbital period 2π/Ω:
+
+  | r (M) | 1.0 | 2.0 | 5.0 | 10 | 31 | 98 |
+  |---|---|---|---|---|---|---|
+  | measured (M) | 4.7 | 20 | 28 | 52 | > 100 | > 100 |
+  | 2π/Ω (M) | 6.1 | 18 | 70 | 203 | 1060 | 6100 |
+
+  Up to about 3 M the measured time follows the specified τ = 1 orbit. Further out it is capped by the period T = 200 M: a field periodic in t cannot stay correlated longer than about T/4. Beyond about 30 M the field is nearly static over one period.
+- **Comparison with Lee & Gammie Fig. 3** (`dev/reports/m8/inoisy_lg21_lg21style.png`: face-on, x, y in [−10, 10] M, their envelope (r₀/r)⁴ exp(−(r₀/r)²) with r₀ = 2 M, brightness g exp(X/2) on a log scale, at three times): trailing spiral arms at about 20° to the circles, bright inner disc, the same look as their figure.
+  - A first run with 64 radial cells over r = 0.05–1000 M showed the arms only faintly (cells 0.6 M wide at 4 M), so the production field uses 128 cells over 0.05–200 M.
+- **Other pictures:** `inoisy_lg21_disc.png` (log-r polar snapshots at four times) and `inoisy_lg21_tphi.png` (t–φ diagrams at r = 2, 5, 20 M, two periods stacked: tilted stripes from the Keplerian advection, no seam).
+
+### Animation for the user
+
+`tools/foort_parity/build/m7gif/m8_inoisy.gif` (5.5 MB, not committed; `dev/scripts/m7Frames.mjs --m8` + `tools/noise/frames_to_gif.py`): Kerr a = 0.94 at 17° and 60°, and ST3Cr λ = 0.005, over one period with the inoisy field.
+
+### Open issues / for the user (the checkpoint: approve the physics parameters)
+
+1. **Parameters:** general_xy's defaults (lam 5, r12 0.1, θ −70°, τ 1, r_ct 1 M). Change any?
+2. **Period T = 200 M** caps the correlation time at r ≳ 3 M (above). A longer period, e.g. 800 M with 4× the time slices (33 MB at float16), or with the same 128 slices (coarser in time), would let the outer disc follow its orbital time. Keep 200 M?
+3. **Fuzzball** (plan D3/D4 approximation): the field is sampled at log(r/M_ADM), and ST3Cr's emission lies at r ≈ 1e-3–0.2 M. That is inside r_ct = 1 M, where Ω is held near its value at r_ct and the field is fast and fine-grained. The field's Keplerian flow is not ST3Cr's fluid rotation.
+4. **Repository size:** the field is 8.4 MB (the plan expected about 16 MB per field). One field is committed; more variants are a single run each.
+5. **Merging** to `main` needs your approval.
+
+**Decision (2026-11-05):** M8 approved by the user ("Approve as is"): parameters and period unchanged. Committed on `foort-gpu-dev`; merge to `main` awaits approval. M9 not started.

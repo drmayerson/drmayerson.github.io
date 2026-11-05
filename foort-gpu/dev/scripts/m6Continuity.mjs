@@ -13,7 +13,7 @@ import { createST3CrBH } from '../../js/metrics/st3crBH.js';
 import { writePng } from './png.mjs';
 
 const args = process.argv.slice(2);
-const N = Number(args[args.indexOf('--N') + 1] || 256);
+const N = args.includes('--N') ? Number(args[args.indexOf('--N') + 1]) : 256;
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m6');
 mkdirSync(outDir, { recursive: true });
 const cam = { r: 250, theta: 1.5, screen: 150 };
