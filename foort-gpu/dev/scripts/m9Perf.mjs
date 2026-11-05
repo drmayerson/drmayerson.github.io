@@ -1,5 +1,5 @@
 // M9 acceptance timings (plan M9) in the viewer's own trace path (progressive levels, adaptive tiles):
-//  - Kerr re-trace at 1024^2 (levels 4 -> 2 -> 1), tabulated (the app) and closed-form (validation shader)
+//  - Kerr re-trace at 1024^2 (the viewer's levels, finalLevels: 4 -> 1), tabulated (the app) and closed-form (validation shader)
 //  - drag preview: one 256^2 level
 //  - fuzzball lambda = 1e-3 at 1024^2 (Test_FBdetail camera, 10000 max steps) vs the Kerr re-trace
 // Each timing is the median of 3 traces after a warm-up (tables cached, shader compiled); 1 trace if the warm-up took > 20 s.
@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openViewer } from './gpuRunner.mjs';
+import { finalLevels } from '../../js/gpu/pipeline.js';
 
 const args = process.argv.slice(2);
 const tag = args.includes('--tag') ? args[args.indexOf('--tag') + 1] : 'baseline';
@@ -16,12 +17,12 @@ mkdirSync(outDir, { recursive: true });
 const kerr = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 } };
 const fb = { metric: 'st3cr', metricParams: { lambda: 1e-3 }, camera: { r: 250, theta: 1.5, screen: 150 }, maxSteps: 10000 };
 const CASES = [
-  { name: 'kerr_tabulated_1024_retrace', view: { ...kerr, N: 1024 }, levels: [4, 2, 1] },
-  { name: 'kerr_analytic_1024_retrace', view: { ...kerr, N: 1024, path: 'analytic' }, levels: [4, 2, 1] },
+  { name: 'kerr_tabulated_1024_retrace', view: { ...kerr, N: 1024 }, levels: finalLevels(1024) },
+  { name: 'kerr_analytic_1024_retrace', view: { ...kerr, N: 1024, path: 'analytic' }, levels: finalLevels(1024) },
   { name: 'kerr_tabulated_256_preview', view: { ...kerr, N: 256 }, levels: [1] },
-  { name: 'kerr_tabulated_512_retrace', view: { ...kerr, N: 512 }, levels: [4, 2, 1] },
-  { name: 'st3cr_l1e-3_1024_retrace', view: { ...fb, N: 1024 }, levels: [4, 2, 1] },
-  { name: 'st3cr_l1e-3_512_retrace', view: { ...fb, N: 512 }, levels: [4, 2, 1] },
+  { name: 'kerr_tabulated_512_retrace', view: { ...kerr, N: 512 }, levels: finalLevels(512) },
+  { name: 'st3cr_l1e-3_1024_retrace', view: { ...fb, N: 1024 }, levels: finalLevels(1024) },
+  { name: 'st3cr_l1e-3_512_retrace', view: { ...fb, N: 512 }, levels: finalLevels(512) },
 ];
 const median = (xs) => [...xs].sort((a, b) => a - b)[(xs.length - 1) >> 1];
 const v = await openViewer();

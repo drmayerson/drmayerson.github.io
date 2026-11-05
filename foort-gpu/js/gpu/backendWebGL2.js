@@ -169,9 +169,14 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       tableTex = gl.createTexture();
       // bake layout [k][j][i] -> texture rows 5 j + k (the five functions of a node in adjacent rows)
       if (5 * g.nth > gl.getParameter(gl.MAX_TEXTURE_SIZE) || g.nx > gl.getParameter(gl.MAX_TEXTURE_SIZE)) throw new Error(`metric table ${g.nx} x ${g.nth} exceeds MAX_TEXTURE_SIZE`);
+      // the derivative channels are stored pre-multiplied by the cell size, (f, f_x dx, f_theta dth, f_xtheta dx dth):
+      // the Hermite weights in trace.glsl then need no per-lookup scaling (done once here, in double, before rounding)
       const packed = new Float32Array(T.data.length), row = 4 * g.nx;
-      for (let k = 0; k < 5; k++) for (let j = 0; j < g.nth; j++)
-        packed.set(T.data.subarray((k * g.nth + j) * row, (k * g.nth + j + 1) * row), (5 * j + k) * row);
+      const sc = [1, g.dx, g.dth, g.dx * g.dth];
+      for (let k = 0; k < 5; k++) for (let j = 0; j < g.nth; j++) {
+        const src = (k * g.nth + j) * row, dst = (5 * j + k) * row;
+        for (let q = 0; q < row; q++) packed[dst + q] = T.data[src + q] * sc[q & 3];
+      }
       gl.bindTexture(gl.TEXTURE_2D, tableTex);
       gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nx, 5 * g.nth);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RGBA, gl.FLOAT, packed);

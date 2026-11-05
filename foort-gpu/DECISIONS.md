@@ -205,3 +205,17 @@ non-trivial implementation choice.
 - 2026-11-05 — **Startup and runtime errors are explained in the page:**
   - a missing WebGL2 or extension: the message plus what the viewer needs;
   - a lost WebGL context (an OS GPU reset after an overlong dispatch): what happened and what to change.
+- 2026-11-05 — **M9 speed-up (user: "Try a speed-up"), all without accuracy loss.**
+  - **What limits the tabulated tracer, measured by adding redundant work** (Kerr 512², one level, GPU time):
+
+    | variant | GPU time |
+    |---|---|
+    | as is | about 1300 ms |
+    | + a second copy of the 20 table fetches | +720 ms |
+    | + twice the Hermite arithmetic | +1100 ms |
+
+    Both fetches and arithmetic mattered; M4's "fetch-bound" was half the story.
+  - **Separable bicubic Hermite** in `trace.glsl`: interpolate along x for the two θ rows, then along θ. It is the same tensor-product formula with about a third of the arithmetic; the derivative channels are pre-multiplied by the cell size at upload (`backendWebGL2.js`). Result: 1300 → 840 ms. The Level 4 rerun matches M4 to 0.012% (escape directions within 1e-3 rad); emission proxy differences about 1e-6.
+  - **Progressive levels: one coarse level, then the full image** (`finalLevels`: 4 → 1 for 512²–1024², 8 → 1 for 2048², 2 → 1 for 256²) instead of 4 → 2 → 1. This saves the 25% of the middle level; the preview still appears at once.
+  - **Two tiles in flight:** the next tile is queued while the JS side waits for the previous fence. Submit-and-wait left the GPU idle 10–40 ms per tile, which doubled the wall time of a 1024² fuzzball trace (1000+ tiles). Tile timing now measures each tile's own share (from the later of its submission and the previous completion).
+  - **Tile floor:** it drops only when a 64² tile runs longer than 1 s (was 400 ms; the Windows watchdog is about 2 s), and never below 32². At 400 ms, heavy fuzzball tiles fell back to tiny, inefficient tiles.

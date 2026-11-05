@@ -3,7 +3,7 @@
 // closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
 // Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
 import { createBackend } from './gpu/backend.js';
-import { TracePipeline } from './gpu/pipeline.js';
+import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
@@ -198,7 +198,7 @@ async function main() {
       lastFluid = fb.tables;
       setup = gpuTraceSetup(view, tables, fb.tables);
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return; }
-    const levels = final ? [4, 2, 1] : [Math.min(8, Math.max(1, state.N / 128))];
+    const levels = final ? finalLevels(state.N) : [Math.min(8, Math.max(1, state.N / 128))];
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
     if (!st) return;
     lastStats = st;

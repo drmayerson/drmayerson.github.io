@@ -3,42 +3,42 @@
  "rows": [
   {
    "case": "kerr_tabulated_1024_retrace",
-   "wallMs": 6414.900000095367,
-   "gpuMs": 5562.407760000001,
-   "tiles": 197
+   "wallMs": 4475.900000095367,
+   "gpuMs": 3673.96228,
+   "tiles": 161
   },
   {
    "case": "kerr_analytic_1024_retrace",
-   "wallMs": 1824.0999999046326,
-   "gpuMs": 1007.8112,
-   "tiles": 337
+   "wallMs": 845.2999999523163,
+   "gpuMs": 543.8557100000003,
+   "tiles": 186
   },
   {
    "case": "kerr_tabulated_256_preview",
-   "wallMs": 414.2000000476837,
-   "gpuMs": 363.77572,
+   "wallMs": 531.7000000476837,
+   "gpuMs": 480.54452,
    "tiles": 17
   },
   {
    "case": "kerr_tabulated_512_retrace",
-   "wallMs": 2302.2000000476837,
-   "gpuMs": 1944.7869999999994,
-   "tiles": 70
+   "wallMs": 1782.6999998092651,
+   "gpuMs": 1507.4446000000003,
+   "tiles": 69
   },
   {
    "case": "st3cr_l1e-3_1024_retrace",
-   "wallMs": 53498.699999809265,
-   "gpuMs": 38673.675080000095,
-   "tiles": 1337
+   "wallMs": 104566.70000004768,
+   "gpuMs": 63413.66599999978,
+   "tiles": 2798
   },
   {
    "case": "st3cr_l1e-3_512_retrace",
-   "wallMs": 8521.700000047684,
-   "gpuMs": 8149.843519999996,
-   "tiles": 126
+   "wallMs": 26351.900000095367,
+   "gpuMs": 20121.891920000013,
+   "tiles": 129
   }
  ],
  "summary": {
-  "fuzzballOverKerr1024": 8.339755880686203
+  "fuzzballOverKerr1024": 23.36216179937436
  }
 }

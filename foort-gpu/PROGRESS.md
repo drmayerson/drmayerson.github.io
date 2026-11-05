@@ -967,3 +967,34 @@ These timings run in the viewer's own path: progressive levels 4 → 2 → 1 and
 2. **Link from the root `index.html`** (needs your approval). A card in the style of the existing ones, in Dutch like the page, for example in the "Zwaartekrachtgolven en de Einstein Telescope" section (or a new section):
    > **FOORT-GPU: zwarte gaten en fuzzballs** · Een wetenschappelijke ray tracer in je browser: een accretieschijf rond een draaiend zwart gat of rond een fuzzball uit de snaartheorie, live berekend op je grafische kaart. Voor wie de details wil, met alle parameters van FOORT (in het Engels).
 3. **Merging** to `main` needs your approval.
+
+### M9 speed-up (user: "Try a speed-up"), 2026-11-05
+
+**Changes.** None of them loses accuracy (DECISIONS):
+- separable Hermite interpolation of the tables, with pre-scaled derivative channels;
+- one coarse preview level instead of two;
+- two trace tiles in flight;
+- a tile-size floor that drops only for tiles over 1 s.
+
+**Timings** (`dev/reports/m9/perf_pipelined.json`; same machine and method as above; this machine varies by up to 2–3× between runs, so treat single numbers with care):
+
+| case | before | after | plan target (integrated graphics) |
+|---|---|---|---|
+| 1024² Kerr re-trace, tabulated (the app) | 6.4 s | **3.9 s** | ≤ 1 s, not met |
+| 1024² Kerr re-trace, closed-form | 1.8 s | **0.73 s** | ≤ 1 s, met |
+| 512² Kerr re-trace, tabulated | 2.3 s | 1.5 s | |
+| 256² drag preview (one level) | 414 ms | 378 ms | ≤ 50 ms, not met (the viewer's 128² preview: about 95 ms) |
+| 1024² fuzzball λ = 1e-3 | 53 s | **19.6 s** | |
+| fuzzball / Kerr | 8.3× | **5.1×** | ≤ 3×, not met |
+
+**Accuracy unchanged:**
+- Level 4 (tabulated vs closed-form Kerr, 32 cases): at most 0.012% difference from M4.
+- Level 2: Johannsen and Manko–Novikov 100% four-colour; ST3Cr λ = 1e-4 98.7% on converged pixels, as before; λ = 0 BH 100%.
+- Vitest 92 and Playwright 19 passed.
+
+**What is left.** The tabulated tracer now spends most of its time on its 20 texel fetches per RK stage. The levers left all trade accuracy:
+- half-float derivative channels;
+- an analytic far field, or larger steps at large r;
+- a lower fuzzball step limit.
+
+At this point they are the user's choice.
