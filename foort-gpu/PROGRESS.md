@@ -913,4 +913,117 @@ Live: the viewer plays by default (Time group).
 4. **Repository size:** the field is 8.4 MB (the plan expected about 16 MB per field). One field is committed; more variants are a single run each.
 5. **Merging** to `main` needs your approval.
 
-**Decision (2026-11-05):** M8 approved by the user ("Approve as is"): parameters and period unchanged. Committed on `foort-gpu-dev`; merge to `main` awaits approval. M9 not started.
+**Decision (2026-11-05):** M8 approved by the user ("Approve as is"): parameters and period unchanged. Merged to `main` and pushed. M9 not started.
+
+## CHECKPOINT M9 — polish, performance, documentation (Stage 1 acceptance) (2026-11-05)
+
+### Done
+
+- **"Add a metric":** Reissner–Nordström (`js/metrics/reissnerNordstrom.js` plus one registry entry, nothing else).
+  - It is possible because the viewer's metric menu and sliders are now built from the registry.
+  - Unit tests: validity, closed-form vs generic inverse, the Schwarzschild limit (photon sphere 3, b_c = 3√3, ISCO 6), bake.
+  - e2e: it appears in the menu with its charge slider; its GPU shadow at Q = 0.8 matches the analytic b_c (radius within 0.2%, mismatches only along the edge).
+- **README:** a user guide (requirements, the image, controls, debug views, sharing, known limitations) and a developer guide (layout, how it works, adding a metric step by step, tests and validation scripts).
+- **Error handling:**
+  - startup failures show the message and what the viewer needs;
+  - a lost WebGL context (OS GPU reset) is explained in the page;
+  - invalid parameters are clamped, and metrics that are not valid on their table are refused in the status line, as before.
+- **Already in place from earlier milestones:**
+  - progressive interaction: a coarse level on a coarse table while dragging;
+  - the performance table;
+  - presets for both modes: KerrExample, JohannsenExample, Test_MNrun, Test_FBdetail;
+  - view state in the URL (the query string; DECISIONS).
+- **The viewer header** now describes Stage 1 and links the guide.
+- **Two performance bugs found and fixed:**
+  - tiles shrinking without end (from M6): 4941 tiles for a 1024² Kerr trace, 20× the M4 time;
+  - animation frames competing with trace tiles for the GPU (from M7): traces up to 3× slower.
+- **Projection without an extra RHS evaluation,** and the RK loop back to its M5 form (DECISIONS).
+- **Tests:** Vitest 92 passed (new `m9.test.js`), Playwright 19 passed (new `m9.spec.js`), `tsc --checkJs` clean.
+
+### Acceptance timings (`dev/reports/m9/perf_baseline.json`, `dev/scripts/m9Perf.mjs`; AMD Radeon integrated graphics, Chrome/ANGLE D3D11)
+
+These timings run in the viewer's own path: progressive levels 4 → 2 → 1 and adaptive tiles, the median of 3 traces after a warm-up (1 trace for the slow fuzzball case).
+
+| plan target (integrated graphics) | measured | |
+|---|---|---|
+| 1024² Kerr re-trace ≤ 1 s | **6.4 s** tabulated (the app); 1.8 s wall / 1.0 s GPU closed-form | not met |
+| drag preview 256² ≤ 50 ms | **414 ms** (the viewer previews 128² at N = 512 and 1024: about 100 ms) | not met |
+| display pass ≥ 60 fps | 60 fps at 512² and 1024², while playing (M7) | met |
+| fuzzball λ = 1e-3 ≤ 3× Kerr | **8.3×** (53 s vs 6.4 s at 1024²; 8.5 s at 512²) | not met |
+
+**Diagnosis:**
+
+- **The machine varies by up to 3× between runs today** (iGPU clocks). Identical shaders gave 205–800 ms. The M0 benchmark runs at 105 ms (512² GPU) against 86–98 ms in M0. Run back to back today, the M4 shaders and the current ones take the same time (closed-form 196 vs 209 ms, tabulated 850 vs 770 ms at 512², single level). There is no shader regression, but today's absolute numbers are about 2× the M4 ones (88 / 430 ms).
+- **The tabulated tracer is fetch-bound** (M4): 20 RGBA32F texel fetches per RK stage, about 4× the closed-form Kerr shader.
+- **The fuzzball** takes twice the steps of Kerr (mean 1566 vs 760 at λ = 1e-3). Its trapped rays (7.6% time out at 10000 steps) keep SIMD groups busy long after their neighbours finish.
+- **The plan's levers** that could close part of the gap are not implemented. Each trades accuracy, so each is a decision:
+  - half-float derivative channels in the tables (about 40% fewer bytes per fetch; derivative precision falls to about 1e-3 relative);
+  - an analytic far field, or larger steps at large r (about 130 of the 760 Kerr steps are spent beyond r = 20 M);
+  - a lower fuzzball step limit (5000: about 2× faster, 11% instead of 7.6% time-outs at λ = 1e-3).
+
+### Open issues / for the user
+
+1. **Stage 1 acceptance:** everything except the performance targets, which are missed as above. Accept with these numbers, or try one of the levers first?
+2. **Link from the root `index.html`** (needs your approval). A card in the style of the existing ones, in Dutch like the page, for example in the "Zwaartekrachtgolven en de Einstein Telescope" section (or a new section):
+   > **FOORT-GPU: zwarte gaten en fuzzballs** · Een wetenschappelijke ray tracer in je browser: een accretieschijf rond een draaiend zwart gat of rond een fuzzball uit de snaartheorie, live berekend op je grafische kaart. Voor wie de details wil, met alle parameters van FOORT (in het Engels).
+3. **Merging** to `main` needs your approval.
+
+### M9 speed-up (user: "Try a speed-up"), 2026-11-05
+
+**Changes.** None of them loses accuracy (DECISIONS):
+- separable Hermite interpolation of the tables, with pre-scaled derivative channels;
+- one coarse preview level instead of two;
+- two trace tiles in flight;
+- a tile-size floor that drops only for tiles over 1 s.
+
+**Timings** (`dev/reports/m9/perf_pipelined.json`; same machine and method as above; this machine varies by up to 2–3× between runs, so treat single numbers with care):
+
+| case | before | after | plan target (integrated graphics) |
+|---|---|---|---|
+| 1024² Kerr re-trace, tabulated (the app) | 6.4 s | **3.9 s** | ≤ 1 s, not met |
+| 1024² Kerr re-trace, closed-form | 1.8 s | **0.73 s** | ≤ 1 s, met |
+| 512² Kerr re-trace, tabulated | 2.3 s | 1.5 s | |
+| 256² drag preview (one level) | 414 ms | 378 ms | ≤ 50 ms, not met (the viewer's 128² preview: about 95 ms) |
+| 1024² fuzzball λ = 1e-3 | 53 s | **19.6 s** | |
+| fuzzball / Kerr | 8.3× | **5.1×** | ≤ 3×, not met |
+
+**Accuracy unchanged:**
+- Level 4 (tabulated vs closed-form Kerr, 32 cases): at most 0.012% difference from M4.
+- Level 2: Johannsen and Manko–Novikov 100% four-colour; ST3Cr λ = 1e-4 98.7% on converged pixels, as before; λ = 0 BH 100%.
+- Vitest 92 and Playwright 19 passed.
+
+**What is left.** The tabulated tracer now spends most of its time on its 20 texel fetches per RK stage. The levers left all trade accuracy:
+- half-float derivative channels;
+- an analytic far field, or larger steps at large r;
+- a lower fuzzball step limit.
+
+At this point they are the user's choice.
+
+### M9 accuracy trades, each on its own (user: "try all three of these accuracy trades (separately) so that we can judge each one"), 2026-11-05
+
+`dev/scripts/m9Trades.mjs`, `dev/reports/m9/trades_*.json` / `_log.txt`. All three are view options, off by default: `tableHalf`, `farSteps`, and `maxSteps` (already a control).
+
+- **Speed:** GPU time of one full-resolution level (BH 512², fuzzball 256²), baseline and trade alternating, best of 3.
+- **Accuracy:** the trade's image against the baseline's on the same rays (256²). The baseline's own error against the double-precision reference is about 1e-6 rad median for escape directions (M3–M4).
+
+| trade | speed | four-colour vs baseline | escape-direction change, median / p99 (share within 1e-3 rad) | disc emission L1 change |
+|---|---|---|---|---|
+| **1. half-float derivative tables** (values R32F + derivatives RGBA16F) | **0.77–0.89×, slower** | 99.985–99.995% (BH); 93.9–96.5% (fuzzball) | 3.5–6.5e-5 / 2.3–4.0e-3 rad (96–98%) | 1.4–4.2e-4 (BH); 0.8–2.3e-3 (fuzzball) |
+| **2a. larger steps beyond 20 M, up to 4×** | **1.18–1.24×** (BH); none for the Test_FBdetail fuzzball camera, which is inside 20 M | 99.986–99.992% | 3.0–3.6e-4 / 1.1–1.9e-3 rad (97.8–98.8%) | **0.6–0.9e-4** |
+| **2b. the same, up to 8×** | 1.18–1.25× (no gain over 4×) | 99.89–99.93% | 1.0e-3 / 2–3e-2 rad (35–53%) | 1.0–1.6e-3 |
+| **3. fuzzball max steps 5000 instead of 10000** | **1.35× (λ = 0.005), 1.44× (1e-3), 2.15× (1e-4)** | 97.4–98.8%: rays that escape after 5000 steps now end as time-outs | unchanged for every ray that escapes in both | **0** (the stored crossings all happen before step 5000) |
+
+**Reading:**
+
+1. **Half-float tables:** slower and less accurate. Two fetches per texel cost more on this GPU than the 25% fewer bytes save. Not worth it. A fully half-float table (one fetch, values also in 16 bits) would lose about 1e-3 relative in the metric values; not tried.
+2. **Larger far steps (4×):** about 20% faster for distant cameras.
+   - Escape directions (the sky, the four-colour view) shift by about 3e-4 rad. That is 300× the baseline's own error, but invisible at 512² with a 15 M screen, where one pixel is 3e-5 rad.
+   - The disc image changes by about 1e-4.
+   - 8× gains nothing more and costs 10× more accuracy.
+3. **Fuzzball step limit 5000:** 1.35–2.15× faster, with **identical disc images**. Only the four-colour and termination views change, where 1.2–2.6% of the pixels become time-outs instead of late escapes. The disc emission comes from the first 3 crossings, which all happen early.
+
+**Not adopted yet:** the user decides which go into the product.
+
+**Decision (2026-11-05):** adopted: larger steps beyond 20 M (up to 4×) and the fuzzball step limit of 5000 (user: "Far 4x + 5000 steps"). Rejected: half-float tables. With the viewer's new defaults (`dev/reports/m9/perf_app.json`), the 1024² Kerr re-trace takes 3.3 s (tabulated) and 0.77 s (closed-form), and a 512² Kerr re-trace 1.2 s. The fuzzball single runs varied too much on this machine to quote; the back-to-back comparison (above) gives 1.35–2.15× for the step limit. Still open: the root-page card, and the merge to `main`.
+
+**Decision (2026-11-05): Stage 1 accepted** (user: "Card + merge"), with the performance numbers above. The root `index.html` links FOORT-GPU from the "Zwaartekrachtgolven en de Einstein Telescope" section; M9 is merged to `main` and pushed.

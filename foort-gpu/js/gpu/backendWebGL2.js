@@ -84,7 +84,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
   /** @type {WebGLTexture|null} */
-  let tableTex = null, fluidTex = null, noiseTex = null;
+  let tableTex = null, fluidTex = null, noiseTex = null, tableValTex = null, tableDerTex = null;
   /** fluid-table grid (display: Omega for procedural advection) */
   let fluidGrid = /** @type {{xMin:number, dx:number, n:number, r0:number}|null} */ (null);
   /** noise field on the GPU */
@@ -123,7 +123,9 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     kind: 'webgl2',
 
     async setTracer(name) {
-      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + await load(name) + '\n' + common, `${name}.glsl + common.glsl`));
+      // variants: '<file>_half' = <file>.glsl with TABLE_HALF defined (half-float derivative tables, M9 accuracy trade)
+      const half = name.endsWith('_half'), file = half ? name.slice(0, -5) : name;
+      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + (half ? '#define TABLE_HALF 1\n' : '') + await load(file) + '\n' + common, `${name}: ${file}.glsl + common.glsl`));
       tracer = /** @type {ReturnType<typeof build>} */ (tracePrograms.get(name));
     },
 
@@ -169,12 +171,31 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       tableTex = gl.createTexture();
       // bake layout [k][j][i] -> texture rows 5 j + k (the five functions of a node in adjacent rows)
       if (5 * g.nth > gl.getParameter(gl.MAX_TEXTURE_SIZE) || g.nx > gl.getParameter(gl.MAX_TEXTURE_SIZE)) throw new Error(`metric table ${g.nx} x ${g.nth} exceeds MAX_TEXTURE_SIZE`);
+      // the derivative channels are stored pre-multiplied by the cell size, (f, f_x dx, f_theta dth, f_xtheta dx dth):
+      // the Hermite weights in trace.glsl then need no per-lookup scaling (done once here, in double, before rounding)
       const packed = new Float32Array(T.data.length), row = 4 * g.nx;
-      for (let k = 0; k < 5; k++) for (let j = 0; j < g.nth; j++)
-        packed.set(T.data.subarray((k * g.nth + j) * row, (k * g.nth + j + 1) * row), (5 * j + k) * row);
+      const sc = [1, g.dx, g.dth, g.dx * g.dth];
+      for (let k = 0; k < 5; k++) for (let j = 0; j < g.nth; j++) {
+        const src = (k * g.nth + j) * row, dst = (5 * j + k) * row;
+        for (let q = 0; q < row; q++) packed[dst + q] = T.data[src + q] * sc[q & 3];
+      }
       gl.bindTexture(gl.TEXTURE_2D, tableTex);
       gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, g.nx, 5 * g.nth);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RGBA, gl.FLOAT, packed);
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+      // the same data split for the half-float variant (M9 accuracy trade): values R32F, derivatives RGBA16F
+      const vals = new Float32Array(g.nx * 5 * g.nth), ders = new Float32Array(4 * g.nx * 5 * g.nth);
+      for (let n = 0; n < vals.length; n++) { vals[n] = packed[4 * n]; ders[4 * n] = packed[4 * n + 1]; ders[4 * n + 1] = packed[4 * n + 2]; ders[4 * n + 2] = packed[4 * n + 3]; }
+      for (const t of [tableValTex, tableDerTex]) if (t) gl.deleteTexture(t);
+      tableValTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tableValTex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32F, g.nx, 5 * g.nth);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RED, gl.FLOAT, vals);
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+      tableDerTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tableDerTex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, g.nx, 5 * g.nth);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, g.nx, 5 * g.nth, gl.RGBA, gl.FLOAT, ders);
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
     },
 
@@ -234,6 +255,15 @@ export async function createWebGL2Backend(canvas, opts = {}) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tableTex);
         gl.uniform1i(tracer.loc('uTables'), 0);
+      }
+      if (tracer.loc('uTablesV')) {
+        if (!tableValTex || !tableDerTex) throw new Error('uploadTables first');
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tableValTex);
+        gl.uniform1i(tracer.loc('uTablesV'), 0);
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, tableDerTex);
+        gl.uniform1i(tracer.loc('uTablesD'), 2);
       }
       if (!fluidTex) throw new Error('uploadFluid first');
       gl.activeTexture(gl.TEXTURE1);

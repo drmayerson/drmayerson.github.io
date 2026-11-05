@@ -1,4 +1,5 @@
 // @ts-check
+import { METRICS } from '../metrics/registry.js';
 // Viewer controls: a declarative list of parameters -> form widgets, URL-synced state.
 // Sliders report 'input' while dragging (coarse preview) and 'change' on release (full trace).
 
@@ -36,22 +37,44 @@ export const VIEWS = {
 const fmt = (/** @type {number} */ d) => (v) => Number(v).toFixed(d);
 const sig = (v) => (Math.abs(v) >= 100 ? Number(v).toFixed(0) : Number(v).toPrecision(3));
 
+/**
+ * Sliders of the metric parameters, from the registry (js/metrics/registry.js): one per parameter name (shared by the
+ * metrics that have it, with the widest range; the registry's bounds clamp it per metric), plus the zero-limit switches.
+ * @returns {Control[]}
+ */
+function metricParamControls() {
+  /** @type {Map<string, {spec: import('../metrics/registry.js').ParamSpec, ids: string[], min: number, max: number}>} */
+  const byName = new Map();
+  for (const m of METRICS) for (const p of m.params) {
+    if (p.fixed) continue;
+    const e = byName.get(p.name);
+    if (e) { e.ids.push(m.id); e.min = Math.min(e.min, p.min); e.max = Math.max(e.max, p.max); }
+    else byName.set(p.name, { spec: p, ids: [m.id], min: p.min, max: p.max });
+  }
+  /** @type {Control[]} */
+  const out = [];
+  for (const { spec, ids, min, max } of byName.values()) {
+    const log = spec.scale === 'log';
+    out.push({ key: spec.name, label: spec.label, type: 'range', group: 'Spacetime', min, max, default: spec.default,
+      ...(log ? { scale: 'log' } : { step: spec.step ?? (max - min) / 1000 }),
+      format: log ? (v) => Number(v).toPrecision(3) : fmt(Math.max(0, Math.ceil(-Math.log10(spec.step ?? (max - min) / 1000)))),
+      visible: (s) => ids.includes(s.metric) && !(zeroKey(s.metric) && s[zeroKey(s.metric)]), metricParam: true });
+  }
+  for (const m of METRICS) if (m.zeroSwitch)
+    out.push({ key: m.zeroSwitch.key, label: m.zeroSwitch.label, type: 'checkbox', group: 'Spacetime', default: false, visible: (s) => s.metric === m.id });
+  return out;
+}
+/** state key of a metric's zero-limit switch (registry zeroSwitch.key), or '' @param {string} id */
+export const zeroKey = (id) => METRICS.find((m) => m.id === id)?.zeroSwitch?.key ?? '';
+
 /** @type {Control[]} */
 export const CONTROLS = [
-  { key: 'metric', label: 'metric', type: 'select', group: 'Spacetime', options: ['kerr', 'johannsen', 'mankoNovikov', 'st3cr'],
-    optionLabels: { kerr: 'Kerr', johannsen: 'Johannsen', mankoNovikov: 'Manko–Novikov', st3cr: 'ST3Cr ring fuzzball (P = 2, q0 = 50)' }, default: 'kerr' },
+  { key: 'metric', label: 'metric', type: 'select', group: 'Spacetime', options: METRICS.filter((m) => !m.hidden).map((m) => m.id),
+    optionLabels: Object.fromEntries(METRICS.map((m) => [m.id, m.label])), default: 'kerr' },
   { key: 'path', label: 'Kerr tracer', type: 'select', group: 'Spacetime', options: ['tabulated', 'analytic'],
     optionLabels: { tabulated: 'tabulated metric (app)', analytic: 'closed-form shader (validation)' }, default: 'tabulated',
     visible: (s) => s.metric === 'kerr' },
-  { key: 'a', label: 'spin a', type: 'range', group: 'Spacetime', min: 0, max: 0.999, step: 0.001, default: 0.94, format: fmt(3), metricParam: true },
-  { key: 'alpha13', label: 'α13 (≥ −0.99 r₊³)', type: 'range', group: 'Spacetime', min: -7.92, max: 10, step: 0.01, default: 1, format: fmt(2),
-    visible: (s) => s.metric === 'johannsen', metricParam: true },
-  { key: 'alpha3', label: 'α3', type: 'range', group: 'Spacetime', min: -1, max: 1, step: 0.01, default: 0.1, format: fmt(2),
-    visible: (s) => s.metric === 'mankoNovikov', metricParam: true },
-  { key: 'lambda', label: 'λ', type: 'range', group: 'Spacetime', min: 1e-4, max: 0.193, scale: 'log', default: 0.005, format: (v) => Number(v).toPrecision(3),
-    visible: (s) => s.metric === 'st3cr' && !s.bh0, metricParam: true },
-  { key: 'bh0', label: 'λ = 0 (supersymmetric black hole)', type: 'checkbox', group: 'Spacetime', default: false,
-    visible: (s) => s.metric === 'st3cr' },
+  ...metricParamControls(),
   { key: 'r', label: 'camera distance r (M)', type: 'range', group: 'Camera', min: 2, max: 100000, scale: 'log', default: 1000, format: sig },
   { key: 'inc', label: 'inclination (deg)', type: 'range', group: 'Camera', min: 0.01, max: 179.99, step: 0.01, default: 17, format: fmt(2) },
   { key: 'screen', label: 'screen size (M)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: sig },
@@ -88,6 +111,7 @@ export const CONTROLS = [
   { key: 'grid', label: 'metric table (x × θ nodes per hemisphere)', type: 'select', group: 'Tracing',
     options: ['256x128', '512x128', '512x256', '1024x256'], default: '512x128', visible: (s) => s.metric !== 'kerr' || s.path !== 'analytic' },
   { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig },
+  { key: 'farSteps', label: 'larger steps beyond 20 M (up to 4×; ~3e-4 rad on escape directions)', type: 'checkbox', group: 'Tracing', default: true },
   { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000 },
   { key: 'crossing', label: 'equatorial crossings', type: 'select', group: 'Tracing', options: ['interpolate', 'foort'],
     optionLabels: { interpolate: 'interpolated (app)', foort: 'FOORT parity' }, default: 'interpolate' },

@@ -187,4 +187,38 @@ non-trivial implementation choice.
   - 128 time slices: doubling them hardly changed the inner-disc decorrelation, which is set by the Keplerian advection.
   - 8.4 MB at float16; it is the viewer's default field, and the M7 placeholder stays selectable.
 - 2026-11-05 — **HDF5 read via `h5dump`** in the converter, instead of installing h5py into the system Python.
-- 2026-11-05 — **CHECKPOINT M8 accepted** (user: "Approve as is"): field `inoisy_lg21` with general_xy's parameters and T = 200 M. Merge to `main` not yet approved.
+- 2026-11-05 — **CHECKPOINT M8 accepted** (user: "Approve as is"): field `inoisy_lg21` with general_xy's parameters and T = 200 M. Merged to `main` and pushed (user: "Merge and push").
+- 2026-11-05 — **Registry-driven controls (M9 "add a metric"):** the metric menu and the parameter sliders are built from `js/metrics/registry.js`. One slider per parameter name, with the widest range over the metrics that share it; the registry's `bounds` clamp it per metric.
+  - Registry fields: `step`; `hidden` (not in the menu); `zeroSwitch` {id, label, key} (ST3Cr's λ = 0 switch, key `bh0`, kept for existing URLs); `emissionNote` (the fuzzball's 3-crossing caveat).
+  - Adding a metric needs one module and one registry entry; Reissner–Nordström is the demonstration.
+- 2026-11-05 — **View state stays in the URL query** (`?metric=…&lambda=…`), not the hash the plan mentions. It already reproduces a view when shared, also on GitHub Pages, and the tests and reports use it.
+- 2026-11-05 — **Tile sizing (fix of the M6 probe tiling).**
+  - The rate rule shrank tiles without end: a tile's wall time includes a fixed fence/yield latency. A 1024² Kerr trace then ran in 4941 tiles of about 256 rays, at 20× the M4 time.
+  - Now: the rays-per-tile estimate moves both ways, by at most 2× per tile in log space, with a floor of 64² rays. The floor drops 4× (to a minimum of 256) only when a tile at the floor runs longer than 400 ms (the watchdog margin for heavy fuzzball tiles).
+  - The rest of a level is split only when a tile exceeds 3× the 30 ms target.
+- 2026-11-05 — **No animation frames while a trace runs:** redrawing the canvas at 60 fps competed with the trace tiles for the integrated GPU, slowing traces by up to 3× at times. The progress callback still draws every finished tile.
+- 2026-11-05 — **Constraint projection without a fifth RHS evaluation.**
+  - `geodesicRHS` also returns `dmomQ`, the part of the force quadratic in the spatial momenta. The first RK stage is corrected exactly (dx, dδ ∝ s; that part ∝ s²) instead of being re-evaluated after the rescaling.
+  - The RK loop is again the plain four-stage loop of M3–M5 (the M6 five-iteration loop with break/continue cost about 10% even with projection off).
+  - Results are unchanged (M6 Level 2 rerun).
+  - The closed-form Kerr shader does not split its force; asking it for projection is an error.
+- 2026-11-05 — **Startup and runtime errors are explained in the page:**
+  - a missing WebGL2 or extension: the message plus what the viewer needs;
+  - a lost WebGL context (an OS GPU reset after an overlong dispatch): what happened and what to change.
+- 2026-11-05 — **M9 speed-up (user: "Try a speed-up"), all without accuracy loss.**
+  - **What limits the tabulated tracer, measured by adding redundant work** (Kerr 512², one level, GPU time):
+
+    | variant | GPU time |
+    |---|---|
+    | as is | about 1300 ms |
+    | + a second copy of the 20 table fetches | +720 ms |
+    | + twice the Hermite arithmetic | +1100 ms |
+
+    Both fetches and arithmetic mattered; M4's "fetch-bound" was half the story.
+  - **Separable bicubic Hermite** in `trace.glsl`: interpolate along x for the two θ rows, then along θ. It is the same tensor-product formula with about a third of the arithmetic; the derivative channels are pre-multiplied by the cell size at upload (`backendWebGL2.js`). Result: 1300 → 840 ms. The Level 4 rerun matches M4 to 0.012% (escape directions within 1e-3 rad); emission proxy differences about 1e-6.
+  - **Progressive levels: one coarse level, then the full image** (`finalLevels`: 4 → 1 for 512²–1024², 8 → 1 for 2048², 2 → 1 for 256²) instead of 4 → 2 → 1. This saves the 25% of the middle level; the preview still appears at once.
+  - **Two tiles in flight:** the next tile is queued while the JS side waits for the previous fence. Submit-and-wait left the GPU idle 10–40 ms per tile, which doubled the wall time of a 1024² fuzzball trace (1000+ tiles). Tile timing now measures each tile's own share (from the later of its submission and the previous completion).
+  - **Tile floor:** it drops only when a 64² tile runs longer than 1 s (was 400 ms; the Windows watchdog is about 2 s), and never below 32². At 400 ms, heavy fuzzball tiles fell back to tiny, inefficient tiles.
+- 2026-11-05 — **M9 accuracy trades as options, all off by default**, for the user to judge (PROGRESS, "M9 accuracy trades"): `tableHalf` (shader variant `trace_half`: R32F values + RGBA16F derivatives), `farSteps` {r (M_ADM), max} (eps *= clamp(r / r_far, 1, max); also in the CPU reference), and the fuzzball max steps (an existing control).
+- 2026-11-05 — **Adopted M9 trades** (user: "Far 4x + 5000 steps"): the viewer traces with larger steps beyond 20 M (up to 4×; checkbox "larger steps beyond 20 M", on by default) and the fuzzball max steps default is 5000 (also the Test_FBdetail preset; FOORT's config uses 10000). Half-float tables are not adopted (slower and less accurate). Validation scripts keep the plain integrator unless they ask for the options.
+- 2026-11-05 — **CHECKPOINT M9 / Stage 1 accepted; root-page card and merge** (user: "Card + merge"). The FOORT-GPU card (Dutch, in the style of the existing cards) is the last card of the root `index.html` section "Zwaartekrachtgolven en de Einstein Telescope"; M9 merged to `main` and pushed.

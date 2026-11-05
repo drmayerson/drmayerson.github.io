@@ -14,7 +14,9 @@ uniform vec4 uMetric;   // a, r0, 0, 0
 
 float radiusOf(float x) { return uMetric.y + exp(x); }
 
-void geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom) {
+// dmomQ (quadratic part of dmom, for the constraint projection) is not split here: projection is off for Kerr
+void geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom, out vec2 dmomQ) {
+  dmomQ = vec2(0.0);
   float a = uMetric.x, a2 = a * a;
   float er = exp(pos.x);
   float r = uMetric.y + er;

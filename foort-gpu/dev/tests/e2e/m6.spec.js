@@ -14,7 +14,7 @@ test('Test_FBdetail preset: ST3Cr fuzzball, lambda slider, camera in units of M_
   await expect(page.locator('#status')).toContainText('done', { timeout: 150_000 });
   expect(await page.locator('select[name=metric]').inputValue()).toBe('st3cr');
   await expect(page.locator('input[name=lambda]')).toBeVisible();
-  expect(await page.locator('select[name=maxSteps]').inputValue()).toBe('10000');
+  expect(await page.locator('select[name=maxSteps]').inputValue()).toBe('5000');
   await expect(page.locator('#perf')).toContainText('ISCO r = 18.558');
   await expect(page.locator('#perf')).toContainText('2 stable bands');
   const st = await page.evaluate(() => window.__foort.state);

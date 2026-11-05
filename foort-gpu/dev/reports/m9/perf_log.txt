@@ -1,0 +1,7 @@
+kerr_tabulated_1024_retrace: 4476 ms wall (GPU 3674 ms, 161 tiles)
+kerr_analytic_1024_retrace: 845 ms wall (GPU 544 ms, 186 tiles)
+kerr_tabulated_256_preview: 532 ms wall (GPU 481 ms, 17 tiles)
+kerr_tabulated_512_retrace: 1783 ms wall (GPU 1507 ms, 69 tiles)
+st3cr_l1e-3_1024_retrace: 104567 ms wall (GPU 63414 ms, 2798 tiles)
+st3cr_l1e-3_512_retrace: 26352 ms wall (GPU 20122 ms, 129 tiles)
+fuzzball / Kerr at 1024^2: 23.36

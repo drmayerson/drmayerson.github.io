@@ -28,9 +28,24 @@ export function tilesCentreOut(w, h, edge) {
  * @property {number|null} steps             total RK4 steps (when measured)
  */
 
+/**
+ * Progressive levels of a full trace of an N x N image: one coarse preview level (about 128^2 to 256^2 rays, so that it
+ * appears at once) and then the full image. A middle level (the M3-M8 levels 4 -> 2 -> 1) would cost another 25%.
+ * @param {number} N
+ */
+export const finalLevels = (N) => (N >= 2048 ? [8, 1] : N >= 512 ? [4, 1] : N >= 256 ? [2, 1] : [1]);
+
 /** Edge of the probe tile that starts every trace (worst case 1024 rays x maxSteps). */
 const PROBE_EDGE = 32;
-const MIN_TILE_RAYS = 256;
+/** Tiles queued on the GPU at once. */
+const TILES_IN_FLIGHT = 2;
+/** Smallest tile in normal operation (64^2): smaller tiles do not fill the GPU. */
+const MIN_TILE_RAYS = 64 * 64;
+/** A tile of MIN_TILE_RAYS this slow (ms) may be split further (watchdog margin: Windows resets the GPU after ~2 s;
+ * the M6 crash was a 128^2 fuzzball tile running for seconds). Splitting earlier makes tiles too small to fill the GPU. */
+const DANGER_MS = 1000;
+/** The floor never drops below this. */
+const MIN_TILE_RAYS_DANGER = 32 * 32;
 
 /**
  * Re-cut tiles into tiles of at most `edge` (only splitting), in centre-out order.
@@ -88,7 +103,7 @@ export class TracePipeline {
     while (this.busy) { await new Promise((r) => setTimeout(r, 0)); if (gen !== this.generation) return null; }
     this.busy = true;
     try {
-      const levels = opts.levels ?? [4, 2, 1];
+      const levels = opts.levels ?? finalLevels(setup.N);
       const be = this.backend;
       if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program === 'trace' ? 'tabulated' : 'closed-form Kerr'} tracer (first use)…`);
       await be.setTracer(setup.program);
@@ -107,30 +122,51 @@ export class TracePipeline {
       // metrics and step limits (a 128^2 fuzzball tile with 10^4 max steps runs for seconds and can trip the
       // OS GPU watchdog, which loses the context)
       let probe = opts.adaptTiles !== false;
+      let minRays = MIN_TILE_RAYS;
       for (const st of levels) {
         // each level is its own compact image of ceil(N / st)^2 rays
         const { w, h } = be.levelSize(st);
         let edge = probe ? PROBE_EDGE : this.tileEdge();
         let pending = tilesCentreOut(w, h, edge);
         let done = 0;
-        while (pending.length) {
-          if (gen !== this.generation) return null;
-          const t = /** @type {import('./backend.js').Rect} */ (pending.shift());
-          const r = await be.traceTile(t, st);
+        // two tiles in flight: the next tile is already queued on the GPU while the JS side waits for the fence of the
+        // previous one (serial submit-and-wait left the GPU idle ~10-40 ms per tile: 2x the GPU time for 1000+ tiles).
+        // The probe runs alone, since the rest of the level is cut from its timing.
+        /** @type {{t: import('./backend.js').Rect, p: ReturnType<typeof be.traceTile>, at: number}[]} */
+        const inflight = [];
+        let lastDone = performance.now();
+        while (pending.length || inflight.length) {
+          if (gen !== this.generation) { await Promise.allSettled(inflight.map((x) => x.p)); return null; }
+          while (inflight.length < (probe ? 1 : TILES_IN_FLIGHT) && pending.length) {
+            const tt = /** @type {import('./backend.js').Rect} */ (pending.shift());
+            inflight.push({ t: tt, p: be.traceTile(tt, st), at: performance.now() });
+          }
+          const { t, p, at } = /** @type {{t: import('./backend.js').Rect, p: ReturnType<typeof be.traceTile>, at: number}} */ (inflight.shift());
+          const res = await p;
+          const now = performance.now();
+          // this tile's own GPU share: from the later of its submission and the previous completion
+          const r = { wallMs: now - Math.max(at, lastDone), gpuMs: res.gpuMs };
+          lastDone = now;
           gpu.push(r.gpuMs);
           nTiles++; done++;
-          this.onProgress({ level: st, done, total: done + pending.length });
+          this.onProgress({ level: st, done, total: done + pending.length + inflight.length });
           if (opts.adaptTiles !== false) {
-            // rays per tile proportional to the measured rate, so that a tile takes about targetTileMs
+            // rays per tile from the measured rate. The estimate moves both ways (log-space average, at most x2 per tile)
+            // and persists between traces. A wall time includes a fixed fence/yield latency, so a pure rate rule shrinks
+            // tiles without end and tiny tiles leave the GPU idle (M9: 4941 tiles and 20x the M4 time). Tiles therefore
+            // stay >= MIN_TILE_RAYS unless such a tile itself runs longer than DANGER_MS (the OS watchdog risk).
             const rays = t.w * t.h, ms = Math.max(r.wallMs, 0.5);
-            if (probe || ms > 2 * this.targetTileMs || (ms < 0.4 * this.targetTileMs && rays >= this.tileRays * 0.9)) {
-              this.tileRays = Math.min(1024 * 1024, Math.max(MIN_TILE_RAYS, Math.round(rays * this.targetTileMs / ms)));
-            }
+            const want = rays * this.targetTileMs / ms;
+            // the floor drops (for the rest of this trace) when a tile at the floor runs dangerously long
+            if (ms > DANGER_MS && rays <= minRays) minRays = Math.max(MIN_TILE_RAYS_DANGER, minRays / 4);
+            const floor = minRays;
+            const next = probe ? want : this.tileRays * Math.min(2, Math.max(0.5, Math.sqrt(want / this.tileRays)));
+            this.tileRays = Math.round(Math.min(1024 * 1024, Math.max(floor, next)));
             const e = this.tileEdge();
             // after the probe: tile the level afresh (re-tracing the small probe region is cheaper than many tiny
-            // tiles); when tiles became much slower: split the rest of this level
-            if (probe) { pending = tilesCentreOut(w, h, e).filter((x) => !(x.x === t.x && x.y === t.y && x.w === t.w && x.h === t.h)); edge = e; }
-            else if (e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
+            // tiles); when one tile ran far over the target: split the rest of this level
+            if (probe) { pending = tilesCentreOut(w, h, e); edge = e; }
+            else if (ms > 3 * this.targetTileMs && e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
             probe = false;
           }
         }

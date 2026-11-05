@@ -1,0 +1,6 @@
+half kerr_a0.94_inc17: speed-up 0.85x (1310 -> 1543 ms, steps 759 -> 759); four-colour 99.988%, escape median/p99 5.5e-5/2.8e-3 rad (97.257% within 1e-3), emission L1 1.4e-4, captured ratio 1.00005
+half kerr_a0.94_inc80: speed-up 0.79x (1007 -> 1282 ms, steps 627 -> 627); four-colour 99.995%, escape median/p99 3.5e-5/2.3e-3 rad (97.692% within 1e-3), emission L1 4.2e-4, captured ratio 1.00000
+half johannsen_a0.94_a13_5.5: speed-up 0.81x (1026 -> 1274 ms, steps 746 -> 746); four-colour 99.989%, escape median/p99 6.5e-5/4.0e-3 rad (95.913% within 1e-3), emission L1 1.8e-4, captured ratio 1.00006
+half mankoNovikov_a0.94_a3_2: speed-up 0.77x (962 -> 1255 ms, steps 640 -> 640); four-colour 99.985%, escape median/p99 6.0e-5/3.9e-3 rad (96.268% within 1e-3), emission L1 1.8e-4, captured ratio 1.00005
+half st3cr_l0.005: speed-up 0.89x (2069 -> 2329 ms, steps 1193 -> 1190); four-colour 93.860%, escape median/p99 4.7e-4/2.0e+0 rad (64.961% within 1e-3), emission L1 2.3e-3, captured ratio 2.00000
+half st3cr_l1e-3: speed-up 0.81x (2770 -> 3434 ms, steps 1574 -> 1498); four-colour 96.513%, escape median/p99 2.5e-4/1.0e+0 rad (78.106% within 1e-3), emission L1 7.9e-4, captured ratio 0.96970

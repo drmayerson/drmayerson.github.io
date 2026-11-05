@@ -3,7 +3,7 @@
 // closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
 // Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
 import { createBackend } from './gpu/backend.js';
-import { TracePipeline } from './gpu/pipeline.js';
+import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
@@ -15,13 +15,14 @@ import { loadNoiseField } from './noise/noiseField.js';
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
 
-const PARAM_KEYS = { kerr: ['a'], johannsen: ['a', 'alpha13'], mankoNovikov: ['a', 'alpha3'], st3cr: ['lambda'], st3crBH: [] };
+/** Metric parameters with a slider (non-fixed), per registry id. @param {string} id */
+const paramKeys = (id) => metricEntry(id).params.filter((p) => !p.fixed).map((p) => p.name);
 
-/** Registry id of the state's metric: the ST3Cr lambda = 0 switch selects the black-hole class. @param {Record<string, any>} s */
-export const metricIdFromState = (s) => (s.metric === 'st3cr' && s.bh0 ? 'st3crBH' : s.metric);
+/** Registry id of the state's metric: a zero-limit switch (e.g. ST3Cr's lambda = 0) selects its limit metric. @param {Record<string, any>} s */
+export const metricIdFromState = (s) => { const e = metricEntry(s.metric); return e.zeroSwitch && s[e.zeroSwitch.key] ? e.zeroSwitch.id : s.metric; };
 
 /** Default max steps per mode (fuzzball rays scatter in the cap and throat). */
-const MAX_STEPS_DEFAULT = { BH: 5000, fuzzball: 10000 };
+const MAX_STEPS_DEFAULT = { BH: 5000, fuzzball: 5000 };   // fuzzball 5000 (M9 trade, user): disc images identical to 10000
 
 /**
  * Metric parameters of the state, clamped to the registry's validity bounds.
@@ -32,7 +33,7 @@ export function metricParamsFromState(s) {
   const entry = metricEntry(id);
   /** @type {Record<string, number>} */
   const params = {};
-  for (const k of /** @type {any} */ (PARAM_KEYS)[id]) params[k] = s[k];
+  for (const k of paramKeys(id)) params[k] = s[k];
   const clamped = [];
   for (const spec of entry.params) {
     if (!(spec.name in params)) continue;
@@ -53,6 +54,8 @@ export function viewFromState(s, coarseTables = false) {
     path: s.metric === 'kerr' ? s.path : 'tabulated', grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
+    // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
+    farSteps: s.farSteps ? { r: 20, max: 4 } : null,
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
   };
 }
@@ -77,6 +80,15 @@ async function main() {
   const canvas = /** @type {HTMLCanvasElement} */ ($('view'));
   const stage = (/** @type {string} */ t) => { $('status').textContent = t; /** @type {any} */ (window).__foortStage = t; };
   const backend = await createBackend(canvas, { onStage: stage });
+  // the OS may reset the GPU when one dispatch runs too long (very high resolution or max steps on a slow GPU);
+  // WebGL then loses its context and every texture: say so instead of showing a frozen image
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    $('errorBox').hidden = false;
+    $('error').textContent = 'The GPU reset the drawing context, usually because one trace ran too long. Reload the page, '
+      + 'and try a lower resolution or fewer max steps.';
+    $('status').textContent = 'GPU context lost';
+  });
   let lastStats = /** @type {import('./gpu/pipeline.js').TraceStats|null} */ (null);
   let level = 0;
   const pipeline = new TracePipeline(backend, {
@@ -132,7 +144,7 @@ async function main() {
     $('legend').innerHTML = items
       ? items.map(([c, t]) => `<span style="background:${c}"></span>${t}`).join('')
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
-        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${state.metric === 'st3cr' && !state.bh0 ? '. Note: only the first 3 disc crossings are kept; light trapped inside the fuzzball crosses the disc many more times, so the interior is underestimated (about half of its intensity is missing for λ ≳ 0.001)' : ''}`
+        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
         : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
           : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon' : '';
   };
@@ -188,7 +200,7 @@ async function main() {
       lastFluid = fb.tables;
       setup = gpuTraceSetup(view, tables, fb.tables);
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return; }
-    const levels = final ? [4, 2, 1] : [Math.min(8, Math.max(1, state.N / 128))];
+    const levels = final ? finalLevels(state.N) : [Math.min(8, Math.max(1, state.N / 128))];
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
     if (!st) return;
     lastStats = st;
@@ -225,7 +237,9 @@ async function main() {
     lastFrame = now;
     if (state.play && noise && state.sigmaN > 0 && state.view === 'emission' || state.play && state.view === 'noise') {
       tObs += state.speed * dts;
-      draw();
+      // no animation frames while a trace runs: redrawing the canvas at 60 fps competes with the trace tiles for the
+      // GPU (up to 3x slower traces on integrated graphics, M9); the progress callback still draws each finished tile
+      if (!pipeline.busy) draw();
       if (now - lastLegend > 250) { lastLegend = now; $('clock').textContent = clockText(); }
     }
     requestAnimationFrame(animate);
@@ -244,13 +258,14 @@ async function main() {
     noise: () => noise,
     /** set the observer time (units of M) and redraw */
     setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },
-    /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[]}} [o] */
+    /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[], adaptTiles?:boolean, measureSteps?:boolean, records?:boolean}} [o] */
     async trace(view, o = {}) {
       const ts = tableSpec(view);
       const tables = ts ? (await bakes.get(ts)).tables : undefined;
       const fluid = (await bakes.get(fluidSpec(view))).tables;
       const setup = gpuTraceSetup(view, tables, fluid);
-      const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: true, adaptTiles: false });
+      const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: o.measureSteps ?? true, adaptTiles: o.adaptTiles ?? false });
+      if (o.records === false) { requestDraw(); return { stats, records: '', level, isco: fluid.isco, bake: null }; }
       const rec = await backend.readRecords();
       requestDraw();
       const bytes = new Uint8Array(rec.buffer);
@@ -262,8 +277,13 @@ async function main() {
 }
 
 main().catch((e) => {
+  // startup failures (no WebGL2, a missing extension, a shader that does not compile): the message, the details in the console
+  console.error(e);
   $('errorBox').hidden = false;
-  $('error').textContent = String(e?.stack ?? e);
+  $('error').textContent = `${String(e?.message ?? e)}
+
+FOORT-GPU needs WebGL2 with EXT_color_buffer_float (a recent Chrome or Edge; Firefox and `
+    + 'Safari 15+ should work but are untested). The capability page lists what this browser offers.';
   $('status').textContent = 'failed';
   /** @type {any} */ (window).__foortError = String(e);
 });

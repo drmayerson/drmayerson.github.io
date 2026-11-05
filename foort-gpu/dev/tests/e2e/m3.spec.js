@@ -27,7 +27,8 @@ test('viewer traces progressively and shows every debug view', async ({ page }) 
     await expect(page.locator('#legend')).not.toBeEmpty();
   }
   const st = await page.evaluate(() => window.__foort.stats());
-  expect(st.levels).toEqual([4, 2, 1]);
+  expect(st.levels).toEqual(st.N >= 512 ? [4, 1] : st.N >= 256 ? [2, 1] : [1]);   // finalLevels (js/gpu/pipeline.js)
+  expect(st.levels.length).toBeGreaterThan(st.N >= 256 ? 1 : 0);
   expect(st.steps / (st.N * st.N)).toBeGreaterThan(300);
 });
 
