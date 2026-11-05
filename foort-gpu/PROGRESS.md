@@ -780,3 +780,5 @@ In the viewer, a 512² image therefore takes 5–20 s after a coarse 128² previ
    - leave it, and state it in the UI.
 4. **Bake time** over 0.5 s for ST3Cr (0.7 s in the browser at 512 × 128, more at 1024): optimise ST3Cr's evaluation in M9?
 5. **Merging** to `main` needs your approval.
+
+**Decision (2026-11-05):** the user judged the M6 images to look good. They chose to keep the default 512 × 128 table (the chaotic-regime differences are expected) and to keep 3 crossings with a UI note. M6 is merged into `main` and pushed. M7 is not started and awaits the go-ahead.

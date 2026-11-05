@@ -159,3 +159,7 @@ non-trivial implementation choice.
   - The projection rescales (p_x, p_δ) by sqrt(−B/A), from 2H = p_μ ẋ^μ = B + A at the start of the step: one extra metric evaluation, the RK loop gets a fifth iteration.
   - GPU |H| after it: median 1.5e-7, p99 4e-5.
   - BH views keep the M3–M5 integrator unchanged.
+- 2026-11-05 — **CHECKPOINT M6 decisions (user).**
+  - **Table size:** the fuzzball keeps the default 512 × 128 table; no hybrid. The user: "don't worry about the GPU vs CPU comparison for geodesics that are very near the centers (the chaotic regime) - small numerical errors can compound there and give different results, this is normal and not to worry about ... stay with defaults".
+  - **Crossings beyond 3:** kept as they are, with a note in the emission legend in fuzzball mode. The user: "leave it. I think ~90% or higher emission should be ok. Add a small note about this somewhere on the UI." Measured shares are 93% at λ = 1e-4 but 45–48% at λ = 0.005–0.05 (PROGRESS, CHECKPOINT M6); the note says so.
+  - **Merge:** M6 merged to `main` and pushed (user: "Merge and push").
