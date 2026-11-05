@@ -1,0 +1,57 @@
+{
+ "camera": {
+  "r": 250,
+  "theta": 1.5,
+  "screen": 150
+ },
+ "rows": [
+  {
+   "lambda": 0.01,
+   "N": 256,
+   "shadowRadiusBH": 42.60462615983856,
+   "outside": {
+    "pixels": 45428,
+    "fourColorMismatch": 0.008651052214493265,
+    "emissionRelL1": 0.02240738922548109
+   },
+   "inside": {
+    "pixels": 20108,
+    "fourColorMismatch": 0.7961507857569127
+   },
+   "emissionRelL1All": 0.1641104742861042,
+   "gpuMs": 14514.828030000002
+  },
+  {
+   "lambda": 0.001,
+   "N": 256,
+   "shadowRadiusBH": 42.60462615983856,
+   "outside": {
+    "pixels": 45428,
+    "fourColorMismatch": 0.0007484370872589592,
+    "emissionRelL1": 0.0024524550011637233
+   },
+   "inside": {
+    "pixels": 20108,
+    "fourColorMismatch": 0.5093992440819575
+   },
+   "emissionRelL1All": 0.07334144068748352,
+   "gpuMs": 18350.911040000006
+  },
+  {
+   "lambda": 0.0001,
+   "N": 256,
+   "shadowRadiusBH": 42.60462615983856,
+   "outside": {
+    "pixels": 45428,
+    "fourColorMismatch": 0.000022012855507616448,
+    "emissionRelL1": 0.0002482602601071685
+   },
+   "inside": {
+    "pixels": 20108,
+    "fourColorMismatch": 0.11587427889397255
+   },
+   "emissionRelL1All": 0.008295246468944903,
+   "gpuMs": 21004.898920000014
+  }
+ ]
+}

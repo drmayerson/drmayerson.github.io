@@ -109,23 +109,30 @@ export function createFluid(m, params) {
     return p;
   };
 
+  /**
+   * Radial stability of the circular geodesic at r: d^2 r / d tau^2 after a small outward displacement,
+   * -p_A (d_r M^AB) p_B (FOORT FindISCO); < 0 stable, > 0 unstable, NaN if no timelike circular orbit.
+   */
+  const stability = (/** @type {number} */ r) => {
+    const pc = circular(r, false);
+    if (!(pc[0] < 0)) return NaN;
+    const h = 1e-4 * r;
+    const Mp2 = raisedChrist(r + 2 * h), Mp = raisedChrist(r + h), Mm = raisedChrist(r - h), Mm2 = raisedChrist(r - 2 * h);
+    const dM = (/** @type {number} */ i, /** @type {number} */ j) => (-Mp2[i][j] + 8 * Mp[i][j] - 8 * Mm[i][j] + Mm2[i][j]) / (12 * h);
+    const P = [pc[0], pc[3]];
+    let rdd = 0;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) rdd += -P[i] * dM(i, j) * P[j];
+    return rdd;
+  };
+
   // FOORT FindISCO: bisection on the stability of circular orbits (in log r with RLogScale)
   const toC = (/** @type {number} */ r) => (logScale ? Math.log(r) : r), toR = (/** @type {number} */ c) => (logScale ? Math.exp(c) : c);
   let lo = toC(iscoLower), hi = toC(iscoUpper), cur = (lo + hi) / 2;
   let exact = false;
   for (let it = 0; hi - lo > 2 * DERIV_H && it < 1000 && !exact; it++) {
-    const r = toR(cur);
-    const pc = circular(r, false);
+    const rdd = stability(toR(cur));
     let smaller;
-    if (pc[0] < 0) {
-      const h = 1e-4 * r;
-      const Mp2 = raisedChrist(r + 2 * h), Mp = raisedChrist(r + h), Mm = raisedChrist(r - h), Mm2 = raisedChrist(r - 2 * h);
-      const dM = (/** @type {number} */ i, /** @type {number} */ j) => (-Mp2[i][j] + 8 * Mp[i][j] - 8 * Mm[i][j] + Mm2[i][j]) / (12 * h);
-      const P = [pc[0], pc[3]];
-      let rdd = 0;
-      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) rdd += -P[i] * dM(i, j) * P[j];
-      if (rdd < 0) smaller = true; else if (rdd > 0) smaller = false; else { exact = true; smaller = true; }
-    } else smaller = false;
+    if (rdd < 0) smaller = true; else if (rdd > 0) smaller = false; else if (rdd === 0) { exact = true; smaller = true; } else smaller = false;
     if (!exact) { if (smaller) hi = cur; else lo = cur; cur = (lo + hi) / 2; }
   }
   const rIsco = toR(exact ? cur : hi);
@@ -178,9 +185,31 @@ export function createFluid(m, params) {
     return { down: fin, up: raise(fin) };
   };
 
+  /**
+   * Bands of circular orbits on the equator between rMin and rMax (n samples uniform in log r): 'stable',
+   * 'unstable' or 'none' (no timelike circular geodesic). FOORT's bisection assumes a single unstable -> stable
+   * transition; for horizonless metrics there can be several (plan Section 3.9), which the viewer reports.
+   * @param {number} rMin @param {number} rMax @param {number} [n]
+   * @returns {{from:number, to:number, kind:'stable'|'unstable'|'none'}[]}
+   */
+  const circularBands = (rMin, rMax, n = 400) => {
+    /** @type {{from:number, to:number, kind:'stable'|'unstable'|'none'}[]} */
+    const bands = [];
+    const l0 = Math.log(rMin), dl = (Math.log(rMax) - l0) / (n - 1);
+    for (let i = 0; i < n; i++) {
+      const r = Math.exp(l0 + i * dl), s = stability(r);
+      const kind = Number.isNaN(s) ? 'none' : s < 0 ? 'stable' : 'unstable';
+      const last = bands[bands.length - 1];
+      if (last && last.kind === kind) last.to = r;
+      else { if (last) last.to = Math.sqrt(last.to * r); bands.push({ from: last ? last.to : r, to: r, kind }); }
+    }
+    return bands;
+  };
+
   return {
     params: { xi, betaR, betaPhi, iscoLower, iscoUpper },
     isco: iscoExists ? rIsco : null,
+    circularBands,
     velocity,
     /**
      * Redshift g = 1 / (u^mu p_mu) for the past-directed photon momentum p (p_t = 1), FOORT convention.

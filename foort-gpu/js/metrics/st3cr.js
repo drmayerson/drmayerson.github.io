@@ -15,6 +15,9 @@ export const st3crLambdaMax = (P, q0) => (q0 / (2 * P * P * P) - 1) / (3 * P * P
 
 const pi = Math.PI;
 
+/** Terminations relative to the structure size min(l/2, R): 0.005 gives 8e-4 at lambda = 0.005 (FOORT: 1e-3). */
+export const ST3CR_EPS_REL = 0.005;
+
 /** @param {number} r @param {number} theta @param {number} l */
 function get_omega(r, theta, l) {
   const cost = Math.cos(theta);
@@ -81,6 +84,9 @@ export function createST3Cr({ P, q0, lambda }) {
     { kind: 'ring', r: R, theta: pi / 2 },
   ]);
   const massADM = st3crMass(P, q0);
+  // size of the structure: rays stop at a fixed fraction of it (inner cut and singularity distance), so the
+  // terminations scale with lambda (FOORT's absolute 0.001 and 0.01 would swallow the structure for lambda < ~1e-3)
+  const size = Math.min(l / 2, R);
 
   const metric = {
     id: 'st3cr',
@@ -108,6 +114,10 @@ export function createST3Cr({ P, q0, lambda }) {
       };
     },
     singularities: () => sings,
+    /** Inner cut: rays stop at r < ST3CR_EPS_REL min(l/2, R) (near the origin of the base space). */
+    terminationRadius: () => ST3CR_EPS_REL * size,
+    /** Euclidean base-space distance at which rays stop near a D6 centre or the D0 ring. */
+    singularityEpsilon: () => ST3CR_EPS_REL * size,
     /** @param {import('./common.js').ValidateOptions} [opts] */
     validate(opts = {}) {
       const messages = [];

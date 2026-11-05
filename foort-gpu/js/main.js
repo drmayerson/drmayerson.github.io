@@ -1,11 +1,12 @@
 // @ts-check
-// Viewer bootstrap (M4): BH-mode metrics on the tabulated GPU tracer (Kerr also on the closed-form
-// shader), progressive refinement, live re-bake of the metric tables, debug views.
+// Viewer bootstrap: BH-mode metrics and the ST3Cr fuzzball (M6) on the tabulated GPU tracer (Kerr also on the
+// closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
+// Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
 import { createBackend } from './gpu/backend.js';
 import { TracePipeline } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
-import { metricEntry, paramBounds } from './metrics/registry.js';
+import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
 import { decodeRecord } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
@@ -13,17 +14,24 @@ import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
 
-const PARAM_KEYS = { kerr: ['a'], johannsen: ['a', 'alpha13'], mankoNovikov: ['a', 'alpha3'] };
+const PARAM_KEYS = { kerr: ['a'], johannsen: ['a', 'alpha13'], mankoNovikov: ['a', 'alpha3'], st3cr: ['lambda'], st3crBH: [] };
+
+/** Registry id of the state's metric: the ST3Cr lambda = 0 switch selects the black-hole class. @param {Record<string, any>} s */
+export const metricIdFromState = (s) => (s.metric === 'st3cr' && s.bh0 ? 'st3crBH' : s.metric);
+
+/** Default max steps per mode (fuzzball rays scatter in the cap and throat). */
+const MAX_STEPS_DEFAULT = { BH: 5000, fuzzball: 10000 };
 
 /**
  * Metric parameters of the state, clamped to the registry's validity bounds.
  * @param {Record<string, any>} s @returns {{params: Record<string, number>, clamped: string[]}}
  */
 export function metricParamsFromState(s) {
-  const entry = metricEntry(s.metric);
+  const id = metricIdFromState(s);
+  const entry = metricEntry(id);
   /** @type {Record<string, number>} */
   const params = {};
-  for (const k of /** @type {any} */ (PARAM_KEYS)[s.metric]) params[k] = s[k];
+  for (const k of /** @type {any} */ (PARAM_KEYS)[id]) params[k] = s[k];
   const clamped = [];
   for (const spec of entry.params) {
     if (!(spec.name in params)) continue;
@@ -37,10 +45,12 @@ export function metricParamsFromState(s) {
 /** @param {Record<string, any>} s @param {boolean} [coarseTables] @returns {import('./gpu/traceConfig.js').ViewParams} */
 export function viewFromState(s, coarseTables = false) {
   const [nx, nth] = String(s.grid).split('x').map(Number);
+  const metric = metricIdFromState(s), metricParams = metricParamsFromState(s).params;
+  const M = createMetric(metric, metricParams).massADM;
   return {
-    metric: s.metric, metricParams: metricParamsFromState(s).params,
+    metric, metricParams,
     path: s.metric === 'kerr' ? s.path : 'tabulated', grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
-    camera: { r: s.r, theta: s.inc * DEG, screen: s.screen, cx: s.cx, cy: s.cy },
+    camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
   };
@@ -51,7 +61,7 @@ export const emissionFromState = (s) => ({ mu: s.mu, gamma: s.gamma, sigma: s.si
 
 const LEGENDS = {
   fourColor: [['#e44a40', 'θ < π/2, φ < π'], ['#409ce4', 'θ < π/2, φ > π'], ['#f0c83c', 'θ > π/2, φ < π'], ['#5abe6e', 'θ > π/2, φ > π'], ['#000', 'horizon']],
-  term: [['#000', 'horizon'], ['#8cbff2', 'escaped'], ['#f28c26', 'time out'], ['#f0f', 'NaN'], ['#b30d0d', 'singularity']],
+  term: [['#000', 'horizon / inner cut'], ['#8cbff2', 'escaped'], ['#f28c26', 'time out'], ['#f0f', 'NaN'], ['#b30d0d', 'singularity']],
   passes: [['#000', '0'], ['#4073d9', '1'], ['#f29933', '2'], ['#fff', '≥ 3']],
 };
 
@@ -102,7 +112,7 @@ async function main() {
     $('legend').innerHTML = items
       ? items.map(([c, t]) => `<span style="background:${c}"></span>${t}`).join('')
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
-        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}` : ''}`
+        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}`
         : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
           : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon' : '';
   };
@@ -115,10 +125,18 @@ async function main() {
       perfRow('GPU', String(caps.renderer)) +
       perfRow('metric tables', bake) +
       perfRow('fluid', lastFluid ? `ξ = ${lastFluid.params.xi}, β_r = ${lastFluid.params.betaR}, β_φ = ${lastFluid.params.betaPhi}; ISCO ${lastFluid.isco ? 'r = ' + lastFluid.isco.toFixed(4) : 'not found'} (${lastFluid.ms.toFixed(0)} ms)` : '') +
+      (lastFluid?.bands ? perfRow('circular orbits', bandText(lastFluid.bands)) : '') +
       perfRow('image', `${st.N}² (levels ${st.levels.join(' → ')}, ${st.tiles} tiles)`) +
       perfRow('trace time', `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
       (warnings.length ? perfRow('warnings', warnings.join('; ')) : '');
+  };
+
+  /** @param {{from:number, to:number, kind:string}[]} bands */
+  const bandText = (bands) => {
+    const st = bands.filter((b) => b.kind === 'stable').length;
+    return bands.map((b) => `${b.kind} ${b.from.toPrecision(3)}–${b.to.toPrecision(3)}`).join(', ')
+      + (st > 1 ? `; ${st} stable bands: FOORT's ISCO bisection finds one transition only (plunge with ISCO E, L inside it)` : '');
   };
 
   const bakes = new BakeClient();
@@ -163,10 +181,12 @@ async function main() {
 
   const controls = buildControls(/** @type {HTMLFormElement} */ ($('controls')), state, (key, final, retrace) => {
     if (key === 'view') { controls.set('lo', NaN); controls.set('hi', NaN); legend(); }
+    if (key === 'metric') controls.set('maxSteps', MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
     if (key === 'preset' && state.preset !== 'custom') {
       const p = /** @type {any} */ (EMISSION_PRESETS)[state.preset];
       controls.set('metric', p.metric);
       for (const [k, v] of Object.entries(p.params)) controls.set(k, v);
+      controls.set('maxSteps', p.maxSteps ?? MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
       for (const [k, v] of Object.entries(p.emission)) controls.set(k, v);
       controls.set('inc', p.inc); controls.set('r', p.r); controls.set('screen', p.screen);
       run(true);

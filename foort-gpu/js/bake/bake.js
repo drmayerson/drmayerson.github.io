@@ -1,6 +1,6 @@
 // @ts-check
 // Metric tables for the GPU (plan Section 3.4), baked in double precision.
-// Functions on an (x, theta) grid, x = log(r - r0):
+// Functions on an (x, theta) grid, x = log(r - r0) (r0 = r_+ for horizon metrics, 0 for horizonless ones):
 //   G0 = g^tt, G1 = g^tphi, G2 = sin^2(theta) g^phiphi, G3 = g^xx = g^rr / (r - r0)^2, G4 = g^thth.
 // One metric evaluation per node; derivatives by 4th-order finite differences on the grid
 // (one-sided in x at the ends; in theta, mirror ghost nodes: every G_k is even about the axis,
@@ -14,7 +14,7 @@
 // RGBA32F array, layer k = G_k, row j = theta node, column i = x node.
 // The fluid four-velocity for the redshift is a separate 1D table (js/fluid/fluidTable.js).
 // Pure math, DOM-free (runs in a Web Worker and in node).
-import { EPS_HORIZON, inverseMetric, pointValidity } from '../metrics/common.js';
+import { EPS_HORIZON, inverseMetric, pointValidityInverse } from '../metrics/common.js';
 
 /**
  * Closest approach to the axis at which the metric is evaluated (its formulas are 0 * inf on it).
@@ -49,6 +49,11 @@ const AXIS_EPS = 1e-4;
 
 /**
  * Analytic background of the tables (functions of r only) and its x-derivatives, x = log(r - r0).
+ * Horizon metrics (r0 > 0):   B0 = -(1 + 2M/r + 4M^2/r^2), B2 = B4 = 1/r^2.
+ * Horizonless metrics (r0 = 0, x = log r, rays reach r << M): the same large-r behaviour up to O(1/r^3),
+ * but bounded at small r, B0 = -(1 + 2M (r + 2M) / (r^2 + M^2)), B2 = B4 = 1/(r^2 + M^2); with the 1/r^2
+ * forms the residual inside a fuzzball (g^tt ~ -L^2/r^2, L^2 << 4M^2) would be ~30x larger than G itself.
+ * B1 = 0 and B3 = r / ((r + 2M) ((r - r0)^2 + M^2)) in both cases.
  * @param {number} r @param {number} r0 @param {number} M
  * @returns {{B: number[], dB: number[]}}
  */
@@ -56,14 +61,25 @@ export function backgroundG(r, r0, M) {
   const e = r - r0, ir = 1 / r, ir2 = ir * ir;
   const D2 = e * e + M * M, D = (r + 2 * M) * D2;
   const dD = D2 + (r + 2 * M) * 2 * e;
-  const B = [-(1 + 2 * M * ir + 4 * M * M * ir2), 0, ir2, r / D, ir2];
-  const dBdr = [2 * M * ir2 + 8 * M * M * ir2 * ir, 0, -2 * ir2 * ir, (D - r * dD) / (D * D), -2 * ir2 * ir];
+  const B3 = r / D, dB3 = (D - r * dD) / (D * D);
+  if (r0 > 0) {
+    const B = [-(1 + 2 * M * ir + 4 * M * M * ir2), 0, ir2, B3, ir2];
+    const dBdr = [2 * M * ir2 + 8 * M * M * ir2 * ir, 0, -2 * ir2 * ir, dB3, -2 * ir2 * ir];
+    return { B, dB: dBdr.map((d) => e * d) };
+  }
+  const S = r * r + M * M, N = r + 2 * M, iS = 1 / S;
+  const B = [-(1 + 2 * M * N * iS), 0, iS, B3, iS];
+  const dBdr = [-2 * M * (S - 2 * r * N) * iS * iS, 0, -2 * r * iS * iS, dB3, -2 * r * iS * iS];
   return { B, dB: dBdr.map((d) => e * d) };
 }
 
-/** Termination radius of a metric for horizon-terminated rays. @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m */
+/**
+ * Inner termination radius of a metric: horizon metrics r_+ (1 + eps) or their own; horizonless metrics their
+ * inner cut (ST3Cr: a fraction of the size of its centres and ring; the lambda = 0 BH: r_cut).
+ * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m
+ */
 export function terminationRadius(m) {
-  if (m.horizon.kind !== 'sphere') return 0;
+  if (m.horizon.kind !== 'sphere') return m.terminationRadius?.() ?? 0;
   return m.terminationRadius?.() ?? m.horizon.r * (1 + EPS_HORIZON);
 }
 
@@ -100,7 +116,6 @@ export function bakeTables(m, spec) {
   const t0 = performance.now();
   const r0 = m.horizon.kind === 'sphere' ? m.horizon.r : 0;
   const rTerm = spec.rTerm ?? terminationRadius(m);
-  if (m.horizon.kind !== 'sphere') throw new Error('bakeTables: horizonless metrics arrive in M6');
   if (!(rTerm > r0)) throw new Error(`bakeTables: termination radius ${rTerm} is not outside r0 = ${r0}`);
   const rMax = spec.rMax ?? 1100;
   const symmetric = !!m.equatoriallySymmetric;
@@ -120,9 +135,9 @@ export function bakeTables(m, spec) {
     const s2 = Math.sin(th) ** 2;
     for (let i = 0; i < nx; i++) {
       const e = Math.exp(xMin + i * dx), r = r0 + e;
-      const v = pointValidity(m.g_dd(r, th));
-      if (v) { invalid++; if (!firstBad) firstBad = `${v} at r = ${r.toPrecision(5)}, theta = ${th.toPrecision(4)}`; }
       const u = guu(r, th);
+      const v = pointValidityInverse(u);
+      if (v) { invalid++; if (!firstBad) firstBad = `${v} at r = ${r.toPrecision(5)}, theta = ${th.toPrecision(4)}`; }
       const k = j * nx + i;
       const { B } = backgroundG(r, r0, M);
       F[0][k] = u.gtt - B[0]; F[1][k] = u.gtphi - B[1]; F[2][k] = s2 * u.gphiphi - B[2]; F[3][k] = u.grr / (e * e) - B[3]; F[4][k] = u.gthth - B[4];

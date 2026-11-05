@@ -28,6 +28,25 @@ export function tilesCentreOut(w, h, edge) {
  * @property {number|null} steps             total RK4 steps (when measured)
  */
 
+/** Edge of the probe tile that starts every trace (worst case 1024 rays x maxSteps). */
+const PROBE_EDGE = 32;
+const MIN_TILE_RAYS = 256;
+
+/**
+ * Re-cut tiles into tiles of at most `edge` (only splitting), in centre-out order.
+ * @param {import('./backend.js').Rect[]} tiles @param {number} edge @param {number} w @param {number} h
+ */
+export function recut(tiles, edge, w, h) {
+  const out = [];
+  for (const t of tiles) {
+    if (t.w <= edge && t.h <= edge) { out.push(t); continue; }
+    for (let y = t.y; y < t.y + t.h; y += edge) for (let x = t.x; x < t.x + t.w; x += edge)
+      out.push({ x, y, w: Math.min(edge, t.x + t.w - x), h: Math.min(edge, t.y + t.h - y) });
+  }
+  const d = (/** @type {import('./backend.js').Rect} */ t) => (t.x + t.w / 2 - w / 2) ** 2 + (t.y + t.h / 2 - h / 2) ** 2;
+  return out.sort((a, b) => d(a) - d(b));
+}
+
 export class TracePipeline {
   /**
    * @param {import('./backend.js').Backend} backend
@@ -50,6 +69,9 @@ export class TracePipeline {
     /** key of the metric tables on the GPU */
     this.tableKey = /** @type {string|null} */ (null);
   }
+
+  /** Tile edge for the current rays-per-tile estimate (multiple of 8, at least 16). */
+  tileEdge() { return Math.max(16, Math.round(Math.sqrt(this.tileRays) / 8) * 8); }
 
   /** Cancel the running trace (it stops after its current tile). */
   cancel() { this.generation++; }
@@ -81,11 +103,15 @@ export class TracePipeline {
       /** @type {Promise<number|null>[]} */
       const gpu = [];
       let nTiles = 0;
+      // the first tile of every trace is a small probe: one tile's cost varies by orders of magnitude between
+      // metrics and step limits (a 128^2 fuzzball tile with 10^4 max steps runs for seconds and can trip the
+      // OS GPU watchdog, which loses the context)
+      let probe = opts.adaptTiles !== false;
       for (const st of levels) {
         // each level is its own compact image of ceil(N / st)^2 rays
         const { w, h } = be.levelSize(st);
-        const edge = Math.max(8, Math.round(Math.sqrt(this.tileRays) / 8) * 8);
-        const pending = tilesCentreOut(w, h, edge);
+        let edge = probe ? PROBE_EDGE : this.tileEdge();
+        let pending = tilesCentreOut(w, h, edge);
         let done = 0;
         while (pending.length) {
           if (gen !== this.generation) return null;
@@ -95,10 +121,17 @@ export class TracePipeline {
           nTiles++; done++;
           this.onProgress({ level: st, done, total: done + pending.length });
           if (opts.adaptTiles !== false) {
-            // keep tiles near the target duration (watchdog); applies to the next level
-            const rays = t.w * t.h;
-            if (r.wallMs > 2 * this.targetTileMs && rays > 1024) this.tileRays = Math.max(1024, this.tileRays / 2);
-            else if (r.wallMs < 0.4 * this.targetTileMs && rays >= this.tileRays * 0.9) this.tileRays = Math.min(1024 * 1024, this.tileRays * 2);
+            // rays per tile proportional to the measured rate, so that a tile takes about targetTileMs
+            const rays = t.w * t.h, ms = Math.max(r.wallMs, 0.5);
+            if (probe || ms > 2 * this.targetTileMs || (ms < 0.4 * this.targetTileMs && rays >= this.tileRays * 0.9)) {
+              this.tileRays = Math.min(1024 * 1024, Math.max(MIN_TILE_RAYS, Math.round(rays * this.targetTileMs / ms)));
+            }
+            const e = this.tileEdge();
+            // after the probe: tile the level afresh (re-tracing the small probe region is cheaper than many tiny
+            // tiles); when tiles became much slower: split the rest of this level
+            if (probe) { pending = tilesCentreOut(w, h, e).filter((x) => !(x.x === t.x && x.y === t.y && x.w === t.w && x.h === t.h)); edge = e; }
+            else if (e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
+            probe = false;
           }
         }
       }

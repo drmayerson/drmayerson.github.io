@@ -35,6 +35,7 @@ export const TERM = { horizon: 1, boundary: 2, timeout: 3, nan: 4, thetaSing: 5,
  * @property {number} [threshold]               FOORT EquatorialPasses threshold (0.001)
  * @property {number} [ncross]                  crossings stored per ray (3)
  * @property {number} [fdStep]                  finite-difference step in x and theta (1e-3)
+ * @property {boolean} [project]                 project the momenta onto the null constraint H = 0 before every step
  * @property {number} [axisStepFloor]           floor of min(theta, pi - theta) in the step rule (default 1e-3 with
  *                                              axis 'reflect', 0 = FOORT with axis 'foort')
  *
@@ -133,6 +134,13 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
 
   let term = TERM.timeout, steps = 0;
   for (;;) {
+    if (o.project) {
+      // constraint projection (M6): rescale the spatial momenta onto H = 0 before the step, with
+      // 2H = p_mu dx^mu/dlambda = [p_t dt + p_phi dphi] + [p_x dx + p_theta dtheta] = B + A (A >= 0)
+      rhs(y, k1);
+      const B = pt * k1[3] + pphi * k1[2], A = y[4] * k1[0] + y[5] * k1[1];
+      if (A > 0 && B < 0) { const sc = Math.sqrt(-B / A); y[4] *= sc; y[5] *= sc; }
+    }
     rhs(y, k1);
     // FOORT Integrators::GetAdaptiveStep on the contravariant velocities (dx, dtheta, dphi)/dlambda;
     // with axis reflection the axis distance is floored, else a ray aimed at the axis never crosses it
@@ -205,7 +213,7 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
 export function prepareImage(metric, opts) {
   const o = {
     mesh: 'centers', radial: 'logShifted', eps: 0.03, hmin: 1e-12, axis: 'reflect', thetaSingEps: null,
-    singularity: null, crossing: 'interpolate', threshold: 0.001, ncross: 3, fdStep: 1e-3, ...opts,
+    singularity: null, crossing: 'interpolate', threshold: 0.001, ncross: 3, fdStep: 1e-3, project: false, ...opts,
   };
   if (o.axisStepFloor === undefined) o.axisStepFloor = o.axis === 'reflect' ? 1e-3 : 0;
   const r0 = o.radial === 'log' || metric.horizon.kind !== 'sphere' ? 0 : metric.horizon.r;

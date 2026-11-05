@@ -136,3 +136,26 @@ non-trivial implementation choice.
 - 2026-11-04 — **Equator crossings on the GPU are detected by the hemisphere flip** of the pole-distance state, not by a sign change of the equator distance. In float32, δ = π − δ₁ can round to exactly π/2 after the flip, and the sign test then missed the crossing (an isolated dark pixel in the disc images). The interpolation fraction is |z₀| / (|z₀| + |z|).
 - 2026-11-04 — **Level 1 emission criterion:** FOORT prints intensities with 6 decimals, so the plan's "median relative difference ≤ 1e-6" cannot be tested on its output. The report gives the median relative difference (4e-5 in parity mode) and the fraction within FOORT's rounding.
 - 2026-11-04 — **CHECKPOINT M5 accepted; merged to `main` and pushed** (user: "Accept, merge and push"). Left open for later: a 4th crossing slot, instrumenting FOORT for the Manko–Novikov strong-field difference, and the α3 slider range [−1, 1].
+- 2026-11-05 — **M6 horizonless tables:** x = log r (r0 = 0) from the metric's inner cut to r_max. The background over which the residuals are stored is bounded at small r for horizonless metrics:
+  - B0 = −(1 + 2M(r + 2M)/(r² + M²)) and B2 = B4 = 1/(r² + M²); these agree with the horizon background up to O(M²/r²) at large r;
+  - with the 1/r² forms, the residual inside the fuzzball would be ~30× larger than G itself (g^tt ~ −L²/r² with L² = 73 ≪ 4M² = 2304);
+  - the shader selects the form by r0 > 0.
+- 2026-11-05 — **Bake validity from g^uu** (`pointValidityInverse`): the signature and CTC tests on the inverse metric are equivalent to those on g_dd. This saves one metric evaluation per node: the ST3Cr bake goes from 0.7–0.85 s to 0.3–0.4 s in Node (0.7 s in the browser worker, still over the 0.5 s budget; ST3Cr's Simpson integral dominates, left for M9).
+- 2026-11-05 — **ST3Cr terminations scale with the structure:** inner cut and singularity distance are both 0.005 × min(l/2, R) (8e-4 at λ = 0.005, close to FOORT's 1e-3). FOORT's absolute 0.01 / 0.001 would swallow the whole structure for λ ≲ 1e-3 (R = 0.0094 at λ = 1e-4).
+  - The singularity distance is Euclidean in the base R³ (as the CPU reference's 'euclid' mode). FOORT measures it in coordinate space (r, θ).
+  - The λ = 0 black hole stops at r_cut = 1e-3 (4e-5 M_ADM). Rays below it are deep in the AdS₂ throat and never return.
+  - Views can override both (`rInner`, `singEps`), for FOORT comparisons.
+- 2026-11-05 — **Camera lengths in the UI are in units of M_ADM** (plan gotcha 2): 1 for the BH metrics, 24 for ST3Cr. Test_FBdetail's r = 250, screen 150 appear as 10.417 M and 6.25 M.
+- 2026-11-05 — **Circular-orbit bands** are reported for horizonless metrics, alongside FOORT's ISCO bisection, which is kept for parity (plan Section 3.9).
+  - ST3Cr at λ = 0.005 has two stable bands: r < 0.31 inside the cap, and r > 18.5.
+  - FOORT's bisection between 0.05 and 1000 finds 18.558; inside it the fluid plunges with the ISCO E and L, the inner stable band included.
+- 2026-11-05 — **Fuzzball max steps 10000** (FOORT's Test_FBdetail value, the default when the metric changes to ST3Cr; BH mode keeps 5000).
+  - At 128², λ = 0.005: 7% / 3% of rays time out at 5000 / 20000 steps.
+  - 20000 at 512² takes several minutes for small λ.
+- 2026-11-05 — **Trace tiles start with a 32² probe** and are re-cut within a level when a tile takes more than 2× the 30 ms target. The M3 tiling started with 256² rays per tile: a 128² fuzzball tile at 10⁴ max steps then ran for seconds, the OS GPU watchdog reset the device, and the page crashed (λ = 1e-3, 512²).
+- 2026-11-05 — **Constraint projection onto H = 0 before every step, on by default for horizonless metrics** (view option `project`, uniform uAux.w; also in the CPU reference). The plan asked for it only if drift matters (Section 3.5), and it does.
+  - Rays that dive into the throat lose the null constraint at ε = 0.03: relative |H| at the end has a p99 of 1.0 on the GPU and on the CPU (λ = 1e-4).
+  - Their momenta on exit give blueshifts g ~ 10 at r ~ 1.5. One such pixel outshines the rest of the image (I = 275 vs a total of 12); FOORT shows the same (one pixel holds 96% of its λ = 0.005 image).
+  - The projection rescales (p_x, p_δ) by sqrt(−B/A), from 2H = p_μ ẋ^μ = B + A at the start of the step: one extra metric evaluation, the RK loop gets a fifth iteration.
+  - GPU |H| after it: median 1.5e-7, p99 4e-5.
+  - BH views keep the M3–M5 integrator unchanged.

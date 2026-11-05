@@ -20,12 +20,17 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  * @property {number} [hmin]                       SmallestPossibleStepsize (1e-12)
  * @property {number} [maxSteps]                   (5000)
  * @property {number} [epsHorizon]                 terminate at r < r_+ (1 + epsHorizon) (0.01)
+ * @property {number} [rInner]                     horizonless metrics: inner cut (default: the metric's terminationRadius())
+ * @property {number} [singEps]                    Euclidean distance to the metric's singularities at which rays stop
+ *                                                 (default: the metric's singularityEpsilon(); 0 = off)
  * @property {number} [rBoundary]                  escape radius (default 1.01 r_cam)
  * @property {'logShifted'|'log'} [radial]         x = log(r - r_+) (app) or log r (FOORT parity)
  * @property {'interpolate'|'foort'} [crossing]
  * @property {'centers'|'foort'} [mesh]            pixel centres (i + 0.5)/N, or FOORT SimpleSquareMesh i/(N - 1)
  * @property {number} [threshold]                  FOORT crossing threshold (0.001)
  * @property {boolean} [storeH]                    record |H| instead of the third crossing
+ * @property {boolean} [project]                   constraint projection onto H = 0 before every step
+ *                                                 (default: on for horizonless metrics, whose throat rays lose the constraint)
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
  * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
@@ -58,9 +63,28 @@ export function tracerFor(v) {
  * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m @param {Required<ViewParams>} v
  */
 export function viewTerminationRadius(m, v) {
-  if (m.horizon.kind !== 'sphere') return 0;
+  if (m.horizon.kind !== 'sphere') return v.rInner ?? m.terminationRadius?.() ?? 0;
   const r = m.horizon.r * (1 + v.epsHorizon);
   return m.terminationRadius ? Math.max(m.terminationRadius(), r) : r;
+}
+
+/** Constraint projection of a view. @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m @param {Required<ViewParams>} v */
+export const viewProjects = (m, v) => v.project ?? m.horizon.kind !== 'sphere';
+
+/**
+ * Singularity termination of a view: Euclidean distance in the base R^3 to point singularities on the axis
+ * (at z = +-zc) and to a ring in the equatorial plane (radius R); eps = 0 switches it off.
+ * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m @param {Required<ViewParams>} v
+ */
+export function viewSingularities(m, v) {
+  const sings = m.singularities();
+  const eps = v.singEps ?? m.singularityEpsilon?.() ?? 0;
+  const pt = sings.find((x) => x.kind === 'point'), ring = sings.find((x) => x.kind === 'ring');
+  for (const x of sings) {
+    if (x.kind === 'point' && !(Math.abs(Math.sin(x.theta)) < 1e-12 && Math.abs(x.r - (pt?.r ?? 0)) < 1e-12)) throw new Error('singularities: point singularities must sit on the axis at z = +-zc');
+    if (x.kind === 'ring' && !(Math.abs(x.theta - Math.PI / 2) < 1e-12 && x.r === ring?.r)) throw new Error('singularities: one equatorial ring only');
+  }
+  return { eps: sings.length ? eps : 0, zc: pt?.r ?? -1, R: ring?.r ?? -1, list: sings };
 }
 
 /**
@@ -115,7 +139,7 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     uCam: ['4f', [r, Math.min(theta, Math.PI - theta), phi, Math.log(r - r0)]],
     uScreen: ['4f', [v.camera.cx ?? 0, v.camera.cy ?? 0, sx, sx]],
     uStep: ['4f', [v.eps, v.hmin, rTerm, v.rBoundary]],
-    uAux: ['4f', [v.threshold, v.axisStepFloor, theta <= Math.PI / 2 ? 1 : -1, 0]],
+    uAux: ['4f', [v.threshold, v.axisStepFloor, theta <= Math.PI / 2 ? 1 : -1, viewProjects(metric, v) ? 1 : 0]],
     uOpt: ['4i', [v.maxSteps, v.crossing === 'foort' ? 1 : 0, v.mesh === 'foort' ? 1 : 0, v.storeH ? 1 : 0]],
   };
   /** @type {string|null} */
@@ -129,6 +153,9 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     uniforms.uTab = ['4f', [g.xMin, g.dx, g.thMax, g.dth]];
     uniforms.uTabN = ['4i', [g.nx, g.nth, g.symmetric ? 1 : 0, 0]];
     uniforms.uMetric = ['4f', [r0, g.M, 0, 0]];
+    const sg = viewSingularities(metric, v);
+    // a negative zc / R disables that test in the shader (no such singularity)
+    uniforms.uSing = ['4f', [sg.zc, sg.R, sg.eps, sg.eps > 0 ? 1 : 0]];
     tableKey = ts.key;
   }
   if (!fluid) throw new Error('gpuTraceSetup: the fluid table is required');
@@ -150,8 +177,8 @@ export function cpuTraceOptions(viewIn) {
     options: {
       N: v.N, mesh: v.mesh, camera: v.camera, radial: v.radial, eps: v.eps, hmin: v.hmin, maxSteps: v.maxSteps,
       rTerm: viewTerminationRadius(metric, v), rBoundary: v.rBoundary, axis: /** @type {'reflect'} */ ('reflect'),
-      thetaSingEps: null, singularity: null, crossing: v.crossing, threshold: v.threshold, ncross: 3,
-      axisStepFloor: v.axisStepFloor,
+      thetaSingEps: null, singularity: viewSingularities(metric, v).eps > 0 ? { mode: /** @type {'euclid'} */ ('euclid'), eps: viewSingularities(metric, v).eps } : null, crossing: v.crossing, threshold: v.threshold, ncross: 3,
+      axisStepFloor: v.axisStepFloor, project: viewProjects(metric, v),
     },
   };
 }

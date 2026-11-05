@@ -1,0 +1,4 @@
+GPU: ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)
+st3cr_l0.005_grid1024x256: four-colour 96.04% (162 px, of which 72 change with the CPU step; converged pixels 97.763%), escape dir median/p99 3.4e-6/1.6e+0 rad, crossing1 r 1.1e-6/7.0e-5, g 6.5e-7/1.1e-4, emission L1 9.2e-4 (converged 4.2e-4); GPU 281 ms, CPU 391 s
+st3cr_l0.05_grid1024x256: four-colour 98.88% (46 px, of which 27 change with the CPU step; converged pixels 99.533%), escape dir median/p99 3.6e-6/5.4e-1 rad, crossing1 r 1.1e-6/2.6e-5, g 5.7e-7/9.8e-5, emission L1 1.7e-2 (converged 1.7e-2); GPU 178 ms, CPU 198 s
+st3cr_l1e-4_grid1024x256: four-colour 98.58% (58 px, of which 19 change with the CPU step; converged pixels 99.043%), escape dir median/p99 2.2e-6/1.9e-1 rad, crossing1 r 9.9e-7/7.3e-5, g 1.2e-6/1.6e-4, emission L1 2.0e-4 (converged 2.0e-4); GPU 313 ms, CPU 852 s

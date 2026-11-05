@@ -1,0 +1,40 @@
+emission_st3cr_l0.15 done: 512², 15480 ms
+fourColor_st3cr_l0.15 done: 512², 17420 ms
+emission_st3cr_l0.05 done: 512², 34552 ms
+fourColor_st3cr_l0.05 done: 512², 23994 ms
+emission_st3cr_l0.01 done: 512², 72352 ms
+fourColor_st3cr_l0.01 done: 512², 97628 ms
+emission_st3cr_l0.005 done: 512², 95396 ms
+fourColor_st3cr_l0.005 done: 512², 125654 ms
+emission_st3cr_l1e-3 done: 512², 136685 ms
+fourColor_st3cr_l1e-3 done: 512², 87921 ms
+emission_st3cr_l1e-4 done: 512², 77878 ms
+fourColor_st3cr_l1e-4 done: 512², 73277 ms
+emission_st3cr_l0_BH done: 512², 26157 ms
+fourColor_st3cr_l0_BH done: 512², 14431 ms
+term_st3cr_l0.005 done: 512², 98854 ms
+steps_st3cr_l0.005 done: 512², 65577 ms
+g1_st3cr_l0.005 done: 512², 106978 ms
+emission_st3cr_l0.005_log done: 512², 94936 ms
+emission_st3cr_l0.005_faceon done: 512², 100756 ms
+emission_st3cr_l0.005_distant done: 512², 35976 ms
+fig1_fourColor_0.19 done: 512², 18106 ms
+fig1_fourColor_0.05 done: 512², 36124 ms
+fig1_fourColor_0.01 done: 512², 116629 ms
+fig1_fourColor_0.001 done: 512², 150895 ms
+node:internal/modules/run_main:111
+    triggerUncaughtException(
+    ^
+
+page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "http://127.0.0.1:8765/index.html?N=512&metric=st3cr&r=10.4167&inc=90&screen=4.6&maxSteps=10000&view=fourColor&bh0=1", waiting until "load"[22m
+
+    at C:\Users\u0073301\Dropbox\Github.io\drmayerson.github.io\foort-gpu\dev\scripts\m3Screens.mjs:68:18 {
+  log: [
+    '  - navigating to "http://127.0.0.1:8765/index.html?N=512&metric=st3cr&r=10.4167&inc=90&screen=4.6&maxSteps=10000&view=fourColor&bh0=1", waiting until "load"'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v26.13.0
