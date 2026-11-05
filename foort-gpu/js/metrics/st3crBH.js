@@ -7,6 +7,9 @@
 import { sampledValidity } from './common.js';
 import { st3crMass } from './st3cr.js';
 
+/** Inner cut of the lambda = 0 black hole (base-space units; 4e-5 M_ADM, deep in the AdS2 throat). */
+export const ST3CRBH_RCUT = 1e-3;
+
 /**
  * @param {{P:number, q0:number}} params
  * @returns {import('./common.js').StationaryAxisymmetricMetric & {Q:(r:number) => number, criticalImpactParameter:() => {b:number, r:number}}}
@@ -40,6 +43,8 @@ export function createST3CrBH({ P, q0 }) {
       return { gtt: -sQ, grr: 1 / sQ, gthth: 1 / (sQ * r * r), gphiphi: 1 / (sQ * r * r * s * s), gtphi: 0 };
     },
     singularities: () => [],
+    /** r_cut: the horizon is at r = 0 (x = log r -> -inf); a ray below r_cut never returns. */
+    terminationRadius: () => ST3CRBH_RCUT,
     /**
      * Critical impact parameter b_c = min_r r sqrt(Q(r)) (from b^2 = g_phiphi / (-g_tt) on the equator),
      * found by golden-section search on log r.

@@ -18,7 +18,8 @@
  * @property {(r:number, th:number) => Circular4} g_dd
  * @property {((r:number, th:number) => Circular4)=} g_uu   closed form where available
  * @property {() => Singularity[]} singularities
- * @property {(() => number)=} terminationRadius    horizon metrics: rays stop at r < terminationRadius()
+ * @property {(() => number)=} terminationRadius    rays stop at r < terminationRadius() (horizon metrics: outside r_+; horizonless: inner cut)
+ * @property {(() => number)=} singularityEpsilon   Euclidean base-space distance at which rays stop near singularities()
  *                                                  (default r_h (1 + EPS_HORIZON))
  * @property {(opts?:ValidateOptions) => {ok:boolean, messages:string[]}} validate
  *
@@ -91,6 +92,19 @@ export function singularityDistance(sings, r, th) {
     }
   }
   return d;
+}
+
+/**
+ * The same test as pointValidity on the inverse metric g^uu (one metric evaluation where only g^uu is needed):
+ * g^rr, g^thth > 0, det of the (t, phi) block < 0 (its sign is that of the g_dd block), and
+ * g_phiphi = g^tt / det > 0, i.e. g^tt < 0.
+ * @param {Circular4} u
+ */
+export function pointValidityInverse(u) {
+  if (![u.gtt, u.gtphi, u.gphiphi, u.grr, u.gthth].every(Number.isFinite)) return 'nonfinite';
+  if (!(u.grr > 0 && u.gthth > 0 && u.gtt * u.gphiphi - u.gtphi * u.gtphi < 0)) return 'signature';
+  if (!(u.gtt < 0)) return 'ctc';
+  return '';
 }
 
 /**

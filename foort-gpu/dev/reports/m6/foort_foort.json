@@ -1,0 +1,34 @@
+{
+ "case": "st3cr_l0.005",
+ "crossing": "foort",
+ "project": false,
+ "N": 128,
+ "fourColorAgreement": 0.92791748046875,
+ "fourColorMismatches": 1181,
+ "emission": {
+  "relL1": 1.0016703279580488,
+  "relL1SameQuadrant": 0.410286969956072,
+  "hotPixelsFOORT": 2,
+  "hotPixelsGPU": 0,
+  "relL1WithoutHot": 1.1646300949771426,
+  "relL1AtMost3PassesSameQuadrant": 0.0007185859874441782,
+  "pixelsAtMost3PassesSameQuadrant": 13390,
+  "relDiff": {
+   "median": 0.0011544838210959716,
+   "p90": 0.7131855945481277,
+   "p99": 0.9964994791872105
+  }
+ },
+ "raysWithMoreThan3Passes": 2834,
+ "gpu": {
+  "N": 128,
+  "levels": [
+   1
+  ],
+  "wallMs": 5838.899999856949,
+  "gpuMs": 4238.309879999999,
+  "tiles": 64,
+  "steps": 19129022
+ },
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

@@ -1,0 +1,3 @@
+lambda 0.05: rays with > 3 crossings 11.6%; intensity kept with 1/2/3/4/6/8 crossings: 17.9% / 38.1% / 47.8% / 55.8% / 68.0% / 77.8% (201 s)
+lambda 0.005: rays with > 3 crossings 17.4%; intensity kept with 1/2/3/4/6/8 crossings: 19.3% / 40.5% / 45.2% / 48.1% / 52.2% / 54.6% (312 s)
+lambda 0.0001: rays with > 3 crossings 24.5%; intensity kept with 1/2/3/4/6/8 crossings: 42.1% / 87.4% / 93.0% / 94.3% / 95.3% / 96.7% (647 s)

@@ -1,0 +1,115 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "camera": {
+  "r": 250,
+  "theta": 1.5,
+  "screen": 150
+ },
+ "rows": [
+  {
+   "lambda": 0.05,
+   "maxSteps": 10000,
+   "N": 512,
+   "gpuMs": 4957.5679300000065,
+   "wallMs": 10337,
+   "steps": {
+    "mean": 551.4644622802734,
+    "median": 396,
+    "p90": 977,
+    "p99": 2173,
+    "max": 10001
+   },
+   "term": {
+    "innerCut": 0,
+    "escaped": 0.99754,
+    "timeout": 0.0001,
+    "nan": 0,
+    "singularity": 0.00237
+   }
+  },
+  {
+   "lambda": 0.005,
+   "maxSteps": 10000,
+   "N": 512,
+   "gpuMs": 10962.59776000001,
+   "wallMs": 18219,
+   "steps": {
+    "mean": 1188.2292823791504,
+    "median": 396,
+    "p90": 2685,
+    "p99": 10001,
+    "max": 10001
+   },
+   "term": {
+    "innerCut": 0.00006,
+    "escaped": 0.95959,
+    "timeout": 0.03597,
+    "nan": 0,
+    "singularity": 0.00437
+   }
+  },
+  {
+   "lambda": 0.001,
+   "maxSteps": 10000,
+   "N": 512,
+   "gpuMs": 12217.057119999998,
+   "wallMs": 18216,
+   "steps": {
+    "mean": 1566.188621520996,
+    "median": 396,
+    "p90": 6241,
+    "p99": 10001,
+    "max": 10001
+   },
+   "term": {
+    "innerCut": 0.00047,
+    "escaped": 0.90197,
+    "timeout": 0.07607,
+    "nan": 0,
+    "singularity": 0.0215
+   }
+  },
+  {
+   "lambda": 0.0001,
+   "maxSteps": 10000,
+   "N": 512,
+   "gpuMs": 17770.425680000022,
+   "wallMs": 22457,
+   "steps": {
+    "mean": 2468.4734954833984,
+    "median": 396,
+    "p90": 10001,
+    "p99": 10001,
+    "max": 10001
+   },
+   "term": {
+    "innerCut": 0.00824,
+    "escaped": 0.78227,
+    "timeout": 0.18243,
+    "nan": 0,
+    "singularity": 0.02707
+   }
+  },
+  {
+   "lambda": 0,
+   "maxSteps": 10000,
+   "N": 512,
+   "gpuMs": 3015.4417200000016,
+   "wallMs": 5479,
+   "steps": {
+    "mean": 447.0309524536133,
+    "median": 396,
+    "p90": 682,
+    "p99": 1040,
+    "max": 2775
+   },
+   "term": {
+    "innerCut": 0.25334,
+    "escaped": 0.74666,
+    "timeout": 0,
+    "nan": 0,
+    "singularity": 0
+   }
+  }
+ ]
+}

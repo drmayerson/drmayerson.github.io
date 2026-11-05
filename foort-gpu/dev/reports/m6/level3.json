@@ -1,0 +1,62 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "rows": [
+  {
+   "camera": {
+    "name": "Test_FBdetail",
+    "r": 250,
+    "theta": 1.5,
+    "screen": 150
+   },
+   "N": 512,
+   "bc": 49.7145944561083,
+   "rPhotonSphere": 7.129320114443743,
+   "rhoShadow": 42.60462615983856,
+   "capturedGPU": 66412,
+   "capturedAnalytic": 66412,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1,
+   "notCapturedOrEscaped": 0,
+   "gpuMs": 10099.491359999989
+  },
+  {
+   "camera": {
+    "name": "distant_1000M",
+    "r": 24000,
+    "theta": 1,
+    "screen": 150
+   },
+   "N": 512,
+   "bc": 49.7145944561083,
+   "rPhotonSphere": 7.129320114443743,
+   "rhoShadow": 49.61552327973618,
+   "capturedGPU": 90104,
+   "capturedAnalytic": 90104,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1,
+   "notCapturedOrEscaped": 0,
+   "gpuMs": 16448.509439999994
+  },
+  {
+   "camera": {
+    "name": "faceon_100M",
+    "r": 2400,
+    "theta": 0.01,
+    "screen": 150
+   },
+   "N": 512,
+   "bc": 49.7145944561083,
+   "rPhotonSphere": 7.129320114443743,
+   "rhoShadow": 48.75492444654845,
+   "capturedGPU": 87000,
+   "capturedAnalytic": 87000,
+   "mismatches": 0,
+   "maxMismatchDistancePx": 0,
+   "radiusRatio": 1,
+   "notCapturedOrEscaped": 0,
+   "gpuMs": 23389.48659999998
+  }
+ ]
+}

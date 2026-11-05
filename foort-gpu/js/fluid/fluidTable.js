@@ -16,6 +16,8 @@ export const FLUID_NODES = 2048;
  * @property {number|null} isco
  * @property {{xi:number, betaR:number, betaPhi:number}} params
  * @property {number} ms
+ * @property {number} M             M_ADM of the metric
+ * @property {{from:number, to:number, kind:'stable'|'unstable'|'none'}[]|null} bands  circular-orbit bands (horizonless metrics)
  */
 
 /**
@@ -35,7 +37,9 @@ export function bakeFluid(m, fluidParams, range) {
     const { up } = f.velocity(r0 + Math.exp(xMin + i * dx));
     data[4 * i] = 1 / up[0]; data[4 * i + 1] = up[1] / up[0]; data[4 * i + 2] = up[3] / up[0];
   }
-  return { data, grid: { xMin, dx, n, r0 }, isco: f.isco, params: f.params, ms: performance.now() - t0 };
+  // FOORT's bisection assumes one unstable -> stable transition; horizonless metrics can have several (reported)
+  const bands = r0 === 0 ? f.circularBands(range.rTerm, Math.min(range.rMax, 1000 * m.massADM), 200) : null;
+  return { data, grid: { xMin, dx, n, r0 }, isco: f.isco, params: f.params, ms: performance.now() - t0, M: m.massADM, bands };
 }
 
 /** Linear lookup at radius r and the redshift for photon momenta (p_t, p_r, p_phi), as the shader. @param {FluidTable} T */

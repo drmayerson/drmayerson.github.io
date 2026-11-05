@@ -11,19 +11,30 @@ uniform highp sampler2D uTables;        // texel (i, 5 j + k) = G_k at node (x_i
                                         // of a node are adjacent rows, so a lookup's 20 texels are close in memory
 uniform vec4 uTab;                      // xMin, dx, thMax (pi/2: symmetric half table, or pi), dtheta
 uniform ivec4 uTabN;                    // nx, ntheta, symmetric (1/0), 0
-uniform vec4 uMetric;                   // r0, background mass M, 0, 0
+uniform vec4 uMetric;                   // r0 (0: horizonless, x = log r, bounded background), background mass M, 0, 0
+uniform vec4 uSing;                     // singularities (ST3Cr): axis points at z = +-zc, equatorial ring radius R,
+                                        // Euclidean stopping distance eps, on (1/0); zc or R < 0: none
 
 float radiusOf(float x) { return uMetric.x + exp(x); }
 
-// Analytic background B_k(r) of the tables and its x-derivatives (js/bake/bake.js backgroundG)
+// Analytic background B_k(r) of the tables and its x-derivatives (js/bake/bake.js backgroundG):
+// 1/r^2 forms for horizon metrics (r0 > 0), forms bounded at small r for horizonless ones (r0 = 0)
 void backgroundG(float x, out float B[5], out float dB[5]) {
   float r0 = uMetric.x, M = uMetric.y;
   float e = exp(x), r = r0 + e, ir = 1.0 / r, ir2 = ir * ir;
   float D2 = e * e + M * M, D = (r + 2.0 * M) * D2;
   float dD = D2 + (r + 2.0 * M) * 2.0 * e;
-  B[0] = -(1.0 + 2.0 * M * ir + 4.0 * M * M * ir2); B[1] = 0.0; B[2] = ir2; B[3] = r / D; B[4] = ir2;
-  dB[0] = e * (2.0 * M * ir2 + 8.0 * M * M * ir2 * ir); dB[1] = 0.0; dB[2] = -2.0 * e * ir2 * ir;
-  dB[3] = e * (D - r * dD) / (D * D); dB[4] = dB[2];
+  B[1] = 0.0; B[3] = r / D;
+  dB[1] = 0.0; dB[3] = e * (D - r * dD) / (D * D);
+  if (r0 > 0.0) {
+    B[0] = -(1.0 + 2.0 * M * ir + 4.0 * M * M * ir2); B[2] = ir2; B[4] = ir2;
+    dB[0] = e * (2.0 * M * ir2 + 8.0 * M * M * ir2 * ir); dB[2] = -2.0 * e * ir2 * ir;
+  } else {
+    float S = r * r + M * M, iS = 1.0 / S, N = r + 2.0 * M;
+    B[0] = -(1.0 + 2.0 * M * N * iS); B[2] = iS; B[4] = iS;
+    dB[0] = -2.0 * e * M * (S - 2.0 * r * N) * iS * iS; dB[2] = -2.0 * e * r * iS * iS;
+  }
+  dB[4] = dB[2];
 }
 
 // G0..G4 and their x- and delta-derivatives at (x, delta) in hemisphere hemi
@@ -87,4 +98,13 @@ float hamiltonianRel(vec4 pos, vec2 mom, float hemi, float pt, float pphi) {
   return abs(t0 + t1 + t2 + t3 + t4) / (abs(t0) + abs(t1) + abs(t2) + abs(t3) + abs(t4));
 }
 
-bool nearSingularity(float r, float delta, float hemi) { return false; }
+// Euclidean distance in the base R^3 (rho = r sin theta, z = r cos theta) to the nearer axis point (z = zc, delta
+// is the distance to the nearer pole) and to the equatorial ring (rho = R, z = 0); as js/metrics/common.js singularityDistance
+bool nearSingularity(float r, float delta, float hemi) {
+  if (uSing.w == 0.0) return false;
+  float rho = r * sin(delta), z = r * cos(delta);
+  float d = 1e30;
+  if (uSing.x >= 0.0) d = length(vec2(rho, z - uSing.x));
+  if (uSing.y >= 0.0) d = min(d, length(vec2(rho - uSing.y, z)));
+  return d <= uSing.z;
+}

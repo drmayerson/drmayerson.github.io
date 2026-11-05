@@ -20,7 +20,7 @@ uniform mat4 uG;        // g_dd at the camera
 uniform vec4 uCam;      // r_cam, delta_cam = min(theta, pi - theta), phi_cam, x_cam
 uniform vec4 uScreen;   // centre alpha, centre beta, size alpha, size beta
 uniform vec4 uStep;     // eps, hmin, rTerm, rBoundary
-uniform vec4 uAux;      // FOORT crossing threshold (fraction of pi/2), axis step floor, camera hemisphere (+-1), 0
+uniform vec4 uAux;      // FOORT crossing threshold (fraction of pi/2), axis step floor, camera hemisphere (+-1), constraint projection (1/0)
 uniform ivec4 uImg;     // Nx, Ny of the image being traced (a progressive level is a smaller image), 0, 0
 uniform ivec4 uOpt;     // maxSteps, crossing mode (0 interpolate, 1 FOORT), mesh (0 centres, 1 FOORT), store |H|
 uniform highp sampler2D uFluid;   // fluid four-velocity (1/u^t, u^r/u^t, Omega, 0) at nodes x_i = log(r - r0) (row 0)
@@ -106,9 +106,20 @@ void main() {
     vec4 sp = pos, accP = vec4(0.0);
     vec2 sm = mom, accM = vec2(0.0);
     float h = 0.0, xStageMin = 1e30;
-    for (int st = 0; st < 4; st++) {
+    // with constraint projection (uAux.w = 1) the loop starts with one extra evaluation at the current point:
+    // 2H = p_mu dx^mu/dlambda = B + A, B = p_t dt + p_phi dphi, A = p_x dx + p_delta ddelta >= 0;
+    // the spatial momenta are rescaled by sqrt(-B/A) onto H = 0 (as js/ref/cpuTracer.js, option project)
+    int off = uAux.w > 0.5 ? 1 : 0;
+    for (int it = 0; it < 5; it++) {
+      if (it == 4 + off) break;
+      int st = it - off;
       vec4 kp; vec2 km;
       geodesicRHS(sp, sm, hemi, pt, pphi, kp, km);
+      if (st < 0) {
+        float B = pt * kp.w + pphi * kp.z, A = mom.x * kp.x + mom.y * kp.y;
+        if (A > 0.0 && B < 0.0) { mom *= sqrt(-B / A); sm = mom; }
+        continue;
+      }
       if (st == 0) h = adaptiveStep(pos, kp);
       float wgt = (st == 0 || st == 3) ? 1.0 : 2.0;
       accP += wgt * kp; accM += wgt * km;

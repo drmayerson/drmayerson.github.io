@@ -18,6 +18,8 @@ export const EMISSION_PRESETS = {
   KerrExample: { emission: { mu: 2.02, gamma: -2, sigma: 0.5 }, metric: 'kerr', params: { a: 0.94 }, inc: 17.0, r: 1000, screen: 15 },
   JohannsenExample: { emission: { mu: 2.02, gamma: -2, sigma: 0.5 }, metric: 'johannsen', params: { a: 0.94, alpha13: 5.5 }, inc: 17.0, r: 1000, screen: 15 },
   Test_MNrun: { emission: { mu: 0.658826, gamma: -1.5, sigma: 0.5 }, metric: 'mankoNovikov', params: { a: 0.94, alpha3: 1 }, inc: 30.0, r: 1000, screen: 15 },
+  // ST3Cr lambda = 0.005: camera r = 250, theta = 1.5 rad, screen 150 x 150 in base-space units, here in units of M_ADM = 24
+  Test_FBdetail: { emission: { mu: 0, gamma: -1.5, sigma: 2 }, metric: 'st3cr', params: { lambda: 0.005, bh0: false }, inc: 1.5 * 180 / Math.PI, r: 250 / 24, screen: 150 / 24, maxSteps: 10000 },
 };
 
 /**

@@ -643,3 +643,142 @@ Side by side with FOORT: `dev/reports/m5/gpu_<case>_interpolate.png` and `gpu_ke
 4. **Deploy:** merging to `main` needs your approval.
 
 **Decision (2026-11-04):** M5 accepted by the user ("Accept, merge and push"); merged into `main` and pushed. M6 not started; awaiting the go-ahead.
+
+## CHECKPOINT M6 — fuzzball mode (2026-11-05)
+
+### Done
+
+- **ST3Cr and the λ = 0 black hole through the bake pipeline**, in x = log r (`js/bake/bake.js`):
+  - The tables start at the metric's inner cut and hold residuals over a background that stays bounded at small r.
+  - The bake checks validity from g^uu, at one metric evaluation per node.
+  - Bake time at 512 × 128: 0.3–0.4 s in Node and about 0.7 s in the browser worker, over the plan's 0.5 s budget (ST3Cr's Simpson integral dominates).
+- **Terminations:**
+  - an inner cut, and a singularity stop at a Euclidean base-space distance from the D6 centres and the D0 ring (shader uniform `uSing`); both are 0.005 × min(l/2, R), so they scale with λ;
+  - the λ = 0 black hole stops at r_cut = 1e-3;
+  - views can override both (`rInner`, `singEps`), which the FOORT comparisons use.
+- **Constraint projection onto H = 0** before every step, on by default for horizonless metrics, in the GPU tracer and the CPU reference (DECISIONS 2026-11-05).
+  - Without it, rays that enter the throat end with relative |H| ~ 1 (p99, in both codes). Their exit momenta give blueshifts g ~ 10: single pixels that outshine the whole image.
+  - FOORT shows the same: one pixel holds 96% of its λ = 0.005 image.
+  - With it, GPU |H| at the end of the ray has a median of 1.5e-7 and a p99 of 4e-5.
+- **Fluid:** FOORT's ISCO bisection is kept (r = 18.558 = 0.773 M at λ = 0.005), and the viewer now also reports the circular-orbit bands. At λ = 0.005 there are two stable bands, r < 0.31 inside the cap and r > 18.5, and FOORT's single-transition search finds only the outer one.
+- **Viewer:**
+  - the ST3Cr metric with a log-scale λ slider (1e-4 to 0.193) and a "λ = 0 (supersymmetric black hole)" switch;
+  - the Test_FBdetail preset;
+  - camera lengths in units of M_ADM (24 for ST3Cr);
+  - 10000 max steps by default in fuzzball mode.
+- **Tiling:** every trace starts with a 32² probe tile, and slow tiles are re-cut within a level. Before this, a 128² fuzzball tile ran for seconds, the GPU watchdog reset the device, and the page crashed.
+- **Tests:** Vitest 78 passed (new `m6.test.js`), Playwright 13 passed (new `m6.spec.js`), `tsc --checkJs` clean.
+
+### Table error near the centres and the ring (`dev/reports/m6/table_error_st3cr.json`, maps `table_error_map_*.png`)
+
+Relative interpolation error of G0…G4 against the exact metric, p99, binned by distance to the nearest singularity in units of the stopping distance ε_s (λ = 0.005; other λ alike). Each cell gives the error in values / x-derivatives / δ-derivatives:
+
+| grid | 3–10 ε_s | 10–30 ε_s | > 30 ε_s |
+|---|---|---|---|
+| 512 × 128 | 5e-2 / 8 / 6 | 2e-2 / 1.2 / 1.6 | 1.1e-6 / 1.3e-4 / 7.6e-5 |
+| 512 × 256 | 1e-1 / 3 / 10 | 2e-2 / 1.2 / 1.5 | 8.5e-7 / 1.1e-4 / 2.9e-5 |
+| 1024 × 256 | 1e-3 / 0.2 / 0.2 | 5e-4 / 0.12 / 0.1 | 7e-8 / 1.4e-5 / 2e-5 |
+
+As expected, the errors concentrate at the D6 centres and the ring. The x resolution matters more than the θ resolution.
+
+### Level 2: GPU vs CPU reference (double, exact metric, projection), 64², Test_FBdetail camera, 10000 max steps
+
+Ray scattering inside the fuzzball is chaotic, so two correct integrators separate there. Every mismatched pixel is therefore re-traced on the CPU at ε = 0.01. When the CPU's own result changes with the step, the pixel is not converged at ε = 0.03 and says nothing about the GPU. The "converged" columns leave those pixels out.
+
+| case | table | four-colour all / converged | emission L1 all / converged |
+|---|---|---|---|
+| λ = 0 BH | 512 × 128 | **100% / 100%** | 1.3e-5 |
+| λ = 1e-4 | 512 × 128 | 98.2% / 98.7% | 4.4e-5 |
+| | 1024 × 128 | 98.6% / 99.1% | 4.8e-5 |
+| | 1024 × 256 | 98.6% / 99.0% | 2.0e-4 |
+| λ = 0.005 | 512 × 128 | 94.4% / 96.3% | 1.5e-3 / 8.7e-4 |
+| | 1024 × 128 | 95.2% / 97.3% | 1.1e-3 / 5.2e-4 |
+| | 1024 × 256 | 96.0% / 97.8% | 9.2e-4 / 4.2e-4 |
+| λ = 0.005, face-on | 512 × 128 | 93.6% / 94.7% | 1.3e-2 / 1.1e-2 |
+| λ = 0.05 | 512 × 128 | 97.0% / 97.6% | 1.4e-1 |
+| | 1024 × 128 | 98.6% / 99.2% | 3.3e-2 |
+| | 1024 × 256 | 98.9% / 99.5% | 1.7e-2 |
+
+The plan's thresholds are ≥ 99% four-colour and ≤ 2% emission L1.
+
+- Escape directions, crossing radii and redshifts agree to about 1e-6 (median) wherever the outcomes agree.
+- The λ = 0.05 emission misses are rays whose 2nd or 3rd crossing differs after a chaotic bounce, at r ≈ 2–3 where g ≈ 1.3 and I ∝ g³.
+- The λ = 1e-4 emission L1 was 8.8e-2 before projection, from the throat blow-ups.
+
+**Decision gate (plan M6):** the generic tables at the default 512 × 128 fail Level 2 near the structure. At 1024 × 256 they meet both thresholds for λ = 0.05 and 1e-4 (converged pixels) and the emission threshold everywhere except the face-on view, which was run only at 512 × 128. At λ = 0.005 four-colour reaches 97.8%. What is left there looks like chaos rather than the table:
+- doubling θ moves it by only 0.5%;
+- on a third to a half of the mismatched pixels, the double-precision CPU disagrees with itself between ε = 0.03 and 0.01;
+- in M2, FOORT and the CPU agreed on 94.7% of this image.
+
+I have **not** implemented the hybrid (Q and ω in the shader) and have not changed the default grid. Both choices are the user's; see Open issues.
+
+### Level 1: GPU vs FOORT (M2 parity run, λ = 0.005, 128², FOORT mesh)
+
+`dev/reports/m6/foort_*.json/.png`. The GPU uses FOORT's terminations: inner cut 0.01, singularity distance 0.001.
+
+| GPU mode | four-colour | emission rel. diff median | emission L1, pixels with ≤ 3 crossings in both and the same class |
+|---|---|---|---|
+| FOORT crossings, no projection | 92.8% | 1.2e-3 | **7.2e-4** (13390 px) |
+| interpolated crossings, projection | 93.5% | 1.7e-2 | 9.1e-3 |
+
+- The four-colour agreement matches M2's CPU vs FOORT (94.7%): the same chaotic interior.
+- Over the whole image the emission L1 is about 1, for two reasons:
+  - FOORT has 2 hot pixels (constraint drift), one holding 96% of its total intensity;
+  - **17% of the rays cross the equator more than 3 times**, and the GPU record keeps 3 crossings (see the next section).
+
+### The 3-crossing record misses much of the fuzzball's emission (`dev/reports/m6/passes.json`)
+
+CPU reference with every crossing kept, Test_FBdetail camera and emission, 64². The table gives the share of the true image intensity kept with the first n crossings:
+
+| λ | rays with > 3 crossings | n = 1 | 2 | 3 | 4 | 6 | 8 |
+|---|---|---|---|---|---|---|---|
+| 0.05 | 11.6% | 18% | 38% | **48%** | 56% | 68% | 78% |
+| 0.005 | 17.4% | 19% | 41% | **45%** | 48% | 52% | 55% |
+| 1e-4 | 24.5% | 42% | 87% | **93%** | 94% | 95% | 97% |
+
+Rays trapped in the cap cross the disc many times, and each crossing adds a little (Johnson-SU μ = 0, σ = 2 peaks inside the cap). For λ ≳ 1e-3 the GPU emission images therefore show **about half** of the true intensity, missing it mostly in the interior. More render targets do not fix this: 8 crossings keep 55% at λ = 0.005. The black-hole metrics of M5 are not affected in the same way (at most a few photon-ring pixels).
+
+### Level 3: λ = 0 shadow vs b_c (`dev/reports/m6/level3.json`)
+
+The shadow is the disc of screen radius r_c tan ψ, with sin ψ = b_c / (r_c √Q(r_c)) and b_c = 49.7146. At 512², GPU and analytic shadows agree with **0 mismatched pixels** for three cameras: Test_FBdetail (r = 250, θ = 1.5), r = 1000 M, and face-on at 100 M.
+
+### Continuity as λ → 0 (`dev/reports/m6/continuity.json/.png`, 256², vs the λ = 0 black hole)
+
+| λ | four-colour mismatch, screen radius > 1.1 × shadow | emission L1 there | four-colour mismatch inside |
+|---|---|---|---|
+| 1e-2 | 0.87% | 2.2e-2 | 80% |
+| 1e-3 | 0.075% | 2.5e-3 | 51% |
+| 1e-4 | 0.002% | 2.5e-4 | 12% |
+
+Outside the throat the images converge linearly in λ. Inside, the fuzzball returns rays that the black hole swallows; that region shrinks as λ → 0.
+
+### Steps and timings (`dev/reports/m6/steps_N512.json`; AMD integrated GPU, 10000 max steps, projection)
+
+| λ | 512² GPU | mean / p90 steps | escaped | singularity | time out |
+|---|---|---|---|---|---|
+| 0.05 | 5.0 s | 551 / 977 | 99.8% | 0.2% | 0.01% |
+| 0.005 | 11.0 s | 1188 / 2685 | 96.0% | 0.4% | 3.6% |
+| 1e-3 | 12.2 s | 1566 / 6241 | 90.2% | 2.2% | 7.6% |
+| 1e-4 | 17.8 s | 2468 / 10001 | 78.2% | 2.7% | 18.2% |
+| 0 (BH) | 3.0 s | 447 / 682 | 74.7% | — (25.3% inner cut) | 0 |
+
+In the viewer, a 512² image therefore takes 5–20 s after a coarse 128² preview. At small λ, 10–20% of rays time out (trapped). With 20000 steps the fraction roughly halves, at about twice the time (128²: `steps_N128.json`, run before projection).
+
+### Images for the user
+
+- **λ sequences, 512²:** `dev/reports/m6/sequence_emission.png` and `sequence_fourColor.png` (λ = 0.15, 0.05, 0.01, 0.005, 1e-3, 1e-4, 0). The single views are in `dev/reports/m6/views/`.
+- **Fuzzball Shadows Fig. 1:** `dev/reports/m6/fig1_comparison.png`, four-colour with an equatorial camera at r = 250, for λ = 0.19, 0.05, 0.01, 0.001 and the black hole. The structures match the paper's (the λ = 0.19 central ellipse and arcs; the growing chaotic band; the coherent outer ring). Our quadrant colours are assigned differently.
+- **λ = 0.005 debug views:** termination, steps, g₁, log tone map, face-on and distant camera (`views/`).
+
+### Open issues / for the user
+
+1. **Visual judgement of the physics** (the checkpoint).
+2. **Decision gate:** (a) make the fuzzball table 1024 × 256 (or 1024 × 128; bake about 1.2 s, or 0.6 s, in Node) and accept the chaotic residual at λ ≈ 0.005; or (b) build the hybrid (Q, ω in the shader). I recommend (a).
+3. **Emission beyond 3 crossings (new, significant):** the record keeps about half of the fuzzball's intensity at λ ≳ 1e-3. Options:
+   - accumulate the tail Σ_{k>3} F g^p J(r) in the trace pass for the current emission parameters. Emission edits then redraw crossings 1–3 at once and retrace for the tail, and in M7 the tail would have fast light only;
+   - more crossing slots, which is not enough: 55% with 8 at λ = 0.005;
+   - leave it, and state it in the UI.
+4. **Bake time** over 0.5 s for ST3Cr (0.7 s in the browser at 512 × 128, more at 1024): optimise ST3Cr's evaluation in M9?
+5. **Merging** to `main` needs your approval.
+
+**Decision (2026-11-05):** the user judged the M6 images to look good. They chose to keep the default 512 × 128 table (the chaotic-regime differences are expected) and to keep 3 crossings with a UI note. M6 is merged into `main` and pushed. M7 is not started and awaits the go-ahead.
