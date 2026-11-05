@@ -11,7 +11,7 @@ import { decodeRecord } from '../../js/gpu/traceConfig.js';
 import { createST3CrBH } from '../../js/metrics/st3crBH.js';
 
 const args = process.argv.slice(2);
-const N = Number(args[args.indexOf('--N') + 1] || 512);
+const N = args.includes('--N') ? Number(args[args.indexOf('--N') + 1]) : 512;
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m6');
 mkdirSync(outDir, { recursive: true });
 const bh = createST3CrBH({ P: 2, q0: 50 });

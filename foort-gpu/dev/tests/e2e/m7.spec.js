@@ -90,3 +90,11 @@ test('playing advances the clock', async ({ page }) => {
   const t = Number((await page.locator('#clock').textContent())?.match(/t = ([\d.]+)/)?.[1]);
   expect(t).toBeGreaterThan(2);
 });
+
+test('M8: the inoisy field is the default and the placeholder can be selected', async ({ page }) => {
+  await expect(page.locator('#clock')).toContainText('inoisy_lg21');
+  expect(await page.evaluate(() => window.__foort.noise().meta.Nx)).toBe(128);
+  await page.selectOption('select[name=noiseField]', 'placeholder');
+  await expect(page.locator('#clock')).toContainText('placeholder');
+  expect(await page.evaluate(() => window.__foort.noise().meta.Nx)).toBe(96);
+});

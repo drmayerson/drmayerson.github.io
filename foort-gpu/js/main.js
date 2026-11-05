@@ -14,7 +14,6 @@ import { loadNoiseField } from './noise/noiseField.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
-const NOISE_FIELD = 'placeholder';
 
 const PARAM_KEYS = { kerr: ['a'], johannsen: ['a', 'alpha13'], mankoNovikov: ['a', 'alpha3'], st3cr: ['lambda'], st3crBH: [] };
 
@@ -85,10 +84,15 @@ async function main() {
     onProgress: (p) => { level = p.level; $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`; requestDraw(); },
   });
 
-  // noise field (M7): placeholder FFT field until the production inoisy fields (M8)
+  // noise field: inoisy production field (M8) or the M7 placeholder
   let noise = /** @type {import('./noise/noiseField.js').NoiseField|null} */ (null);
-  try { stage('loading the noise field…'); noise = await loadNoiseField(NOISE_FIELD); backend.uploadNoise(noise); }
-  catch (e) { console.warn('noise field not loaded:', e); }
+  /** load and upload a noise field by name (noise/<name>.json/.bin) */
+  const useNoise = async (/** @type {string} */ name) => {
+    try { const f = await loadNoiseField(name); backend.uploadNoise(f); noise = f; }
+    catch (e) { console.warn(`noise field ${name} not loaded:`, e); }
+  };
+  stage('loading the noise field…');
+  await useNoise(state.noiseField);
   /** observer time t_obs in units of M */
   let tObs = 0;
 
@@ -210,6 +214,7 @@ async function main() {
     }
     if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure'].includes(key)) { updateExposure(); legend(); }
     if (['slowLight', 'play'].includes(key)) $('clock').textContent = clockText();
+    if (key === 'noiseField') useNoise(state.noiseField).then(() => { $('clock').textContent = clockText(); requestDraw(); });
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;
     if (retrace) run(final, isParam && !final); else { history.replaceState(null, '', `?${stateToQuery(state)}`); legend(); requestDraw(); }
   });
@@ -225,7 +230,7 @@ async function main() {
     }
     requestAnimationFrame(animate);
   };
-  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (field period ${noise.meta.T_over_M} M)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
+  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${state.noiseField}, period ${noise.meta.T_over_M} M)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
   $('clock').textContent = clockText();
   requestAnimationFrame(animate);
 

@@ -11,7 +11,7 @@ import { openViewer } from './gpuRunner.mjs';
 import { decodeRecord } from '../../js/gpu/traceConfig.js';
 
 const args = process.argv.slice(2);
-const N = Number(args[args.indexOf('--N') + 1] || 256);
+const N = args.includes('--N') ? Number(args[args.indexOf('--N') + 1]) : 256;
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m7');
 mkdirSync(outDir, { recursive: true });
 const DEG = Math.PI / 180;

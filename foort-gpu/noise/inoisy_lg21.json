@@ -1,0 +1,34 @@
+{
+ "Nt": 128,
+ "Nx": 128,
+ "Nphi": 256,
+ "T_over_M": 200.0,
+ "xmin": -3.0,
+ "xmax": 5.235162599999999,
+ "x_def": "log(r/M)",
+ "periodic": {
+  "t": true,
+  "phi": true
+ },
+ "normalized": "zero mean, unit variance (per radius)",
+ "dtype": "float16",
+ "order": "C (t, x, phi)",
+ "generator": {
+  "name": "inoisy (AFD-Illinois/inoisy dab29ed), model foort_logr (tools/noise/inoisy_foort/)",
+  "physics": "Lee & Gammie 2021 (general_xy) on (t, log r, phi): correlation length lam r along a spiral at theta to the radial direction, minor axis r12 times shorter, correlation time 2 pi tau / Omega_K along the Keplerian flow, smooth cutoff inside r_ct",
+  "lam": 5.0,
+  "tau": 1.0,
+  "r12": 0.1,
+  "rct_over_M": 1.0,
+  "theta_rad": -1.22173,
+  "description": "Lee & Gammie general_xy physics on log r: lam 5, tau 1, r12 0.1, theta -70 deg, rct 1 M; r = 0.05-200 M, T = 200 M; GSL seed 3; 128 x 128 x 256 (t, log r, phi)",
+  "variance_before_normalization": {
+   "min": 2.425838386897985e-07,
+   "max": 0.00144342113564575
+  }
+ },
+ "stats": {
+  "mean": 6.958842391213693e-08,
+  "std": 1.0000000917907474
+ }
+}

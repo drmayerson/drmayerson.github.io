@@ -178,3 +178,12 @@ non-trivial implementation choice.
 - 2026-11-05 — **Time controls:** play (default on), speed in M per second (default 20), slow/fast light (default slow), σ_n, advection. t_obs is not wrapped, so the advection phases stay continuous; texture repeat makes the field periodic. Time, light, σ_n and advection changes only redraw.
 - 2026-11-05 — **Checkpoint animations are not committed:** the GIFs (about 4 MB each) are built by `dev/scripts/m7Frames.mjs` and `tools/noise/frames_to_gif.py` into the git-ignored `tools/foort_parity/build/`.
 - 2026-11-05 — **CHECKPOINT M7 accepted** (user: "Looks right"). Advection stays off by default; merged to `main` and pushed (user: "Merge and push").
+- 2026-11-05 — **M8 build environment: MSYS2 UCRT64 + Microsoft MPI** (user's choice, over WSL and a Python reimplementation). pacman installed HYPRE 2.33, HDF5 2.2 (serial), GSL 2.8 and the MS-MPI 10.1 headers into `C:\msys64`; the user installed the MS-MPI runtime. Serial HDF5 has no MPI-IO, so inoisy runs on one rank (`hdf5_utils.c` with USE_MPI=0).
+- 2026-11-05 — **inoisy model `foort_logr`** (`tools/noise/inoisy_foort/`): general_xy's physics (Lee & Gammie 2021) on (t, log r, φ), periodic in t and φ.
+  - The current inoisy disc model is Cartesian and periodic in t only. The old `disk_logr` no longer links with inoisy's `main.c` and lacks general_xy's spiral anisotropy and source normalization.
+  - The operator is general_xy's coordinate form applied in (t, log r, φ): the local correlation tensor is the specified one, and the r-dependence of the variance is removed by per-radius normalization in the converter.
+- 2026-11-05 — **Production field `inoisy_lg21`:** 128 × 128 × 256, T = 200 M, r = 0.05–190 M, general_xy's parameters (lam 5, r12 0.1, θ −70°, τ 1, r_ct 1 M).
+  - 128 radial cells instead of 64: with 64 over 0.05–1000 M the spiral arms of Lee & Gammie Fig. 3 came out faint.
+  - 128 time slices: doubling them hardly changed the inner-disc decorrelation, which is set by the Keplerian advection.
+  - 8.4 MB at float16; it is the viewer's default field, and the M7 placeholder stays selectable.
+- 2026-11-05 — **HDF5 read via `h5dump`** in the converter, instead of installing h5py into the system Python.
