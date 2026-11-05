@@ -35,7 +35,7 @@ A new trace runs whenever the spacetime, camera, fluid or tracing settings chang
 | **Camera** | distance, inclination, screen size and centre (units of M) |
 | **Disc emission** | FOORT presets (KerrExample, JohannsenExample, Test_MNrun, Test_FBdetail); Johnson-SU μ, γ, σ; redshift power; geometric fudge factor and number of passes; the fluid's sub-Keplerian ξ and radial-infall β_r, β_φ; exposure (auto: the 99.5th percentile), tone map, colour map |
 | **Time** | play/pause, speed (M per second), slow vs fast light, noise field (inoisy or the placeholder), noise amplitude σₙ, optional procedural advection of the field with the fluid |
-| **Tracing** | resolution, metric table size, the step parameter ε (FOORT's 0.03), max steps, FOORT-parity or interpolated disc crossings, recording the constraint \|H\| |
+| **Tracing** | resolution, metric table size, the step parameter ε (FOORT's 0.03), larger steps beyond 20 M (on by default: about 20% faster, escape directions within about 3e-4 rad), max steps (5000; for the fuzzball the disc image is the same as with 10000), FOORT-parity or interpolated disc crossings, recording the constraint \|H\| |
 | **View** | disc emission, or a debug view: four-colour screen, termination, steps, redshift g₁, delay, crossings, sky grid, \|H\|, noise, n = 1 image delay |
 
 ### Debug views

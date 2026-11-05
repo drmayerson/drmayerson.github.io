@@ -1023,3 +1023,5 @@ At this point they are the user's choice.
 3. **Fuzzball step limit 5000:** 1.35–2.15× faster, with **identical disc images**. Only the four-colour and termination views change, where 1.2–2.6% of the pixels become time-outs instead of late escapes. The disc emission comes from the first 3 crossings, which all happen early.
 
 **Not adopted yet:** the user decides which go into the product.
+
+**Decision (2026-11-05):** adopted: larger steps beyond 20 M (up to 4×) and the fuzzball step limit of 5000 (user: "Far 4x + 5000 steps"). Rejected: half-float tables. With the viewer's new defaults (`dev/reports/m9/perf_app.json`), the 1024² Kerr re-trace takes 3.3 s (tabulated) and 0.77 s (closed-form), and a 512² Kerr re-trace 1.2 s. The fuzzball single runs varied too much on this machine to quote; the back-to-back comparison (above) gives 1.35–2.15× for the step limit. Still open: the root-page card, and the merge to `main`.

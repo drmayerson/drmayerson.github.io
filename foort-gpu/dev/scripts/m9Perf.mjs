@@ -14,8 +14,10 @@ const args = process.argv.slice(2);
 const tag = args.includes('--tag') ? args[args.indexOf('--tag') + 1] : 'baseline';
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m9');
 mkdirSync(outDir, { recursive: true });
-const kerr = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 } };
-const fb = { metric: 'st3cr', metricParams: { lambda: 1e-3 }, camera: { r: 250, theta: 1.5, screen: 150 }, maxSteps: 10000 };
+// --app: the viewer's defaults since the M9 trades (larger steps beyond 20 M up to 4x; fuzzball 5000 max steps)
+const app = args.includes('--app');
+const kerr = { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 }, ...(app ? { farSteps: { r: 20, max: 4 } } : {}) };
+const fb = { metric: 'st3cr', metricParams: { lambda: 1e-3 }, camera: { r: 250, theta: 1.5, screen: 150 }, maxSteps: app ? 5000 : 10000, ...(app ? { farSteps: { r: 20, max: 4 } } : {}) };
 const CASES = [
   { name: 'kerr_tabulated_1024_retrace', view: { ...kerr, N: 1024 }, levels: finalLevels(1024) },
   { name: 'kerr_analytic_1024_retrace', view: { ...kerr, N: 1024, path: 'analytic' }, levels: finalLevels(1024) },

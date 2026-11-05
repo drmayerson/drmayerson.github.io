@@ -22,7 +22,7 @@ const paramKeys = (id) => metricEntry(id).params.filter((p) => !p.fixed).map((p)
 export const metricIdFromState = (s) => { const e = metricEntry(s.metric); return e.zeroSwitch && s[e.zeroSwitch.key] ? e.zeroSwitch.id : s.metric; };
 
 /** Default max steps per mode (fuzzball rays scatter in the cap and throat). */
-const MAX_STEPS_DEFAULT = { BH: 5000, fuzzball: 10000 };
+const MAX_STEPS_DEFAULT = { BH: 5000, fuzzball: 5000 };   // fuzzball 5000 (M9 trade, user): disc images identical to 10000
 
 /**
  * Metric parameters of the state, clamped to the registry's validity bounds.
@@ -54,6 +54,8 @@ export function viewFromState(s, coarseTables = false) {
     path: s.metric === 'kerr' ? s.path : 'tabulated', grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
+    // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
+    farSteps: s.farSteps ? { r: 20, max: 4 } : null,
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
   };
 }
