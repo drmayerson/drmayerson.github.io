@@ -853,3 +853,5 @@ Live: the viewer plays by default (Time group).
 3. **Auto exposure ignores the noise.** It uses the stationary intensities (the noise factor has mean 1), so bright noise peaks saturate at σ_n ≳ 1.5.
 4. **Fuzzball emission beyond 3 crossings** (M6) also carries no noise or delay; it is missing altogether, as before.
 5. **Merging** to `main` needs your approval.
+
+**Decision (2026-11-05):** M7 accepted by the user ("Looks right"). Committed on `foort-gpu-dev`; merge to `main` awaits approval. M8 not started.
