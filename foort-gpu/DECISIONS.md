@@ -187,4 +187,4 @@ non-trivial implementation choice.
   - 128 time slices: doubling them hardly changed the inner-disc decorrelation, which is set by the Keplerian advection.
   - 8.4 MB at float16; it is the viewer's default field, and the M7 placeholder stays selectable.
 - 2026-11-05 — **HDF5 read via `h5dump`** in the converter, instead of installing h5py into the system Python.
-- 2026-11-05 — **CHECKPOINT M8 accepted** (user: "Approve as is"): field `inoisy_lg21` with general_xy's parameters and T = 200 M. Merge to `main` not yet approved.
+- 2026-11-05 — **CHECKPOINT M8 accepted** (user: "Approve as is"): field `inoisy_lg21` with general_xy's parameters and T = 200 M. Merged to `main` and pushed (user: "Merge and push").

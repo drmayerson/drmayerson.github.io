@@ -913,4 +913,4 @@ Live: the viewer plays by default (Time group).
 4. **Repository size:** the field is 8.4 MB (the plan expected about 16 MB per field). One field is committed; more variants are a single run each.
 5. **Merging** to `main` needs your approval.
 
-**Decision (2026-11-05):** M8 approved by the user ("Approve as is"): parameters and period unchanged. Committed on `foort-gpu-dev`; merge to `main` awaits approval. M9 not started.
+**Decision (2026-11-05):** M8 approved by the user ("Approve as is"): parameters and period unchanged. Merged to `main` and pushed. M9 not started.
