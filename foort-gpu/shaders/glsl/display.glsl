@@ -1,10 +1,20 @@
 // Display pass (plan Section 3.8): every frame, reads the per-pixel record and draws a view.
 // Disc emission (M5): I = sum_k F_k g_k^p J(r_k) over the stored crossings (js/fluid/emission.js), then
 // exposure, tone mapping and a colour map; and the debug views.
-// Progressive refinement: the levels (strides 1, 2, 4, 8) are separate smaller record images;
-// each pixel shows the finest level that has traced it (steps > 0 after a clear).
+// Time-dependent emission (M7): each crossing is multiplied by exp(sigma_n X - sigma_n^2 / 2), X the noise field at
+// the crossing's emission time t_obs + dt_k ("slow light"; dt_k := 0 for fast light), x = log(r_k / M), phi_k.
+// Progressive refinement: the levels (strides 1, 2, 4, 8) are separate smaller record images; the backend binds
+// the (at most 3) levels of the current trace to slots S0..S2, finest first, and each pixel shows the finest slot
+// that has traced it (steps > 0 after a clear).
 
-uniform highp sampler2D uL0R0, uL0R1, uL0R2, uL0R3, uL1R0, uL1R1, uL1R2, uL1R3, uL2R0, uL2R1, uL2R2, uL2R3, uL3R0, uL3R1, uL3R2, uL3R3;
+uniform highp sampler2D uS0R0, uS0R1, uS0R2, uS0R3, uS1R0, uS1R1, uS1R2, uS1R3, uS2R0, uS2R1, uS2R2, uS2R3;
+uniform ivec4 uLevels;  // log2(stride) of slots 0..2 (-1: unused)
+uniform highp sampler3D uNoise;   // X: texel (phi, x, t), R16F, linear, repeat in phi and t, clamp in x
+uniform ivec4 uNoiseN;  // Nt, Nx, Nphi, noise on (1/0)
+uniform vec4 uNoiseP;   // sigma_n, T_over_M, xmin, xmax
+uniform vec4 uTime;     // t_obs / M, slow light (1/0), M_ADM, procedural advection duration D / M (0: off)
+uniform highp sampler2D uFluidD;  // fluid table (1/u^t, u^r/u^t, Omega) (js/fluid/fluidTable.js), for advection
+uniform vec4 uFluidXD;  // xMin, dx, nodes, r0 of the fluid table
 uniform ivec4 uView;    // view mode, Nx, Ny, |H| stored in slot 3
 uniform vec4 uRange;    // view range lo, hi; max steps; r_cam
 uniform vec4 uEm;       // Johnson-SU mu, gamma, sigma; redshift power
@@ -13,7 +23,7 @@ uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), 0, 0, 0
 out vec4 color;
 
 const float PI = 3.14159265358979;
-const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7, V_EMISSION = 8;
+const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7, V_EMISSION = 8, V_NOISE = 9, V_DT21 = 10;
 
 // FOORT FourColorScreen colours, as in the M0 benchmark
 const vec3 Q1 = vec3(228.0, 74.0, 64.0) / 255.0, Q2 = vec3(64.0, 156.0, 228.0) / 255.0;
@@ -52,30 +62,63 @@ float johnsonSU(float r) {
   float d = r - uEm.x, t = uEm.y + asinh(d / uEm.z);
   return exp(-0.5 * t * t) / sqrt(d * d + uEm.z * uEm.z);
 }
+// noise field at (tau, x, phi) (js/noise/noiseField.js sampleNoise / noiseTexCoord)
+float noiseX(float tau, float x, float phi) {
+  vec3 n = vec3(uNoiseN.zyx);
+  vec3 uvw = vec3(phi / (2.0 * PI) + 0.5 / n.x, ((x - uNoiseP.z) / (uNoiseP.w - uNoiseP.z) * (n.y - 1.0) + 0.5) / n.y, tau / uNoiseP.y + 0.5 / n.z);
+  return texture(uNoise, uvw).r;
+}
+// fluid angular velocity Omega(r) (coordinate, d phi / dt), linear in the table as the tracer's fluidRedshift
+float fluidOmega(float r) {
+  float f = clamp((log(r - uFluidXD.w) - uFluidXD.x) / uFluidXD.y, 0.0, uFluidXD.z - 1.0);
+  int i = min(int(floor(f)), int(uFluidXD.z) - 2);
+  return mix(texelFetch(uFluidD, ivec2(i, 0), 0).z, texelFetch(uFluidD, ivec2(i + 1, 0), 0).z, f - float(i));
+}
+// exp(sigma X - sigma^2 / 2) at a crossing (r, phi, dt, g); with procedural advection two copies of the field,
+// rotated with the fluid since the last reset of their phase (period D, offset D/2), are crossfaded with
+// variance-preserving weights (the flow-map trick)
+float noiseFactor(vec4 c) {
+  if (uNoiseN.w == 0 || uNoiseP.x == 0.0) return 1.0;
+  float M = uTime.z;
+  float tau = uTime.x + (uTime.y > 0.5 ? c.z / M : 0.0);
+  float x = log(c.x / M);
+  float X;
+  if (uTime.w > 0.0) {
+    float D = uTime.w, om = fluidOmega(c.x) * M;   // Omega in units of 1/M
+    float fa = fract(tau / D), fb = fract(tau / D + 0.5);
+    float wa = 1.0 - abs(2.0 * fa - 1.0), wb = 1.0 - wa;
+    float Xa = noiseX(tau, x, c.y - om * fa * D), Xb = noiseX(tau, x, c.y - om * fb * D);
+    X = (wa * Xa + wb * Xb) / sqrt(wa * wa + wb * wb);
+  } else X = noiseX(tau, x, c.y);
+  float sg = uNoiseP.x;
+  return exp(sg * X - 0.5 * sg * sg);
+}
 // one crossing (r, phi, dt, g) of pass k (0-based)
 float passEmission(vec4 c, int k) {
   if (!(c.x > 0.0) || !(c.w > 0.0)) return 0.0;
   if (uEm2.y > 0.0 && float(k + 1) > uEm2.y) return 0.0;
-  return (k == 0 ? 1.0 : uEm2.x) * pow(c.w, uEm.w) * johnsonSU(c.x);
+  return (k == 0 ? 1.0 : uEm2.x) * pow(c.w, uEm.w) * johnsonSU(c.x) * noiseFactor(c);
 }
 vec3 afmhot(float t) { t = clamp(t, 0.0, 1.0); return clamp(vec3(2.0 * t, 2.0 * t - 0.5, 2.0 * t - 1.0), 0.0, 1.0); }
 
-// texel of level l (stride 2^l) covering full-resolution pixel p
+// texel of slot l (stride 2^uLevels[l]) covering full-resolution pixel p
 ivec2 levelTexel(ivec2 p, int l) {
-  ivec2 n = (uView.yz + (1 << l) - 1) >> l;
+  int sh = uLevels[l];
+  ivec2 n = (uView.yz + (1 << sh) - 1) >> sh;
   return ivec2((vec2(p) + 0.5) / vec2(uView.yz) * vec2(n));
 }
-vec4 rec0(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R0, q, 0) : l == 1 ? texelFetch(uL1R0, q, 0) : l == 2 ? texelFetch(uL2R0, q, 0) : texelFetch(uL3R0, q, 0); }
-vec4 rec1(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R1, q, 0) : l == 1 ? texelFetch(uL1R1, q, 0) : l == 2 ? texelFetch(uL2R1, q, 0) : texelFetch(uL3R1, q, 0); }
-vec4 rec2(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R2, q, 0) : l == 1 ? texelFetch(uL1R2, q, 0) : l == 2 ? texelFetch(uL2R2, q, 0) : texelFetch(uL3R2, q, 0); }
-vec4 rec3(int l, ivec2 q) { return l == 0 ? texelFetch(uL0R3, q, 0) : l == 1 ? texelFetch(uL1R3, q, 0) : l == 2 ? texelFetch(uL2R3, q, 0) : texelFetch(uL3R3, q, 0); }
+vec4 rec0(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R0, q, 0) : l == 1 ? texelFetch(uS1R0, q, 0) : texelFetch(uS2R0, q, 0); }
+vec4 rec1(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R1, q, 0) : l == 1 ? texelFetch(uS1R1, q, 0) : texelFetch(uS2R1, q, 0); }
+vec4 rec2(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R2, q, 0) : l == 1 ? texelFetch(uS1R2, q, 0) : texelFetch(uS2R2, q, 0); }
+vec4 rec3(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R3, q, 0) : l == 1 ? texelFetch(uS1R3, q, 0) : texelFetch(uS2R3, q, 0); }
 
 void main() {
   ivec2 p = ivec2(gl_FragCoord.xy);
   int lv = -1;
   ivec2 q;
   vec4 r0;
-  for (int l = 0; l < 4; l++) {
+  for (int l = 0; l < 3; l++) {
+    if (uLevels[l] < 0) break;
     q = levelTexel(p, l);
     r0 = rec0(l, q);
     if (r0.y > 0.0) { lv = l; break; }
@@ -121,6 +164,19 @@ void main() {
     else if (tm == 2) v = log(1.0 + 99.0 * v) / log(100.0);
     else if (tm == 3) v = asinh(30.0 * v) / asinh(30.0);
     c = uEm3.x == 0 ? afmhot(v) : uEm3.x == 1 ? inferno(v) : vec3(clamp(v, 0.0, 1.0));
+  } else if (mode == V_NOISE) {
+    // the noise X at crossing 1 (as sampled for the emission), grey = 0.5 + X / 8 (tests read it back)
+    vec4 c1 = rec1(lv, q);
+    if (c1.x <= 0.0 || uNoiseN.w == 0) c = vec3(0.0, 0.0, 0.3);
+    else {
+      float M = uTime.z, tau = uTime.x + (uTime.y > 0.5 ? c1.z / M : 0.0);
+      c = vec3(clamp(0.5 + noiseX(tau, log(c1.x / M), c1.y) / 8.0, 0.0, 1.0));
+    }
+  } else if (mode == V_DT21) {
+    // delay of the n = 1 image behind the direct image, (dt_1 - dt_2) / M, on the colour range
+    vec4 c1 = rec1(lv, q), c2 = rec2(lv, q);
+    if (c2.x <= 0.0) c = vec3(0.05, 0.1, 0.25);
+    else c = inferno(((c1.z - c2.z) / uTime.z - uRange.x) / (uRange.y - uRange.x));
   } else if (mode == V_HAM) {
     if (uView.w == 0) c = vec3(0.3);
     else {

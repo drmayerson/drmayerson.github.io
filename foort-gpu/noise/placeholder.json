@@ -1,0 +1,30 @@
+{
+ "Nt": 64,
+ "Nx": 96,
+ "Nphi": 128,
+ "T_over_M": 200.0,
+ "xmin": -6.0,
+ "xmax": 7.0,
+ "x_def": "log(r/M)",
+ "periodic": {
+  "t": true,
+  "phi": true
+ },
+ "normalized": "zero mean, unit variance",
+ "dtype": "float16",
+ "order": "C (t, x, phi)",
+ "generator": {
+  "name": "gen_placeholder_fft.py",
+  "seed": 1,
+  "spectrum": "Gaussian",
+  "correlation": {
+   "t_over_M": 8.0,
+   "x": 0.4,
+   "phi": 0.35
+  }
+ },
+ "stats": {
+  "mean": -8.48542640596861e-08,
+  "std": 0.9999990495582634
+ }
+}

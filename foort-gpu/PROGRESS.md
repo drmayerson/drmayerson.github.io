@@ -782,3 +782,74 @@ In the viewer, a 512² image therefore takes 5–20 s after a coarse 128² previ
 5. **Merging** to `main` needs your approval.
 
 **Decision (2026-11-05):** the user judged the M6 images to look good. They chose to keep the default 512 × 128 table (the chaotic-regime differences are expected) and to keep 3 crossings with a UI note. M6 is merged into `main` and pushed. M7 is not started and awaits the go-ahead.
+
+## CHECKPOINT M7 — time-dependent emission with slow light (2026-11-05)
+
+### Done
+
+- **Noise-field contract and loader** (`js/noise/noiseField.js`):
+  - parses and validates `noise/<name>.json` + `.bin` (float16 or float32, (Nt, Nx, Nphi) C order, x = log(r/M), periodic in t and φ);
+  - includes float16 conversion, and `sampleNoise`, which uses the GPU's sampling rule in double for the tests.
+- **Placeholder field** `noise/placeholder` (`tools/noise/gen_placeholder_fft.py`):
+  - an FFT Gaussian random field, 64 × 96 × 128, float16, 1.6 MB;
+  - period 200 M; x = log(r/M) from −6 to 7;
+  - correlation time 8 M, correlation lengths 0.4 in log r and 0.35 rad in φ;
+  - mean −8e-8, standard deviation 1.0000.
+- **3D texture** (R16F, linear filtering, repeat in t and φ, clamp in x), uploaded at startup.
+- **Display pass:**
+  - each crossing is multiplied by exp(σ_n X − σ_n²/2), with X taken at its emission time t_obs + dt_k (slow light) or at t_obs (fast light);
+  - optional procedural advection with the fluid's Ω(r) (flow-map crossfade, variance-preserving);
+  - new debug views: noise X at crossing 1, and the n = 1 image delay (dt₁ − dt₂)/M.
+  - The display now binds only the (at most 3) levels of the current trace, which frees texture units for the noise field and the fluid table.
+- **Viewer "Time" group:** play/pause, speed (M per second), slow/fast light, σ_n, advection and its period D, and a clock line under the image. None of these retrace.
+- **Tests:** Vitest 85 passed (new `m7.test.js`), Playwright 16 passed (new `m7.spec.js`), `tsc --checkJs` clean.
+
+### Test results
+
+- **Loader round trip** (unit): float16 conversion is exact for representable values and rounds to nearest otherwise; float16 and float32 files give identical fields; wrong sizes and non-periodic fields are rejected.
+- **Placeholder field** (unit):
+  - mean and standard deviation within 1e-3 of 0 and 1;
+  - samples exact at the nodes;
+  - periodic in t and φ to 1e-5;
+  - across the seams no larger jump than inside the field.
+- **Sampling in the shader** (e2e, Kerr a = 0.94, 60°, 128²): the noise view read back from the canvas agrees with `sampleNoise` at every disc pixel to within 0.1 in X. That is 8-bit readback (0.03) plus the hardware filter weights. Over 20 times spread across the period, the GPU samples have mean |⟨X⟩| < 0.15 and variance within 0.25 of 1. A single frame does not average out, because it sees a correlated patch of the field.
+- **Seamless loop** (e2e): the canvas at t = 13 M and at 13 M + T differs by ≤ 2/255 per channel. Slow and fast light give different images.
+- **Frame rate:** 60 frames/s while playing, at 512² and 1024², with and without advection. The trace is not repeated.
+
+**Light-travel delays (`dev/reports/m7/delays.json`, 256², GPU records, in units of M_ADM):**
+
+| view | crossing 2 − crossing 1, median [p10, p90] | max | excess delay of crossing 1, median / p99 / max |
+|---|---|---|---|
+| Kerr a = 0, 80° | 45.9 [25.8, 65.4] | 1030 | 12.3 / 38.4 / 42.9 |
+| Kerr a = 0.94, 80° | 45.0 [23.3, 67.9] | 1020 | 13.2 / 39.4 / 45.9 |
+| Kerr a = 0.94, 17° | 20.7 [16.4, 70.7] | 1020 | 17.3 / 22.9 / 32.4 |
+| ST3Cr λ = 0.05 | 15.9 [7.2, 19.7] | 32 | 6.8 / 18.0 / 34.8 |
+| ST3Cr λ = 0.005 | 17.0 [10.2, 31.3] | 67 | 6.9 / 41.4 / 60.4 |
+| ST3Cr λ = 1e-4 | 17.6 [11.1, **1140**] | **1930** | 6.9 / **1480** / 1920 |
+| ST3Cr λ = 0 BH | 16.5 [9.6, 20.4] | 2800 | 4.1 / 18.8 / 2150 |
+
+The excess delay is −dt₁ − (r_cam − r₁): the delay beyond straight-line travel from the emission radius.
+
+- **Black holes:** near face-on, the n = 1 image lags the direct image by about 20 M, the order of half the photon-orbit period (2π · 3√3 M / 2 = 16 M for Schwarzschild). At 80°, the second crossing of many rays is on the far side of the disc, so the median delay of about 45 M is the disc's light-crossing time. The maxima of about 1000 M are rays whose second crossing is at large r on the far disc.
+- **Fuzzball:**
+  - throat echoes grow as λ → 0: maximum delays of 32 M, 67 M and 1930 M at λ = 0.05, 0.005 and 1e-4;
+  - at λ = 1e-4, 10% of the rays with two crossings come back from the throat more than 1100 M later;
+  - the λ = 0 BH's long delays (up to 2150 M) are rays that cross the disc deep in the throat before they reach the inner cut.
+- **Precision:** dt in float32 is ~1e-4 M at the 1000 M delays here, far below the field's correlation time of 8 M.
+
+### Animations for the user
+
+GIFs (40 frames over one period T = 200 M, 256²; about 4 MB each, so not committed; rebuilt by `dev/scripts/m7Frames.mjs` + `tools/noise/frames_to_gif.py`):
+
+- `tools/foort_parity/build/m7gif/kerr_slow_fast_advect.gif`: Kerr a = 0.94 at 60°, with slow light, fast light, and slow light + advection.
+- `tools/foort_parity/build/m7gif/fuzzball_slow_fast.gif`: ST3Cr λ = 0.005 slow and fast, and λ = 1e-4 slow.
+
+Live: the viewer plays by default (Time group).
+
+### Open issues / for the user
+
+1. **Visual judgement** (the checkpoint): the animated disc in Kerr and fuzzball modes, slow vs fast light.
+2. **The placeholder field has no flow.** Its pattern only changes in time; it does not rotate with the disc. Procedural advection (off by default, as the plan proposes) rotates it with the fluid but shears it into spiral streaks within D = 40 M. M8's inoisy fields have a built-in Kepler-like flow. Should advection be on by default until then?
+3. **Auto exposure ignores the noise.** It uses the stationary intensities (the noise factor has mean 1), so bright noise peaks saturate at σ_n ≳ 1.5.
+4. **Fuzzball emission beyond 3 crossings** (M6) also carries no noise or delay; it is missing altogether, as before.
+5. **Merging** to `main` needs your approval.

@@ -7,7 +7,10 @@
  * @typedef {{x:number, y:number, w:number, h:number}} Rect
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
- *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number}} DisplayView
+ *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
+ *   time?: DisplayTime}} DisplayView
+ * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
+ *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n
  *
  * @typedef {Object} Backend
  * @property {'webgl2'|'webgpu'} kind
@@ -16,7 +19,8 @@
  * @property {(u:Uniforms) => void} uploadUniforms                    trace uniforms for the next tiles
  * @property {(t:import('../bake/bake.js').BakedTables) => void} uploadTables  metric tables of the tabulated tracer
  * @property {(f:import('../fluid/fluidTable.js').FluidTable) => void} uploadFluid  fluid four-velocity table (both tracers)
- * @property {() => void} clearRecords                                mark every pixel untraced
+ * @property {(f:import('../noise/noiseField.js').NoiseField) => void} uploadNoise  noise field (3D texture), display pass
+ * @property {(strides?:number[]) => void} clearRecords                mark every pixel untraced; the strides the next trace uses
  * @property {(stride:number) => {w:number, h:number}} levelSize   size of the progressive level `stride` (1, 2, 4, 8)
  * @property {(rect:Rect, stride:number) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
  *   trace the pixels of `rect` (in that level's pixels) of the level image `stride`

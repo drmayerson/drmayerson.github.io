@@ -10,9 +10,11 @@ import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
 import { decodeRecord } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
+import { loadNoiseField } from './noise/noiseField.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
+const NOISE_FIELD = 'placeholder';
 
 const PARAM_KEYS = { kerr: ['a'], johannsen: ['a', 'alpha13'], mankoNovikov: ['a', 'alpha3'], st3cr: ['lambda'], st3crBH: [] };
 
@@ -56,6 +58,12 @@ export function viewFromState(s, coarseTables = false) {
   };
 }
 
+/**
+ * Display time of the state: observer time, slow/fast light, M_ADM, procedural advection, noise amplitude.
+ * @param {Record<string, any>} s @param {number} tObs @param {number} M @returns {import('./gpu/backend.js').DisplayTime}
+ */
+export const timeFromState = (s, tObs, M) => ({ tObs, slow: !!s.slowLight, M, advect: s.advect ? s.advectD : 0, sigma: s.sigmaN });
+
 /** @param {Record<string, any>} s @returns {import('./fluid/emission.js').EmissionParams} */
 export const emissionFromState = (s) => ({ mu: s.mu, gamma: s.gamma, sigma: s.sigma, redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) });
 
@@ -76,6 +84,13 @@ async function main() {
     onStage: stage,
     onProgress: (p) => { level = p.level; $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`; requestDraw(); },
   });
+
+  // noise field (M7): placeholder FFT field until the production inoisy fields (M8)
+  let noise = /** @type {import('./noise/noiseField.js').NoiseField|null} */ (null);
+  try { stage('loading the noise field…'); noise = await loadNoiseField(NOISE_FIELD); backend.uploadNoise(noise); }
+  catch (e) { console.warn('noise field not loaded:', e); }
+  /** observer time t_obs in units of M */
+  let tObs = 0;
 
   let autoExposure = 1;
   /** coarse-level records of the last full trace, for auto exposure */
@@ -102,8 +117,9 @@ async function main() {
     const v = VIEWS[/** @type {keyof typeof VIEWS} */ (state.view)];
     const lo = Number.isNaN(state.lo) ? /** @type {any} */ (v).lo ?? 0 : state.lo;
     const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
-    backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r, storeH: !!state.storeH,
-      emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap) });
+    backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r * (lastFluid?.M ?? 1), storeH: !!state.storeH,
+      emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap),
+      time: timeFromState(state, tObs, lastFluid?.M ?? 1) });
   };
 
   const legend = () => {
@@ -193,9 +209,26 @@ async function main() {
       return;
     }
     if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure'].includes(key)) { updateExposure(); legend(); }
+    if (['slowLight', 'play'].includes(key)) $('clock').textContent = clockText();
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;
     if (retrace) run(final, isParam && !final); else { history.replaceState(null, '', `?${stateToQuery(state)}`); legend(); requestDraw(); }
   });
+  // animation (M7): advance t_obs while playing; the display pass is cheap, the trace is not repeated
+  let lastFrame = performance.now(), lastLegend = 0;
+  const animate = (/** @type {number} */ now) => {
+    const dts = Math.min(0.1, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (state.play && noise && state.sigmaN > 0 && state.view === 'emission' || state.play && state.view === 'noise') {
+      tObs += state.speed * dts;
+      draw();
+      if (now - lastLegend > 250) { lastLegend = now; $('clock').textContent = clockText(); }
+    }
+    requestAnimationFrame(animate);
+  };
+  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (field period ${noise.meta.T_over_M} M)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
+  $('clock').textContent = clockText();
+  requestAnimationFrame(animate);
+
   legend();
   await run(true);
 
@@ -203,6 +236,9 @@ async function main() {
   /** @type {any} */ (window).__foort = {
     state, backend, pipeline, CONTROLS,
     stats: () => lastStats,
+    noise: () => noise,
+    /** set the observer time (units of M) and redraw */
+    setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },
     /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[]}} [o] */
     async trace(view, o = {}) {
       const ts = tableSpec(view);

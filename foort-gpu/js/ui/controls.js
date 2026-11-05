@@ -29,6 +29,8 @@ export const VIEWS = {
   passes: { mode: 5, label: 'Equatorial crossings' },
   sky: { mode: 6, label: 'Sky grid (escape direction)' },
   ham: { mode: 7, label: 'Constraint |H| (log₁₀)', lo: -9, hi: -2 },
+  noise: { mode: 9, label: 'Noise X at crossing 1 (grey = 0.5 + X/8)' },
+  dt21: { mode: 10, label: 'n = 1 image delay (dt₁ − dt₂)/M', lo: 0, hi: 60 },
 };
 
 const fmt = (/** @type {number} */ d) => (v) => Number(v).toFixed(d);
@@ -74,6 +76,13 @@ export const CONTROLS = [
     optionLabels: { 0: 'linear', 1: 'sqrt', 2: 'log', 3: 'asinh' }, default: 1, retrace: false },
   { key: 'colorMap', label: 'colour map', type: 'select', group: 'Disc emission', options: [0, 1, 2],
     optionLabels: { 0: 'afmhot', 1: 'inferno', 2: 'grey' }, default: 0, retrace: false },
+  { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false },
+  { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false },
+  { key: 'slowLight', label: 'slow light (each point at its emission time)', type: 'checkbox', group: 'Time', default: true, retrace: false },
+  { key: 'sigmaN', label: 'noise amplitude σₙ', type: 'range', group: 'Time', min: 0, max: 2, step: 0.05, default: 1, format: fmt(2), retrace: false },
+  { key: 'advect', label: 'procedural advection (rotate the field with the fluid)', type: 'checkbox', group: 'Time', default: false, retrace: false },
+  { key: 'advectD', label: 'advection crossfade period D (M)', type: 'range', group: 'Time', min: 2, max: 500, scale: 'log', default: 40, format: sig, retrace: false,
+    visible: (s) => s.advect },
   { key: 'grid', label: 'metric table (x × θ nodes per hemisphere)', type: 'select', group: 'Tracing',
     options: ['256x128', '512x128', '512x256', '1024x256'], default: '512x128', visible: (s) => s.metric !== 'kerr' || s.path !== 'analytic' },
   { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig },

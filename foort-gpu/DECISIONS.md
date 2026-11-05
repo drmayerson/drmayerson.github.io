@@ -163,3 +163,17 @@ non-trivial implementation choice.
   - **Table size:** the fuzzball keeps the default 512 × 128 table; no hybrid. The user: "don't worry about the GPU vs CPU comparison for geodesics that are very near the centers (the chaotic regime) - small numerical errors can compound there and give different results, this is normal and not to worry about ... stay with defaults".
   - **Crossings beyond 3:** kept as they are, with a note in the emission legend in fuzzball mode. The user: "leave it. I think ~90% or higher emission should be ok. Add a small note about this somewhere on the UI." Measured shares are 93% at λ = 1e-4 but 45–48% at λ = 0.005–0.05 (PROGRESS, CHECKPOINT M6); the note says so.
   - **Merge:** M6 merged to `main` and pushed (user: "Merge and push").
+- 2026-11-05 — **M7 placeholder noise field** (`tools/noise/gen_placeholder_fft.py`, `noise/placeholder.{json,bin}`):
+  - Gaussian random field from white noise filtered with a Gaussian spectrum. Periodic in t and φ through the FFT; in x it is generated on a doubled grid and cropped (not periodic).
+  - Shape 64 × 96 × 128 (t, x, φ), float16, 1.6 MB.
+  - Period T = 200 M; x = log(r/M) from −6 to 7, which covers the fuzzball's emission at r ~ 1e-3 to 0.2 M as well as the BH discs.
+  - Correlation time 8 M, correlation lengths 0.4 in log r and 0.35 rad in φ.
+  - Small enough to commit; production fields follow in M8.
+- 2026-11-05 — **Noise on the GPU:** R16F 3D texture, hardware linear filtering, repeat in φ and t, clamp in x, texel centres on the samples (`noiseTexCoord` / `sampleNoise` is the same rule in double, for the tests). Each crossing gets exp(σ_n X − σ_n²/2), with X at τ = t_obs + dt_k (slow light; fast light uses dt_k := 0), x = log(r_k/M_ADM), φ_k. Default σ_n = 1.
+- 2026-11-05 — **Display binds only the levels of the current trace** (at most 3, finest first: 12 texture units) instead of all four levels (16 units, the WebGL2 minimum). This frees units for the noise field (unit 12) and the fluid table (unit 13, Ω for advection). The backend learns the levels from `clearRecords(levels)`.
+- 2026-11-05 — **Procedural advection (optional, default off; plan Section 3.9):**
+  - Two copies of the field, rotated with the fluid's Ω(r) since the last reset of their phase (period D, offset D/2), are crossfaded with triangular weights.
+  - The blend is divided by sqrt(w_a² + w_b²) to keep unit variance.
+  - D defaults to 40 M. The placeholder field has no flow of its own; with advection the pattern shears into spiral streaks.
+- 2026-11-05 — **Time controls:** play (default on), speed in M per second (default 20), slow/fast light (default slow), σ_n, advection. t_obs is not wrapped, so the advection phases stay continuous; texture repeat makes the field periodic. Time, light, σ_n and advection changes only redraw.
+- 2026-11-05 — **Checkpoint animations are not committed:** the GIFs (about 4 MB each) are built by `dev/scripts/m7Frames.mjs` and `tools/noise/frames_to_gif.py` into the git-ignored `tools/foort_parity/build/`.
