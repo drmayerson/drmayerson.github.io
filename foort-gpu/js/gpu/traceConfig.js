@@ -144,7 +144,10 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
   };
   /** @type {string|null} */
   let tableKey = null;
-  if (program === 'trace_kerr_analytic') uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
+  if (program === 'trace_kerr_analytic') {
+    if (viewProjects(metric, v)) throw new Error('constraint projection needs the tabulated tracer (the closed-form Kerr shader does not split its force)');
+    uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
+  }
   else {
     const ts = /** @type {NonNullable<ReturnType<typeof tableSpec>>} */ (tableSpec(v));
     if (!tables) throw new Error('gpuTraceSetup: the tabulated path needs the baked tables');

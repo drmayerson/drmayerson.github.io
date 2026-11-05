@@ -30,7 +30,10 @@ export function tilesCentreOut(w, h, edge) {
 
 /** Edge of the probe tile that starts every trace (worst case 1024 rays x maxSteps). */
 const PROBE_EDGE = 32;
-const MIN_TILE_RAYS = 256;
+/** Smallest tile in normal operation (64^2): smaller tiles do not fill the GPU. */
+const MIN_TILE_RAYS = 64 * 64;
+/** A tile of MIN_TILE_RAYS this slow (ms) may be split further (watchdog margin; the OS limit is ~2 s). */
+const DANGER_MS = 400;
 
 /**
  * Re-cut tiles into tiles of at most `edge` (only splitting), in centre-out order.
@@ -107,6 +110,7 @@ export class TracePipeline {
       // metrics and step limits (a 128^2 fuzzball tile with 10^4 max steps runs for seconds and can trip the
       // OS GPU watchdog, which loses the context)
       let probe = opts.adaptTiles !== false;
+      let minRays = MIN_TILE_RAYS;
       for (const st of levels) {
         // each level is its own compact image of ceil(N / st)^2 rays
         const { w, h } = be.levelSize(st);
@@ -121,16 +125,22 @@ export class TracePipeline {
           nTiles++; done++;
           this.onProgress({ level: st, done, total: done + pending.length });
           if (opts.adaptTiles !== false) {
-            // rays per tile proportional to the measured rate, so that a tile takes about targetTileMs
+            // rays per tile from the measured rate. The estimate moves both ways (log-space average, at most x2 per tile)
+            // and persists between traces. A wall time includes a fixed fence/yield latency, so a pure rate rule shrinks
+            // tiles without end and tiny tiles leave the GPU idle (M9: 4941 tiles and 20x the M4 time). Tiles therefore
+            // stay >= MIN_TILE_RAYS unless such a tile itself runs long (a heavy fuzzball: the OS watchdog risk).
             const rays = t.w * t.h, ms = Math.max(r.wallMs, 0.5);
-            if (probe || ms > 2 * this.targetTileMs || (ms < 0.4 * this.targetTileMs && rays >= this.tileRays * 0.9)) {
-              this.tileRays = Math.min(1024 * 1024, Math.max(MIN_TILE_RAYS, Math.round(rays * this.targetTileMs / ms)));
-            }
+            const want = rays * this.targetTileMs / ms;
+            // the floor drops (for the rest of this trace) when a tile at the floor runs dangerously long
+            if (ms > DANGER_MS && rays <= minRays) minRays = Math.max(256, minRays / 4);
+            const floor = minRays;
+            const next = probe ? want : this.tileRays * Math.min(2, Math.max(0.5, Math.sqrt(want / this.tileRays)));
+            this.tileRays = Math.round(Math.min(1024 * 1024, Math.max(floor, next)));
             const e = this.tileEdge();
             // after the probe: tile the level afresh (re-tracing the small probe region is cheaper than many tiny
-            // tiles); when tiles became much slower: split the rest of this level
-            if (probe) { pending = tilesCentreOut(w, h, e).filter((x) => !(x.x === t.x && x.y === t.y && x.w === t.w && x.h === t.h)); edge = e; }
-            else if (e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
+            // tiles); when one tile ran far over the target: split the rest of this level
+            if (probe) { pending = tilesCentreOut(w, h, e); edge = e; }
+            else if (ms > 3 * this.targetTileMs && e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
             probe = false;
           }
         }

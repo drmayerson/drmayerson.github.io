@@ -188,3 +188,20 @@ non-trivial implementation choice.
   - 8.4 MB at float16; it is the viewer's default field, and the M7 placeholder stays selectable.
 - 2026-11-05 — **HDF5 read via `h5dump`** in the converter, instead of installing h5py into the system Python.
 - 2026-11-05 — **CHECKPOINT M8 accepted** (user: "Approve as is"): field `inoisy_lg21` with general_xy's parameters and T = 200 M. Merged to `main` and pushed (user: "Merge and push").
+- 2026-11-05 — **Registry-driven controls (M9 "add a metric"):** the metric menu and the parameter sliders are built from `js/metrics/registry.js`. One slider per parameter name, with the widest range over the metrics that share it; the registry's `bounds` clamp it per metric.
+  - Registry fields: `step`; `hidden` (not in the menu); `zeroSwitch` {id, label, key} (ST3Cr's λ = 0 switch, key `bh0`, kept for existing URLs); `emissionNote` (the fuzzball's 3-crossing caveat).
+  - Adding a metric needs one module and one registry entry; Reissner–Nordström is the demonstration.
+- 2026-11-05 — **View state stays in the URL query** (`?metric=…&lambda=…`), not the hash the plan mentions. It already reproduces a view when shared, also on GitHub Pages, and the tests and reports use it.
+- 2026-11-05 — **Tile sizing (fix of the M6 probe tiling).**
+  - The rate rule shrank tiles without end: a tile's wall time includes a fixed fence/yield latency. A 1024² Kerr trace then ran in 4941 tiles of about 256 rays, at 20× the M4 time.
+  - Now: the rays-per-tile estimate moves both ways, by at most 2× per tile in log space, with a floor of 64² rays. The floor drops 4× (to a minimum of 256) only when a tile at the floor runs longer than 400 ms (the watchdog margin for heavy fuzzball tiles).
+  - The rest of a level is split only when a tile exceeds 3× the 30 ms target.
+- 2026-11-05 — **No animation frames while a trace runs:** redrawing the canvas at 60 fps competed with the trace tiles for the integrated GPU, slowing traces by up to 3× at times. The progress callback still draws every finished tile.
+- 2026-11-05 — **Constraint projection without a fifth RHS evaluation.**
+  - `geodesicRHS` also returns `dmomQ`, the part of the force quadratic in the spatial momenta. The first RK stage is corrected exactly (dx, dδ ∝ s; that part ∝ s²) instead of being re-evaluated after the rescaling.
+  - The RK loop is again the plain four-stage loop of M3–M5 (the M6 five-iteration loop with break/continue cost about 10% even with projection off).
+  - Results are unchanged (M6 Level 2 rerun).
+  - The closed-form Kerr shader does not split its force; asking it for projection is an error.
+- 2026-11-05 — **Startup and runtime errors are explained in the page:**
+  - a missing WebGL2 or extension: the message plus what the viewer needs;
+  - a lost WebGL context (an OS GPU reset after an overlong dispatch): what happened and what to change.

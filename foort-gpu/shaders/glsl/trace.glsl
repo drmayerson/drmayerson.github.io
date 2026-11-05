@@ -76,16 +76,18 @@ void lookupTables(float x, float delta, float hemi, out float v[5], out float dx
 }
 
 // Hamilton's equations in (x, delta); same as js/ref/cpuTracer.js with theta -> delta (sin theta = sin delta)
-void geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom) {
+// dmomQ: the part of dmom quadratic in the spatial momenta (p_x^2, p_delta^2 terms), for the constraint projection
+void geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom, out vec2 dmomQ) {
   float v[5], dx[5], dd[5];
   lookupTables(pos.x, pos.y, hemi, v, dx, dd);
   float s = sin(pos.y), c = cos(pos.y), is2 = 1.0 / (s * s);
   float px = mom.x, pd = mom.y;
   float pt2 = pt * pt, ptph = pt * pphi, ph2 = pphi * pphi;
   dpos = vec4(v[3] * px, v[4] * pd, v[1] * pt + v[2] * pphi * is2, v[0] * pt + v[1] * pphi);
+  dmomQ = vec2(-0.5 * (dx[3] * px * px + dx[4] * pd * pd), -0.5 * (dd[3] * px * px + dd[4] * pd * pd));
   dmom = vec2(
-    -0.5 * (dx[0] * pt2 + 2.0 * dx[1] * ptph + dx[2] * ph2 * is2 + dx[3] * px * px + dx[4] * pd * pd),
-    -0.5 * (dd[0] * pt2 + 2.0 * dd[1] * ptph + (dd[2] * is2 - 2.0 * v[2] * c * is2 / s) * ph2 + dd[3] * px * px + dd[4] * pd * pd));
+    -0.5 * (dx[0] * pt2 + 2.0 * dx[1] * ptph + dx[2] * ph2 * is2),
+    -0.5 * (dd[0] * pt2 + 2.0 * dd[1] * ptph + (dd[2] * is2 - 2.0 * v[2] * c * is2 / s) * ph2)) + dmomQ;
 }
 
 // |H| relative to the sum of the magnitudes of its terms (as the CPU reference)

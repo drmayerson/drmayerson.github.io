@@ -1,0 +1,44 @@
+{
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "rows": [
+  {
+   "case": "kerr_tabulated_1024_retrace",
+   "wallMs": 6414.900000095367,
+   "gpuMs": 5562.407760000001,
+   "tiles": 197
+  },
+  {
+   "case": "kerr_analytic_1024_retrace",
+   "wallMs": 1824.0999999046326,
+   "gpuMs": 1007.8112,
+   "tiles": 337
+  },
+  {
+   "case": "kerr_tabulated_256_preview",
+   "wallMs": 414.2000000476837,
+   "gpuMs": 363.77572,
+   "tiles": 17
+  },
+  {
+   "case": "kerr_tabulated_512_retrace",
+   "wallMs": 2302.2000000476837,
+   "gpuMs": 1944.7869999999994,
+   "tiles": 70
+  },
+  {
+   "case": "st3cr_l1e-3_1024_retrace",
+   "wallMs": 53498.699999809265,
+   "gpuMs": 38673.675080000095,
+   "tiles": 1337
+  },
+  {
+   "case": "st3cr_l1e-3_512_retrace",
+   "wallMs": 8521.700000047684,
+   "gpuMs": 8149.843519999996,
+   "tiles": 126
+  }
+ ],
+ "summary": {
+  "fuzzballOverKerr1024": 8.339755880686203
+ }
+}

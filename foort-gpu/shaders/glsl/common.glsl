@@ -10,7 +10,8 @@
 //
 // The metric file concatenated before this one provides (theta-like arguments are delta, hemi):
 //   float radiusOf(float x);
-//   void  geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom);
+//   void  geodesicRHS(vec4 pos, vec2 mom, float hemi, float pt, float pphi, out vec4 dpos, out vec2 dmom, out vec2 dmomQ);
+//         (dmomQ: the part of dmom from the p_x^2, p_delta^2 terms, used by the constraint projection; may be 0 if unused)
 //   float hamiltonianRel(vec4 pos, vec2 mom, float hemi, float pt, float pphi);
 //   bool  nearSingularity(float r, float delta, float hemi);
 // State: pos = (x, delta, phi, t), mom = (p_x, p_delta); constants p_t (= 1, past-pointing) and p_phi.
@@ -106,19 +107,20 @@ void main() {
     vec4 sp = pos, accP = vec4(0.0);
     vec2 sm = mom, accM = vec2(0.0);
     float h = 0.0, xStageMin = 1e30;
-    // with constraint projection (uAux.w = 1) the loop starts with one extra evaluation at the current point:
-    // 2H = p_mu dx^mu/dlambda = B + A, B = p_t dt + p_phi dphi, A = p_x dx + p_delta ddelta >= 0;
-    // the spatial momenta are rescaled by sqrt(-B/A) onto H = 0 (as js/ref/cpuTracer.js, option project)
-    int off = uAux.w > 0.5 ? 1 : 0;
-    for (int it = 0; it < 5; it++) {
-      if (it == 4 + off) break;
-      int st = it - off;
-      vec4 kp; vec2 km;
-      geodesicRHS(sp, sm, hemi, pt, pphi, kp, km);
-      if (st < 0) {
+    for (int st = 0; st < 4; st++) {
+      vec4 kp; vec2 km, kq;
+      geodesicRHS(sp, sm, hemi, pt, pphi, kp, km, kq);
+      // constraint projection (uAux.w = 1; horizonless metrics): rescale the spatial momenta onto H = 0 at the start of
+      // the step, from 2H = p_mu dx^mu/dlambda = B + A with B = p_t dt + p_phi dphi and A = p_x dx + p_delta ddelta >= 0.
+      // The first stage is then corrected exactly instead of re-evaluated: dx, ddelta scale with s, the force's
+      // momentum-squared part kq with s^2, the rest not at all (same result as js/ref/cpuTracer.js, option project)
+      if (st == 0 && uAux.w > 0.5) {
         float B = pt * kp.w + pphi * kp.z, A = mom.x * kp.x + mom.y * kp.y;
-        if (A > 0.0 && B < 0.0) { mom *= sqrt(-B / A); sm = mom; }
-        continue;
+        if (A > 0.0 && B < 0.0) {
+          float sc = sqrt(-B / A);
+          mom *= sc; sm = mom;
+          kp.xy *= sc; km += (sc * sc - 1.0) * kq;
+        }
       }
       if (st == 0) h = adaptiveStep(pos, kp);
       float wgt = (st == 0 || st == 3) ? 1.0 : 2.0;
