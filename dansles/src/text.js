@@ -21,10 +21,39 @@ export const kidNames = (f, ids) => (f?.kids || []).filter((k) => !ids || ids.in
 export const kidsLabel = (f, ids) => kidNames(f, ids).join(' & ') || f?.name || 'verwijderd gezin';
 export const famLabel = (f) => (f ? `Fam. ${f.name}` : 'Verwijderd gezin');
 
-/** Kid names in a car: driver's own kids first, then riders in route order. */
-export function carKids(car, byId, answers) {
-  const own = kidNames(byId[car.driverId], answers[car.driverId]?.kids);
-  const rest = car.riders.flatMap((id) => kidNames(byId[id], answers[id]?.kids));
+// ---------- addresses ----------
+
+/** Short name of a family's address 1 or 2: its label, else the street part of the address. */
+export function homeName(f, n) {
+  const h = n === 2 ? f?.home2 : f;
+  const label = n === 2 ? h?.label : f?.homeLabel;
+  if (label) return label;
+  const street = (h?.address || '').split(',')[0].trim();
+  return street || (n === 2 ? 'tweede adres' : 'eerste adres');
+}
+
+/** Which address a family uses on a leg this week, as text: '' (one address), 'papa', or 'adres?' (not chosen). */
+export function placeOf(f, answer, leg) {
+  if (!f?.home2) return '';
+  const n = answer?.home ? answer.home[leg] : 1;
+  return n == null ? 'adres?' : homeName(f, n);
+}
+
+/** True when an "alternating" family hasn't chosen an address for a leg it takes part in. */
+export function needsHome(f, answer) {
+  if (!f?.home2 || f.homeMode !== 'alternate' || !answer || answer.kids.length === 0) return false;
+  return ['to', 'from'].some((leg) => answer[leg].status !== 'self' && answer.home?.[leg] == null);
+}
+
+const withPlace = (names, f, answer, leg) => {
+  const p = placeOf(f, answer, leg);
+  return p && names.length ? [...names.slice(0, -1), `${names[names.length - 1]} (${p})`] : names;
+};
+
+/** Kid names in a car: driver's own kids first, then riders in route order; second addresses noted. */
+export function carKids(car, byId, answers, leg) {
+  const own = withPlace(kidNames(byId[car.driverId], answers[car.driverId]?.kids), byId[car.driverId], answers[car.driverId], leg);
+  const rest = car.riders.flatMap((id) => withPlace(kidNames(byId[id], answers[id]?.kids), byId[id], answers[id], leg));
   return [...own, ...rest];
 }
 
@@ -35,7 +64,7 @@ export function scheduleText(plan, { settings, week, byId, answers, link }) {
     if (!lp || lp.participants.length === 0) continue;
     const when = leg === 'to' ? `les om ${settings.time}` : `les gedaan om ${settings.endTime}`;
     lines.push('', `${leg === 'to' ? '➡️' : '⬅️'} *${LEG[leg].name}* (${when})`);
-    for (const c of lp.cars) lines.push(`🚗 ${byId[c.driverId]?.name}: ${carKids(c, byId, answers).join(', ')}`);
+    for (const c of lp.cars) lines.push(`🚗 ${byId[c.driverId]?.name}: ${carKids(c, byId, answers, leg).join(', ')}`);
     if (lp.unassigned.length) {
       lines.push(`⚠️ Nog geen plaats voor: ${lp.unassigned.map((id) => kidsLabel(byId[id], answers[id]?.kids)).join(', ')}`);
     }
@@ -44,11 +73,13 @@ export function scheduleText(plan, { settings, week, byId, answers, link }) {
   return lines.join('\n');
 }
 
-export function reminderText({ settings, week, missing, link }) {
+export function reminderText({ settings, week, missing, noHome = [], link }) {
   const dl = formatDateTime(deadlineOf(settings, week));
+  const head = `Carpool ${settings.groupName || 'dansles'} ${formatDay(week)}:`;
   return [
-    `Carpool ${settings.groupName || 'dansles'} ${formatDay(week)}: nog geen antwoord van ${missing.join(', ')}.`,
-    `Graag invullen vóór ${dl}. Zonder antwoord gaan we uit van jullie standaardantwoord, of anders dat jullie kind een lift nodig heeft.`,
+    missing.length ? `${head} nog geen antwoord van ${missing.join(', ')}.` : head,
+    noHome.length ? `Nog geen adres gekozen voor deze week: ${noHome.join(', ')}.` : '',
+    `Graag invullen vóór ${dl}.${missing.length ? ' Zonder antwoord gaan we uit van jullie standaardantwoord, of anders dat jullie kind een lift nodig heeft.' : ''}`,
     link ? `👉 ${link}` : '',
   ].filter(Boolean).join('\n');
 }

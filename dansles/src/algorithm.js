@@ -61,23 +61,54 @@ function normLeg(leg, family) {
   return out;
 }
 
+// ---------- addresses ----------
+// A family has its main address (address/lat/lng, optional homeLabel) and optionally a second one
+// (home2: { label, address, lat, lng }). homeMode says how the second address is used:
+//   'primary'   — the first address unless a week's answer picks the second;
+//   'alternate' — no default: the address must be chosen every week (never inferred from a pattern).
+
+/** Coordinates of a family's address 1 or 2, or null when unknown / not chosen. */
+export function homePoint(family, n) {
+  const h = n === 2 ? family?.home2 : n === 1 ? family : null;
+  return hasCoords(h) ? { lat: h.lat, lng: h.lng } : null;
+}
+
+/** Which address (1, 2 or null = not chosen) a family uses per leg this week; null if it has only one. */
+export function resolveHome(family, response) {
+  if (!family?.home2) return null;
+  const chosen = response?.home;
+  const pick = (leg) => {
+    const v = chosen?.[leg];
+    if (v === 1 || v === 2) return v;
+    return family.homeMode === 'alternate' ? null : 1;
+  };
+  return { to: pick('to'), from: pick('from') };
+}
+
+/** Address number a leg uses (families with one address: always 1). */
+export const homeOfLeg = (answer, leg) => (answer?.home ? answer.home[leg] : 1);
+
 /** The answer the algorithm uses: this week's answer, else the family's usual, else "needs a ride both ways". */
 export function effectiveAnswer(family, response) {
   const allKids = (family.kids || []).map((k) => k.id);
+  const home = resolveHome(family, response);
   if (response) {
     const kids = (response.kids ?? allKids).filter((id) => allKids.includes(id));
-    return { source: 'answer', kids, to: normLeg(response.to, family), from: normLeg(response.from, family) };
+    return { source: 'answer', kids, to: normLeg(response.to, family), from: normLeg(response.from, family), home };
   }
   if (family.usual) {
-    return { source: 'usual', kids: allKids, to: normLeg(family.usual.to, family), from: normLeg(family.usual.from, family) };
+    return { source: 'usual', kids: allKids, to: normLeg(family.usual.to, family), from: normLeg(family.usual.from, family), home };
   }
-  return { source: 'default', kids: allKids, to: { status: 'need' }, from: { status: 'need' } };
+  return { source: 'default', kids: allKids, to: { status: 'need' }, from: { status: 'need' }, home };
 }
 
 export function answerFingerprint(a) {
   const leg = (l) => `${l.status}${l.seats ?? ''}`;
   // Planning only depends on how many kids go, so no child identifiers are stored in plans.
-  return `${a.kids.length}|${leg(a.to)}|${leg(a.from)}`;
+  // The address part is added only for families with a second address, so fingerprints of all
+  // other families (and of plans stored before this feature) stay exactly the same.
+  const home = a.home ? `|h${a.home.to ?? '-'}${a.home.from ?? '-'}` : '';
+  return `${a.kids.length}|${leg(a.to)}|${leg(a.from)}${home}`;
 }
 
 // ---------- fairness ----------
@@ -136,7 +167,7 @@ function legParticipants(families, answers, leg) {
     const l = a[leg];
     if (l.status === 'self') continue;
     const kids = a.kids.length;
-    const p = { id: f.id, kids, status: l.status, home: hasCoords(f) ? { lat: f.lat, lng: f.lng } : null };
+    const p = { id: f.id, kids, status: l.status, home: homePoint(f, homeOfLeg(a, leg)) };
     if (DRIVER_STATUSES.has(l.status)) p.cap = Math.max(l.seats, kids);
     out.push(p);
   }
@@ -366,12 +397,15 @@ export function changedSincePlan(plan, families, responses) {
     .map((f) => f.id);
 }
 
-/** Manually move a rider family to another car (driverId) or to "no seat yet" (null). */
-export function movePassenger(plan, leg, familyId, toDriverId, { families, studio, kidsCount }) {
+/**
+ * Manually move a rider family to another car (driverId) or to "no seat yet" (null).
+ * pointOf(id) gives a family's coordinates for this leg (this week's address); defaults to address 1.
+ */
+export function movePassenger(plan, leg, familyId, toDriverId, { families, studio, kidsCount, pointOf }) {
   const next = structuredClone(plan);
   const lp = next.legs[leg];
   const byId = Object.fromEntries(families.map((f) => [f.id, f]));
-  const pt = (id) => (hasCoords(byId[id]) ? { lat: byId[id].lat, lng: byId[id].lng } : null);
+  const pt = pointOf || ((id) => homePoint(byId[id], 1));
   const touched = new Set();
   for (const c of lp.cars) {
     if (c.riders.includes(familyId)) { c.riders = c.riders.filter((r) => r !== familyId); touched.add(c); }

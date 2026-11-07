@@ -229,3 +229,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .prose h3 { margin-top: 10px; }
 .prose ul, .prose ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
 .prose .table-wrap td { white-space: normal; }
+
+/* ---- second address ---- */
+.home2 { border-left: 3px solid var(--line); padding-left: 12px; }
+.home-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.home-row .label { min-width: 9ch; }
+.warn-text { color: var(--warn); }

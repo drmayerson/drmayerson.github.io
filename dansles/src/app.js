@@ -1,13 +1,15 @@
 // UI (Preact + htm, no build step). Dutch interface.
 import { html, render, useState, useEffect, useMemo, useRef } from '../vendor/preact-htm.js';
-import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, recentLessonPlans, LEGS, WEIGHTS } from './algorithm.js';
+import { computePlan, fairnessStats, effectiveAnswer, changedSincePlan, movePassenger, freeSeats, recentLessonPlans, homePoint, homeOfLeg, LEGS, WEIGHTS } from './algorithm.js';
 import { currentWeek, addDays, deadlineOf, formatDay, formatDateTime, timeLeft, pastWeeks, dayName } from './dates.js';
 import { createStore, safeLS, shareLink } from './store.js';
 import { createSaver } from './saver.js';
 import { weeksToLock, visiblePastWeeks } from './history.js';
+import { familyPayload, responsePayload, HOMES_SCHEMA } from './sanitize.js';
 import {
   STATUS, STATUS_ORDER, DRIVER_STATUSES, LEG, kidsLabel, kidNames, famLabel, carKids,
   scheduleText, reminderText, whatsappUrl, mapsUrl, parseCoords, geocode, newId,
+  homeName, placeOf, needsHome,
 } from './text.js';
 
 const ME_KEY = 'carpool.me';
@@ -40,7 +42,10 @@ function weekModel(data, week, now) {
   const plan = cancelled ? null : stored || live;
   const changed = stored ? changedSincePlan(stored, fams, responses) : [];
   const kidsCount = (id) => answers[id]?.kids.length ?? 0;
-  return { week, settings, fams, byId, responses, rec, answers, deadline, pastDeadline, stats, cancelled, plan, stored, changed, kidsCount };
+  // Coordinates a family starts from / returns to on a leg this week (first or second address).
+  const pointOf = (id, leg) => homePoint(byId[id], homeOfLeg(answers[id], leg));
+  const noHome = fams.filter((f) => needsHome(f, answers[f.id]));
+  return { week, settings, fams, byId, responses, rec, answers, deadline, pastDeadline, stats, cancelled, plan, stored, changed, kidsCount, pointOf, noHome };
 }
 
 /** Store a plan for every week whose deadline passed without one (so history and fairness build up). */
@@ -135,6 +140,38 @@ function LegPicker({ leg, value, onChange, family, kidCount, settings }) {
   </div>`;
 }
 
+function HomePicker({ family, value, onChange, kidName }) {
+  const v = value || { to: null, from: null };
+  const [split, setSplit] = useState(v.to !== v.from);
+  const names = { 1: homeName(family, 1), 2: homeName(family, 2) };
+  const alternate = family.homeMode === 'alternate';
+  const missing = v.to == null || v.from == null;
+  const btn = (pressed, n, onClick) => html`<button type="button" class="choice" aria-pressed=${pressed} onClick=${onClick}>${names[n]}</button>`;
+  let hint;
+  if (missing && alternate) hint = html`<span style="color:var(--warn)">Kies een adres. Bij dit gezin gaat de app niet uit van een vast patroon; zonder keuze is de route een schatting.</span>`;
+  else if (missing) hint = `Zonder keuze: ${names[1]}.`;
+  else if (v.to === v.from) hint = `Ophalen en thuisbrengen: ${names[v.to]}.`;
+  else hint = `Heen vanaf ${names[v.to]}, terug naar ${names[v.from]}.`;
+  return html`<div class="leg-pick">
+    <div class="leg-pick-head"><h3>Waar is ${kidName} deze week?</h3></div>
+    ${split
+      ? LEGS.map((leg) => html`<div class="home-row">
+          <span class="label">${leg === 'to' ? 'Heen vanaf' : 'Terug naar'}</span>
+          <div class="choices grow" role="group" aria-label=${leg === 'to' ? 'Heen vanaf' : 'Terug naar'}>
+            ${[1, 2].map((n) => btn(v[leg] === n, n, () => onChange({ ...v, [leg]: n })))}
+          </div>
+        </div>`)
+      : html`<div class="choices" role="group" aria-label="Adres deze week">
+          ${[1, 2].map((n) => btn(v.to === n && v.from === n, n, () => onChange({ to: n, from: n })))}
+        </div>`}
+    <p class="hint">${hint}</p>
+    <div><button type="button" class="btn ghost small" onClick=${() => {
+      if (split && v.to !== v.from) { const n = v.to ?? v.from; if (n != null) onChange({ to: n, from: n }); }
+      setSplit(!split);
+    }}>${split ? 'Heen en terug hetzelfde adres' : 'Heen en terug een ander adres?'}</button></div>
+  </div>`;
+}
+
 function AnswerEditor({ family, model, saver, onSaveUsual }) {
   const { settings, responses, answers } = model;
   const key = `${model.week}|${family.id}`;
@@ -144,7 +181,7 @@ function AnswerEditor({ family, model, saver, onSaveUsual }) {
   const [draft, setDraft] = useState(() => {
     const pending = saver.pendingValue(key);
     const a = pending ? effectiveAnswer(family, pending) : pending === null ? effectiveAnswer(family, null) : eff;
-    return { kids: a.kids, to: a.to, from: a.from };
+    return { kids: a.kids, to: a.to, from: a.from, home: a.home };
   });
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | failed
   const touched = useRef(saver.status(key) !== 'idle');
@@ -159,7 +196,7 @@ function AnswerEditor({ family, model, saver, onSaveUsual }) {
   const clear = () => {
     touched.current = true;
     const a = effectiveAnswer(family, null);
-    setDraft({ kids: a.kids, to: a.to, from: a.from });
+    setDraft({ kids: a.kids, to: a.to, from: a.from, home: a.home });
     saver.edit(key, null); saver.flush(key);
   };
 
@@ -182,6 +219,9 @@ function AnswerEditor({ family, model, saver, onSaveUsual }) {
         ${k.name} gaat mee naar de les
       </label>`)}
     </div>
+
+    ${going && family.home2 && html`<${HomePicker} family=${family} value=${draft.home} kidName=${kidsLabel(family, draft.kids)}
+          onChange=${(h) => commit({ ...draft, home: h })} />`}
 
     ${going
       ? LEGS.map((leg) => html`<${LegPicker} leg=${leg} value=${draft[leg]} family=${family} kidCount=${draft.kids.length} settings=${settings}
@@ -218,18 +258,20 @@ function Seats({ car, model }) {
 function KidButton({ id, leg, model, me, onMove }) {
   const f = model.byId[id];
   const label = kidsLabel(f, model.answers[id]?.kids);
+  const place = placeOf(f, model.answers[id], leg);
   return html`<button type="button" class=${`kid ${onMove ? 'movable' : ''} ${id === me ? 'me' : ''}`}
     onClick=${onMove ? () => onMove(leg, id) : undefined} disabled=${!onMove}
-    title=${onMove ? `Verplaats ${label}` : undefined}>${label}</button>`;
+    title=${onMove ? `Verplaats ${label}` : undefined}>${label}${place && html` <span class=${`where ${place === 'adres?' ? 'warn-text' : ''}`}>(${place})</span>`}</button>`;
 }
 
 function Car({ car, leg, model, me, onMove }) {
   const f = model.byId[car.driverId];
   const ownKids = kidNames(f, model.answers[car.driverId]?.kids);
-  const pt = (id) => model.byId[id] && { lat: model.byId[id].lat, lng: model.byId[id].lng };
+  const pt = (id) => model.pointOf(id, leg);
   const studio = { ...model.settings.studio, };
+  const driverPlace = placeOf(f, model.answers[car.driverId], leg);
   // stops along the route; each stop after the first carries its own connector so wrapped lines start cleanly
-  const home = html`<span class="who">${ownKids.join(', ') || f?.name || '?'}</span> <span class="where">thuis</span>`;
+  const home = html`<span class="who">${ownKids.join(', ') || f?.name || '?'}</span> <span class=${`where ${driverPlace === 'adres?' ? 'warn-text' : ''}`}>${driverPlace || 'thuis'}</span>`;
   const studioLabel = html`<span class="where">${model.settings.studio?.address ? 'Studio' : 'Les'}</span>`;
   const riderStops = car.riders.map((id) => ({ key: id, body: html`<${KidButton} id=${id} leg=${leg} model=${model} me=${me} onMove=${onMove} />` }));
   const stops = leg === 'to'
@@ -303,7 +345,7 @@ function MySummary({ model, me }) {
 }
 
 function PlanStatus({ model, onRecalc }) {
-  const { stored, pastDeadline, changed, byId, settings, week } = model;
+  const { stored, pastDeadline, changed, byId, settings, week, noHome } = model;
   let text;
   if (!stored) text = `Voorstel. Past zich automatisch aan tot de deadline (${formatDateTime(deadlineOf(settings, week))}).`;
   else if (!pastDeadline) text = 'Met de hand aangepast. Blijft zo staan tot iemand herberekent.';
@@ -313,6 +355,9 @@ function PlanStatus({ model, onRecalc }) {
     ${changed.length > 0 && html`<div class="notice warn">
       <p><strong>Gewijzigde antwoorden sinds deze planning:</strong> ${changed.map((id) => famLabel(byId[id])).join(', ')}.</p>
       <div class="row"><button class="btn" onClick=${onRecalc}>Herbereken planning</button></div>
+    </div>`}
+    ${noHome.length > 0 && html`<div class="notice warn small">
+      <p><strong>Nog geen adres gekozen</strong> voor ${noHome.map((f) => famLabel(f)).join(', ')}. Hun plaats in de route is daarom een schatting. Kies het adres in hun antwoord.</p>
     </div>`}
     ${stored && changed.length === 0 && html`<div class="row"><button class="btn ghost" onClick=${onRecalc}>${pastDeadline ? 'Opnieuw berekenen' : 'Terug naar automatisch voorstel'}</button></div>`}
   </div>`;
@@ -342,6 +387,14 @@ function MoveSheet({ move, model, onMove, onClose }) {
 
 function Overview({ model, onPick, me }) {
   const missing = model.fams.filter((f) => !model.responses[f.id]);
+  const noHome = model.noHome.filter((f) => model.responses[f.id]);
+  const placeTag = (f, a) => {
+    if (!f.home2 || a.kids.length === 0) return null;
+    if (needsHome(f, a)) return html`<span class="tag warn">adres kiezen</span>`;
+    const to = placeOf(f, a, 'to');
+    const from = placeOf(f, a, 'from');
+    return html`<span class="tag">${to === from ? `bij ${to}` : `${to} → ${from}`}</span>`;
+  };
   return html`<div class="list">
     ${model.fams.map((f) => {
       const a = model.answers[f.id];
@@ -354,6 +407,7 @@ function Overview({ model, onPick, me }) {
             ${a.kids.length === 0
               ? html`<span class="tag">gaat niet mee</span>`
               : LEGS.map((leg) => html`<span class=${`tag ${leg}`}>${LEG[leg].name}: ${STATUS[a[leg].status].short}${DRIVER_STATUSES.includes(a[leg].status) ? ` (${a[leg].seats})` : ''}</span>`)}
+            ${placeTag(f, a)}
             ${src}
           </span>
         </span>
@@ -363,7 +417,8 @@ function Overview({ model, onPick, me }) {
   ${missing.length > 0 && html`<p class="small muted">
     Nog geen antwoord van ${missing.map((f) => famLabel(f)).join(', ')} (${missing.length} van ${model.fams.length}).
     ${missing.some((f) => model.answers[f.id].source === 'usual') ? ' Voor wie een standaardantwoord heeft, gebruikt de planning dat tot ze zelf antwoorden.' : ''}
-  </p>`}`;
+  </p>`}
+  ${noHome.length > 0 && html`<p class="small muted">Nog geen adres gekozen voor ${noHome.map((f) => famLabel(f)).join(', ')}.</p>`}`;
 }
 
 function WhoAreYou({ fams, onPick, goFamilies }) {
@@ -386,6 +441,7 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
   // Messages carry the plain address only: phones that opened the invite link once remember the key.
   const link = location.href.split('#')[0];
   const missingNames = fams.filter((f) => !model.responses[f.id]).map((f) => famLabel(f));
+  const noHomeNames = model.noHome.filter((f) => model.responses[f.id]).map((f) => famLabel(f));
   const onMove = plan ? (leg, id) => setMove({ leg, id }) : null;
 
   return html`
@@ -432,9 +488,9 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
           <div class="section-head"><h2>Antwoorden</h2></div>
           <${Overview} model=${model} me=${me} onPick=${(id) => setEditing(id)} />
           <div class="stack">
-            ${missingNames.length > 0 && !pastDeadline && html`<div class="stack">
+            ${(missingNames.length > 0 || noHomeNames.length > 0) && !pastDeadline && html`<div class="stack">
               <span class="label">Herinnering sturen</span>
-              <${ShareActions} notify=${notify} waLabel="Herinnering via WhatsApp" text=${reminderText({ settings, week, missing: missingNames, link })} />
+              <${ShareActions} notify=${notify} waLabel="Herinnering via WhatsApp" text=${reminderText({ settings, week, missing: missingNames, noHome: noHomeNames, link })} />
             </div>`}
             ${plan && html`<div class="stack">
               <span class="label">Planning delen</span>
@@ -458,7 +514,7 @@ function WeekView({ data, model, offset, setOffset, me, setMe, actions, store, n
 
 // ---------------------------------------------------------------- families
 
-function LocationField({ idPrefix, value, onChange }) {
+function LocationField({ idPrefix, value, onChange, label = 'Adres' }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [raw, setRaw] = useState(Number.isFinite(value.lat) ? `${value.lat}, ${value.lng}` : '');
@@ -477,7 +533,7 @@ function LocationField({ idPrefix, value, onChange }) {
   };
   return html`<div class="stack">
     <div class="field">
-      <label for=${`${idPrefix}-addr`}>Adres</label>
+      <label for=${`${idPrefix}-addr`}>${label}</label>
       <div class="row">
         <input class="input grow" id=${`${idPrefix}-addr`} maxlength="200" value=${value.address || ''} placeholder="Straat 12, 3090 Overijse"
           onInput=${(e) => onChange({ ...value, address: e.target.value })} />
@@ -496,10 +552,13 @@ function LocationField({ idPrefix, value, onChange }) {
   </div>`;
 }
 
-function FamilyForm({ family, settings, onSave, onDelete, onCancel }) {
+function FamilyForm({ family, settings, schema, onSave, onDelete, onCancel }) {
   const [f, setF] = useState(() => family ? structuredClone(family) : {
     id: newId('f'), name: '', parent: '', kids: [{ id: newId('k'), name: '' }], address: '', lat: null, lng: null, seats: 3, usual: null,
+    homeLabel: '', home2: null, homeMode: 'primary',
   });
+  const canHomes = (schema ?? 0) >= HOMES_SCHEMA;
+  const has2 = !!f.home2;
   const [confirmDel, setConfirmDel] = useState(false);
   const [err, setErr] = useState('');
   const set = (patch) => setF({ ...f, ...patch });
@@ -507,7 +566,12 @@ function FamilyForm({ family, settings, onSave, onDelete, onCancel }) {
     const kids = f.kids.map((k) => ({ ...k, name: k.name.trim() })).filter((k) => k.name);
     if (!f.name.trim()) return setErr('Vul een gezinsnaam in.');
     if (!kids.length) return setErr('Vul minstens één kind in.');
-    onSave({ ...f, name: f.name.trim(), parent: (f.parent || '').trim(), kids });
+    let home2 = f.home2;
+    if (home2) {
+      home2 = { ...home2, label: (home2.label || '').trim(), address: (home2.address || '').trim() };
+      if (!home2.address && !Number.isFinite(home2.lat)) return setErr('Vul het tweede adres in, of zet "Tweede adres" uit.');
+    }
+    onSave({ ...f, name: f.name.trim(), parent: (f.parent || '').trim(), kids, homeLabel: (f.homeLabel || '').trim(), home2 });
   };
   const usualOn = !!f.usual;
   const usual = f.usual || { to: { status: 'need' }, from: { status: 'need' } };
@@ -525,7 +589,32 @@ function FamilyForm({ family, settings, onSave, onDelete, onCancel }) {
       </div>`)}
       <div><button type="button" class="btn ghost" onClick=${() => set({ kids: [...f.kids, { id: newId('k'), name: '' }] })}>+ Nog een kind</button></div>
     </div>
-    <${LocationField} idPrefix="fam" value=${{ address: f.address, lat: f.lat, lng: f.lng }} onChange=${(v) => set(v)} />
+    <${LocationField} idPrefix="fam" label=${has2 ? 'Eerste adres' : 'Adres'} value=${{ address: f.address, lat: f.lat, lng: f.lng }} onChange=${(v) => set(v)} />
+    <div class="field">
+      <label class="switch"><input type="checkbox" id="fam-home2" checked=${has2} disabled=${!canHomes && !has2}
+        onChange=${() => set(has2 ? { home2: null } : { home2: { label: '', address: '', lat: null, lng: null }, homeMode: f.homeMode || 'primary' })} /> Tweede adres</label>
+      <span class="hint">Bijvoorbeeld bij de andere ouder of bij grootouders. Het kind wordt dan opgehaald en thuisgebracht op het adres van die week. De beurtrol blijft per gezin.</span>
+      ${!canHomes && !has2 && html`<span class="hint" style="color:var(--warn)">Nog niet beschikbaar: de database moet eerst bijgewerkt worden (schema.sql opnieuw uitvoeren in Supabase).</span>`}
+    </div>
+    ${has2 && html`<div class="home2 stack">
+      <div class="two">
+        <div class="field"><label for="fam-label1">Naam eerste adres <span class="hint">(optioneel)</span></label>
+          <input class="input" id="fam-label1" maxlength="30" value=${f.homeLabel || ''} placeholder="bv. mama, thuis" onInput=${(e) => set({ homeLabel: e.target.value })} /></div>
+        <div class="field"><label for="fam-label2">Naam tweede adres <span class="hint">(optioneel)</span></label>
+          <input class="input" id="fam-label2" maxlength="30" value=${f.home2.label || ''} placeholder="bv. papa, oma en opa" onInput=${(e) => set({ home2: { ...f.home2, label: e.target.value } })} /></div>
+      </div>
+      <${LocationField} idPrefix="fam2" label="Tweede adres" value=${f.home2} onChange=${(v) => set({ home2: { ...f.home2, ...v } })} />
+      <div class="field">
+        <span class="label">Hoe wordt het tweede adres gebruikt?</span>
+        <div class="choices" role="group" aria-label="Gebruik tweede adres">
+          <button type="button" class="choice" aria-pressed=${f.homeMode !== 'alternate'} onClick=${() => set({ homeMode: 'primary' })}>Af en toe</button>
+          <button type="button" class="choice" aria-pressed=${f.homeMode === 'alternate'} onClick=${() => set({ homeMode: 'alternate' })}>Wisselend</button>
+        </div>
+        <span class="hint">${f.homeMode === 'alternate'
+          ? 'Elke week kiezen waar het kind is. De app gaat nooit uit van een vast patroon: zonder keuze is de route een schatting.'
+          : `Standaard het eerste adres${f.homeLabel ? ` (${f.homeLabel})` : ''}. Enkel in weken waarin het anders is, kies je het tweede adres.`}</span>
+      </div>
+    </div>`}
     <div class="field">
       <span class="label">Plaatsen voor kinderen in de auto (incl. eigen kind)</span>
       <div class="row"><${Stepper} label="Plaatsen" value=${f.seats} min=${1} onChange=${(n) => set({ seats: n })} /><span class="hint">Standaard, aan te passen per week.</span></div>
@@ -556,15 +645,16 @@ function FamiliesView({ data, actions, me, setMe }) {
     <div class="list">
       ${fams.map((f) => html`<button class="item" onClick=${() => setEdit(f.id)}>
         <span class="grow"><span class="name">${kidsLabel(f)}</span> <span class="sub">${famLabel(f)}${f.parent ? ` · ${f.parent}` : ''}</span><br />
-          <span class="sub">${f.address || 'Geen adres'}${Number.isFinite(f.lat) ? '' : ' · locatie ontbreekt'} · ${f.seats} plaatsen</span></span>
+          <span class="sub">${f.home2 ? `${homeName(f, 1)} / ${homeName(f, 2)}${f.homeMode === 'alternate' ? ' (wisselend)' : ''}` : (f.address || 'Geen adres')}${Number.isFinite(f.lat) && (!f.home2 || Number.isFinite(f.home2.lat)) ? '' : ' · locatie ontbreekt'} · ${f.seats} plaatsen</span></span>
         ${f.id === me && html`<span class="tag you">jij</span>`}
-        ${!Number.isFinite(f.lat) && html`<span class="tag warn">kaart</span>`}
+        ${f.home2 && html`<span class="tag">2 adressen</span>`}
+        ${(!Number.isFinite(f.lat) || (f.home2 && !Number.isFinite(f.home2.lat))) && html`<span class="tag warn">kaart</span>`}
       </button>`)}
       ${fams.length === 0 && html`<p class="item muted">Nog geen gezinnen.</p>`}
     </div>
     <div class="row"><button class="btn primary" onClick=${() => setEdit('new')}>+ Gezin toevoegen</button></div>
     ${edit && html`<${Sheet} title=${fam ? famLabel(fam) : 'Nieuw gezin'} onClose=${() => setEdit(null)}>
-      <${FamilyForm} family=${fam} settings=${data.settings} onCancel=${() => setEdit(null)}
+      <${FamilyForm} family=${fam} settings=${data.settings} schema=${data.schema} onCancel=${() => setEdit(null)}
         onSave=${async (f) => { setEdit(null); await actions.saveFamily(f); if (!fam && me == null && fams.length === 0) setMe(f.id); }}
         onDelete=${async (id) => { setEdit(null); await actions.deleteFamily(id); if (id === me) setMe(null); }} />
     <//>`}
@@ -691,11 +781,11 @@ function SettingsView({ data, store, actions, notify, now, me, setMe }) {
     <section class="section">
       <h2>Privacy</h2>
       <div class="prose small">
-        <p><strong>Wat wordt bewaard:</strong> gezinsnaam, voornaam van de ouder(s) en kinderen, adres en kaartlocatie, aantal plaatsen, de antwoorden per week en de planningen.</p>
+        <p><strong>Wat wordt bewaard:</strong> gezinsnaam, voornaam van de ouder(s) en kinderen, adres en kaartlocatie (en eventueel een tweede adres met een korte naam zoals "papa" of "oma"), aantal plaatsen, de antwoorden per week en de planningen.</p>
         <p><strong>Wie kan het zien:</strong> iedereen met de uitnodigingslink, en wie toegang heeft tot het databaseaccount van deze app. De gegevens gaan versleuteld over het internet, maar zijn niet end-to-end versleuteld. Er wordt niet bijgehouden wie wat aanpaste.</p>
         <p><strong>Waar:</strong> de app zelf (pagina, code en lettertypes) komt van drmayerson.github.io. De gegevens staan in een database bij Supabase; laden en opslaan gaat daarheen. "Zoek op kaart" stuurt het ingetypte adres naar OpenStreetMap. "Route in Google Maps" opent de route bij Google. De WhatsApp-knoppen geven de berichttekst door aan WhatsApp, zonder groepssleutel.</p>
         <p><strong>Hoe lang:</strong> antwoorden en weekplanningen worden 400 dagen bewaard en daarna gewist: bij elke wijziging in de app, en dagelijks als de database dat ondersteunt. Oudere weken worden ook nooit opnieuw aangemaakt.</p>
-        <p><strong>Een gezin verwijderen</strong> wist het gezin (namen, adres, standaardantwoord) en al hun antwoorden. In bewaarde weekplanningen wordt hun code vervangen door "verwijderd gezin" en worden hun eigen gegevens daarin (antwoordsamenvatting, beurtrolcijfer) gewist. Wat blijft staan: dat er in die week een gezin meereed of reed en hoeveel plaatsen er waren, zodat de beurtrol van de anderen klopt. Wie de groep kent, kan daar soms nog uit afleiden wie het was.</p>
+        <p><strong>Een gezin verwijderen</strong> wist het gezin (namen, adressen, standaardantwoord) en al hun antwoorden. In bewaarde weekplanningen wordt hun code vervangen door "verwijderd gezin" en worden hun eigen gegevens daarin (antwoordsamenvatting, beurtrolcijfer) gewist. Wat blijft staan: dat er in die week een gezin meereed of reed en hoeveel plaatsen er waren, zodat de beurtrol van de anderen klopt. Wie de groep kent, kan daar soms nog uit afleiden wie het was.</p>
       </div>
     </section>
 
@@ -723,6 +813,7 @@ function HowItWorks({ settings }) {
       <li>Geen antwoord? Dan het <strong>standaardantwoord</strong> van dat gezin (in te stellen bij Gezinnen).</li>
       <li>Ook geen standaardantwoord? Dan gaan we ervan uit dat het kind een <strong>lift nodig</strong> heeft. De app rekent nooit op iemand als chauffeur die dat niet zelf aangaf.</li>
       <li>Kiest een gezin <strong>Eigen vervoer</strong>, of gaat hun kind niet mee, dan doen ze die rit niet mee in de planning.</li>
+      <li>Heeft een gezin <strong>twee adressen</strong> (bv. bij de andere ouder of bij grootouders), dan kiezen ze per week waar het kind is, voor heen en terug samen of apart. Bij "af en toe" geldt het eerste adres als ze niets kiezen. Bij "wisselend" gaat de app nooit uit van een patroon: zonder keuze is hun plaats in de route een schatting, en staan ze bij wie nog iets moet invullen.</li>
     </ul>
     <p>Heen en terug worden apart ingevuld en apart gepland, maar samen afgewogen.</p>
 
@@ -753,6 +844,7 @@ function HowItWorks({ settings }) {
     <ul>
       <li>Een chauffeur neemt altijd de eigen kinderen mee. Broers en zussen zitten samen.</li>
       <li>De andere kinderen worden zo over de auto's verdeeld dat de <strong>totale afstand zo klein mogelijk</strong> is. Heen: van thuis, kinderen ophalen, naar de les. Terug: van de les, kinderen afzetten, naar huis. De app rekent alle verdelingen en volgordes door.</li>
+      <li>De routes gaan uit van het adres van die week: wie een tweede adres heeft, wordt daar opgehaald en afgezet, en rijdt als chauffeur van daaruit.</li>
       <li>Afstanden zijn geschat: in vogelvlucht tussen de adressen op de kaart, maal 1,3. De knop "Route in Google Maps" toont de echte route.</li>
       <li>Is er te weinig plaats, dan rijdt iedereen die kan, krijgen zoveel mogelijk kinderen een plaats, en toont de planning hoeveel plaatsen er ontbreken.</li>
     </ul>
@@ -760,6 +852,7 @@ function HowItWorks({ settings }) {
     <h3>4. De beurtrol</h3>
     <ul>
       <li>De app kijkt naar de laatste ${weeks} weken waarin er les was. Weken zonder les worden overgeslagen.</li>
+      <li>De beurtrol telt per gezin (dus per kind), ook als het gezin twee adressen heeft.</li>
       <li>Per gezin telt ze hoeveel ritten (heen en terug apart) hun kind meedeed, en bij hoeveel daarvan ze zelf reden.</li>
       <li>Een rit telt pas als <strong>gereden</strong> als je minstens één ander kind meenam. Enkel je eigen kind brengen telt niet.</li>
       <li>Ook ritten met "Rij sowieso" tellen als gereden. Wie vaak uit zichzelf rijdt, wordt de andere weken dus minder snel gevraagd.</li>
@@ -890,21 +983,21 @@ function App({ config }) {
     // Used by the saver only; r === null clears the answer. Returns true when the server stored it.
     writeResponse: (w, fid, r) => run(
       (d) => { if (r === null) { if (d.responses[w]) delete d.responses[w][fid]; } else (d.responses[w] ??= {})[fid] = r; return d; },
-      () => store.saveResponse(w, fid, r)),
+      () => store.saveResponse(w, fid, responsePayload(r, data.families.find((x) => x.id === fid), data.schema))),
     saveUsual: (fid, usual) => {
       const f = { ...data.families.find((x) => x.id === fid), usual };
-      return run((d) => { d.families = d.families.map((x) => (x.id === fid ? f : x)); return d; }, () => store.saveFamily(f), 'Standaardantwoord bewaard');
+      return run((d) => { d.families = d.families.map((x) => (x.id === fid ? f : x)); return d; }, () => store.saveFamily(familyPayload(f, data.schema)), 'Standaardantwoord bewaard');
     },
     volunteer: (w, fid, leg) => {
       const f = data.families.find((x) => x.id === fid);
       const a = weekModel(data, w, now).answers[fid];
-      const r = { kids: a.kids, to: a.to, from: a.from, [leg]: { status: 'can', seats: Math.max(f.seats ?? 3, a.kids.length) } };
+      const r = { kids: a.kids, to: a.to, from: a.from, home: a.home, [leg]: { status: 'can', seats: Math.max(f.seats ?? 3, a.kids.length) } };
       saver.edit(`${w}|${fid}`, r);
       return saver.flush(`${w}|${fid}`).then(() => notify(saver.status(`${w}|${fid}`) === 'saved' ? 'Bedankt! Planning aangepast' : 'Niet opgeslagen. Probeer opnieuw.'));
     },
     move: (w, leg, id, to) => {
       const m = weekModel(data, w, now);
-      const next = movePassenger(m.plan, leg, id, to, { families: data.families, studio: data.settings.studio, kidsCount: m.kidsCount });
+      const next = movePassenger(m.plan, leg, id, to, { families: data.families, studio: data.settings.studio, kidsCount: m.kidsCount, pointOf: (fid) => m.pointOf(fid, leg) });
       const rec = { ...weekRec(w), plan: next };
       return run((d) => { d.weeks[w] = rec; return d; }, () => store.saveWeek(w, rec), 'Verplaatst');
     },
@@ -918,7 +1011,7 @@ function App({ config }) {
       const rec = { ...weekRec(w), cancelled: !weekRec(w).cancelled };
       return run((d) => { d.weeks[w] = rec; return d; }, () => store.saveWeek(w, rec), rec.cancelled ? 'Week geannuleerd' : 'Les staat weer gepland');
     },
-    saveFamily: (f) => run((d) => { const i = d.families.findIndex((x) => x.id === f.id); if (i >= 0) d.families[i] = f; else d.families.push(f); return d; }, () => store.saveFamily(f), 'Gezin bewaard'),
+    saveFamily: (f) => run((d) => { const i = d.families.findIndex((x) => x.id === f.id); if (i >= 0) d.families[i] = f; else d.families.push(f); return d; }, () => store.saveFamily(familyPayload(f, data.schema)), 'Gezin bewaard'),
     deleteFamily: (id) => run((d) => { d.families = d.families.filter((x) => x.id !== id); return d; }, () => store.deleteFamily(id), 'Gezin verwijderd'),
     saveSettings: (s) => {
       const next = { ...s, startWeek: s.startWeek || currentWeek(s, now) };

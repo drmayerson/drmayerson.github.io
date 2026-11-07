@@ -130,10 +130,30 @@ language sql immutable as $$
      and cp_v_num(v->'seats', 0, 20, false, true)
   ), false) $$;
 
+-- Second address of a family: optional label, address and coordinates (address or coordinates required).
+create or replace function cp_v_home2(h jsonb) returns boolean
+language sql immutable as $$
+  select coalesce((
+    cp_v_null(h) or (
+      cp_v_keys(h, array['label','address','lat','lng'])
+      and cp_v_str(h->'label', 30, false)
+      and cp_v_str(h->'address', 200, false)
+      and cp_v_num(h->'lat', -90, 90, false, false)
+      and cp_v_num(h->'lng', -180, 180, false, false)
+      and (coalesce(h->>'address', '') <> '' or jsonb_typeof(h->'lat') = 'number'))
+  ), false) $$;
+
+-- A week's address choice: { to, from }, each 1, 2 or null (not chosen).
+create or replace function cp_v_homechoice(h jsonb) returns boolean
+language sql immutable as $$
+  select coalesce((
+    cp_v_null(h) or (cp_v_keys(h, array['to','from']) and cp_v_num(h->'to', 1, 2, false, true) and cp_v_num(h->'from', 1, 2, false, true))
+  ), false) $$;
+
 create or replace function cp_v_family(f jsonb) returns boolean
 language sql immutable as $$
   select coalesce((
-    cp_v_keys(f, array['id','name','parent','kids','address','lat','lng','seats','usual','archived','updatedAt'])
+    cp_v_keys(f, array['id','name','parent','kids','address','lat','lng','seats','usual','archived','updatedAt','homeLabel','home2','homeMode'])
      and cp_v_id(f->'id')
      and cp_v_str(f->'name', 80, true)
      and cp_v_str(f->'parent', 80, false)
@@ -146,13 +166,17 @@ language sql immutable as $$
      and cp_v_num(f->'seats', 0, 20, true, true)
      and (cp_v_null(f->'usual') or (cp_v_keys(f->'usual', array['to','from']) and cp_v_leg(f->'usual'->'to') and cp_v_leg(f->'usual'->'from')))
      and cp_v_bool(f->'archived')
+     and cp_v_str(f->'homeLabel', 30, false)
+     and cp_v_home2(f->'home2')
+     and (cp_v_null(f->'homeMode') or (f->>'homeMode') in ('primary', 'alternate'))
   ), false) $$;
 
 create or replace function cp_v_response(r jsonb, kid_ids jsonb) returns boolean
 language sql immutable as $$
   select coalesce((
-    cp_v_keys(r, array['kids','to','from'])
+    cp_v_keys(r, array['kids','to','from','home'])
      and cp_v_ids(r->'kids', 10)
+     and cp_v_homechoice(r->'home')
      and not exists (select 1 from jsonb_array_elements(r->'kids') k where (kid_ids @> jsonb_build_array(k)) is not true)
      and cp_v_leg(r->'to') and cp_v_leg(r->'from')
   ), false) $$;
@@ -239,7 +263,8 @@ begin
                            from cp_responses where group_id = gid and week >= cp_retention_start()), '[]'::jsonb),
     'weeks', coalesce((select jsonb_agg(jsonb_build_object('week', week, 'data', data, 'updatedAt', updated_at))
                        from cp_weeks where group_id = gid and week >= cp_retention_start()), '[]'::jsonb),
-    'retainFrom', cp_retention_start()
+    'retainFrom', cp_retention_start(),
+    'schema', 3  -- 3 = second addresses supported (the web app enables that feature from this version)
   );
 end $$;
 
@@ -255,11 +280,22 @@ end $$;
 create or replace function cp_save_family(p_secret text, p_family jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare gid uuid := cp_group_id(p_secret);
+declare old jsonb;
+declare v_data jsonb;
 begin
   perform cp_purge(gid);
   perform cp_check(cp_v_family(p_family), 'family', p_family, 20000);
+  v_data := p_family - 'id' - 'updatedAt';
+  -- An app version from before second addresses doesn't send 'home2' at all: keep what is stored.
+  -- Current versions always send it (null = removed).
+  if not (p_family ? 'home2') then
+    select f.data into old from cp_families f where f.group_id = gid and f.id = p_family->>'id';
+    if old is not null then
+      v_data := v_data || jsonb_strip_nulls(jsonb_build_object('homeLabel', old->'homeLabel', 'home2', old->'home2', 'homeMode', old->'homeMode'));
+    end if;
+  end if;
   insert into cp_families (group_id, id, data, updated_at)
-  values (gid, p_family->>'id', p_family - 'id' - 'updatedAt', now())
+  values (gid, p_family->>'id', v_data, now())
   on conflict (group_id, id) do update set data = excluded.data, updated_at = now();
 end $$;
 
@@ -300,6 +336,11 @@ begin
     raise exception 'unknown family' using errcode = '22023';
   end if;
   perform cp_check(cp_v_response(p_data, kid_ids), 'answer', p_data, 20000);
+  -- An app version from before second addresses doesn't send 'home': keep the stored address choice.
+  if not (p_data ? 'home') then
+    p_data := p_data || coalesce((select jsonb_strip_nulls(jsonb_build_object('home', r.data->'home')) from cp_responses r
+                                  where r.group_id = gid and r.week = p_week and r.family_id = p_family_id), '{}'::jsonb);
+  end if;
   insert into cp_responses (group_id, week, family_id, data, updated_at)
   values (gid, p_week, p_family_id, p_data, now())
   on conflict (group_id, week, family_id) do update set data = excluded.data, updated_at = now();

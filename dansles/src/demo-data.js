@@ -9,9 +9,11 @@ const leg = (status, seats) => (seats == null ? { status } : { status, seats });
 const FAMILIES = [
   { id: 'f-peeters', name: 'Peeters', parent: 'Sarah', kids: [{ id: 'k-lotte', name: 'Lotte' }], address: 'Stationsplein, Overijse', lat: 50.7712, lng: 4.5378, seats: 3, usual: { to: leg('can', 3), from: leg('need') } },
   { id: 'f-janssens', name: 'Janssens', parent: 'Pieter', kids: [{ id: 'k-noor', name: 'Noor' }], address: 'Dorpsstraat, Huldenberg', lat: 50.7893, lng: 4.5829, seats: 4, usual: { to: leg('need'), from: leg('driving', 4) } },
-  { id: 'f-maes', name: 'Maes', parent: 'Inge', kids: [{ id: 'k-mila', name: 'Mila' }], address: 'Tombeekheide, Overijse', lat: 50.7552, lng: 4.5531, seats: 2, usual: null },
+  { id: 'f-maes', name: 'Maes', parent: 'Inge', kids: [{ id: 'k-mila', name: 'Mila' }], address: 'Tombeekheide, Overijse', lat: 50.7552, lng: 4.5531, seats: 2, usual: null,
+    homeLabel: 'thuis', home2: { label: 'oma en opa', address: 'Terhulpensesteenweg, Hoeilaart', lat: 50.7569, lng: 4.4752 }, homeMode: 'primary' },
   { id: 'f-claes', name: 'Claes', parent: 'Tom', kids: [{ id: 'k-fien', name: 'Fien' }], address: 'Jezus-Eik, Overijse', lat: 50.7487, lng: 4.4693, seats: 3, usual: { to: leg('can', 3), from: leg('can', 3) } },
-  { id: 'f-wouters', name: 'Wouters', parent: 'Lien', kids: [{ id: 'k-elise', name: 'Elise' }], address: 'Maleizen, Overijse', lat: 50.7771, lng: 4.5093, seats: 3, usual: { to: leg('rather_not', 3), from: leg('rather_not', 3) } },
+  { id: 'f-wouters', name: 'Wouters', parent: 'Lien & Bart', kids: [{ id: 'k-elise', name: 'Elise' }], address: 'Maleizen, Overijse', lat: 50.7771, lng: 4.5093, seats: 3, usual: { to: leg('rather_not', 3), from: leg('rather_not', 3) },
+    homeLabel: 'mama', home2: { label: 'papa', address: 'Kerkstraat, Huldenberg', lat: 50.7894, lng: 4.5836 }, homeMode: 'alternate' },
   { id: 'f-desmet', name: 'De Smet', parent: 'Koen', kids: [{ id: 'k-lina', name: 'Lina' }], address: 'Ottenburg, Huldenberg', lat: 50.7781, lng: 4.6214, seats: 3, usual: { to: leg('can', 3), from: leg('can', 3) } },
   { id: 'f-mertens', name: 'Mertens', parent: 'Evi', kids: [{ id: 'k-hanne', name: 'Hanne' }], address: 'Neerijse, Huldenberg', lat: 50.8152, lng: 4.6338, seats: 3, usual: { to: leg('need'), from: leg('need') } },
 ];
@@ -40,6 +42,9 @@ export function buildDemoState(defaults) {
       'f-mertens': { kids: ['k-hanne'], to: leg('need'), from: leg(i === 5 ? 'can' : 'need', 3) },
     };
     if (i === 2) r['f-desmet'] = { kids: [], to: leg('need'), from: leg('need') }; // Lina was ill
+    if (i === 4) r['f-maes'].home = { to: 2, from: 2 }; // Mila stayed with her grandparents
+    const h = i % 2 ? 1 : 2; // Elise alternates (the app itself never assumes this)
+    r['f-wouters'] = { kids: ['k-elise'], to: leg('rather_not', 3), from: leg('rather_not', 3), home: { to: h, from: h } };
     responses[w] = r;
     const stats = fairnessStats(plans.slice(-16), families.map((f) => f.id));
     const plan = computePlan({ week: w, families, responses: r, stats, studio: settings.studio });
@@ -48,12 +53,13 @@ export function buildDemoState(defaults) {
     weeks[w] = { cancelled: false, plan };
   }
 
-  // This week: four families have answered, three haven't.
+  // This week: five families have answered, two haven't (Wouters still has to choose an address).
   responses[week] = {
     'f-peeters': { kids: ['k-lotte'], to: leg('can', 3), from: leg('need') },
     'f-claes': { kids: ['k-fien'], to: leg('rather_not', 3), from: leg('can', 3) },
     'f-janssens': { kids: ['k-noor'], to: leg('self'), from: leg('driving', 4) },
     'f-mertens': { kids: ['k-hanne'], to: leg('need'), from: leg('need') },
+    'f-maes': { kids: ['k-mila'], to: leg('need'), from: leg('need'), home: { to: 1, from: 2 } }, // to oma after class
   };
 
   return { settings, families, responses, weeks };

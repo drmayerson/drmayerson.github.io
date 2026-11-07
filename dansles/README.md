@@ -26,6 +26,16 @@ Setup for going live: see `SETUP.md`.
 - For driving answers: seats for kids, own kids included (prefilled from the family's default).
 - Optional: a **standaardantwoord** (default answer) per family, used automatically in weeks they don't answer.
 
+## Second address (added 7 Nov 2026)
+
+- A family can have an optional second address (`home2: { label, address, lat, lng }`) and an optional short name for the first one (`homeLabel`), e.g. "mama"/"papa" or "thuis"/"oma en opa".
+- `homeMode` says how it's used: **"Af en toe"** (`primary`): the first address unless that week's answer picks the second. **"Wisselend"** (`alternate`): no default at all; the family chooses every week. The app never infers a pattern.
+- A week's answer can carry `home: { to, from }` (1 or 2 each): where the child is picked up for *heen* and where it goes after *terug*. One tap sets both; "Heen en terug een ander adres?" splits them (handover days).
+- The planner routes riders and drivers from that week's address (`homePoint`, `resolveHome` in `src/algorithm.js`). An alternating family without a choice gets an unknown location (route estimate), a warning in the plan, an "adres kiezen" tag and a line in the WhatsApp reminder.
+- Fairness stays per family (per child), whatever the address.
+- Addresses appear in the route strips, the answers list and the WhatsApp schedule ("Elise (papa)").
+- Compatibility: `cp_load` reports `schema: 3`. Until the database reports 3, the app hides the option and never sends the new fields (`familyPayload`/`responsePayload` in `src/sanitize.js`), so an un-updated database keeps working. With a current database the app always sends `home2` (null = removed); if an older app version saves a family without `home2`, or an answer without `home`, the server keeps the stored value. Fingerprints only gain an address part for families that have a second address, so existing stored plans are unaffected.
+
 ## Assignment algorithm (`src/algorithm.js`, pure, unit-tested)
 
 Per week, both legs chosen jointly:
@@ -60,8 +70,8 @@ Weights live in `WEIGHTS` at the top of the file. The in-app explainer ("Hoe wer
 - Deleting a family removes the family row and all its answers, and scrubs stored plans: its fingerprint, source and fairness entries are deleted and its ID is replaced by `x-removed`. What remains in those plans is that *a* removed family took part or drove, and seat counts, so other families' fairness stays correct. That is pseudonymous history that group members may still recognise, not anonymous data.
 - Plans store no child identifiers (answer fingerprints use the number of kids).
 - `supabase/check.sql` is a self-check for production: it creates a throw-away test group, runs access, validation (including missing fields), retention (refused old writes, actual deletion by a save and by the daily command), deletion-scrub and key-rotation checks, checks that the `cp-retention` cron job is configured (active, schedule, command) and reports its last run separately (PASS / FAIL / INFO), removes the test group and prints the results.
-- Family JSON: `{ id, name, parent, kids:[{id,name}], address, lat, lng, seats, usual:{to,from} | null }`.
-- Response JSON: `{ kids:[kidId], to:{status, seats?}, from:{status, seats?} }`.
+- Family JSON: `{ id, name, parent, kids:[{id,name}], address, lat, lng, seats, usual:{to,from} | null, homeLabel?, home2?: {label, address, lat, lng} | null, homeMode?: 'primary' | 'alternate' }`.
+- Response JSON: `{ kids:[kidId], to:{status, seats?}, from:{status, seats?}, home?: {to: 1|2|null, from: 1|2|null} }`.
 - Plan JSON: `{ version, week, edited, legs:{ to|from: { participants, cars:[{driverId, forced, ratherNot, seats, ownKids, riders:[familyId in route order], km}], unassigned, seatsShort } }, sources, fingerprints, rates }`.
 
 ## Code map
@@ -91,7 +101,6 @@ tools/build-demo.mjs   single-file demo build (dist/) for previews
 
 ## Ideas not built yet
 
-- **Child with two homes (separated parents)** — discussed 30 Oct 2026, deferred. For now: one family. Planned design: optional second home on a family (label, address, coordinates, seats, own standaardantwoord); per week "Deze week bij: …" with a fixed rhythm (e.g. alternating weekly from a start date) and a per-week override; optionally separate fairness per home. Backward compatible (only new optional fields; no data migration), but `schema.sql` must be updated and re-run *before* the front end is deployed, because `cp_v_family`/`cp_v_response` refuse unknown keys and `src/sanitize.js` strips them.
 
 - Push/email reminders (would need a server-side scheduled job; WhatsApp share covers it for now).
 - Calendar export per driver.

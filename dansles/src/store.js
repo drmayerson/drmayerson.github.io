@@ -9,7 +9,7 @@ import { buildDemoState } from './demo-data.js';
 import { sanitizeState, sanitizeSettings } from './sanitize.js';
 
 const KEY_STORAGE = 'carpool.key';
-const DEMO_STORAGE = 'carpool.demo.v1';
+const DEMO_STORAGE = 'carpool.demo.v2';
 
 export const DEFAULT_SETTINGS = {
   groupName: 'Dansles',
@@ -79,6 +79,7 @@ function supabaseStore(config, key) {
         families: raw.families || [],
         responses,
         weeks,
+        schema: Number.isInteger(raw.schema) ? raw.schema : 1,
       });
     },
     saveSettings: (settings) => call('cp_save_settings', { p_settings: settings }),
@@ -104,7 +105,7 @@ function demoStore() {
   const clone = (x) => JSON.parse(JSON.stringify(x));
   return {
     mode: 'demo',
-    async load() { return sanitizeState(clone({ ...state, settings: sanitizeSettings(state.settings, DEFAULT_SETTINGS) })); },
+    async load() { return sanitizeState(clone({ ...state, schema: 99, settings: sanitizeSettings(state.settings, DEFAULT_SETTINGS) })); },
     async saveSettings(s) { state.settings = clone(s); write(); },
     async saveFamily(f) {
       const i = state.families.findIndex((x) => x.id === f.id);

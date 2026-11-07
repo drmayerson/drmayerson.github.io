@@ -76,6 +76,35 @@ begin
   begin perform cp_save_week(k, w, '{"plan":{"legs":{"to":{"participants":[],"cars":[],"unassigned":[]},"from":{"participants":[],"cars":[],"unassigned":[]}}}}'); r := 'ok'; exception when others then r := sqlerrm; end;
   insert into cp_selftest (check_name, passed, detail) values ('minimal complete plan is accepted', r = 'ok', r);
 
+  -- second addresses (schema 3)
+  insert into cp_selftest (check_name, passed, detail) values ('database reports schema version 3', (cp_load(k)->>'schema') = '3', coalesce(cp_load(k)->>'schema', 'missing'));
+  begin perform cp_save_family(k, '{"id":"f-two","name":"Twee","kids":[{"id":"k2","name":"Kid"}],"seats":3,"homeLabel":"mama","home2":{"label":"papa","address":"Straat 1","lat":50.78,"lng":4.58},"homeMode":"alternate"}'); r := 'ok'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('family with a second address is saved', r = 'ok', r);
+  begin perform cp_save_family(k, '{"id":"f-two","name":"Twee","kids":[{"id":"k2","name":"Kid"}],"seats":3,"home2":{"label":"papa"},"homeMode":"alternate"}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('second address without address or location is refused', r like '%invalid family%', r);
+  begin perform cp_save_family(k, '{"id":"f-two","name":"Twee","kids":[{"id":"k2","name":"Kid"}],"seats":3,"home2":{"address":"X"},"homeMode":"sometimes"}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('unknown address mode is refused', r like '%invalid family%', r);
+  begin perform cp_save_response(k, w, 'f-two', '{"kids":["k2"],"to":{"status":"need"},"from":{"status":"need"},"home":{"to":3}}'); r := 'accepted'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('invalid address choice is refused', r like '%invalid answer%', r);
+  begin perform cp_save_response(k, w, 'f-two', '{"kids":["k2"],"to":{"status":"need"},"from":{"status":"need"},"home":{"to":2,"from":1}}'); r := 'ok'; exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('answer with an address choice is saved', r = 'ok', r);
+  -- an older app version saves without the new fields: they must be kept
+  begin
+    perform cp_save_family(k, '{"id":"f-two","name":"Twee (oud)","kids":[{"id":"k2","name":"Kid"}],"seats":3}');
+    perform cp_save_response(k, w, 'f-two', '{"kids":["k2"],"to":{"status":"can","seats":3},"from":{"status":"need"}}');
+    j := cp_load(k);
+    r := case when (select f->'home2'->>'label' from jsonb_array_elements(j->'families') f where f->>'id' = 'f-two') = 'papa'
+               and (select x->'data'->'home'->>'to' from jsonb_array_elements(j->'responses') x where x->>'familyId' = 'f-two') = '2'
+              then 'ok' else 'lost' end;
+  exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('saves from an older app version keep the second address', r = 'ok', r);
+  begin
+    perform cp_save_family(k, '{"id":"f-two","name":"Twee","kids":[{"id":"k2","name":"Kid"}],"seats":3,"homeLabel":null,"home2":null,"homeMode":null}');
+    j := cp_load(k);
+    r := case when (select f->'home2' from jsonb_array_elements(j->'families') f where f->>'id' = 'f-two') = 'null'::jsonb then 'ok' else 'kept' end;
+  exception when others then r := sqlerrm; end;
+  insert into cp_selftest (check_name, passed, detail) values ('a second address can be removed', r = 'ok', r);
+
   begin perform cp_save_settings(k, '{"weekday":9}'); r := 'accepted'; exception when others then r := sqlerrm; end;
   insert into cp_selftest (check_name, passed, detail) values ('malformed settings are refused', r like '%invalid settings%', r);
 

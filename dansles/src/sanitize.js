@@ -32,14 +32,54 @@ export function sanitizeFamily(f) {
     lng: num(f.lng, -180, 180),
     seats: int(f.seats, 0, 20, 3),
     usual: obj(f.usual) ? { to: leg(f.usual.to), from: leg(f.usual.from) } : null,
+    homeLabel: str(f.homeLabel, 30),
+    home2: obj(f.home2)
+      ? { label: str(f.home2.label, 30), address: str(f.home2.address, 200), lat: num(f.home2.lat, -90, 90), lng: num(f.home2.lng, -180, 180) }
+      : null,
+    homeMode: f.homeMode === 'alternate' ? 'alternate' : 'primary',
     ...(f.archived === true ? { archived: true } : {}),
   };
+}
+
+const homeNum = (v) => (v === 1 || v === 2 ? v : null);
+function homeChoice(h) {
+  if (!obj(h)) return null;
+  const out = { to: homeNum(h.to), from: homeNum(h.from) };
+  return out.to == null && out.from == null ? null : out;
+}
+
+// ---------- what is sent to the database ----------
+// The second-address fields are only sent once the database knows them (schema version 3 and up);
+// older databases refuse unknown fields. With a new database, home2 is always sent (null = none), so
+// the server can tell "removed" apart from "sent by an older app version that doesn't know the field".
+export const HOMES_SCHEMA = 3;
+
+export function familyPayload(f, schema) {
+  const { homeLabel, home2, homeMode, updatedAt, ...rest } = f;
+  if ((schema ?? 0) < HOMES_SCHEMA) return rest;
+  const h2 = home2 && (home2.address || Number.isFinite(home2.lat)) ? home2 : null;
+  return {
+    ...rest,
+    homeLabel: h2 && homeLabel ? homeLabel : null,
+    home2: h2,
+    homeMode: h2 ? (homeMode === 'alternate' ? 'alternate' : 'primary') : null,
+  };
+}
+
+export function responsePayload(r, family, schema) {
+  if (r == null) return null;
+  const { home, ...rest } = r;
+  const choice = homeChoice(home);
+  if ((schema ?? 0) < HOMES_SCHEMA || !family?.home2 || !choice) return rest;
+  return { ...rest, home: choice };
 }
 
 export function sanitizeResponse(r) {
   if (!obj(r)) return null;
   const out = { to: leg(r.to), from: leg(r.from) };
   if (Array.isArray(r.kids)) out.kids = r.kids.filter((k) => typeof k === 'string');
+  const home = homeChoice(r.home);
+  if (home) out.home = home;
   return out;
 }
 
