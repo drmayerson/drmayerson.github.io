@@ -33,6 +33,10 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   if (gl.getParameter(gl.MAX_DRAW_BUFFERS) < 4) throw new Error('WebGL2 MAX_DRAW_BUFFERS < 4.');
   if (gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) < 16) throw new Error('WebGL2 MAX_TEXTURE_IMAGE_UNITS < 16.');
   const timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+  // Stage 1B B2: the record is 4 RGBA32F attachments + 2 for the tail bins (8 bins), when the device has >= 6 draw
+  // buffers (typically 8); otherwise the tail is off (TAIL_BINS 0) and the performance table says so
+  const TAIL_BINS = gl.getParameter(gl.MAX_DRAW_BUFFERS) >= 6 ? 8 : 0;
+  const NATT = TAIL_BINS ? 6 : 4;
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 
@@ -125,7 +129,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     async setTracer(name) {
       // variants: '<file>_half' = <file>.glsl with TABLE_HALF defined (half-float derivative tables, M9 accuracy trade)
       const half = name.endsWith('_half'), file = half ? name.slice(0, -5) : name;
-      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + (half ? '#define TABLE_HALF 1\n' : '') + await load(file) + '\n' + common, `${name}: ${file}.glsl + common.glsl`));
+      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + `#define TAIL_BINS ${TAIL_BINS}\n` + (half ? '#define TABLE_HALF 1\n' : '') + await load(file) + '\n' + common, `${name}: ${file}.glsl + common.glsl`));
       tracer = /** @type {ReturnType<typeof build>} */ (tracePrograms.get(name));
     },
 
@@ -137,7 +141,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
         const lw = Math.ceil(w / st), lh = Math.ceil(h / st);
         const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        const tex = [0, 1, 2, 3].map((k) => {
+        const tex = Array.from({ length: NATT }, (_, k) => {
           const t = /** @type {WebGLTexture} */ (gl.createTexture());
           gl.bindTexture(gl.TEXTURE_2D, t);
           gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, lw, lh);
@@ -146,7 +150,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
           gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
           return t;
         });
-        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2, gl.COLOR_ATTACHMENT3]);
+        gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
         if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('RGBA32F MRT framebuffer incomplete');
         levels.set(st, { fbo, tex, w: lw, h: lh });
       }
@@ -231,11 +235,11 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     },
 
     clearRecords(strides) {
-      if (strides) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 3);
+      if (strides) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 2);
       const z = new Float32Array(4);
       for (const L of levels.values()) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-        for (let k = 0; k < 4; k++) gl.clearBufferfv(gl.COLOR, k, z);
+        for (let k = 0; k < NATT; k++) gl.clearBufferfv(gl.COLOR, k, z);
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
@@ -304,7 +308,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.viewport(0, 0, W, H);
       gl.useProgram(display.prog);
       gl.bindVertexArray(vao);
-      // the four record attachments of the (at most 3) levels of the current trace, finest first: 12 units,
+      // the six record attachments (4 + 2 tail) of the (at most 2) levels of the current trace, finest first: 12 units,
       // plus the noise field and the fluid table (16 texture units is the WebGL2 minimum)
       let unit = 0;
       const lv = [-1, -1, -1, -1];
@@ -313,15 +317,17 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       bound.forEach((st, li) => {
         const L = /** @type {{tex: WebGLTexture[]}} */ (levels.get(st));
         lv[li] = Math.round(Math.log2(st));
-        for (const k of [0, 1, 2, 3]) {
+        for (let k = 0; k < 6; k++) {
           gl.activeTexture(gl.TEXTURE0 + unit);
-          gl.bindTexture(gl.TEXTURE_2D, L.tex[k]);
+          gl.bindTexture(gl.TEXTURE_2D, L.tex[Math.min(k, NATT - 1)]);   // without a tail, its samplers see a record texture (unused)
           gl.uniform1i(display.loc(`uS${li}R${k}`), unit++);
         }
       });
       // unused slots still need a valid 2D texture bound to their samplers
-      for (let li = bound.length; li < 3; li++) for (const k of [0, 1, 2, 3]) gl.uniform1i(display.loc(`uS${li}R${k}`), k);
-      gl.uniform4i(display.loc('uLevels'), lv[0], lv[1], lv[2], -1);
+      for (let li = bound.length; li < 2; li++) for (let k = 0; k < 6; k++) gl.uniform1i(display.loc(`uS${li}R${k}`), k);
+      gl.uniform4i(display.loc('uLevels'), lv[0], lv[1], -1, -1);
+      const tg = view.tail;
+      gl.uniform4f(display.loc('uTail'), tg ? tg.xLo : 0, tg ? tg.invWidth : 1, tg ? tg.K : 0, tg && TAIL_BINS ? 1 : 0);
       gl.activeTexture(gl.TEXTURE0 + 12);
       gl.bindTexture(gl.TEXTURE_3D, noiseTex);
       gl.uniform1i(display.loc('uNoise'), 12);
@@ -347,12 +353,13 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     async readRecords(stride = 1) {
       const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
       gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-      const out = new Float32Array(16 * L.w * L.h);
+      // 24 floats per pixel (js/gpu/traceConfig.js RECORD_FLOATS): the record, then the tail bins (zeros without a tail)
+      const out = new Float32Array(24 * L.w * L.h);
       const one = new Float32Array(4 * L.w * L.h);
-      for (let k = 0; k < 4; k++) {
+      for (let k = 0; k < NATT; k++) {
         gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
         gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, one);
-        for (let p = 0; p < L.w * L.h; p++) for (let c = 0; c < 4; c++) out[16 * p + 4 * k + c] = one[4 * p + c];
+        for (let p = 0; p < L.w * L.h; p++) for (let c = 0; c < 4; c++) out[24 * p + 4 * k + c] = one[4 * p + c];
       }
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -372,7 +379,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
 
     pollTiming: pollQueries,
 
-    capabilities: () => ({ renderer, timerQueries: !!timerExt, maxTexture: gl.getParameter(gl.MAX_TEXTURE_SIZE) }),
+    capabilities: () => ({ renderer, timerQueries: !!timerExt, maxTexture: gl.getParameter(gl.MAX_TEXTURE_SIZE), maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), tailBins: TAIL_BINS }),
     timing: () => ({ traceMs: lastTraceMs, displayMs: lastDisplayMs }),
   };
   return backend;

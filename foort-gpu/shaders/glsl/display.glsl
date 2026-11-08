@@ -7,8 +7,9 @@
 // the (at most 3) levels of the current trace to slots S0..S2, finest first, and each pixel shows the finest slot
 // that has traced it (steps > 0 after a clear).
 
-uniform highp sampler2D uS0R0, uS0R1, uS0R2, uS0R3, uS1R0, uS1R1, uS1R2, uS1R3, uS2R0, uS2R1, uS2R2, uS2R3;
-uniform ivec4 uLevels;  // log2(stride) of slots 0..2 (-1: unused)
+uniform highp sampler2D uS0R0, uS0R1, uS0R2, uS0R3, uS0R4, uS0R5, uS1R0, uS1R1, uS1R2, uS1R3, uS1R4, uS1R5;
+uniform ivec4 uLevels;  // log2(stride) of slots 0..1 (-1: unused)
+uniform vec4 uTail;     // tail bins (Stage 1B B2): log r of the first edge, 1 / bin width, number of bins, on (1/0)
 uniform highp sampler3D uNoise;   // X: texel (phi, x, t), R16F, linear, repeat in phi and t, clamp in x
 uniform ivec4 uNoiseN;  // Nt, Nx, Nphi, noise on (1/0)
 uniform vec4 uNoiseP;   // sigma_n, T_over_M, xmin, xmax
@@ -107,17 +108,34 @@ ivec2 levelTexel(ivec2 p, int l) {
   ivec2 n = (uView.yz + (1 << sh) - 1) >> sh;
   return ivec2((vec2(p) + 0.5) / vec2(uView.yz) * vec2(n));
 }
-vec4 rec0(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R0, q, 0) : l == 1 ? texelFetch(uS1R0, q, 0) : texelFetch(uS2R0, q, 0); }
-vec4 rec1(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R1, q, 0) : l == 1 ? texelFetch(uS1R1, q, 0) : texelFetch(uS2R1, q, 0); }
-vec4 rec2(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R2, q, 0) : l == 1 ? texelFetch(uS1R2, q, 0) : texelFetch(uS2R2, q, 0); }
-vec4 rec3(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R3, q, 0) : l == 1 ? texelFetch(uS1R3, q, 0) : texelFetch(uS2R3, q, 0); }
+vec4 rec0(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R0, q, 0) : texelFetch(uS1R0, q, 0); }
+vec4 rec1(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R1, q, 0) : texelFetch(uS1R1, q, 0); }
+vec4 rec2(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R2, q, 0) : texelFetch(uS1R2, q, 0); }
+vec4 rec3(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R3, q, 0) : texelFetch(uS1R3, q, 0); }
+vec4 rec4(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R4, q, 0) : texelFetch(uS1R4, q, 0); }
+vec4 rec5(int l, ivec2 q) { return l == 0 ? texelFetch(uS0R5, q, 0) : texelFetch(uS1R5, q, 0); }
+
+// the binned tail (crossings 4, 5, ...): sum_b W_b J(r_b), r_b at the bin's emission-weighted centroid, decoded from the
+// packed float (js/gpu/traceConfig.js decodeTail); no noise and no slow light (their average over many crossings is 1)
+float tailBin(float v, int b) {
+  uint bits = floatBitsToUint(v);
+  float W = uintBitsToFloat(bits & 0xFFFFFF00u);
+  if (!(W > 0.0)) return 0.0;
+  float f = float(bits & 0xFFu) / 255.0;
+  return W * johnsonSU(exp(uTail.x + (float(b) + f) / uTail.y));
+}
+float tailEmission(int l, ivec2 q) {
+  if (uTail.w < 0.5) return 0.0;
+  vec4 a = rec4(l, q), c = rec5(l, q);
+  return tailBin(a.x, 0) + tailBin(a.y, 1) + tailBin(a.z, 2) + tailBin(a.w, 3) + tailBin(c.x, 4) + tailBin(c.y, 5) + tailBin(c.z, 6) + tailBin(c.w, 7);
+}
 
 void main() {
   ivec2 p = ivec2(gl_FragCoord.xy);
   int lv = -1;
   ivec2 q;
   vec4 r0;
-  for (int l = 0; l < 3; l++) {
+  for (int l = 0; l < 2; l++) {
     if (uLevels[l] < 0) break;
     q = levelTexel(p, l);
     r0 = rec0(l, q);
@@ -157,7 +175,7 @@ void main() {
       c = mix(quadrantColor(th, ph) * (0.55 + 0.45 * chk), vec3(1.0), 0.8 * line);
     }
   } else if (mode == V_EMISSION) {
-    float I = passEmission(rec1(lv, q), 0) + passEmission(rec2(lv, q), 1) + (uView.w == 1 ? 0.0 : passEmission(rec3(lv, q), 2));
+    float I = passEmission(rec1(lv, q), 0) + passEmission(rec2(lv, q), 1) + (uView.w == 1 ? 0.0 : passEmission(rec3(lv, q), 2)) + tailEmission(lv, q);
     float v = max(I * uEm2.z, 0.0);
     int tm = int(uEm2.w + 0.5);
     if (tm == 1) v = sqrt(v);

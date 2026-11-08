@@ -8,7 +8,8 @@
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
  *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
- *   time?: DisplayTime}} DisplayView
+ *   time?: DisplayTime, tail?: TailGeometry|null}} DisplayView
+ * @typedef {import('./traceConfig.js').TailGeometry} TailGeometry
  * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
  *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n
  *
@@ -25,7 +26,7 @@
  * @property {(rect:Rect, stride:number) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
  *   trace the pixels of `rect` (in that level's pixels) of the level image `stride`
  * @property {(view:DisplayView) => void} display
- * @property {(stride?:number) => Promise<Float32Array>} readRecords  one level (default full resolution), 16 floats per pixel, row 0 = bottom
+ * @property {(stride?:number) => Promise<Float32Array>} readRecords  one level (default full resolution), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image
  * @property {() => void} pollTiming                                  resolve finished GPU timer queries
  * @property {() => Record<string, unknown>} capabilities

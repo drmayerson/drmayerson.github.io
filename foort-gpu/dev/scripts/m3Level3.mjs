@@ -129,7 +129,7 @@ async function faceon(viewer) {
       const G = decodeRecord(g.rec, k);
       if (G.term === 4) nan++;
       if (G.term === 3) timeout++;
-      const h = g.rec[16 * k + 12];
+      const h = g.rec[24 * k + 12];
       if (G.term === 2) { hs.push(h); hMax = Math.max(hMax, h); }
     }
     // seam test: escape directions on the alpha = 0 column vs CPU, compared with the rest of the image

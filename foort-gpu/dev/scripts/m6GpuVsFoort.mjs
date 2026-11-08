@@ -34,13 +34,15 @@ try {
       rInner: c.epsHorizon / L, singEps: c.singEps / L, project, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
     const g = await viewer.trace(view);
     const IG = new Float64Array(N * N), IF = new Float64Array(N * N), qG = new Uint8Array(N * N), qF = new Uint8Array(N * N);
-    let same = 0, sumF = 0, sumD = 0, many = 0, sumFo = 0, sumDo = 0;
+    let same = 0, sumF = 0, sumD = 0, many = 0, sumFo = 0, sumDo = 0, m3F = 0, m3D = 0, m3Dt = 0;
     const rel = [];
     for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-      const k = j * N + i, d = decodeRecord(g.rec, k), f = /** @type {any} */ (run.pixels.get(`${i},${j}`));
+      const k = j * N + i, d = decodeRecord(g.rec, k, g.tail), f = /** @type {any} */ (run.pixels.get(`${i},${j}`));
       qG[k] = quad(d); qF[k] = f.quadrant;
       if (qG[k] === qF[k]) same++;
-      IG[k] = discIntensity(d.crossings, em) / L; IF[k] = f.intensity;
+      IG[k] = discIntensity(d.crossings, em, d.tail) / L; IF[k] = f.intensity;
+      // Stage 1B B2: on the pixels where FOORT counts more than 3 passes, with and without the binned tail
+      if (Math.abs(f.passes) > 3 && f.quadrant === qG[k] && IF[k] < 100 * 1) { const I3 = discIntensity(d.crossings, em) / L; m3F += IF[k]; m3D += Math.abs(I3 - IF[k]); m3Dt += Math.abs(IG[k] - IF[k]); }
       if (d.passes > 3) many++;
       sumF += IF[k]; sumD += Math.abs(IG[k] - IF[k]);
       if (qG[k] === qF[k]) { sumFo += IF[k]; sumDo += Math.abs(IG[k] - IF[k]); }
@@ -62,7 +64,7 @@ try {
     const q = (x) => rel[Math.min(rel.length - 1, Math.floor(x * rel.length))];
     const report = { case: c.name, crossing, project, N, fourColorAgreement: same / (N * N), fourColorMismatches: N * N - same,
       emission: { relL1: sumD / sumF, relL1SameQuadrant: sumDo / sumFo, hotPixelsFOORT: hotF, hotPixelsGPU: hotG, relL1WithoutHot: sumDr / sumFr, relL1AtMost3PassesSameQuadrant: sum3D / sum3F, pixelsAtMost3PassesSameQuadrant: n3, relDiff: { median: q(0.5), p90: q(0.9), p99: q(0.99) } },
-      raysWithMoreThan3Passes: many, gpu: g.stats, renderer: viewer.renderer };
+      raysWithMoreThan3Passes: many, moreThan3Passes: { relL1First3: m3D / m3F, relL1WithTail: m3Dt / m3F }, gpu: g.stats, renderer: viewer.renderer };
     writeFileSync(join(outDir, `foort_${crossing}.json`), JSON.stringify(report, null, 1));
     // panels: FOORT four-colour | GPU four-colour | FOORT emission | GPU emission | |dI|/I (log, 1e-7 .. 1e-1)
     const top = [...IF].sort((a, b) => a - b)[Math.floor(0.995 * N * N)] || 1, gap = 4;
@@ -80,6 +82,6 @@ try {
     });
     const e = (x) => x.toExponential(1);
     console.log(`${crossing}${project ? ' + projection' : ''}: four-colour ${(100 * report.fourColorAgreement).toFixed(2)}% (${report.fourColorMismatches} px); emission rel L1 ${e(report.emission.relL1)} `
-      + `(same-quadrant pixels ${e(report.emission.relL1SameQuadrant)}; hot pixels FOORT ${hotF}, GPU ${hotG}; L1 without them ${e(sumDr / sumFr)}; on the ${n3} px with ≤ 3 passes in both and the same class ${e(sum3D / sum3F)}), rel diff median/p90/p99 ${e(q(0.5))}/${e(q(0.9))}/${e(q(0.99))}; rays > 3 passes ${many}`);
+      + `(same-quadrant pixels ${e(report.emission.relL1SameQuadrant)}; hot pixels FOORT ${hotF}, GPU ${hotG}; L1 without them ${e(sumDr / sumFr)}; on the ${n3} px with ≤ 3 passes in both and the same class ${e(sum3D / sum3F)}), rel diff median/p90/p99 ${e(q(0.5))}/${e(q(0.9))}/${e(q(0.99))}; rays > 3 passes ${many}; on FOORT's > 3-pass pixels (same class) L1 first 3 only ${e(m3D / m3F)}, with the tail ${e(m3Dt / m3F)}`);
   }
 } finally { await viewer.close(); }

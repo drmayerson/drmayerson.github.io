@@ -37,7 +37,7 @@ export async function openViewer(opts = {}) {
     async trace(view, o = {}) {
       const r = await page.evaluate(([v, oo]) => window.__foort.trace(v, oo), [view, o]);
       const buf = Buffer.from(r.records, 'base64');
-      return { stats: r.stats, rec: new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4) };
+      return { stats: r.stats, tail: r.tail, rec: new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4) };
     },
     async close() { await browser.close(); if (server) server.kill(); },
   };

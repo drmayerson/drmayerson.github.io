@@ -23,7 +23,7 @@ WebGL2 with `EXT_color_buffer_float`: a recent Chrome or Edge (tested), Firefox 
 
 ### The image
 
-The camera is a static observer at distance r, inclination θ from the spin axis, looking at the origin; FOORT's `ViewScreen`. The screen size and centre are given in the same units. All lengths and times in the viewer are in units of the metric's ADM mass M: 1 for the black holes, 24 for the ST3Cr fuzzball with FOORT's charges P = 2, q₀ = 50.
+The camera is a static observer at distance r, inclination θ from the spin axis, looking at the origin; FOORT's `ViewScreen`. The screen size and centre are given in the same units. All lengths and times in the viewer are in units of the metric's ADM mass M. The ST3Cr fuzzball (FOORT's charges P = 2, q₀ = 50, M_ADM = 24 in FOORT's coordinates) is traced in units of M too, so its lengths, the disc profile and the delays compare directly with the black holes; Stage 1 links are converted automatically.
 
 A new trace runs whenever the spacetime, camera, fluid or tracing settings change. It refines progressively: a coarse image first, then finer levels, centre first. While a slider is dragged only the coarse level is traced, on a coarse metric table; the full image follows on release. Emission, exposure, tone map, colour map, time and noise settings only redraw and never retrace.
 
@@ -51,7 +51,7 @@ The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&
 
 ### Known limitations
 
-- **Three crossings:** each pixel keeps its first 3 disc crossings. For the fuzzball at λ ≳ 0.001, light trapped inside the cap crosses the disc many more times, so about half of the interior's intensity is missing (legend note; `PROGRESS.md`, CHECKPOINT M6).
+- **Later disc crossings:** each pixel keeps its first 3 disc crossings exactly; every later crossing (light trapped near the photon ring or inside the fuzzball's cap) is summed into 8 log-r bins and drawn **without noise or slow light** (its fluctuations average out over many crossings with spread-out delays). Devices with fewer than 6 WebGL2 draw buffers keep the first 3 crossings only (the performance table says so). Redshift power, fudge factor and max passes re-trace, since the bins are weighted at trace time.
 - **Noise model:** the noise field is sampled at log(r/M) with a Keplerian built-in flow. For the fuzzball, whose emission lies at r ≪ M, this is an approximation.
 - **Chaos:** inside the fuzzball, ray scattering is chaotic, and individual pixels there depend on the step size in any integrator, FOORT's included.
 - **Very large images:** on a slow GPU, very large images or very many steps can make the operating system reset the GPU. The page then says so and needs a reload.
@@ -134,6 +134,7 @@ Validation scripts (reports in `dev/reports/m<N>/`), by milestone:
 | M6 | `m6TableError.mjs`, `m6Level2.mjs`, `m6GpuVsFoort.mjs`, `m6Level3.mjs`, `m6Continuity.mjs`, `m6Passes.mjs`, `m6Steps.mjs`: fuzzball tables, GPU vs CPU and FOORT, λ = 0 shadow, λ → 0, crossings, steps |
 | M7–M8 | `m7Delays.mjs`, `m7Frames.mjs`; `tools/noise/inspect_field.py`: light delays, animations, noise fields |
 | M9 | `m9Perf.mjs`: acceptance timings |
+| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; the device probe page `probe.html` |
 
 ### Local server
 

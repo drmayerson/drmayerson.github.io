@@ -28,7 +28,7 @@ test('the shader samples the noise field as the CPU rule does, with zero mean an
     return { meta: F.meta, rec: Array.from(rec), cpu: (() => {
       const out = [];
       for (let k = 0; k < n * n; k++) {
-        const r = rec[16 * k + 4], phi = rec[16 * k + 5], dt = rec[16 * k + 6];
+        const r = rec[24 * k + 4], phi = rec[24 * k + 5], dt = rec[24 * k + 6];
         out.push(r > 0 ? nf.sampleNoise(F, 37 + dt, Math.log(r), phi) : null);
       }
       return out;

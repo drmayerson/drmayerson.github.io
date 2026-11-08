@@ -32,6 +32,21 @@ layout(location = 1) out vec4 outRec1;  // crossing 1: r, phi (mod 2 pi), dt = t
 layout(location = 2) out vec4 outRec2;  // crossing 2
 layout(location = 3) out vec4 outRec3;  // crossing 3, or (|H|_rel at the end, t_end, 0, 0) if uOpt.w = 1
 
+// Stage 1B B2, all disc crossings: crossings 4, 5, ... (up to max passes) are accumulated into TAIL_BINS log-r bins.
+// Each bin is one float: W_b = sum F g^p, with the bin's emission-weighted centroid of log r (as a fraction of the bin
+// width, 8 bits) in the low 8 bits of W_b's mantissa (W_b keeps 15 bits: ~3e-5 relative). The display adds
+// sum_b W_b J(r_b), without noise and slow light (plan 3.2). Packing for <= 8 RGBA32F attachments: record 0-3, tail 4-5,
+// and attachment 6 free for the ray-continuation state of compaction (B5). TAIL_BINS = 0 on devices with < 6 draw buffers.
+#ifndef TAIL_BINS
+#define TAIL_BINS 0
+#endif
+#if TAIL_BINS > 0
+layout(location = 4) out vec4 outTail0;  // bins 0-3
+layout(location = 5) out vec4 outTail1;  // bins 4-7
+uniform vec4 uTail;     // log r of the first bin edge, 1 / bin width (in log r), number of bins, 0
+uniform vec4 uTailEm;   // redshift power p, geometric fudge factor (passes >= 2), max passes (0: all), 0
+#endif
+
 const float PI = 3.14159265358979;
 const float HALF_PI = 1.57079632679490;
 const int TERM_HORIZON = 1, TERM_BOUNDARY = 2, TERM_TIMEOUT = 3, TERM_NAN = 4, TERM_SINGULARITY = 6;
@@ -64,6 +79,12 @@ float fluidRedshift(float r, float pr, float pt, float pphi) {
   vec3 e = mix(a, b, f - float(i));
   return e.x / (pt + e.y * pr + e.z * pphi);
 }
+
+#if TAIL_BINS > 0
+// a crossing (r, phi, dt, g) into its log-r bin: weight F g^p (F = fudge for passes >= 2; the tail starts at pass 4)
+#define TAIL_ADD(C) { vec4 tc_ = (C); if (tc_.x > 0.0 && tc_.w > 0.0) { float w_ = uTailEm.y * pow(tc_.w, uTailEm.x), x_ = log(tc_.x); \
+  int b_ = clamp(int(floor((x_ - uTail.x) * uTail.y)), 0, TAIL_BINS - 1); tW[b_] += w_; tX[b_] += w_ * x_; } }
+#endif
 
 vec4 crossingRecord(vec4 pos, vec2 mom, float pt, float pphi) {
   float r = radiusOf(pos.x);
@@ -99,6 +120,10 @@ void main() {
   float prevZeta = zeta;
   vec4 cr[3];
   cr[0] = vec4(0.0); cr[1] = vec4(0.0); cr[2] = vec4(0.0);
+#if TAIL_BINS > 0
+  float tW[8], tX[8];
+  for (int b = 0; b < 8; b++) { tW[b] = 0.0; tX[b] = 0.0; }
+#endif
   int passes = 0;
   int code = TERM_TIMEOUT;
   int steps = 0;
@@ -164,6 +189,9 @@ void main() {
         if (abs(z) > band) {
           if (havePrev && prevZeta * z < 0.0) {
             if (passes < 3) cr[passes] = crossingRecord(pos, mom, pt, pphi);
+#if TAIL_BINS > 0
+            else if (uTailEm.z <= 0.0 || float(passes + 1) <= uTailEm.z) TAIL_ADD(crossingRecord(pos, mom, pt, pphi))
+#endif
             passes++;
           }
           havePrev = true;
@@ -180,6 +208,9 @@ void main() {
           vec4 q = prevPos + f * (pos - prevPos);
           vec2 qm = prevMom + f * (mom - prevMom);
           if (passes < 3) cr[passes] = crossingRecord(q, qm, pt, pphi);
+#if TAIL_BINS > 0
+          else if (uTailEm.z <= 0.0 || float(passes + 1) <= uTailEm.z) TAIL_ADD(crossingRecord(q, qm, pt, pphi))
+#endif
           passes++;
         }
       }
@@ -192,4 +223,17 @@ void main() {
   outRec1 = cr[0];
   outRec2 = cr[1];
   outRec3 = uOpt.w == 1 ? vec4(hamiltonianRel(pos, mom, hemi, pt, pphi), pos.w, 0.0, 0.0) : cr[2];
+#if TAIL_BINS > 0
+  vec4 tp0 = vec4(0.0), tp1 = vec4(0.0);
+  for (int b = 0; b < 8; b++) {
+    float v = 0.0;
+    if (tW[b] > 0.0) {
+      float f = clamp((tX[b] / tW[b] - uTail.x) * uTail.y - float(b), 0.0, 1.0);
+      v = uintBitsToFloat((floatBitsToUint(tW[b]) & 0xFFFFFF00u) | uint(f * 255.0 + 0.5));
+    }
+    if (b < 4) tp0[b] = v; else tp1[b - 4] = v;
+  }
+  outTail0 = tp0;
+  outTail1 = tp1;
+#endif
 }

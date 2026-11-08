@@ -1,0 +1,3 @@
+lambda 0.05: CPU first 3 crossings 47.2%, tail 52.8%; GPU recovered 105.0% (first 3 alone 48.9%); tail approximation L1 / total: K=4 8.9e-2/-8.8e-2, K=8 8.3e-3/-4.8e-3, K=16 3.0e-3/1.4e-3 (CPU 290 s)
+lambda 0.005: CPU first 3 crossings 45.2%, tail 54.8%; GPU recovered 99.3% (first 3 alone 45.2%); tail approximation L1 / total: K=4 4.9e-2/-3.8e-2, K=8 1.7e-2/-9.6e-3, K=16 5.9e-3/-4.6e-3 (CPU 737 s)
+lambda 0.0001: CPU first 3 crossings 93.0%, tail 7.0%; GPU recovered 100.5% (first 3 alone 93.0%); tail approximation L1 / total: K=4 8.6e-2/8.1e-2, K=8 3.0e-3/-7.2e-4, K=16 1.6e-3/-6.8e-4 (CPU 1398 s)

@@ -7,7 +7,7 @@ import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
-import { decodeRecord } from './gpu/traceConfig.js';
+import { decodeRecord, RECORD_FLOATS } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
 import { loadNoiseField } from './noise/noiseField.js';
@@ -57,6 +57,7 @@ export function viewFromState(s, coarseTables = false) {
     // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
     farSteps: s.farSteps ? { r: 20, max: 4 } : null,
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
+    tailEmission: { redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) },
   };
 }
 
@@ -109,14 +110,16 @@ async function main() {
   let tObs = 0;
 
   let autoExposure = 1;
+  /** tail-bin geometry of the last trace (Stage 1B B2) */
+  let lastTail = /** @type {import('./gpu/traceConfig.js').TailGeometry|null} */ (null);
   /** coarse-level records of the last full trace, for auto exposure */
   let coarse = /** @type {Float32Array|null} */ (null);
   const updateExposure = () => {
     if (!coarse) return;
     const em = emissionFromState(state), I = [];
-    for (let k = 0; k < coarse.length / 16; k++) {
-      const d = decodeRecord(coarse, k);
-      const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em);
+    for (let k = 0; k < coarse.length / RECORD_FLOATS; k++) {
+      const d = decodeRecord(coarse, k, lastTail ?? undefined);
+      const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em, d.tail);
       if (v > 0) I.push(v);
     }
     I.sort((a, b) => a - b);
@@ -135,7 +138,7 @@ async function main() {
     const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
     backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r * (lastFluid?.M ?? 1), storeH: !!state.storeH,
       emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap),
-      time: timeFromState(state, tObs, lastFluid?.M ?? 1) });
+      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail });
   };
 
   const legend = () => {
@@ -144,7 +147,7 @@ async function main() {
     $('legend').innerHTML = items
       ? items.map(([c, t]) => `<span style="background:${c}"></span>${t}`).join('')
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
-        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over the stored crossings (≤ 3); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
+        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over all crossings (the first 3 exact, later ones binned); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
         : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
           : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon' : '';
   };
@@ -159,6 +162,7 @@ async function main() {
       perfRow('fluid', lastFluid ? `ξ = ${lastFluid.params.xi}, β_r = ${lastFluid.params.betaR}, β_φ = ${lastFluid.params.betaPhi}; ISCO ${lastFluid.isco ? 'r = ' + lastFluid.isco.toFixed(4) : 'not found'} (${lastFluid.ms.toFixed(0)} ms)` : '') +
       (lastFluid?.bands ? perfRow('circular orbits', bandText(lastFluid.bands)) : '') +
       perfRow('image', `${st.N}² (levels ${st.levels.join(' → ')}, ${st.tiles} tiles)`) +
+      perfRow('disc crossings', caps.tailBins ? `first 3 exact, the rest in ${caps.tailBins} log-r bins (no noise or slow light)` : `first 3 only: this device has ${caps.maxDrawBuffers} draw buffers (the binned tail needs 6)`) +
       perfRow('trace time', `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
       (warnings.length ? perfRow('warnings', warnings.join('; ')) : '');
@@ -199,6 +203,7 @@ async function main() {
       if (id !== runId) return;
       lastFluid = fb.tables;
       setup = gpuTraceSetup(view, tables, fb.tables);
+      lastTail = setup.tail;
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return; }
     const levels = final ? finalLevels(state.N) : [Math.min(8, Math.max(1, state.N / 128))];
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
@@ -264,14 +269,15 @@ async function main() {
       const tables = ts ? (await bakes.get(ts)).tables : undefined;
       const fluid = (await bakes.get(fluidSpec(view))).tables;
       const setup = gpuTraceSetup(view, tables, fluid);
+      lastTail = setup.tail;
       const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: o.measureSteps ?? true, adaptTiles: o.adaptTiles ?? false });
-      if (o.records === false) { requestDraw(); return { stats, records: '', level, isco: fluid.isco, bake: null }; }
+      if (o.records === false) { requestDraw(); return { stats, records: '', level, isco: fluid.isco, bake: null, tail: setup.tail }; }
       const rec = await backend.readRecords();
       requestDraw();
       const bytes = new Uint8Array(rec.buffer);
       let bin = '';
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      return { stats, records: btoa(bin), level, isco: fluid.isco, bake: tables ? { grid: tables.grid, timing: tables.timing, validation: tables.validation } : null };
+      return { stats, records: btoa(bin), level, isco: fluid.isco, tail: setup.tail, bake: tables ? { grid: tables.grid, timing: tables.timing, validation: tables.validation } : null };
     },
   };
 }

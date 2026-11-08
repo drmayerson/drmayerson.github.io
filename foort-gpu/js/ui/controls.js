@@ -86,9 +86,10 @@ export const CONTROLS = [
   { key: 'mu', label: 'Johnson-SU μ', type: 'number', group: 'Disc emission', step: 0.01, default: 2.02, retrace: false },
   { key: 'gamma', label: 'Johnson-SU γ', type: 'number', group: 'Disc emission', step: 0.1, default: -2, retrace: false },
   { key: 'sigma', label: 'Johnson-SU σ', type: 'number', group: 'Disc emission', step: 0.05, default: 0.5, retrace: false },
-  { key: 'redshiftPower', label: 'redshift power', type: 'number', group: 'Disc emission', step: 1, default: 3, retrace: false },
-  { key: 'fudge', label: 'geometric fudge factor (passes ≥ 2)', type: 'number', group: 'Disc emission', step: 0.1, default: 1, retrace: false },
-  { key: 'maxPasses', label: 'max passes (0: all stored, ≤ 3)', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3], default: 0, retrace: false },
+  // redshift power, fudge factor and max passes also weight the binned tail at trace time (Stage 1B B2): they re-trace
+  { key: 'redshiftPower', label: 'redshift power', type: 'number', group: 'Disc emission', step: 1, default: 3 },
+  { key: 'fudge', label: 'geometric fudge factor (passes ≥ 2)', type: 'number', group: 'Disc emission', step: 0.1, default: 1 },
+  { key: 'maxPasses', label: 'max passes (0: all)', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3, 4, 6, 10, 20], default: 0 },
   { key: 'xi', label: 'fluid ξ (sub-Keplerian)', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'betaR', label: 'fluid β_r', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'betaPhi', label: 'fluid β_φ', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },

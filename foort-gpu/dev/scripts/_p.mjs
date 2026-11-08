@@ -1,0 +1,11 @@
+import { openViewer } from './gpuRunner.mjs';
+import { writeFileSync } from 'node:fs';
+const v = await openViewer();
+v.page.on('console', (m) => { if (m.type() === 'error') console.log('console error:', m.text()); });
+const base = v.page.url().replace(/index\.html.*$/, 'index.html');
+await v.page.goto(`${base}?v=2&N=256&play=0&metric=st3cr&lambda=0.005&r=10.4167&inc=85.9437&screen=6.25&mu=0&gamma=-1.5&sigma=0.0833333`);
+await v.page.waitForFunction(() => /done|fail/.test(document.getElementById('status').textContent), null, { timeout: 200000 });
+console.log(await v.page.evaluate(() => document.getElementById('status').textContent + ' | ' + document.getElementById('perf').innerText.split('\n').filter((l) => /crossings|image/.test(l)).join(' ; ')));
+const u = await v.page.evaluate(() => document.getElementById('view').toDataURL('image/png'));
+writeFileSync(process.env.TEMP + '/b2_fb.png', Buffer.from(u.split(',')[1], 'base64'));
+await v.close();

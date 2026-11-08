@@ -24,15 +24,46 @@ export const EMISSION_PRESETS = {
 };
 
 /**
- * Intensity from a list of crossings {r, g} in order along the (backward) ray.
- * @param {{r:number, g:number}[]} crossings @param {EmissionParams} p
+ * Intensity from a list of crossings {r, g} in order along the (backward) ray, plus the binned tail (Stage 1B B2):
+ * tail bins {W, r} with W = sum F g^p already weighted at trace time.
+ * @param {{r:number, g:number}[]} crossings @param {EmissionParams} p @param {{W:number, r:number}[]|null} [tail]
  */
-export function discIntensity(crossings, p) {
+export function discIntensity(crossings, p, tail) {
   let I = 0;
+  if (tail) for (const t of tail) I += t.W * johnsonSU(t.r, p);
   crossings.forEach((c, k) => {
     if (p.maxPasses > 0 && k + 1 > p.maxPasses) return;
     if (!(c.g > 0) || !(c.r > 0)) return;
     I += (k === 0 ? 1 : p.fudge) * c.g ** p.redshiftPower * johnsonSU(c.r, p);
   });
   return I;
+}
+
+/**
+ * The binned tail of a list of crossings {r, g} along a ray, as shaders/glsl/common.glsl accumulates and packs it
+ * (Stage 1B B2): crossings 4, 5, ... (up to maxPasses) into geometry.K log-r bins, W_b = sum F g^p and the centroid of
+ * log r. With `quantize`, W keeps 15 mantissa bits and the centroid 8 bits of the bin width, as the record stores them.
+ * @param {{r:number, g:number}[]} crossings  all crossings, in order
+ * @param {{xLo:number, invWidth:number, K:number}} geometry
+ * @param {{redshiftPower:number, fudge:number, maxPasses:number}} em
+ * @param {boolean} [quantize]
+ * @returns {{W:number, r:number}[]}
+ */
+export function binTail(crossings, geometry, em, quantize = true) {
+  const W = new Float64Array(geometry.K), X = new Float64Array(geometry.K);
+  crossings.forEach((c, k) => {
+    if (k < 3 || (em.maxPasses > 0 && k + 1 > em.maxPasses) || !(c.r > 0) || !(c.g > 0)) return;
+    const w = em.fudge * c.g ** em.redshiftPower, x = Math.log(c.r);
+    const b = Math.min(geometry.K - 1, Math.max(0, Math.floor((x - geometry.xLo) * geometry.invWidth)));
+    W[b] += w; X[b] += w * x;
+  });
+  const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+  const out = [];
+  for (let b = 0; b < geometry.K; b++) {
+    if (!(W[b] > 0)) continue;
+    let f = Math.min(1, Math.max(0, (X[b] / W[b] - geometry.xLo) * geometry.invWidth - b)), w = W[b];
+    if (quantize) { f32[0] = w; u32[0] = (u32[0] & 0xffffff00) >>> 0; w = f32[0]; f = Math.round(f * 255) / 255; }
+    out.push({ W: w, r: Math.exp(geometry.xLo + (b + f) / geometry.invWidth) });
+  }
+  return out;
 }

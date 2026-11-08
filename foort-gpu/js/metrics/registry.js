@@ -73,8 +73,8 @@ export const METRICS = [
   {
     id: 'st3cr', label: 'ST3Cr ring fuzzball (P = 2, q0 = 50)', mode: 'fuzzball',
     zeroSwitch: { id: 'st3crBH', label: 'λ = 0 (supersymmetric black hole)', key: 'bh0' },
-    // CHECKPOINT M6: the GPU record keeps 3 equatorial crossings (dev/reports/m6/passes.json)
-    emissionNote: 'only the first 3 disc crossings are kept; light trapped inside the fuzzball crosses the disc many more times, so the interior is underestimated (about half of its intensity is missing for λ ≳ 0.001)',
+    // Stage 1B B2: crossings after the third (trapped light) are kept in the binned tail
+    emissionNote: 'light trapped inside the fuzzball crosses the disc many times; crossings after the third are summed in 8 log-r bins and drawn without noise or slow light (their fluctuations average out)',
     // in units of M_ADM = 24 (Stage 1B B1); the raw metric (FOORT's coordinates) is createST3Cr itself
     create: (p) => rescaleToUnitMass(createST3Cr({ P: p.P, q0: p.q0, lambda: p.lambda })),
     params: [

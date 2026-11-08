@@ -39,7 +39,7 @@ test('GPU trace hook: lambda = 0 rays below the shadow edge reach the inner cut,
     for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
     const rec = new Float32Array(buf.buffer);
     const counts = [0, 0, 0, 0, 0, 0, 0];
-    for (let k = 0; k < 64 * 64; k++) counts[Math.round(rec[16 * k]) % 16]++;
+    for (let k = 0; k < 64 * 64; k++) counts[Math.round(rec[24 * k]) % 16]++;
     return { counts, isco: t.isco };
   });
   expect(res.counts[2]).toBeGreaterThan(0.8 * 64 * 64);   // escaped
