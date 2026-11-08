@@ -20,6 +20,7 @@
  * @property {() => Singularity[]} singularities
  * @property {(() => number)=} terminationRadius    rays stop at r < terminationRadius() (horizon metrics: outside r_+; horizonless: inner cut)
  * @property {(() => number)=} singularityEpsilon   Euclidean base-space distance at which rays stop near singularities()
+ * @property {number=} lengthScale                  metrics rescaled to unit mass (rescaleToUnitMass): the raw length unit
  *                                                  (default r_h (1 + EPS_HORIZON))
  * @property {(opts?:ValidateOptions) => {ok:boolean, messages:string[]}} validate
  *
@@ -105,6 +106,49 @@ export function pointValidityInverse(u) {
   if (!(u.grr > 0 && u.gthth > 0 && u.gtt * u.gphiphi - u.gtphi * u.gtphi < 0)) return 'signature';
   if (!(u.gtt < 0)) return 'ctc';
   return '';
+}
+
+/**
+ * A metric in units of its ADM mass (Stage 1B, B1): t = L t', r = L r' with L = massADM. With the overall factor L^2
+ * dropped (null geodesics and redshift ratios do not see a constant conformal factor):
+ *   g'_tt(r') = g_tt(L r'), g'_tphi = g_tphi(L r') / L, g'_phiphi = g_phiphi(L r') / L^2, g'_rr = g_rr(L r'),
+ *   g'_thth = g_thth(L r') / L^2,  and the inverse g'^tt = g^tt, g'^tphi = L g^tphi, g'^phiphi = L^2 g^phiphi,
+ *   g'^rr = g^rr, g'^thth = L^2 g^thth.
+ * Everything with a length scales by 1/L (horizon, termination radius, singularities and their distance, the
+ * critical impact parameter); `lengthScale` = L lets grids keep their raw node positions (tableRadiusFor, the fluid's
+ * ISCO search), so the scaled metric traces the same rays. `raw` is the original metric (FOORT parity harness).
+ * Metric-specific raw-unit helpers (ST3Cr `functions`, ST3Cr-BH `Q`) are not carried over.
+ * @template {StationaryAxisymmetricMetric} T
+ * @param {T} m
+ * @returns {StationaryAxisymmetricMetric & {lengthScale:number, raw:T, criticalImpactParameter?:() => {b:number, r:number}}}
+ */
+export function rescaleToUnitMass(m) {
+  const L = m.massADM, L2 = L * L;
+  const any = /** @type {any} */ (m);
+  /** @type {any} */
+  const w = {
+    id: m.id,
+    params: m.params,
+    massADM: 1,
+    lengthScale: L,
+    raw: m,
+    horizon: m.horizon.kind === 'sphere' ? { kind: 'sphere', r: m.horizon.r / L } : m.horizon,
+    equatoriallySymmetric: m.equatoriallySymmetric,
+    /** @param {number} r @param {number} th */
+    g_dd(r, th) { const g = m.g_dd(L * r, th); return { gtt: g.gtt, gtphi: g.gtphi / L, gphiphi: g.gphiphi / L2, grr: g.grr, gthth: g.gthth / L2 }; },
+    singularities: () => m.singularities().map((s) => ({ ...s, r: s.r / L })),
+    /** @param {ValidateOptions} [opts] */
+    validate: (opts = {}) => m.validate({ ...opts, ...(opts.rMin !== undefined ? { rMin: opts.rMin * L } : {}), ...(opts.rMax !== undefined ? { rMax: opts.rMax * L } : {}) }),
+  };
+  if (m.g_uu) {
+    const guu = m.g_uu;
+    /** @param {number} r @param {number} th */
+    w.g_uu = (r, th) => { const u = guu(L * r, th); return { gtt: u.gtt, gtphi: u.gtphi * L, gphiphi: u.gphiphi * L2, grr: u.grr, gthth: u.gthth * L2 }; };
+  }
+  if (m.terminationRadius) { const f = m.terminationRadius; w.terminationRadius = () => f() / L; }
+  if (m.singularityEpsilon) { const f = m.singularityEpsilon; w.singularityEpsilon = () => f() / L; }
+  if (any.criticalImpactParameter) w.criticalImpactParameter = () => { const c = any.criticalImpactParameter(); return { b: c.b / L, r: c.r / L }; };
+  return w;
 }
 
 /**

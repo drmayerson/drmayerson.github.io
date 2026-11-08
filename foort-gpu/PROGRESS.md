@@ -1027,3 +1027,262 @@ At this point they are the user's choice.
 **Decision (2026-11-05):** adopted: larger steps beyond 20 M (up to 4×) and the fuzzball step limit of 5000 (user: "Far 4x + 5000 steps"). Rejected: half-float tables. With the viewer's new defaults (`dev/reports/m9/perf_app.json`), the 1024² Kerr re-trace takes 3.3 s (tabulated) and 0.77 s (closed-form), and a 512² Kerr re-trace 1.2 s. The fuzzball single runs varied too much on this machine to quote; the back-to-back comparison (above) gives 1.35–2.15× for the step limit. Still open: the root-page card, and the merge to `main`.
 
 **Decision (2026-11-05): Stage 1 accepted** (user: "Card + merge"), with the performance numbers above. The root `index.html` links FOORT-GPU from the "Zwaartekrachtgolven en de Einstein Telescope" section; M9 is merged to `main` and pushed.
+
+
+# Stage 1B
+
+Plan: `FOORT_GPU_STAGE1B_PLAN.md` v1.0, on branch `foort-gpu-1b`. The user asked for B0, B1 and B2 in sequence, stopping at checkpoint B2, so the three are reported together here.
+
+## CHECKPOINT B0 — quality gate, baseline, devices, hygiene (2026-11-08)
+
+### Done
+
+- **Quality-gate harness** `dev/scripts/qualityGate.mjs` (with `gateConfigs.mjs`):
+  - the scene set of plan 1.2, 13 scenes at 512²;
+  - a chaos mask: Reference at ε vs ε/2;
+  - emission, time-averaged and at 3 noisy observer times;
+  - delays, the light curve over one period, sky error in image-plane pixels, and termination agreement;
+  - chaotic-region totals and class fractions;
+  - alternating A/B/A/B GPU timing, best of 3.
+
+  Output is `dev/reports/b0/gate_<config>.json` and `.md`, with pass/fail against the Normal budgets.
+- **Tier probe page** `probe.html` (`js/probePage.js`): short Reference/High traces of Kerr and ST3Cr, the device's Msteps/s, predicted 512² and 1024² times, and a copyable JSON report.
+- **Report hygiene:** new image reports go to `dev/reports/img/` (git-ignored); JSON/markdown summaries are committed.
+
+### Baseline: High vs Reference (`dev/reports/b0/gate_high.md`; AMD Radeon integrated, Chrome/ANGLE D3D11)
+
+| scenes | chaos | class agreement | sky error, median / p99 (px) | emission L1, time-averaged / noisy | dt p99 (M) | LC correlation | speed-up |
+|---|---|---|---|---|---|---|---|
+| BH (8 scenes) | ≤ 0.02% | 99.998–100% | 0.021–0.029 / 0.22–0.30 | 0.6–2.3e-4 / 4.3–7.8e-4 | 0.03–0.27 | 1.000000 | 1.17–1.57× |
+| ST3Cr λ = 0.05 … 1e-4 | 2.1–3.2% | 97.4–99.99% | identical | identical (0) | 0 | 1.000000 | 1.07–2.06× |
+| ST3Cr λ = 0 | 0.08% | 100% | identical | identical | 0 | 1.000000 | 1.04× |
+
+- **Black holes:** High's far steps move sky positions by about 0.03 px (median) and 0.3 px (p99). The time-averaged disc changes by about 1e-4. The noisy frames change by about 5e-4, because slow-light delays shift by up to 0.27 M.
+- **Fuzzball:** the Test_FBdetail camera sits inside 20 M, so High's far steps do nothing and the images are identical. Its 5000-step limit only turns 0.01–2.6% of the rays into time-outs: class agreement is below the 99.8% budget, but no emission changes.
+
+### Device round (needs the user)
+
+Please open **`foort-gpu/probe.html`** (after the merge: <https://drmayerson.github.io/foort-gpu/probe.html>) on every device you have, press "Run the probe", and paste the report back. That means other laptops, a Mac, a phone, a discrete GPU. The benchmark (`bench/`) is useful too. This laptop's report (`dev/reports/b0`, run 2026-11-08):
+
+| case | steps/ray | Msteps/s | predicted 512² |
+|---|---|---|---|
+| Kerr closed-form, Reference | 759 | 1071 | 0.20 s |
+| Kerr tabulated, Reference | 759 | 97 | 2.18 s |
+| Kerr tabulated, High | 589 | 87 | 1.89 s |
+| ST3Cr λ = 1e-3, Reference | 1553 | 24 | 18.1 s |
+| ST3Cr λ = 1e-3, High | 1102 | 24 | 12.6 s |
+
+### Decisions to confirm (B0)
+
+- **E1, tier time targets:** the plan's default is ≤ 2 s BH and ≤ 10 s fuzzball at 512². On this laptop, High fits the BH target and misses the fuzzball one (12.6 s).
+- **Normal budgets:** unchanged from plan 1.2. High itself fails only the class-agreement budget on the fuzzball, through time-outs.
+
+## CHECKPOINT B1 — fuzzball in unit mass (2026-11-08)
+
+### Done
+
+- **`rescaleToUnitMass(metric)`** (`js/metrics/common.js`): g'_tt = g_tt(Lr'), g'_tφ = g_tφ/L, g'_φφ = g_φφ/L², g'_rr = g_rr, g'_θθ = g_θθ/L², the inverse accordingly. Horizon, termination radius, singularities and their distance, and the critical impact parameter are divided by L.
+  - It is applied to ST3Cr and ST3Cr-BH in the registry; M_ADM = 1 now for every metric.
+  - `lengthScale` keeps every grid (metric tables, fluid table, ISCO bisection, circular-orbit bands) at its raw node positions, so the same rays are traced.
+- **Units:** everything with a length or time is now in units of M:
+  - the Test_FBdetail preset (σ = 2/24);
+  - `uSing`, the ISCO (reported as 0.7733 instead of 18.558), the delays and the noise time;
+  - the tail bins (B2).
+- **URL version `v=2`;** Stage 1 fuzzball URLs migrate μ and σ (÷ 24).
+- **Converted:** all dev scripts and tests that set fuzzball cameras or emission in raw units, to units of M (`m3Screens`, `m6*`, `m7*`, `m9*`, e2e `m6.spec`, unit `m6.test`). `m6GpuVsFoort` converts to FOORT's raw coordinates (camera, terminations, μ, σ ÷ 24; J × 24).
+
+### Tests
+
+- **Unit** (`dev/tests/unit/b1.test.js`):
+  - wrapped vs raw metric and inverse at 2000 random points per λ (0.05, 5e-3, 1e-4), all within 1e-12;
+  - M_ADM of the wrapped metric = 1 from the g_tt falloff;
+  - λ = 0 b_c = 49.7146 / 24;
+  - identical table node positions and the same ISCO (÷ 24);
+  - the redshift unchanged inside and outside the ISCO;
+  - URL migration;
+  - the preset.
+- **Images unchanged up to float32 noise** (`dev/scripts/b1Compare.mjs`, `dev/reports/b1/compare.json`): the rescaled Reference against the raw Reference records cached in B0, 512².
+
+  | scene | escape direction median | r, dt, g medians | emission L1 on non-chaotic pixels |
+  |---|---|---|---|
+  | λ = 0.05 | 2.8e-6 rad | 1.5e-6, 8e-6 M, 6e-7 | 4.3e-3 |
+  | λ = 5e-3 | 3.1e-6 | 1.9e-6, 1.1e-5 M, 7e-7 | 2.4e-5 |
+  | λ = 1e-3 | 2.6e-6 | 1.9e-6, 1.1e-5 M, 7e-7 | 2.5e-5 |
+  | λ = 1e-4 | 2.1e-6 | 2.0e-6, 1.2e-5 M, 8e-7 | 4.2e-5 |
+  | λ = 0 | 2.3e-6 | 1.3e-6, 8e-6 M, 4e-7 | 8.5e-6 |
+
+  Terminations agree on 99.0–99.98% of the non-chaotic pixels and 100% at λ = 0. The rest are float32 differences amplified by chaos. The mask used here, termination class at ε vs ε/2, misses some chaotic pixels, which explains λ = 0.05.
+- **M6 comparisons rerun with converted parameters:**
+  - GPU vs CPU (`dev/reports/m6/level2_*.json`): λ = 5e-3 96.34% four-colour on converged pixels (M6: 96.29%), emission L1 1.5e-3 (1.5e-3); λ = 0 100% (100%), 9.9e-6 (1.3e-5); λ = 1e-4 98.77% (98.72%), 6.2e-5 (4.4e-5).
+  - GPU vs FOORT (`foort_*.json`): 92.47% four-colour (92.79%); emission on pixels with ≤ 3 passes 7.4e-4 (7.2e-4).
+- **Full suites pass** (Vitest 101, Playwright 19 at B1; at B2, see below).
+
+## CHECKPOINT B2 — all crossings: the binned tail (2026-11-08)
+
+### Done
+
+- **Record:**
+  - the first 3 crossings exactly as before (slow light, noise);
+  - crossings 4, 5, … up to max passes accumulated in **8 log-r bins** (inner cut to 50 M) at trace time, each one float: W = Σ F g^p, plus the emission-weighted log-r centroid in its low 8 mantissa bits;
+  - the display adds Σ_b W_b J(r_b), **without noise or slow light**, since many crossings with spread-out delays average the fluctuations to 1 (legend, README).
+- **Render-target budget:**
+  - 6 RGBA32F attachments: rec0–3, tail 4–5; attachment 6 free for the B5 continuation state, within 8;
+  - devices with fewer than 6 draw buffers fall back to 3 crossings, and the performance table says so;
+  - the display binds 2 levels × 6 textures plus noise and fluid, 14 of the 16 guaranteed units;
+  - records are 24 floats per pixel.
+- **Re-tracing:** the redshift power, fudge factor and max passes now re-trace; max passes goes up to 20.
+- **JS:** `decodeTail`/`binTail` (the shader's rule, used by the tests) and `discIntensity(..., tail)`.
+
+### Tests
+
+**Recovered intensity and the tail approximation** against the CPU reference with every crossing kept (`dev/scripts/b2Tail.mjs`, `dev/reports/b2/tail.json`; Test_FBdetail, 64², 10000 max steps):
+
+| λ | true share in the first 3 crossings | GPU recovered (plan ≥ 98%) | GPU first 3 only | tail approximation L1 / total, K = 4 | K = 8 | K = 16 |
+|---|---|---|---|---|---|---|
+| 0.05 | 47.2% | **105.0%** | 48.9% | 8.9e-2 / −8.8e-2 | **8.3e-3 / −4.8e-3** | 3.0e-3 / +1.4e-3 |
+| 5e-3 | 45.2% | **99.3%** | 45.2% | 4.9e-2 / −3.8e-2 | **1.7e-2 / −9.6e-3** | 5.9e-3 / −4.6e-3 |
+| 1e-4 | 93.0% | **100.5%** | 93.0% | 8.6e-2 / +8.1e-2 | **3.0e-3 / −7.2e-4** | 1.6e-3 / −6.8e-4 |
+
+- **Tail approximation** (plan ≤ 2%): it compares the binned J(centroid) with the exact Σ J(r_k) on the same CPU rays, so it isolates the approximation. **K = 8 passes everywhere (0.3–1.7%)**; K = 4 does not.
+- **Recovered share:** it compares GPU (float32) and CPU (double) rays, whose trapped orbits are chaotic. The 105% at λ = 0.05 is that distribution-level difference (the GPU's first 3 crossings alone already give 48.9% against 47.2%), not the tail.
+- **Black holes** (`dev/scripts/b2BH.mjs`, `dev/reports/b2/bh.json`; Kerr, 512²):
+  - only pixels with more than 3 crossings change: 108–272 photon-ring pixels, +0.03–0.07% of the flux;
+  - pixels with ≤ 3 crossings: 0 changed;
+  - the first 16 floats of every record are bit-identical with and without the tail.
+- **FOORT parity** (M2 runs, λ = 0.005; `m6GpuVsFoort.mjs`): on FOORT's pixels with more than 3 passes and the same four-colour class, emission L1 falls from **0.81 to 0.17** (FOORT-parity crossings) and from **0.96 to 0.21** (interpolated). The rest is chaotic ray divergence between the two integrators.
+- **Unit** (`dev/tests/unit/b2.test.js`): shader packing ↔ `decodeTail` ↔ `binTail` identical; quantization below 1e-4 in W and 1/510 of a bin in the centroid; tail = exact when each bin holds one radius; max passes cuts the tail.
+- **Full suites:** Vitest 106 passed, Playwright 19 passed, `tsc --checkJs` clean.
+
+### Images (git-ignored, `dev/reports/img/b2/`)
+
+`b2_before_after.png`: ST3Cr disc emission, time-averaged, 512², Test_FBdetail, the same exposure per pair. The top row is the first 3 crossings (Stage 1), the bottom row all crossings (B2), for λ = 0.05, 5e-3, 1e-3, 1e-4 and 0. The interiors gain the bright, fine-grained light of trapped rays; the λ = 0 black hole is unchanged.
+
+### Open issues / for the user
+
+1. **Checkpoints B0–B2:** accept them, and confirm:
+   - **E1:** ≤ 2 s BH, ≤ 10 s fuzzball at 512²;
+   - **the Normal budgets;**
+   - **E2:** K = 8 (recommended).
+2. **Device round:** run `probe.html` on your other devices and paste the reports.
+3. **Merging** `foort-gpu-1b` to `main` needs your approval. The branch is pushed; `main` is untouched.
+
+## CHECKPOINT B3 — banded fluid, envelope radius, comparison presets (2026-11-08)
+
+The user asked to continue through B4 and pause there ("continue for now until checkpoint B4, then pause and list all necessary input/decisions etc from me"). B3 is reported here; its decision (E4) is listed at B4.
+
+### Done
+
+- **Fluid model "banded"** (`js/fluid/generalCircularRadial.js`, option `model`):
+  - circular orbits in every stable band, found over the fluid table's range; the inner edges are refined by bisection on the stability sign, so the edge orbit is marginally stable;
+  - in each gap, a plunge with the E and L of the circular orbit at the inner edge of the next stable band outward, which is FOORT's ISCO construction applied per band;
+  - β/ξ mixing as FOORT;
+  - for metrics with a horizon (one stable band) it is FOORT's model.
+- **"FOORT (parity)"** stays selectable; the validation scripts keep using it (`FLUID_DEFAULTS.model = 'foort'`).
+- **Viewer:** a "fluid model" control, banded by default (E4: proposed default, flagged). The performance table names the model and its circular bands.
+- **Envelope radius:** coordinate r (FOORT, default) or circumferential √g_φφ on the equator. It is stored in the fluid table's 4th channel and applied in the display shader to the first 3 crossings and the tail centroids, so it only redraws. The JS mirror is `fluidTableRcirc`, and `discIntensity` takes a `radius` map.
+- **Comparison presets** (Preset menu): "Compare 1A/1B: Kerr a = 0 | ST3Cr λ = 0.005", "2A/2B: Kerr a = 0 | ST3Cr λ = 0 (BH)", "3A/3B: Kerr a = 0.5 | ST3Cr λ = 0.05".
+  - All use the same camera (r = 1000 M, 60°, screen 16 M) and the same disc: Johnson-SU μ = 3, γ = −1.5, σ = 1 in circumferential radius, banded fluid.
+  - Switching between A and B shows the pair; compare mode (B7) will show them side by side.
+
+### Tests
+
+- **Unit** (`dev/tests/unit/b3.test.js`):
+  - **λ = 0.005 bands reproduced:** circular from the inner cut to 0.01304 M (Stage 1's sampling: 0.313/24 = 0.0130), and from 0.773257 M on; the latter equals FOORT's ISCO to 1e-7.
+  - **u·u = −1** to 1e-10 at 300 radii, in both models.
+  - **Circular in the inner band** (u^r = 0), and identical to FOORT's model elsewhere.
+  - **Continuity:** u^μ is continuous at the outer band's edge (the plunge starts with the edge orbit). At the inner band's outer edge the plunging gas meets the circular band, a jump, physically a shock, which the model does not resolve.
+  - **Black holes:** banded = FOORT.
+  - **Fluid table:** its 4th channel is √g_φφ (within 1e-4 linear-table accuracy); `discIntensity` uses the mapped radius.
+  - **Presets:** consistent.
+- **FOORT's model unchanged against the M5 parity runs:** `fluidParity.mjs` rerun gives a byte-identical `dev/reports/m5/fluid_parity.json` (ISCO within about 1e-6 of FOORT, u_μ ≤ 4e-6).
+- **Images and flux of the two models** (`dev/scripts/b3Images.mjs`, `dev/reports/b3/fluid.json`; Test_FBdetail, all crossings, time-averaged, 256²):
+
+  | λ | inner stable band | flux banded / FOORT | flux of pixels whose 1st crossing is in the inner band (FOORT → banded), of the total |
+  |---|---|---|---|
+  | 0.05 | r < 0.0792 M | 1.0020 | 0.24% → 0.37% |
+  | 5e-3 | r < 0.0130 M | 0.9980 | 0.19% → 0.19% |
+  | 1e-3 | r < 0.00274 M | 1.0000 | 0.73% → 0.73% |
+  | 1e-4 | r < 0.000255 M | 1.0000 | 0.26% → 0.26% |
+
+  The inner stable band is tiny and deep in the cap: little light comes from it, and what does is strongly redshifted. The two models therefore give nearly the same images, with flux differences ≤ 0.2%. With the Test_FBdetail disc (μ = 0, σ = 0.083 M) the difference is a few pixels; it could matter for discs concentrated at very small radii.
+- **e2e** (`dev/tests/e2e/b3.spec.js`): the envelope radius redraws without a trace; a comparison preset sets the metric, envelope and fluid model; the fluid model re-traces.
+- **Full suites:** Vitest 113 passed, Playwright 20 passed, `tsc --checkJs` clean.
+
+### Images (git-ignored, `dev/reports/img/b3/`)
+
+- `b3_fluid_models.png`: FOORT's model vs banded, λ = 0.05 … 1e-4, the same exposure per pair.
+- `b3_compare_presets.png`: the three comparison pairs. At equal mass, the same camera and the same disc in circumferential radius, the fuzzballs show a much smaller dark region than Kerr (the λ = 0 black hole's critical impact parameter is 2.07 M against 5.2 M for Schwarzschild), and at λ > 0 their interiors fill with structure.
+
+## CHECKPOINT B4 — fuzzball noise fields (2026-11-08)
+
+### Done
+
+- **inoisy model with a tabulated flow:** `tools/noise/inoisy_foort/param_foort_logr.c` reads Ω(r) from `FOORT_OMEGA_FILE`, and uses it for advection and the correlation time 2πτ/|Ω|, clamped to ≥ 3Δt.
+  - The Ω tables are written by the viewer's own fluid code: `dev/scripts/b4OmegaTables.mjs`, banded model, unit-mass ST3Cr, 600 rows each, in `tools/noise/omega/`.
+  - Without a table the model is unchanged. Build and run steps are in `tools/noise/build_inoisy.md`.
+- **Four anchor fields** (E3, the plan's default): `noise/inoisy_st3cr_l{0,1e-3,5e-3,0.05}`.
+  - Grid 128 × 192 × 128 (t, log r, φ), r = 1e-4–199 M, T = 200 M, float16.
+  - Same physics parameters as `inoisy_lg21`.
+  - 6.3 MB each, 25.2 MB together. With `inoisy_lg21` and the placeholder, the committed noise data is 35 MB.
+- **Viewer:**
+  - **Noise field "auto"** is the new default: black holes use `inoisy_lg21`; the ST3Cr fuzzball and its λ = 0 black hole use the nearest anchor in log λ. The clock line names the field.
+  - **Coverage guard:** outside a field's range, σₙ fades to 0 over one correlation length (fadeWidth 1.71 in log r). It applies to black holes too.
+  - **"Noise coverage" view and readout** (clock line and legend).
+
+### Field checks (`tools/noise/inspect_field.py --omega`, `dev/reports/b4/*_stats.json`)
+
+| anchor | per-radius std | t seam / interior step | φ seam / interior step | co-rotating correlation time (M) at r = 0.01, 0.1, 1, 3, 10 M |
+|---|---|---|---|---|
+| λ = 0 | 1 ± 6e-5 | 0.134 / 0.133 | 0.095 / 0.086 | 94, 20, 16, 31, 70 |
+| 1e-3 | 1 ± 1e-5 | 0.150 / 0.154 | 0.097 / 0.098 | > 100, 9.4, 16, 20, > 100 |
+| 5e-3 | 1 ± 1e-5 | 0.193 / 0.198 | 0.101 / 0.103 | 22, 9.4, 30, 27, 83 |
+| 0.05 | 1 ± 1e-5 | 0.264 / 0.272 | 0.076 / 0.074 | 19, 16, 9.4, 20, 59 |
+
+- **Seams:** both periodic seams are indistinguishable from interior steps.
+- **Correlation times:** all are ≥ 9.4 M against the 3Δt = 4.7 M clamp, so the field is not aliased in time.
+- **Pictures** (git-ignored): `dev/reports/img/b4/*_disc.png`, `*_tphi.png` and `*_lg21style.png`.
+
+### Coverage (`dev/scripts/b4Coverage.mjs`, `dev/reports/b4/coverage.json`, 512², through the viewer)
+
+| scene | field (auto) | emission covered |
+|---|---|---|
+| Test_FBdetail λ = 0.05 / 5e-3 / 1e-3 / 1e-4 | l0.05 / l5e-3 / l1e-3 / l0 | 100.0% each |
+| Compare 1B, 2B, 3B (fuzzballs, λ = 0 BH) | l5e-3, l0, l0.05 | 100.0% each |
+| Compare 1A, Kerr a = 0.94 at r = 1000 | lg21 | 100.0% |
+
+- **Requirement met:** ≥ 99% for the fuzzball scenes.
+- **Sanity check of the measure:** a disc pushed out to r ≈ 150–250 M (Kerr, μ = 150 or 250 M, σ = 40 M) gives 95.3% and 80.3%.
+
+### Tests
+
+- **Unit** (`dev/tests/unit/b4.test.js`):
+  - anchor selection;
+  - guard factor and fade-width fallbacks;
+  - per field: contract, range, Ω and anchor metadata, file size, per-radius zero mean and unit variance, t and φ periodicity.
+- **e2e** (`dev/tests/e2e/b4.spec.js`): auto follows the presets (lg21 → l5e-3 → l0.05); the clock reports 100.0% coverage; the coverage view's legend; a fixed choice overrides auto.
+- **Full suites:** Vitest 129 passed, Playwright 21 passed, tsc clean.
+
+### Animations for approval (git-ignored, `dev/reports/img/b4/`)
+
+- `b4_compare.gif`: Kerr a = 0 (lg21) | ST3Cr λ = 5e-3 | ST3Cr λ = 0.05, comparison camera (r = 1000 M, 60°), circumferential envelope, banded fluid, σₙ = 1, slow light; 48 frames over T = 200 M.
+- `b4_fbdetail.gif`: Test_FBdetail camera, λ = 0.05 | 5e-3 | 1e-4 (anchor 0).
+
+### Notes
+
+- **Between anchors** the flow is the nearest anchor's. Ω(r) at r ≳ 0.1 M is nearly λ-independent (orbital periods at 1 M agree to 0.2% across the four anchors); the anchors differ mainly inside the cap.
+- **The λ = 0 anchor at small λ:** for λ < 3e-4 the auto choice is the black hole's flow. Its plunge region (r < ISCO) stands in for the tiny fuzzball's inner band.
+
+## Device round — results (Stage 1B B0, collected after checkpoint B4)
+
+| case | laptop (Intel iGPU, 2026-11-08): Msteps/s, predicted 512² | phone (Samsung Xclipse 920, Chrome 157 Android, 2026-11-08): Msteps/s, predicted 512² |
+|---|---|---|
+| Kerr closed-form, Reference | 1071, 0.20 s | 533, 0.40 s |
+| Kerr tabulated, Reference | 97, 2.18 s | 113, 1.87 s |
+| Kerr tabulated, High | 87, 1.89 s | 102, 1.60 s |
+| ST3Cr λ = 1e-3, Reference | 24, 18.1 s | 34, 12.7 s |
+| ST3Cr λ = 1e-3, High | 24, 12.6 s | 42, 7.4 s |
+
+- **Phone report:** `dev/reports/b0/probe_phone_xclipse920.json`.
+- **Phone capabilities:** MAX_DRAW_BUFFERS 8, so the full binned tail (6 attachments) runs; no timer queries.
+- **Speeds:** the phone traces the tabulated metrics faster than this laptop, by 1.2× for Kerr and 1.7× for the fuzzball at High. The texture-fetch-bound tabulated traces favour its GPU; the laptop is faster only for closed-form Kerr.
+- **Against E1 at 512²:** High meets both targets on the phone (1.6 s BH, 7.4 s fuzzball). On the laptop it meets the BH target and misses the fuzzball one (12.6 s). The laptop is the slowest device so far and the binding case for B6's tier selection.

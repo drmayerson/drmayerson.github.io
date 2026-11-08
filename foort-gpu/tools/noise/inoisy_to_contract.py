@@ -39,6 +39,8 @@ def main():
     ap.add_argument('name')
     ap.add_argument('--h5dump', default='C:/msys64/ucrt64/bin/h5dump.exe')
     ap.add_argument('--describe', default='')
+    ap.add_argument('--omega', default='', help='the Omega(r) table the field was made with (FOORT_OMEGA_FILE), recorded in the metadata')
+    ap.add_argument('--anchor', default='', help='metric and lambda anchor the field belongs to, e.g. "st3cr lambda=5e-3"')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', '..', 'noise'))
     a = ap.parse_args()
 
@@ -67,7 +69,12 @@ def main():
             'lam': p['lam'], 'tau': p['tau'], 'r12': p['r12'], 'rct_over_M': p['rct'], 'theta_rad': p['theta'],
             'description': a.describe,
             'variance_before_normalization': {'min': float(std_r.min() ** 2), 'max': float(std_r.max() ** 2)},
+            'omega': os.path.basename(a.omega) if a.omega else 'Keplerian (r^-3/2, cutoff inside r_ct)',
         },
+        # Stage 1B B4: the viewer fades sigma_n to 0 over this width (in x = log r) outside [xmin, xmax] instead of
+        # clamping: the x-projection of the major correlation axis, lam |cos theta|
+        'fadeWidth': float(p['lam'] * abs(np.cos(p['theta']))),
+        'anchor': a.anchor or None,
         'stats': {'mean': float(data.astype(np.float64).mean()), 'std': float(data.astype(np.float64).std())},
     }
     with open(os.path.join(a.out, f'{a.name}.json'), 'w') as f:

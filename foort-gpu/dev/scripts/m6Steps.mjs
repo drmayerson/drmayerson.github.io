@@ -14,7 +14,7 @@ const MAXS = opt('--max', '2000,5000,20000').split(',').map(Number);
 const LAMBDAS = opt('--lambdas', '0.05,0.005,1e-3,1e-4,0').split(',').map(Number);
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m6');
 mkdirSync(outDir, { recursive: true });
-const camera = { r: 250, theta: 1.5, screen: 150 };
+const camera = { r: 250 / 24, theta: 1.5, screen: 150 / 24 };   // Test_FBdetail, units of M (B1)
 const v = await openViewer();
 const rows = [];
 try {

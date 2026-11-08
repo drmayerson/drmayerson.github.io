@@ -69,3 +69,29 @@ python tools/noise/inspect_field.py inoisy_lg21
 | file | 8.4 MB, float16 |
 
 The lam, r12, θ and τ values are those of general_xy and of Lee & Gammie Fig. 3.
+
+## Fuzzball fields with a tabulated Ω(r) (Stage 1B B4)
+
+The ST3Cr fuzzball emits at r ≪ M, and its flow is the viewer's banded fluid, not Keplerian. `param_foort_logr.c` therefore takes an optional table:
+
+- **`FOORT_OMEGA_FILE`** (environment variable): a text file of rows `x Ω`, with x = log(r/M) and Ω the fluid's angular velocity u^φ/u^t in 1/M, ascending in x. It is linearly interpolated, and clamped at the ends.
+- **With a table:**
+  - Ω(r) replaces r^(−3/2), with no inner cutoff, since the table is the flow;
+  - correlation time λ₀ = max(2π τ / |Ω|, 3 Δt), Δt = T / N_t (the plan's anti-aliasing clamp);
+  - correlation length lam · r at all radii.
+- **Without a table:** the model is unchanged (`inoisy_lg21`).
+- The tables come from the viewer's fluid code (banded model, unit-mass ST3Cr): `node dev/scripts/b4OmegaTables.mjs` writes `tools/noise/omega/st3cr_l{0,1e-3,5e-3,0.05}.txt`. The λ = 0 table is the ST3Cr black hole's.
+
+```bash
+# 1. build for r = 1e-4 ... 200 M (copy to foort_logr_fb.exe; rebuild with XMAX=5.3 and no XMIN for inoisy_lg21)
+CFLAGS_EXTRA="-DFOORT_XMIN=-9.2103404 -DFOORT_XMAX=5.37" bash tools/noise/build_inoisy.sh ~/foort-gpu-work/inoisy foort_logr
+# 2. run per anchor (seeds 11-14 for 5e-3, 0, 1e-3, 0.05), (phi, log r, t) = 128 x 192 x 128, about 6 min each
+cd ~/foort-gpu-work/inoisy && FOORT_OMEGA_FILE="$(cygpath -w .../tools/noise/omega/st3cr_l5e-3.txt)" PATH=/c/msys64/ucrt64/bin:$PATH GSL_RNG_SEED=11 ./foort_logr_fb.exe -ni 128 -nj 192 -nk 128 -solver 0 -o out_fb/l5e-3
+# 3. convert (Windows Python with numpy; h5dump from UCRT64 at the END of PATH), from foort-gpu/
+PATH=$PATH:/c/msys64/ucrt64/bin python tools/noise/inoisy_to_contract.py ~/foort-gpu-work/inoisy/out_fb/l5e-3/foort_logr_192_128_128_00011.h5 inoisy_st3cr_l5e-3 --omega st3cr_l5e-3.txt --anchor "st3cr lambda=5e-3" --describe "..."
+# 4. inspect, co-rotating with the table's Omega -> dev/reports/b4/
+python tools/noise/inspect_field.py inoisy_st3cr_l5e-3 --omega tools/noise/omega/st3cr_l5e-3.txt --radii 0.01,0.1,1,3,10,50 --out dev/reports/b4
+```
+
+- **Metadata:** the converter adds `fadeWidth` = lam · |cos θ| = 1.71, the x-extent of one correlation length, used by the viewer's coverage guard, and `anchor`.
+- **Files:** `noise/inoisy_st3cr_l{0,1e-3,5e-3,0.05}.{json,bin}`, 6.3 MB each, 25.2 MB for the four. Grid 128 × 192 × 128 (t, log r, φ), x from −9.21 to 5.29 (r = 1e-4–199 M).

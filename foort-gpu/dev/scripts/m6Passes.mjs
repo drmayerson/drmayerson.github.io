@@ -12,7 +12,8 @@ import { cpuTraceOptions } from '../../js/gpu/traceConfig.js';
 import { prepareImage } from '../../js/ref/cpuTracer.js';
 import { createFluid, johnsonSU } from '../../js/fluid/generalCircularRadial.js';
 
-const em = { mu: 0, gamma: -1.5, sigma: 2 };
+// Test_FBdetail emission and camera in units of M (the registry's ST3Cr since Stage 1B B1)
+const em = { mu: 0, gamma: -1.5, sigma: 2 / 24 };
 const MAXK = 12;
 
 if (!isMainThread) {
@@ -33,7 +34,7 @@ if (!isMainThread) {
   mkdirSync(outDir, { recursive: true });
   const rows = [];
   for (const lambda of lambdas.length ? lambdas : [0.05, 0.005, 1e-4]) {
-    const view = { metric: 'st3cr', metricParams: { lambda }, camera: { r: 250, theta: 1.5, screen: 150 }, N, maxSteps: 10000, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
+    const view = { metric: 'st3cr', metricParams: { lambda }, camera: { r: 250 / 24, theta: 1.5, screen: 150 / 24 }, N, maxSteps: 10000, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
     const px = []; for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) px.push([i, j]);
     const T = Math.max(1, cpus().length - 1);
     const t0 = Date.now();

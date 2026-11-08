@@ -8,7 +8,8 @@ import { inverseMetric, toMat4 } from '../metrics/common.js';
 import { tableRadiusFor } from '../bake/bake.js';
 
 /** FOORT defaults of GeneralCircularRadialFluid (KerrExample.cfg). */
-export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
+/** FOORT's GeneralCircularRadial defaults; the viewer uses the banded model for horizonless metrics (Stage 1B B3, E4). */
+export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'foort'|'banded'} */ ('foort') };
 
 /**
  * @typedef {Object} ViewParams
@@ -29,6 +30,8 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  * @property {'centers'|'foort'} [mesh]            pixel centres (i + 0.5)/N, or FOORT SimpleSquareMesh i/(N - 1)
  * @property {number} [threshold]                  FOORT crossing threshold (0.001)
  * @property {boolean} [storeH]                    record |H| instead of the third crossing
+ * @property {{redshiftPower:number, fudge:number, maxPasses:number}} [tailEmission]  weights of the binned tail (B2):
+ *                                                 F g^p is summed at trace time, so these re-trace (default 3, 1, 0)
  * @property {boolean} [tableHalf]                 M9 accuracy trade: half-float derivative channels in the tables
  * @property {{r:number, max:number}|null} [farSteps]  M9 accuracy trade: step parameter eps * clamp(r / farSteps.r, 1, farSteps.max),
  *                                                 farSteps.r in units of M_ADM
@@ -37,10 +40,31 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
  * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
- * @property {{xi:number, betaR:number, betaPhi:number}} [fluid]   GeneralCircularRadialFluid parameters
+ * @property {{xi:number, betaR:number, betaPhi:number, model?:'foort'|'banded'}} [fluid]   GeneralCircularRadialFluid parameters (+ model, B3)
  */
 
+/** Floats per pixel of a read-back record: 16 (rec0-3) + 8 tail bins (Stage 1B B2). */
+export const RECORD_FLOATS = 24;
+/** Tail bins (decision E2). */
+export const TAIL_BINS = 8;
+
+/**
+ * @typedef {{xLo:number, invWidth:number, K:number}} TailGeometry  bins uniform in log r from xLo, width 1 / invWidth
+ */
+/**
+ * Bins of the tail: uniform in log r from the inner termination radius to 50 M, where the tail's crossings lie
+ * (trapped rays near the photon ring and inside the fuzzball's cap); crossings outside fall into the end bins.
+ * @param {import('../metrics/common.js').StationaryAxisymmetricMetric} m @param {Required<ViewParams>} v
+ * @returns {TailGeometry}
+ */
+export function tailGeometry(m, v) {
+  const rLo = Math.max(viewTerminationRadius(m, v), 1e-12), rHi = Math.max(50 * m.massADM, 10 * rLo);
+  const xLo = Math.log(rLo);
+  return { xLo, invWidth: TAIL_BINS / (Math.log(rHi) - xLo), K: TAIL_BINS };
+}
+
 export const VIEW_DEFAULTS = {
+  tailEmission: { redshiftPower: 3, fudge: 1, maxPasses: 0 },
   tableHalf: false, farSteps: /** @type {{r:number, max:number}|null} */ (null),
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
   mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 }, fluid: FLUID_DEFAULTS,
@@ -99,7 +123,7 @@ export function fluidSpec(viewIn) {
   const v = normalizeView(viewIn);
   const m = createMetric(v.metric, v.metricParams);
   const fluid = { ...FLUID_DEFAULTS, ...v.fluid };
-  const spec = { fluid, range: { rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) } };
+  const spec = { fluid, range: { rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary, m.lengthScale) } };
   return { kind: /** @type {'fluid'} */ ('fluid'), metric: v.metric, params: m.params, spec, key: JSON.stringify(['fluid', v.metric, m.params, spec]) };
 }
 
@@ -111,7 +135,7 @@ export function tableSpec(viewIn) {
   const v = normalizeView(viewIn);
   if (tracerFor(v) === 'trace_kerr_analytic') return null;
   const m = createMetric(v.metric, v.metricParams);
-  const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) };
+  const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary, m.lengthScale) };
   return { metric: v.metric, params: m.params, spec, key: JSON.stringify([v.metric, m.params, spec]) };
 }
 
@@ -144,6 +168,8 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     uScreen: ['4f', [v.camera.cx ?? 0, v.camera.cy ?? 0, sx, sx]],
     uStep: ['4f', [v.eps, v.hmin, rTerm, v.rBoundary]],
     uAux: ['4f', [v.threshold, v.axisStepFloor, theta <= Math.PI / 2 ? 1 : -1, viewProjects(metric, v) ? 1 : 0]],
+    uTail: ['4f', [0, 0, 0, 0]],
+    uTailEm: ['4f', [v.tailEmission.redshiftPower, v.tailEmission.fudge, v.tailEmission.maxPasses, 0]],
     uFar: ['4f', v.farSteps ? [v.farSteps.r * metric.massADM, v.farSteps.max, 0, 0] : [0, 1, 0, 0]],
     uOpt: ['4i', [v.maxSteps, v.crossing === 'foort' ? 1 : 0, v.mesh === 'foort' ? 1 : 0, v.storeH ? 1 : 0]],
   };
@@ -170,7 +196,9 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
   const fs = fluidSpec(v);
   if (Math.abs(fluid.grid.r0 - rh) > 1e-12 * Math.max(rh, 1) || Math.exp(fluid.grid.xMin) + fluid.grid.r0 > rTerm * (1 + 1e-9)) throw new Error('gpuTraceSetup: fluid table does not cover this view');
   uniforms.uFluidX = ['4f', [fluid.grid.xMin, fluid.grid.dx, fluid.grid.n, fluid.grid.r0]];
-  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key };
+  const tail = tailGeometry(metric, v);
+  uniforms.uTail = ['4f', [tail.xLo, tail.invWidth, tail.K, 0]];
+  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key, tail };
 }
 
 /**
@@ -192,14 +220,41 @@ export function cpuTraceOptions(viewIn) {
   };
 }
 
-/** Record layout (16 floats per pixel, 4 RGBA32F targets) -> plain object. @param {Float32Array} rec @param {number} k pixel index */
-export function decodeRecord(rec, k) {
-  const o = 16 * k;
+/**
+ * Record layout (RECORD_FLOATS per pixel: 4 RGBA32F targets, then the 2 of the tail) -> plain object; the tail when its
+ * geometry is given (setup.tail).
+ * @param {Float32Array} rec @param {number} k pixel index @param {TailGeometry} [tail]
+ */
+export function decodeRecord(rec, k, tail) {
+  const o = RECORD_FLOATS * k;
   const packed = Math.round(rec[o]);
   const crossings = [];
   for (let c = 0; c < 3; c++) {
     const b = o + 4 + 4 * c;
     if (rec[b] > 0) crossings.push({ r: rec[b], phi: rec[b + 1], dt: rec[b + 2], g: rec[b + 3] });
   }
-  return { term: packed % 16, passes: Math.floor(packed / 16), steps: rec[o + 1], theta: rec[o + 2], phi: rec[o + 3], crossings };
+  return { term: packed % 16, passes: Math.floor(packed / 16), steps: rec[o + 1], theta: rec[o + 2], phi: rec[o + 3], crossings,
+    tail: tail ? decodeTail(rec, k, tail) : null };
+}
+
+/** bit view of a record array (cached) @type {WeakMap<Float32Array, Uint32Array>} */
+const bitViews = new WeakMap();
+/**
+ * The tail bins of pixel k: [{W, r}] for the non-empty bins, r at the bin's emission-weighted centroid (8-bit fraction
+ * in the low mantissa bits of W, as shaders/glsl/common.glsl packs it).
+ * @param {Float32Array} rec @param {number} k @param {TailGeometry} g
+ */
+export function decodeTail(rec, k, g) {
+  let u = bitViews.get(rec);
+  if (!u) { u = new Uint32Array(rec.buffer, rec.byteOffset, rec.length); bitViews.set(rec, u); }
+  const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+  const out = [];
+  for (let b = 0; b < g.K; b++) {
+    const bits = u[RECORD_FLOATS * k + 16 + b];
+    u32[0] = (bits & 0xffffff00) >>> 0;
+    const W = f32[0];
+    if (!(W > 0)) continue;
+    out.push({ W, r: Math.exp(g.xLo + (b + (bits & 0xff) / 255) / g.invWidth) });
+  }
+  return out;
 }

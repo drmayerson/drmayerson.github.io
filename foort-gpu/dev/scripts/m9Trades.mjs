@@ -22,8 +22,8 @@ const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m9')
 mkdirSync(outDir, { recursive: true });
 const DEG = Math.PI / 180;
 const kerrEm = { mu: 2.02, gamma: -2, sigma: 0.5, redshiftPower: 3, fudge: 1, maxPasses: 0 };
-const fbEm = { mu: 0, gamma: -1.5, sigma: 2, redshiftPower: 3, fudge: 1, maxPasses: 0 };
-const fbCam = { r: 250, theta: 1.5, screen: 150 };
+const fbEm = { mu: 0, gamma: -1.5, sigma: 2 / 24, redshiftPower: 3, fudge: 1, maxPasses: 0 };   // units of M (B1)
+const fbCam = { r: 250 / 24, theta: 1.5, screen: 150 / 24 };
 const BH_VIEWS = [
   { name: 'kerr_a0.94_inc17', view: { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 } }, em: kerrEm },
   { name: 'kerr_a0.94_inc80', view: { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 80 * DEG, screen: 15 } }, em: kerrEm },

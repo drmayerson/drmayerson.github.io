@@ -32,6 +32,7 @@ export const VIEWS = {
   ham: { mode: 7, label: 'Constraint |H| (log₁₀)', lo: -9, hi: -2 },
   noise: { mode: 9, label: 'Noise X at crossing 1 (grey = 0.5 + X/8)' },
   dt21: { mode: 10, label: 'n = 1 image delay (dt₁ − dt₂)/M', lo: 0, hi: 60 },
+  coverage: { mode: 11, label: 'Noise coverage (green: inside the field)' },
 };
 
 const fmt = (/** @type {number} */ d) => (v) => Number(v).toFixed(d);
@@ -82,13 +83,19 @@ export const CONTROLS = [
   { key: 'cy', label: 'screen centre β (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
   { key: 'N', label: 'resolution', type: 'select', group: 'Tracing', options: [128, 256, 512, 1024, 2048], default: 512 },
   { key: 'preset', label: 'FOORT preset (metric, camera, emission)', type: 'select', group: 'Disc emission',
-    options: ['custom', 'KerrExample', 'JohannsenExample', 'Test_MNrun', 'Test_FBdetail'], default: 'custom', retrace: false },
+    options: ['custom', 'KerrExample', 'JohannsenExample', 'Test_MNrun', 'Test_FBdetail', 'Compare 1A: Kerr a = 0', 'Compare 1B: ST3Cr λ = 0.005',
+      'Compare 2A: Kerr a = 0', 'Compare 2B: ST3Cr λ = 0 (BH)', 'Compare 3A: Kerr a = 0.5', 'Compare 3B: ST3Cr λ = 0.05'], default: 'custom', retrace: false },
   { key: 'mu', label: 'Johnson-SU μ', type: 'number', group: 'Disc emission', step: 0.01, default: 2.02, retrace: false },
   { key: 'gamma', label: 'Johnson-SU γ', type: 'number', group: 'Disc emission', step: 0.1, default: -2, retrace: false },
   { key: 'sigma', label: 'Johnson-SU σ', type: 'number', group: 'Disc emission', step: 0.05, default: 0.5, retrace: false },
-  { key: 'redshiftPower', label: 'redshift power', type: 'number', group: 'Disc emission', step: 1, default: 3, retrace: false },
-  { key: 'fudge', label: 'geometric fudge factor (passes ≥ 2)', type: 'number', group: 'Disc emission', step: 0.1, default: 1, retrace: false },
-  { key: 'maxPasses', label: 'max passes (0: all stored, ≤ 3)', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3], default: 0, retrace: false },
+  // redshift power, fudge factor and max passes also weight the binned tail at trace time (Stage 1B B2): they re-trace
+  { key: 'redshiftPower', label: 'redshift power', type: 'number', group: 'Disc emission', step: 1, default: 3 },
+  { key: 'fudge', label: 'geometric fudge factor (passes ≥ 2)', type: 'number', group: 'Disc emission', step: 0.1, default: 1 },
+  { key: 'maxPasses', label: 'max passes (0: all)', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3, 4, 6, 10, 20], default: 0 },
+  { key: 'fluidModel', label: 'fluid model', type: 'select', group: 'Disc emission', options: ['banded', 'foort'],
+    optionLabels: { banded: 'banded (stable bands circular; horizonless metrics)', foort: "FOORT's GeneralCircularRadial (parity)" }, default: 'banded' },
+  { key: 'envelope', label: 'envelope radius', type: 'select', group: 'Disc emission', options: ['coordinate', 'circumferential'],
+    optionLabels: { coordinate: 'coordinate r (FOORT)', circumferential: 'circumferential √g_φφ' }, default: 'coordinate', retrace: false },
   { key: 'xi', label: 'fluid ξ (sub-Keplerian)', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'betaR', label: 'fluid β_r', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'betaPhi', label: 'fluid β_φ', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
@@ -102,8 +109,11 @@ export const CONTROLS = [
   { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false },
   { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false },
   { key: 'slowLight', label: 'slow light (each point at its emission time)', type: 'checkbox', group: 'Time', default: true, retrace: false },
-  { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time', options: ['inoisy_lg21', 'placeholder'],
-    optionLabels: { inoisy_lg21: 'inoisy, Lee & Gammie 2021 disc (M8)', placeholder: 'placeholder FFT field (M7)' }, default: 'inoisy_lg21', retrace: false },
+  { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time',
+    options: ['auto', 'inoisy_lg21', 'inoisy_st3cr_l0', 'inoisy_st3cr_l1e-3', 'inoisy_st3cr_l5e-3', 'inoisy_st3cr_l0.05', 'placeholder'],
+    optionLabels: { auto: 'auto (black holes: Lee & Gammie disc; fuzzball: nearest λ anchor)', inoisy_lg21: 'inoisy, Lee & Gammie 2021 disc, Keplerian (M8)',
+      'inoisy_st3cr_l0': 'inoisy, ST3Cr λ = 0 flow (B4)', 'inoisy_st3cr_l1e-3': 'inoisy, ST3Cr λ = 1e-3 flow (B4)', 'inoisy_st3cr_l5e-3': 'inoisy, ST3Cr λ = 5e-3 flow (B4)',
+      'inoisy_st3cr_l0.05': 'inoisy, ST3Cr λ = 0.05 flow (B4)', placeholder: 'placeholder FFT field (M7)' }, default: 'auto', retrace: false },
   { key: 'sigmaN', label: 'noise amplitude σₙ', type: 'range', group: 'Time', min: 0, max: 2, step: 0.05, default: 1, format: fmt(2), retrace: false },
   { key: 'advect', label: 'procedural advection (rotate the field with the fluid)', type: 'checkbox', group: 'Time', default: false, retrace: false },
   { key: 'advectD', label: 'advection crossfade period D (M)', type: 'range', group: 'Time', min: 2, max: 500, scale: 'log', default: 40, format: sig, retrace: false,
@@ -146,7 +156,23 @@ export function initialState(q) {
     else if (c.type === 'select' && typeof c.default === 'string') s[c.key] = raw;
     else s[c.key] = Number(raw);
   }
+  migrateState(s, q);
   return s;
+}
+
+/** URL version written by stateToQuery. 1 (no `v`): Stage 1. 2: Stage 1B, the fuzzball in units of M (B1). */
+export const URL_VERSION = 2;
+
+/**
+ * Migrate the state of an older URL to the current version.
+ * Version 1 -> 2: the ST3Cr fuzzball is traced in units of M_ADM = 24 (B1), so its Johnson-SU mu and sigma, which were
+ * coordinate units of the raw metric, are divided by 24 (also when they took their default values). Camera lengths
+ * were already in units of M in Stage 1.
+ * @param {Record<string, any>} s @param {URLSearchParams} q
+ */
+export function migrateState(s, q) {
+  const v = Number(q.get('v') ?? 1);
+  if (v < 2 && s.metric === 'st3cr') { s.mu /= 24; s.sigma /= 24; }
 }
 
 /** @param {Record<string, any>} s */
@@ -157,6 +183,7 @@ export function stateToQuery(s) {
     if (v === c.default || (typeof v === 'number' && Number.isNaN(v))) continue;
     q.set(c.key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
   }
+  q.set('v', String(URL_VERSION));
   return q.toString();
 }
 

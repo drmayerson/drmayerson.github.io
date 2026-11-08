@@ -1,0 +1,37 @@
+{
+ "Nt": 128,
+ "Nx": 192,
+ "Nphi": 128,
+ "T_over_M": 200.0,
+ "xmin": -9.21034,
+ "xmax": 5.294066299999999,
+ "x_def": "log(r/M)",
+ "periodic": {
+  "t": true,
+  "phi": true
+ },
+ "normalized": "zero mean, unit variance (per radius)",
+ "dtype": "float16",
+ "order": "C (t, x, phi)",
+ "generator": {
+  "name": "inoisy (AFD-Illinois/inoisy dab29ed), model foort_logr (tools/noise/inoisy_foort/)",
+  "physics": "Lee & Gammie 2021 (general_xy) on (t, log r, phi): correlation length lam r along a spiral at theta to the radial direction, minor axis r12 times shorter, correlation time 2 pi tau / Omega_K along the Keplerian flow, smooth cutoff inside r_ct",
+  "lam": 5.0,
+  "tau": 1.0,
+  "r12": 0.1,
+  "rct_over_M": 1.0,
+  "theta_rad": -1.22173,
+  "description": "Lee & Gammie physics (lam 5, tau 1, r12 0.1, theta -70 deg) with the banded fluid's Omega(r) of ST3Cr lambda = 5e-3; r = 1e-4 - 200 M, T = 200 M; GSL seed 11; 128 x 192 x 128 (t, log r, phi)",
+  "variance_before_normalization": {
+   "min": 0.00011243359200603965,
+   "max": 0.003698177635990054
+  },
+  "omega": "st3cr_l5e-3.txt"
+ },
+ "fadeWidth": 1.7101029549573226,
+ "anchor": "st3cr lambda=5e-3",
+ "stats": {
+  "mean": 4.214509393326201e-08,
+  "std": 0.9999998535395466
+ }
+}

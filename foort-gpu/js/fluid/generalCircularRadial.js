@@ -26,6 +26,11 @@ const DERIV_H = 1e-7;
  * @property {number} [iscoLower]  ISCO search bounds, true radii (FOORT: r_h and 10 r_h; horizonless 0.05 and 1000)
  * @property {number} [iscoUpper]
  * @property {boolean} [rLogScale] bisection in log r, as FOORT with RLogScale (default true)
+ * @property {'foort'|'banded'} [model]  'foort' (default): FOORT's GeneralCircularRadial (one ISCO, plunge inside it).
+ *   'banded' (Stage 1B B3, horizonless metrics): circular orbits in every stable band; in each gap a plunge with the
+ *   E and L of the circular orbit at the inner edge of the next stable band outward (FOORT's ISCO construction per band).
+ *   For a metric with a horizon (one stable band) it is FOORT's model.
+ * @property {{rMin:number, rMax:number}} [bandRange]  radii over which the banded model looks for bands (the fluid table's range)
  *
  * @typedef {[number, number, number, number]} Vec4  covariant (t, r, theta, phi) unless stated
  */
@@ -38,8 +43,11 @@ export function createFluid(m, params) {
   const clamp01 = (/** @type {number} */ v) => Math.min(Math.max(v, 0), 1);
   const xi = clamp01(params.xi), betaR = clamp01(params.betaR), betaPhi = clamp01(params.betaPhi);
   const rh = m.horizon.kind === 'sphere' ? m.horizon.r : 0;
-  const iscoLower = params.iscoLower ?? (rh > 0 ? rh : 0.05);
-  const iscoUpper = params.iscoUpper ?? (rh > 0 ? 10 * rh : 1000);
+  // FOORT's horizonless bounds (0.05, 1000) are in its raw coordinates: a metric rescaled to unit mass divides them
+  // by its length scale, so the bisection runs over the same raw interval and finds the same ISCO
+  const Ls = m.lengthScale ?? 1;
+  const iscoLower = params.iscoLower ?? (rh > 0 ? rh : 0.05 / Ls);
+  const iscoUpper = params.iscoUpper ?? (rh > 0 ? 10 * rh : 1000 / Ls);
   const logScale = params.rLogScale ?? true;
   const guu = m.g_uu ? m.g_uu.bind(m) : null;
 
@@ -146,6 +154,13 @@ export function createFluid(m, params) {
     const pr = -1 / Math.sqrt(u.grr) * Math.sqrt(Math.max(t2, 0));
     return /** @type {Vec4} */ (Number.isNaN(pr) ? [0, 0, 0, 0] : [pIsco[0], pr, 0, pIsco[3]]);
   };
+  /** plunge with the E and L of the covariant circular velocity pEdge (FOORT's inside-ISCO construction, per band) */
+  const plunge = (/** @type {Vec4} */ pEdge, /** @type {number} */ r) => {
+    const u = inv(r);
+    const t2 = -1 - u.gtt * pEdge[0] * pEdge[0] - 2 * u.gtphi * pEdge[0] * pEdge[3] - u.gphiphi * pEdge[3] * pEdge[3];
+    const pr = -1 / Math.sqrt(u.grr) * Math.sqrt(Math.max(t2, 0));
+    return /** @type {Vec4} */ (Number.isNaN(pr) ? [0, 0, 0, 0] : [pEdge[0], pr, 0, pEdge[3]]);
+  };
   /** FOORT GetRadialVelocityd: radial infall with E = 1, L = 0 (g^tr = 0 for these metrics) */
   const radial = (/** @type {number} */ r) => {
     const u = inv(r);
@@ -167,7 +182,13 @@ export function createFluid(m, params) {
     if (betaR > 0 || betaPhi > 0) {
       /** @type {Vec4} */
       let pc = [0, 0, 0, 0];
-      if (iscoExists) {
+      if (stableBands) {
+        // banded: circular inside a stable band, else the plunge from the next stable band outward
+        const inBand = stableBands.find((b) => r >= b.from && r <= b.to);
+        if (inBand) pc = circular(r);
+        else { const outer = stableBands.find((b) => b.from > r); if (outer) pc = plunge(outer.p, r); }
+        if (pc[0] >= 0 && inBand) { const outer = stableBands.find((b) => b.from > r); if (outer) pc = plunge(outer.p, r); }
+      } else if (iscoExists) {
         pc = r >= rIsco ? circular(r) : insideIsco(r);
         if (pc[0] >= 0 && r >= rIsco) pc = insideIsco(r);
       } else pc = circular(r);
@@ -206,9 +227,36 @@ export function createFluid(m, params) {
     return bands;
   };
 
+  // banded model (horizonless metrics): stable bands with refined inner edges and their edge orbits
+  const model = params.model ?? 'foort';
+  /** @type {{from:number, to:number, p:Vec4}[]|null} */
+  let stableBands = null;
+  if (model === 'banded' && rh === 0) {
+    const rng = params.bandRange ?? { rMin: iscoLower, rMax: iscoUpper };
+    const n = 400, dl = Math.log(rng.rMax / rng.rMin) / (n - 1);
+    const bands = circularBands(rng.rMin, rng.rMax, n);
+    const isStable = (/** @type {number} */ r) => stability(r) < 0;
+    stableBands = [];
+    bands.forEach((b, i) => {
+      if (b.kind !== 'stable') return;
+      let from = b.from;
+      if (i > 0) {
+        // the band starts between two samples: bisect in log r on the stability sign (the edge orbit is marginally stable)
+        let a = Math.log(b.from) - dl, c = Math.log(b.from) + dl;
+        for (let it = 0; it < 60; it++) { const mid = (a + c) / 2; if (isStable(Math.exp(mid))) c = mid; else a = mid; }
+        from = Math.exp(c);
+      }
+      const to = i === bands.length - 1 ? Infinity : b.to;
+      stableBands.push({ from, to, p: circular(from) });
+    });
+    if (!stableBands.length) stableBands = null;
+  }
+
   return {
-    params: { xi, betaR, betaPhi, iscoLower, iscoUpper },
+    params: { xi, betaR, betaPhi, iscoLower, iscoUpper, model },
     isco: iscoExists ? rIsco : null,
+    /** banded model: the stable bands [from, to] (from = marginally stable inner edge) */
+    stableBands: stableBands ? stableBands.map((b) => ({ from: b.from, to: b.to })) : null,
     circularBands,
     velocity,
     /**

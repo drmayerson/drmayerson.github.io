@@ -5,3 +5,5 @@ dev/blob-report/
 dev/package-lock.json
 tools/foort_parity/build/
 *.h5
+# Stage 1B: image reports (PNG, GIF) are not committed to the published branch; small JSON summaries in dev/reports/ are
+dev/reports/img/

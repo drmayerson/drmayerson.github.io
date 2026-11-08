@@ -55,7 +55,7 @@ test('face-on camera: axis crossings without NaN, constraint kept', async ({ pag
   for (let k = 0; k < 128 * 128; k++) {
     const g = decodeRecord(rec, k);
     expect(g.term === 1 || g.term === 2).toBe(true);
-    if (g.term === 2) hMax = Math.max(hMax, rec[16 * k + 12]);
+    if (g.term === 2) hMax = Math.max(hMax, rec[24 * k + 12]);
   }
   expect(hMax).toBeLessThan(1e-3);
 });

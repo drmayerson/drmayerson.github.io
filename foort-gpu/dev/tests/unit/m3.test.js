@@ -29,8 +29,8 @@ describe('trace configuration', () => {
     expect(() => gpuTraceSetup({ ...view, path: 'tabulated' })).toThrow(/baked tables/);
   });
   it('decodes the record layout', () => {
-    const rec = new Float32Array(32);
-    rec.set([2 + 16 * 2, 700, 1.2, 3.4, 6, 1, -1000, 0.8, 9, 2, -1010, 0.5, 0, 0, 0, 0], 16);
+    const rec = new Float32Array(48);   // RECORD_FLOATS = 24 per pixel since Stage 1B B2 (16 + 8 tail bins)
+    rec.set([2 + 16 * 2, 700, 1.2, 3.4, 6, 1, -1000, 0.8, 9, 2, -1010, 0.5, 0, 0, 0, 0], 24);
     const d = decodeRecord(rec, 1);
     expect(d).toMatchObject({ term: 2, passes: 2, steps: 700 });
     expect(d.crossings).toHaveLength(2);

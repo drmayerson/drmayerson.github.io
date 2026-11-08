@@ -38,7 +38,8 @@ const SHOTS_M5 = {
   'g1_kerr_a0.94_inc80': 'a=0.94&inc=80&view=g1',
 };
 // M6: ST3Cr fuzzball (Test_FBdetail camera: r = 250, theta = 1.5, screen 150 in base units = 10.417 / 6.25 M_ADM)
-const FB = 'metric=st3cr&r=10.4167&inc=85.9437&screen=6.25&mu=0&gamma=-1.5&sigma=2&maxSteps=10000';
+// Test_FBdetail in units of M (Stage 1B B1: sigma = 2/24); v=2 marks the URL version
+const FB = 'v=2&metric=st3cr&r=10.4167&inc=85.9437&screen=6.25&mu=0&gamma=-1.5&sigma=0.0833333&maxSteps=10000';
 /** @type {Record<string, string>} */
 const SHOTS_M6 = {};
 for (const [tag, q] of [['0.15', 'lambda=0.15'], ['0.05', 'lambda=0.05'], ['0.01', 'lambda=0.01'], ['0.005', 'lambda=0.005'], ['1e-3', 'lambda=0.001'], ['1e-4', 'lambda=0.0001'], ['0_BH', 'bh0=1']]) {
@@ -51,7 +52,7 @@ Object.assign(SHOTS_M6, {
   'g1_st3cr_l0.005': `${FB}&lambda=0.005&view=g1`,
   'emission_st3cr_l0.005_log': `${FB}&lambda=0.005&toneMap=2&colorMap=1`,
   'emission_st3cr_l0.005_faceon': `${FB}&lambda=0.005&inc=2`,
-  'emission_st3cr_l0.005_distant': 'metric=st3cr&lambda=0.005&r=1000&inc=17&screen=15&mu=0&gamma=-1.5&sigma=2&maxSteps=10000',
+  'emission_st3cr_l0.005_distant': 'v=2&metric=st3cr&lambda=0.005&r=1000&inc=17&screen=15&mu=0&gamma=-1.5&sigma=0.0833333&maxSteps=10000',
 });
 // Fuzzball Shadows (arXiv:2103.12075) Fig. 1: equatorial camera at r = 250, four-colour, lambda = 0.19 ... 0.001 and the BH
 if (process.argv.includes('--fig1')) {

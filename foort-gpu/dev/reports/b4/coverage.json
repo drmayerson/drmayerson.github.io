@@ -1,0 +1,56 @@
+[
+ {
+  "scene": "Test_FBdetail l0.05",
+  "field": "inoisy_st3cr_l0.05",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l0.05, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Test_FBdetail l5e-3",
+  "field": "inoisy_st3cr_l5e-3",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l5e-3, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Test_FBdetail l1e-3",
+  "field": "inoisy_st3cr_l1e-3",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l1e-3, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Test_FBdetail l1e-4",
+  "field": "inoisy_st3cr_l0",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l0, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Compare 1B (l5e-3)",
+  "field": "inoisy_st3cr_l5e-3",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l5e-3, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Compare 2B (BH l0)",
+  "field": "inoisy_st3cr_l0",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l0, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Compare 3B (l0.05)",
+  "field": "inoisy_st3cr_l0.05",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_st3cr_l0.05, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "Compare 1A (Kerr a=0)",
+  "field": "inoisy_lg21",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_lg21, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ },
+ {
+  "scene": "KerrExample-like (Kerr a=0.94, r=1000)",
+  "field": "inoisy_lg21",
+  "coveragePercent": 100,
+  "clock": "t = 0.0 M (inoisy_lg21, auto, period 200 M; noise covers 100.0% of the emission), slow light"
+ }
+]

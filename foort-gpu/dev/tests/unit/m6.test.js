@@ -10,7 +10,8 @@ import { bakeFluid } from '../../../js/fluid/fluidTable.js';
 import { gpuTraceSetup, tableSpec, fluidSpec, cpuTraceOptions } from '../../../js/gpu/traceConfig.js';
 import { createMetric } from '../../../js/metrics/registry.js';
 
-const fb = { r: 250, theta: 1.5, screen: 150 };
+// Test_FBdetail camera in units of M (the registry's ST3Cr is in units of M_ADM = 24 since Stage 1B B1)
+const fb = { r: 250 / 24, theta: 1.5, screen: 150 / 24 };
 
 describe('horizonless background', () => {
   it('is bounded at small r and agrees with the horizon background to O(M^2/r^2) at large r', () => {
@@ -85,18 +86,18 @@ describe('fuzzball views', () => {
     const F = bakeFluid(m, fs.spec.fluid, fs.spec.range);
     const s = gpuTraceSetup(view, T, F);
     const [zc, R, eps, on] = /** @type {number[]} */ (s.uniforms.uSing[1]);
-    expect(zc).toBeCloseTo(0.16, 12);
+    expect(zc).toBeCloseTo(0.16 / 24, 12);
     expect(R).toBeCloseTo(m.singularities()[2].r, 12);
-    expect(eps).toBeCloseTo(ST3CR_EPS_REL * 0.16, 12);
+    expect(eps).toBeCloseTo(ST3CR_EPS_REL * 0.16 / 24, 12);
     expect(on).toBe(1);
-    expect(s.uniforms.uStep[1][2]).toBeCloseTo(ST3CR_EPS_REL * 0.16, 12);
+    expect(s.uniforms.uStep[1][2]).toBeCloseTo(ST3CR_EPS_REL * 0.16 / 24, 12);
     expect(s.uniforms.uMetric[1][0]).toBe(0);
     const c = cpuTraceOptions(view);
     expect(c.options.singularity).toEqual({ mode: 'euclid', eps });
     expect(c.options.rTerm).toBeCloseTo(eps, 12);
     // FOORT-like overrides
-    const c2 = cpuTraceOptions({ ...view, rInner: 0.01, singEps: 0.001 });
-    expect(c2.options.rTerm).toBe(0.01);
-    expect(c2.options.singularity).toEqual({ mode: 'euclid', eps: 0.001 });
+    const c2 = cpuTraceOptions({ ...view, rInner: 0.01 / 24, singEps: 0.001 / 24 });
+    expect(c2.options.rTerm).toBe(0.01 / 24);
+    expect(c2.options.singularity).toEqual({ mode: 'euclid', eps: 0.001 / 24 });
   });
 });

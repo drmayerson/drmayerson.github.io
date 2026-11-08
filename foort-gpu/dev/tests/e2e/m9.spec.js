@@ -30,7 +30,7 @@ test('Reissner-Nordström shadow on the GPU vs the analytic critical impact para
     let nG = 0, nA = 0, mis = 0;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const a = cam.screen * ((i + 0.5) / N - 0.5), b = cam.screen * ((j + 0.5) / N - 0.5);
-      const inA = Math.hypot(a, b) < rho, inG = Math.round(rec[16 * (j * N + i)]) % 16 === 1;
+      const inA = Math.hypot(a, b) < rho, inG = Math.round(rec[24 * (j * N + i)]) % 16 === 1;
       nA += inA ? 1 : 0; nG += inG ? 1 : 0; if (inA !== inG) mis++;
     }
     return { ratio: Math.sqrt(nG / nA), mis, edgePx: 2 * Math.PI * rho / (cam.screen / N) };

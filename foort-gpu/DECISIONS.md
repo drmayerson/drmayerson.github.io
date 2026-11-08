@@ -222,3 +222,56 @@ non-trivial implementation choice.
 - 2026-11-05 — **M9 accuracy trades as options, all off by default**, for the user to judge (PROGRESS, "M9 accuracy trades"): `tableHalf` (shader variant `trace_half`: R32F values + RGBA16F derivatives), `farSteps` {r (M_ADM), max} (eps *= clamp(r / r_far, 1, max); also in the CPU reference), and the fuzzball max steps (an existing control).
 - 2026-11-05 — **Adopted M9 trades** (user: "Far 4x + 5000 steps"): the viewer traces with larger steps beyond 20 M (up to 4×; checkbox "larger steps beyond 20 M", on by default) and the fuzzball max steps default is 5000 (also the Test_FBdetail preset; FOORT's config uses 10000). Half-float tables are not adopted (slower and less accurate). Validation scripts keep the plain integrator unless they ask for the options.
 - 2026-11-05 — **CHECKPOINT M9 / Stage 1 accepted; root-page card and merge** (user: "Card + merge"). The FOORT-GPU card (Dutch, in the style of the existing cards) is the last card of the root `index.html` section "Zwaartekrachtgolven en de Einstein Telescope"; M9 merged to `main` and pushed.
+
+## Stage 1B
+
+- 2026-11-08 — **Branch `foort-gpu-1b`**, from `main` at `dd3b999`. The plan is `FOORT_GPU_STAGE1B_PLAN.md` v1.0. The user asked for B0, B1 and B2 in sequence with one stop, at checkpoint B2 ("carry out B0, B1, B2 (sequentially) and stop only at checkpoint B2"). Checkpoints B0 and B1 are therefore reported together at B2.
+- 2026-11-08 — **B0 report hygiene:** new image reports go to `dev/reports/img/` (git-ignored); small JSON/markdown summaries stay in `dev/reports/`. The 137 PNGs committed in Stage 1 are left in place. Reruns of Stage 1 scripts that overwrite tracked PNGs are reverted before committing.
+- 2026-11-08 — **B0 quality gate** (`dev/scripts/qualityGate.mjs`, scene set and configurations in `gateConfigs.mjs`):
+  - **Scenes:** the plan's set; cameras and emission are given in units of M and converted to the registry metric's units.
+  - **Chaos mask:** Reference at ε vs ε/2 (max steps doubled); termination class changes, or a sky jump > 1 px.
+  - **Noisy frames:** use `inoisy_lg21` with σₙ = 1, slow light, at t = 0, T/3 and 2T/3. The light curve has 32 samples over one period.
+  - **Sky error:** in image-plane pixels, through the inverse of the 2×2 Jacobian of the escape direction (tangent-plane coordinates) with respect to the pixel, from central differences on the Reference record.
+  - **Chaotic-region budgets:** applied only from 100 chaotic pixels up.
+  - **Reference records:** cached per code hash (`tools/foort_parity/build/gate/`, git-ignored).
+- 2026-11-08 — **B0 tier probe page** (`probe.html`): five short traces (Kerr closed-form / tabulated Reference / tabulated High, ST3Cr λ = 1e-3 Reference / High). It reports Msteps/s, predicted 512² and 1024² times, and whether 512² fits E1. The JSON report is for the user to copy back. **E1 (tier time targets) is still the plan's default:** ≤ 2 s BH, ≤ 10 s fuzzball at 512². Unconfirmed; flagged at checkpoint B2.
+- 2026-11-08 — **B1 `rescaleToUnitMass(metric)`** (`js/metrics/common.js`), applied to ST3Cr and ST3Cr-BH in the registry. The raw `createST3Cr` stays for the FOORT harness.
+  - The wrapper carries `lengthScale` L = 24. `tableRadiusFor(r, L)` and the fluid's horizonless ISCO bounds (0.05/L, 1000/L) use it, so tables, fluid table and ISCO search keep their raw node positions. The rescaled metric then traces the same rays: the same step sequence, since the step rule is scale-invariant in x = log r.
+  - Raw-unit helpers (ST3Cr `functions`, ST3Cr-BH `Q`) are not carried over; `criticalImpactParameter` is wrapped.
+- 2026-11-08 — **B1 URL version** `v=2` (written by every URL). A URL without `v` (Stage 1) with `metric=st3cr` has its Johnson-SU μ and σ divided by 24, also when they took their defaults. Camera lengths were already in units of M in Stage 1.
+- 2026-11-08 — **B1 Test_FBdetail preset:** μ = 0, γ = −1.5, σ = 2/24, r = 10.4167, screen 6.25 (exact conversions).
+- 2026-11-08 — **B2 binned tail, packing (E2: K = 8, the plan's default).**
+  - The record is 6 RGBA32F attachments: rec0–3 as in Stage 1, then 2 for the tail. Each bin is one float: W_b = Σ F g^p over crossings 4, 5, … (up to max passes), with the bin's emission-weighted log-r centroid, as an 8-bit fraction of the bin width, in the low 8 bits of W_b's mantissa (W keeps 15 bits, 3e-5 relative). This fits K = 8 in 2 attachments and leaves attachment 6 for the compaction state of B5, within 8.
+  - **Bins:** uniform in log r from the inner termination radius to 50 M (`tailGeometry`).
+  - **Drawing:** the tail is drawn without noise and slow light (legend, README).
+  - **Re-tracing:** redshift power, fudge factor and max passes now re-trace; max passes offers 0 (all), 1–4, 6, 10, 20.
+  - **Fewer than 6 draw buffers:** `TAIL_BINS 0`, the first 3 crossings only, and the performance table says so.
+  - **Display:** binds at most 2 progressive levels × 6 attachments, 12 texture units, plus noise and fluid. `finalLevels` never uses more than 2.
+  - **Records:** read back with 24 floats per pixel (`RECORD_FLOATS`).
+- 2026-11-08 — **B2 K recommendation: keep K = 8.** With K = 8 the tail approximation is 0.3–1.7% L1 (budget 2%), while K = 4 fails (5–9%). K = 16 would give 0.2–0.6% but needs 4 tail attachments, 8 in total, and leaves no room for the B5 compaction state.
+- 2026-11-08 — **B3 banded fluid** (`model: 'banded'`): circular in every stable band (inner edges refined by bisection on the stability sign), in each gap a plunge with the E and L of the next stable band's inner-edge orbit; = FOORT for metrics with a horizon. **E4 (default fluid) is the plan's proposal, flagged for the user:** the viewer defaults to banded (there is no normal/expert split until B7); validation scripts and `FLUID_DEFAULTS` use FOORT's model.
+- 2026-11-08 — **B3 envelope radius:** coordinate r (default, D3) or circumferential sqrt(g_phiphi), from the fluid table's 4th channel in the display shader (redraw only).
+- 2026-11-08 — **B3 comparison presets:** camera r = 1000 M, 60°, screen 16 M; disc Johnson-SU mu = 3, gamma = -1.5, sigma = 1 in circumferential radius; banded fluid; pairs Kerr a = 0 | ST3Cr 0.005, Kerr a = 0 | ST3Cr lambda = 0, Kerr a = 0.5 | ST3Cr 0.05, as A/B presets until compare mode (B7).
+- 2026-11-08 — **B4 fuzzball noise fields (E3: anchors λ = 0, 1e-3, 5e-3, 0.05, the plan's default; flagged for the user).**
+  - **Model:** inoisy `foort_logr` reads a tabulated Ω(r) (`FOORT_OMEGA_FILE`) from the viewer's banded fluid. The tabulated Ω replaces Keplerian in the advection and correlation-time terms. The correlation time is clamped to ≥ 3 Δt = 4.7 M; the clamp never binds, because max Ω ≈ 0.41/M gives a shortest period of 15 M. In table mode the correlation length is lam · r at all radii, with no inner cutoff.
+  - **Physics parameters:** those of `inoisy_lg21` (lam 5, τ 1, r12 0.1, θ −70°, T = 200 M).
+  - **Grid:** 128 × 192 × 128 over r = 1e-4–200 M. Each file is 6.3 MB; the four together are 25.2 MB, against the plan's 50 MB per-file limit.
+  - **λ = 0** uses the ST3Cr black hole's Ω (circular outside its ISCO, plunging inside).
+- 2026-11-08 — **B4 runtime selection** (noise field "auto", the new default):
+  - all black-hole metrics use `inoisy_lg21` (plan: BH mode keeps it);
+  - ST3Cr-BH uses `l0`;
+  - ST3Cr uses the anchor nearest in log λ: λ < 10^−3.5 goes to `l0`, otherwise the nearest of 1e-3, 5e-3, 0.05.
+  - The field is reloaded when the metric, λ, the λ = 0 switch or a preset changes. The clock line names the field and says "auto".
+  - Fixed choices remain available.
+- 2026-11-08 — **B4 coverage guard:** outside [xmin, xmax], σₙ is multiplied by clamp(1 − d/w, 0, 1), with d the distance in x = log r and w = fadeWidth from the metadata (fallback lam·|cos θ|, then 1). The factor keeps its mean 1. It applies to every field, BH included.
+- 2026-11-08 — **B4 coverage view and readout:**
+  - **View** (mode 11, "Noise coverage"): the emission-weighted guard factor of the first 3 crossings, from green (1) to red (0), grey where there is no emission.
+  - **Readout:** the clock line and the legend give the whole-image percentage, computed in JS on the coarse records.
+- 2026-11-08 — **CHECKPOINTS B0–B4 accepted with all proposed defaults** (user: "Accept all defaults"):
+  - **E1:** tier time targets ≤ 2 s (BH), ≤ 10 s (fuzzball) at 512²;
+  - **Normal budgets:** as in the plan, Section 1.2;
+  - **E2:** K = 8 tail bins;
+  - **E3:** noise anchors λ = 0, 1e-3, 5e-3, 0.05, nearest anchor at runtime; the B4 fields and animations are approved;
+  - **E4:** banded fluid by default, FOORT's model for parity work;
+  - **Noise data:** 35 MB committed is acceptable.
+  - **Not decided:** merging `foort-gpu-1b` into main, and the device round (no reports yet). E1 stays provisional until the device numbers arrive.

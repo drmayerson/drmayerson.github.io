@@ -15,6 +15,8 @@
 #include "param.h"
 
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -118,8 +120,49 @@ double param_env(double raw, double avg_raw, double var_raw,
   return (raw - avg_raw) / sqrt(var_raw);
 }
 
+/* Stage 1B B4: a tabulated fluid angular velocity Omega(r) (the viewer's own fluid model) instead of Keplerian.
+   If the environment variable FOORT_OMEGA_FILE names a file of "x Omega" rows (x = log(r/M), ascending, '#' comments),
+   Omega(r) is interpolated linearly in x (clamped at the ends) and used for the advection direction and the correlation
+   time, the correlation length is lam r at every radius (no r_ct cutoff), and the correlation time is clamped to at
+   least 3 time steps (aliasing). Without the variable the model is the Keplerian one of inoisy_lg21. */
+#define OMEGA_MAX 4096
+static int om_n = -1;              /* -1: not loaded yet; 0: no table (Keplerian) */
+static double om_x[OMEGA_MAX], om_v[OMEGA_MAX];
+static double g_dt0 = 0.;          /* time step of the grid (set by param_coeff / param_set_source) */
+
+static void load_omega(void)
+{
+  const char* fn = getenv("FOORT_OMEGA_FILE");
+  om_n = 0;
+  if (!fn || !*fn) return;
+  FILE* f = fopen(fn, "r");
+  if (!f) { fprintf(stderr, "FOORT_OMEGA_FILE %s: cannot open\n", fn); exit(1); }
+  char line[512];
+  while (fgets(line, sizeof line, f) && om_n < OMEGA_MAX) {
+    if (line[0] == '#') continue;
+    double x, v;
+    if (sscanf(line, "%lf %lf", &x, &v) == 2) { om_x[om_n] = x; om_v[om_n] = v; om_n++; }
+  }
+  fclose(f);
+  if (om_n < 2) { fprintf(stderr, "FOORT_OMEGA_FILE %s: fewer than 2 rows\n", fn); exit(1); }
+}
+
+static double omega_table(double r)
+{
+  double x = log(r);
+  if (x <= om_x[0]) return om_v[0];
+  if (x >= om_x[om_n - 1]) return om_v[om_n - 1];
+  int lo = 0, hi = om_n - 1;
+  while (hi - lo > 1) { int mid = (lo + hi) / 2; if (om_x[mid] <= x) lo = mid; else hi = mid; }
+  double w = (x - om_x[lo]) / (om_x[hi] - om_x[lo]);
+  return (1. - w) * om_v[lo] + w * om_v[hi];
+}
+
+static int use_table(void) { if (om_n < 0) load_omega(); return om_n > 0; }
+
 static double w_keplerian(double r)
 {
+  if (use_table()) return omega_table(r);
   if (r >= param_rct) return pow(r, -1.5);
   return cutoff(r, param_rct, pow(param_rct, -1.5), -1.5 * pow(param_rct, -2.5), 0.9 * pow(param_rct, -1.5));
 }
@@ -127,12 +170,13 @@ static double w_keplerian(double r)
 /* physical correlation length (major axis) */
 static double corr_length(double r)
 {
-  if (r >= param_rct) return param_lam * r;
+  if (use_table() || r >= param_rct) return param_lam * r;
   return cutoff(r, param_rct, param_lam * param_rct, param_lam, 0.9 * param_lam * param_rct);
 }
 
 static double corr_time(double r)
 {
+  if (use_table()) return fmax(2. * M_PI * param_tau / fmax(fabs(omega_table(r)), 1e-300), 3. * g_dt0);
   if (r >= param_rct) return 2. * M_PI * param_tau / w_keplerian(r);
   return cutoff(r, param_rct, 2. * M_PI * param_tau * pow(param_rct, 1.5),
 		2. * M_PI * param_tau * 1.5 * sqrt(param_rct), 0.9 * 2. * M_PI * param_tau * pow(param_rct, 1.5));
@@ -179,6 +223,7 @@ void param_coeff(double* coeff, double x0, double x1, double x2, double dx0,
 		  double dx1, double dx2, int index)
 {
   double h[3][3], dh[3][3][3];
+  g_dt0 = dx0;
   set_h(h, x0, x1, x2);
   set_dh(dh, x0, x1, x2, dx0, dx1, dx2);
   /* same discretization as general_xy, with (x, y) -> (log r, phi) */
@@ -202,6 +247,7 @@ void param_set_source(double* values, gsl_rng* rstate, int ni, int nj, int nk,
   int nvalues = ni * nj * nk;
   /* white noise scaled by sqrt(det Lambda) (Lindgren et al. 2011), as general_xy, with coordinate lengths */
   double factor = pow(4. * M_PI, 3. / 2.) * tgamma(2. * nrecur) / tgamma(2. * nrecur - 3. / 2.);
+  g_dt0 = dx0;
   for (i = 0; i < nvalues; i++) {
     int gridk = i / (ni * nj);
     int gridj = (i - ni * nj * gridk) / ni;

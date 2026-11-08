@@ -3,32 +3,36 @@
  "crossing": "foort",
  "project": false,
  "N": 128,
- "fourColorAgreement": 0.92791748046875,
- "fourColorMismatches": 1181,
+ "fourColorAgreement": 0.92474365234375,
+ "fourColorMismatches": 1233,
  "emission": {
-  "relL1": 1.0016703279580488,
-  "relL1SameQuadrant": 0.410286969956072,
+  "relL1": 1.03015668038815,
+  "relL1SameQuadrant": 0.07676266199582306,
   "hotPixelsFOORT": 2,
-  "hotPixelsGPU": 0,
-  "relL1WithoutHot": 1.1646300949771426,
-  "relL1AtMost3PassesSameQuadrant": 0.0007185859874441782,
-  "pixelsAtMost3PassesSameQuadrant": 13390,
+  "hotPixelsGPU": 1,
+  "relL1WithoutHot": 1.18899897529267,
+  "relL1AtMost3PassesSameQuadrant": 0.0007418990944568145,
+  "pixelsAtMost3PassesSameQuadrant": 13388,
   "relDiff": {
-   "median": 0.0011544838210959716,
-   "p90": 0.7131855945481277,
-   "p99": 0.9964994791872105
+   "median": 0.0010789187876073807,
+   "p90": 0.060356061443727876,
+   "p99": 2.717919797885924
   }
  },
- "raysWithMoreThan3Passes": 2834,
+ "raysWithMoreThan3Passes": 2833,
+ "moreThan3Passes": {
+  "relL1First3": 0.8124041286607823,
+  "relL1WithTail": 0.16963342548229418
+ },
  "gpu": {
   "N": 128,
   "levels": [
    1
   ],
-  "wallMs": 5838.899999856949,
-  "gpuMs": 4238.309879999999,
-  "tiles": 64,
-  "steps": 19129022
+  "wallMs": 1562.7999999523163,
+  "gpuMs": 1453.50611,
+  "tiles": 16,
+  "steps": 19180171
  },
  "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
 }

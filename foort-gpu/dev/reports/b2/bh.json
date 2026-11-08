@@ -1,0 +1,26 @@
+[
+ {
+  "case": "kerr_a0.94_inc17",
+  "N": 512,
+  "pixelsWithMoreThan3": 247,
+  "changedPixelsWith3OrFewer": 0,
+  "recordsChanged": 0,
+  "fluxGain": 0.000682437380650764
+ },
+ {
+  "case": "kerr_a0.94_inc80",
+  "N": 512,
+  "pixelsWithMoreThan3": 272,
+  "changedPixelsWith3OrFewer": 0,
+  "recordsChanged": 0,
+  "fluxGain": 0.0007119349110104227
+ },
+ {
+  "case": "kerr_a0_inc80",
+  "N": 512,
+  "pixelsWithMoreThan3": 108,
+  "changedPixelsWith3OrFewer": 0,
+  "recordsChanged": 0,
+  "fluxGain": 0.00033322767553071493
+ }
+]
