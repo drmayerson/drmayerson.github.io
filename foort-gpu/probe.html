@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOORT-GPU tier probe</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+  <h1>FOORT-GPU tier probe</h1>
+  <p>Short test traces that measure how fast this device runs the FOORT-GPU tracer, for the Stage 1B quality tiers
+    (about 10–30 s; keep this tab in front). Then copy the report below and send it back. <a href="./">Viewer</a> ·
+    <a href="./caps.html">Capabilities</a> · <a href="./bench/">Benchmark</a></p>
+  <p><button id="run" type="button">Run the probe</button> <span id="status"></span></p>
+  <canvas id="view" width="128" height="128" style="width:128px;height:128px" aria-label="probe image"></canvas>
+  <section>
+    <h2>Results</h2>
+    <table id="results"><tr><td>not run yet</td></tr></table>
+  </section>
+  <section>
+    <h2>Report (copy this)</h2>
+    <p><button id="copy" type="button" disabled>Copy report</button></p>
+    <pre id="report"></pre>
+  </section>
+</main>
+<script type="module" src="./js/probePage.js"></script>
+</body>
+</html>
