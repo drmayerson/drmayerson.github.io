@@ -68,6 +68,40 @@ export function parseNoiseField(meta, buf) {
 }
 
 /**
+ * Width (in x = log r) of the coverage guard's fade outside the field's range (Stage 1B B4): the metadata's fadeWidth,
+ * else the x-projection of the major correlation axis, lam |cos theta|, else 1.
+ * @param {NoiseMeta} m
+ */
+export function noiseFadeWidth(m) {
+  const any = /** @type {any} */ (m);
+  if (Number.isFinite(any.fadeWidth)) return any.fadeWidth;
+  const g = any.generator;
+  if (g && Number.isFinite(g.lam) && Number.isFinite(g.theta_rad)) return g.lam * Math.abs(Math.cos(g.theta_rad));
+  return 1;
+}
+
+/** the coverage guard's factor at x = log(r / M) (as display.glsl noiseCover) @param {NoiseMeta} m @param {number} x */
+export function noiseCover(m, x) {
+  const d = Math.max(m.xmin - x, x - m.xmax);
+  return d <= 0 ? 1 : Math.min(1, Math.max(0, 1 - d / Math.max(noiseFadeWidth(m), 1e-6)));
+}
+
+/** Noise field of a view in the viewer's 'auto' mode (Stage 1B B4, decision E3): inoisy_lg21 for black holes; for the
+ * ST3Cr fuzzball the anchor field nearest in log lambda (lambda = 0, 1e-3, 5e-3, 0.05; lambda below 10^-3.5 -> 0).
+ * @param {string} metric registry id @param {Record<string, number>} params */
+export function autoNoiseField(metric, params) {
+  if (metric === 'st3crBH') return 'inoisy_st3cr_l0';
+  if (metric !== 'st3cr') return 'inoisy_lg21';
+  const l = params.lambda;
+  if (!(l > 10 ** -3.5)) return 'inoisy_st3cr_l0';
+  /** @type {[number, string][]} */
+  const anchors = [[1e-3, '1e-3'], [5e-3, '5e-3'], [0.05, '0.05']];
+  let best = anchors[0];
+  for (const a of anchors) if (Math.abs(Math.log(l / a[0])) < Math.abs(Math.log(l / best[0]))) best = a;
+  return `inoisy_st3cr_l${best[1]}`;
+}
+
+/**
  * Fetch a field from a folder URL (default: the app's noise/ folder).
  * @param {string} name @param {string} [base]
  */

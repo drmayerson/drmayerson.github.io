@@ -13,6 +13,7 @@ uniform vec4 uTail;     // tail bins (Stage 1B B2): log r of the first edge, 1 /
 uniform highp sampler3D uNoise;   // X: texel (phi, x, t), R16F, linear, repeat in phi and t, clamp in x
 uniform ivec4 uNoiseN;  // Nt, Nx, Nphi, noise on (1/0)
 uniform vec4 uNoiseP;   // sigma_n, T_over_M, xmin, xmax
+uniform vec4 uNoiseFade;  // B4 coverage guard: width (in x = log r) over which sigma_n fades to 0 outside [xmin, xmax], 0, 0, 0
 uniform vec4 uTime;     // t_obs / M, slow light (1/0), M_ADM, procedural advection duration D / M (0: off)
 uniform highp sampler2D uFluidD;  // fluid table (1/u^t, u^r/u^t, Omega) (js/fluid/fluidTable.js), for advection
 uniform vec4 uFluidXD;  // xMin, dx, nodes, r0 of the fluid table
@@ -24,7 +25,7 @@ uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), envelope ra
 out vec4 color;
 
 const float PI = 3.14159265358979;
-const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7, V_EMISSION = 8, V_NOISE = 9, V_DT21 = 10;
+const int V_FOURCOLOR = 0, V_TERM = 1, V_STEPS = 2, V_G1 = 3, V_DT1 = 4, V_PASSES = 5, V_SKY = 6, V_HAM = 7, V_EMISSION = 8, V_NOISE = 9, V_DT21 = 10, V_COVER = 11;
 
 // FOORT FourColorScreen colours, as in the M0 benchmark
 const vec3 Q1 = vec3(228.0, 74.0, 64.0) / 255.0, Q2 = vec3(64.0, 156.0, 228.0) / 255.0;
@@ -87,6 +88,12 @@ float envelopeR(float r) {
 // exp(sigma X - sigma^2 / 2) at a crossing (r, phi, dt, g); with procedural advection two copies of the field,
 // rotated with the fluid since the last reset of their phase (period D, offset D/2), are crossfaded with
 // variance-preserving weights (the flow-map trick)
+// coverage guard (Stage 1B B4): 1 inside the field's radial range, fading linearly to 0 over one correlation length
+// outside it (instead of clamping, which would freeze the noise in r); the factor keeps its mean 1 for any sigma
+float noiseCover(float x) {
+  float d = max(uNoiseP.z - x, x - uNoiseP.w);
+  return d <= 0.0 ? 1.0 : clamp(1.0 - d / max(uNoiseFade.x, 1e-6), 0.0, 1.0);
+}
 float noiseFactor(vec4 c) {
   if (uNoiseN.w == 0 || uNoiseP.x == 0.0) return 1.0;
   float M = uTime.z;
@@ -100,8 +107,14 @@ float noiseFactor(vec4 c) {
     float Xa = noiseX(tau, x, c.y - om * fa * D), Xb = noiseX(tau, x, c.y - om * fb * D);
     X = (wa * Xa + wb * Xb) / sqrt(wa * wa + wb * wb);
   } else X = noiseX(tau, x, c.y);
-  float sg = uNoiseP.x;
+  float sg = uNoiseP.x * noiseCover(x);
   return exp(sg * X - 0.5 * sg * sg);
+}
+// one crossing without the noise factor (the time average)
+float passEmission0(vec4 c, int k) {
+  if (!(c.x > 0.0) || !(c.w > 0.0)) return 0.0;
+  if (uEm2.y > 0.0 && float(k + 1) > uEm2.y) return 0.0;
+  return (k == 0 ? 1.0 : uEm2.x) * pow(c.w, uEm.w) * johnsonSU(c.x);
 }
 // one crossing (r, phi, dt, g) of pass k (0-based)
 float passEmission(vec4 c, int k) {
@@ -204,6 +217,16 @@ void main() {
     vec4 c1 = rec1(lv, q), c2 = rec2(lv, q);
     if (c2.x <= 0.0) c = vec3(0.05, 0.1, 0.25);
     else c = inferno(((c1.z - c2.z) / uTime.z - uRange.x) / (uRange.y - uRange.x));
+  } else if (mode == V_COVER) {
+    // emission-weighted share of the first 3 crossings inside the noise field's radial range (the guard's factor);
+    // grey where there is no disc emission
+    float w0 = passEmission0(rec1(lv, q), 0), w1 = passEmission0(rec2(lv, q), 1), w2 = uView.w == 1 ? 0.0 : passEmission0(rec3(lv, q), 2);
+    float W = w0 + w1 + w2;
+    if (!(W > 0.0) || uNoiseN.w == 0) c = vec3(0.3);
+    else {
+      float cov = (w0 * noiseCover(log(rec1(lv, q).x / uTime.z)) + w1 * noiseCover(log(rec2(lv, q).x / uTime.z)) + w2 * noiseCover(log(rec3(lv, q).x / uTime.z))) / W;
+      c = mix(vec3(0.85, 0.1, 0.1), vec3(0.1, 0.75, 0.25), cov);
+    }
   } else if (mode == V_HAM) {
     if (uView.w == 0) c = vec3(0.3);
     else {

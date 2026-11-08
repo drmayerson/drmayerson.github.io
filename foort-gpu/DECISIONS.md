@@ -252,3 +252,18 @@ non-trivial implementation choice.
 - 2026-11-08 — **B3 banded fluid** (`model: 'banded'`): circular in every stable band (inner edges refined by bisection on the stability sign), in each gap a plunge with the E and L of the next stable band's inner-edge orbit; = FOORT for metrics with a horizon. **E4 (default fluid) is the plan's proposal, flagged for the user:** the viewer defaults to banded (there is no normal/expert split until B7); validation scripts and `FLUID_DEFAULTS` use FOORT's model.
 - 2026-11-08 — **B3 envelope radius:** coordinate r (default, D3) or circumferential sqrt(g_phiphi), from the fluid table's 4th channel in the display shader (redraw only).
 - 2026-11-08 — **B3 comparison presets:** camera r = 1000 M, 60°, screen 16 M; disc Johnson-SU mu = 3, gamma = -1.5, sigma = 1 in circumferential radius; banded fluid; pairs Kerr a = 0 | ST3Cr 0.005, Kerr a = 0 | ST3Cr lambda = 0, Kerr a = 0.5 | ST3Cr 0.05, as A/B presets until compare mode (B7).
+- 2026-11-08 — **B4 fuzzball noise fields (E3: anchors λ = 0, 1e-3, 5e-3, 0.05, the plan's default; flagged for the user).**
+  - **Model:** inoisy `foort_logr` reads a tabulated Ω(r) (`FOORT_OMEGA_FILE`) from the viewer's banded fluid. The tabulated Ω replaces Keplerian in the advection and correlation-time terms. The correlation time is clamped to ≥ 3 Δt = 4.7 M; the clamp never binds, because max Ω ≈ 0.41/M gives a shortest period of 15 M. In table mode the correlation length is lam · r at all radii, with no inner cutoff.
+  - **Physics parameters:** those of `inoisy_lg21` (lam 5, τ 1, r12 0.1, θ −70°, T = 200 M).
+  - **Grid:** 128 × 192 × 128 over r = 1e-4–200 M. Each file is 6.3 MB; the four together are 25.2 MB, against the plan's 50 MB per-file limit.
+  - **λ = 0** uses the ST3Cr black hole's Ω (circular outside its ISCO, plunging inside).
+- 2026-11-08 — **B4 runtime selection** (noise field "auto", the new default):
+  - all black-hole metrics use `inoisy_lg21` (plan: BH mode keeps it);
+  - ST3Cr-BH uses `l0`;
+  - ST3Cr uses the anchor nearest in log λ: λ < 10^−3.5 goes to `l0`, otherwise the nearest of 1e-3, 5e-3, 0.05.
+  - The field is reloaded when the metric, λ, the λ = 0 switch or a preset changes. The clock line names the field and says "auto".
+  - Fixed choices remain available.
+- 2026-11-08 — **B4 coverage guard:** outside [xmin, xmax], σₙ is multiplied by clamp(1 − d/w, 0, 1), with d the distance in x = log r and w = fadeWidth from the metadata (fallback lam·|cos θ|, then 1). The factor keeps its mean 1. It applies to every field, BH included.
+- 2026-11-08 — **B4 coverage view and readout:**
+  - **View** (mode 11, "Noise coverage"): the emission-weighted guard factor of the first 3 crossings, from green (1) to red (0), grey where there is no emission.
+  - **Readout:** the clock line and the legend give the whole-image percentage, computed in JS on the coarse records.

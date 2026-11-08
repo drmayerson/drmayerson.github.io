@@ -32,6 +32,7 @@ export const VIEWS = {
   ham: { mode: 7, label: 'Constraint |H| (log₁₀)', lo: -9, hi: -2 },
   noise: { mode: 9, label: 'Noise X at crossing 1 (grey = 0.5 + X/8)' },
   dt21: { mode: 10, label: 'n = 1 image delay (dt₁ − dt₂)/M', lo: 0, hi: 60 },
+  coverage: { mode: 11, label: 'Noise coverage (green: inside the field)' },
 };
 
 const fmt = (/** @type {number} */ d) => (v) => Number(v).toFixed(d);
@@ -108,8 +109,11 @@ export const CONTROLS = [
   { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false },
   { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false },
   { key: 'slowLight', label: 'slow light (each point at its emission time)', type: 'checkbox', group: 'Time', default: true, retrace: false },
-  { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time', options: ['inoisy_lg21', 'placeholder'],
-    optionLabels: { inoisy_lg21: 'inoisy, Lee & Gammie 2021 disc (M8)', placeholder: 'placeholder FFT field (M7)' }, default: 'inoisy_lg21', retrace: false },
+  { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time',
+    options: ['auto', 'inoisy_lg21', 'inoisy_st3cr_l0', 'inoisy_st3cr_l1e-3', 'inoisy_st3cr_l5e-3', 'inoisy_st3cr_l0.05', 'placeholder'],
+    optionLabels: { auto: 'auto (black holes: Lee & Gammie disc; fuzzball: nearest λ anchor)', inoisy_lg21: 'inoisy, Lee & Gammie 2021 disc, Keplerian (M8)',
+      'inoisy_st3cr_l0': 'inoisy, ST3Cr λ = 0 flow (B4)', 'inoisy_st3cr_l1e-3': 'inoisy, ST3Cr λ = 1e-3 flow (B4)', 'inoisy_st3cr_l5e-3': 'inoisy, ST3Cr λ = 5e-3 flow (B4)',
+      'inoisy_st3cr_l0.05': 'inoisy, ST3Cr λ = 0.05 flow (B4)', placeholder: 'placeholder FFT field (M7)' }, default: 'auto', retrace: false },
   { key: 'sigmaN', label: 'noise amplitude σₙ', type: 'range', group: 'Time', min: 0, max: 2, step: 0.05, default: 1, format: fmt(2), retrace: false },
   { key: 'advect', label: 'procedural advection (rotate the field with the fluid)', type: 'checkbox', group: 'Time', default: false, retrace: false },
   { key: 'advectD', label: 'advection crossfade period D (M)', type: 'range', group: 'Time', min: 2, max: 500, scale: 'log', default: 40, format: sig, retrace: false,

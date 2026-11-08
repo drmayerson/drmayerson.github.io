@@ -45,6 +45,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('name')
     ap.add_argument('--folder', default=os.path.join(os.path.dirname(__file__), '..', '..', 'noise'))
+    ap.add_argument('--omega', default='', help='Omega(r) table of the field (B4); default Keplerian r^-3/2')
+    ap.add_argument('--radii', default='1,2,5,10,30,100', help='radii (M) for the correlation times')
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', '..', 'dev', 'reports', 'm8'))
     a_ = ap.parse_args()
     os.makedirs(a_.out, exist_ok=True)
@@ -65,9 +67,14 @@ def main():
         ac = np.array(ac) / ac[0]
         below = np.where(ac < np.exp(-1))[0]
         return float(below[0] * dt) if len(below) else float('inf')
-    # Keplerian co-rotating correlation: shift phi by Omega t before correlating
+    # co-rotating correlation: shift phi by Omega t before correlating (Omega from the field's table, or Keplerian)
+    if a_.omega:
+        tab = np.loadtxt(a_.omega, comments='#')
+        omega_of = lambda r: float(np.interp(np.log(r), tab[:, 0], tab[:, 1]))
+    else:
+        omega_of = lambda r: r ** -1.5
     def corr_time_corot(j):
-        r = np.exp(x[j]); om = r ** -1.5
+        r = np.exp(x[j]); om = omega_of(r)
         s = a[:, j, :]
         ac = []
         for l in range(Nt // 2):
@@ -78,7 +85,7 @@ def main():
         ac = np.array(ac) / ac[0]
         below = np.where(ac < np.exp(-1))[0]
         return float(below[0] * dt) if len(below) else float('inf')
-    radii = [1.0, 2.0, 5.0, 10.0, 30.0, 100.0]
+    radii = [float(v) for v in a_.radii.split(',')]
     js = [int(np.argmin(np.abs(np.exp(x) - r))) for r in radii]
     stats = {
         'name': a_.name, 'shape': [Nt, Nx, Nphi], 'mean': float(a.mean()), 'std': float(a.std()),
@@ -87,7 +94,8 @@ def main():
         'seam_phi': {'mean_abs_jump': float(d_p_seam), 'mean_abs_step_inside': float(d_p_in)},
         'corr_time_fixed_point_M': {f'{np.exp(x[j]):.3g}': corr_time(j) for j in js},
         'corr_time_corotating_M': {f'{np.exp(x[j]):.3g}': corr_time_corot(j) for j in js},
-        'orbital_period_M': {f'{np.exp(x[j]):.3g}': float(2 * np.pi * np.exp(x[j]) ** 1.5) for j in js},
+        'orbital_period_M': {f'{np.exp(x[j]):.3g}': float(2 * np.pi / abs(omega_of(np.exp(x[j])))) for j in js},
+        'time_step_M': dt, 'three_time_steps_M': 3 * dt,
     }
     json.dump(stats, open(os.path.join(a_.out, f'{a_.name}_stats.json'), 'w'), indent=1)
     print(json.dumps(stats, indent=1))

@@ -1212,3 +1212,62 @@ The user asked to continue through B4 and pause there ("continue for now until c
 
 - `b3_fluid_models.png`: FOORT's model vs banded, λ = 0.05 … 1e-4, the same exposure per pair.
 - `b3_compare_presets.png`: the three comparison pairs. At equal mass, the same camera and the same disc in circumferential radius, the fuzzballs show a much smaller dark region than Kerr (the λ = 0 black hole's critical impact parameter is 2.07 M against 5.2 M for Schwarzschild), and at λ > 0 their interiors fill with structure.
+
+## CHECKPOINT B4 — fuzzball noise fields (2026-11-08)
+
+### Done
+
+- **inoisy model with a tabulated flow:** `tools/noise/inoisy_foort/param_foort_logr.c` reads Ω(r) from `FOORT_OMEGA_FILE`, and uses it for advection and the correlation time 2πτ/|Ω|, clamped to ≥ 3Δt.
+  - The Ω tables are written by the viewer's own fluid code: `dev/scripts/b4OmegaTables.mjs`, banded model, unit-mass ST3Cr, 600 rows each, in `tools/noise/omega/`.
+  - Without a table the model is unchanged. Build and run steps are in `tools/noise/build_inoisy.md`.
+- **Four anchor fields** (E3, the plan's default): `noise/inoisy_st3cr_l{0,1e-3,5e-3,0.05}`.
+  - Grid 128 × 192 × 128 (t, log r, φ), r = 1e-4–199 M, T = 200 M, float16.
+  - Same physics parameters as `inoisy_lg21`.
+  - 6.3 MB each, 25.2 MB together. With `inoisy_lg21` and the placeholder, the committed noise data is 35 MB.
+- **Viewer:**
+  - **Noise field "auto"** is the new default: black holes use `inoisy_lg21`; the ST3Cr fuzzball and its λ = 0 black hole use the nearest anchor in log λ. The clock line names the field.
+  - **Coverage guard:** outside a field's range, σₙ fades to 0 over one correlation length (fadeWidth 1.71 in log r). It applies to black holes too.
+  - **"Noise coverage" view and readout** (clock line and legend).
+
+### Field checks (`tools/noise/inspect_field.py --omega`, `dev/reports/b4/*_stats.json`)
+
+| anchor | per-radius std | t seam / interior step | φ seam / interior step | co-rotating correlation time (M) at r = 0.01, 0.1, 1, 3, 10 M |
+|---|---|---|---|---|
+| λ = 0 | 1 ± 6e-5 | 0.134 / 0.133 | 0.095 / 0.086 | 94, 20, 16, 31, 70 |
+| 1e-3 | 1 ± 1e-5 | 0.150 / 0.154 | 0.097 / 0.098 | > 100, 9.4, 16, 20, > 100 |
+| 5e-3 | 1 ± 1e-5 | 0.193 / 0.198 | 0.101 / 0.103 | 22, 9.4, 30, 27, 83 |
+| 0.05 | 1 ± 1e-5 | 0.264 / 0.272 | 0.076 / 0.074 | 19, 16, 9.4, 20, 59 |
+
+- **Seams:** both periodic seams are indistinguishable from interior steps.
+- **Correlation times:** all are ≥ 9.4 M against the 3Δt = 4.7 M clamp, so the field is not aliased in time.
+- **Pictures** (git-ignored): `dev/reports/img/b4/*_disc.png`, `*_tphi.png` and `*_lg21style.png`.
+
+### Coverage (`dev/scripts/b4Coverage.mjs`, `dev/reports/b4/coverage.json`, 512², through the viewer)
+
+| scene | field (auto) | emission covered |
+|---|---|---|
+| Test_FBdetail λ = 0.05 / 5e-3 / 1e-3 / 1e-4 | l0.05 / l5e-3 / l1e-3 / l0 | 100.0% each |
+| Compare 1B, 2B, 3B (fuzzballs, λ = 0 BH) | l5e-3, l0, l0.05 | 100.0% each |
+| Compare 1A, Kerr a = 0.94 at r = 1000 | lg21 | 100.0% |
+
+- **Requirement met:** ≥ 99% for the fuzzball scenes.
+- **Sanity check of the measure:** a disc pushed out to r ≈ 150–250 M (Kerr, μ = 150 or 250 M, σ = 40 M) gives 95.3% and 80.3%.
+
+### Tests
+
+- **Unit** (`dev/tests/unit/b4.test.js`):
+  - anchor selection;
+  - guard factor and fade-width fallbacks;
+  - per field: contract, range, Ω and anchor metadata, file size, per-radius zero mean and unit variance, t and φ periodicity.
+- **e2e** (`dev/tests/e2e/b4.spec.js`): auto follows the presets (lg21 → l5e-3 → l0.05); the clock reports 100.0% coverage; the coverage view's legend; a fixed choice overrides auto.
+- **Full suites:** Vitest 129 passed, Playwright 21 passed, tsc clean.
+
+### Animations for approval (git-ignored, `dev/reports/img/b4/`)
+
+- `b4_compare.gif`: Kerr a = 0 (lg21) | ST3Cr λ = 5e-3 | ST3Cr λ = 0.05, comparison camera (r = 1000 M, 60°), circumferential envelope, banded fluid, σₙ = 1, slow light; 48 frames over T = 200 M.
+- `b4_fbdetail.gif`: Test_FBdetail camera, λ = 0.05 | 5e-3 | 1e-4 (anchor 0).
+
+### Notes
+
+- **Between anchors** the flow is the nearest anchor's. Ω(r) at r ≳ 0.1 M is nearly λ-independent (orbital periods at 1 M agree to 0.2% across the four anchors); the anchors differ mainly inside the cap.
+- **The λ = 0 anchor at small λ:** for λ < 3e-4 the auto choice is the black hole's flow. Its plunge region (r < ISCO) stands in for the tiny fuzzball's inner band.

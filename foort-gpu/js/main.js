@@ -11,7 +11,7 @@ import { decodeRecord, RECORD_FLOATS } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { fluidTableRcirc } from './fluid/fluidTable.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
-import { loadNoiseField } from './noise/noiseField.js';
+import { loadNoiseField, autoNoiseField, noiseCover } from './noise/noiseField.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
@@ -100,17 +100,33 @@ async function main() {
 
   // noise field: inoisy production field (M8) or the M7 placeholder
   let noise = /** @type {import('./noise/noiseField.js').NoiseField|null} */ (null);
+  let noiseName = '';
+  /** the field the state asks for ('auto': by metric and lambda, Stage 1B B4) */
+  const wantedNoise = () => (state.noiseField === 'auto' ? autoNoiseField(metricIdFromState(state), metricParamsFromState(state).params) : state.noiseField);
   /** load and upload a noise field by name (noise/<name>.json/.bin) */
   const useNoise = async (/** @type {string} */ name) => {
-    try { const f = await loadNoiseField(name); backend.uploadNoise(f); noise = f; }
+    if (name === noiseName) return;
+    try { const f = await loadNoiseField(name); backend.uploadNoise(f); noise = f; noiseName = name; }
     catch (e) { console.warn(`noise field ${name} not loaded:`, e); }
   };
   stage('loading the noise field…');
-  await useNoise(state.noiseField);
+  await useNoise(wantedNoise());
   /** observer time t_obs in units of M */
   let tObs = 0;
 
   let autoExposure = 1;
+  let noiseCoverage = 1;
+  /** @param {Float32Array} rec @param {import('./fluid/emission.js').EmissionParams} em */
+  const coverageOf = (rec, em) => {
+    if (!noise) return 1;
+    let w = 0, wc = 0;
+    for (let k = 0; k < rec.length / RECORD_FLOATS; k++) for (const [n, c] of decodeRecord(rec, k).crossings.entries()) {
+      if (em.maxPasses > 0 && n + 1 > em.maxPasses) continue;
+      const e = (n === 0 ? 1 : em.fudge) * c.g ** em.redshiftPower * discIntensity([{ r: c.r, g: 1 }], { ...em, redshiftPower: 0, fudge: 1, maxPasses: 0 });
+      w += e; wc += e * noiseCover(noise.meta, Math.log(c.r / (lastFluid?.M ?? 1)));
+    }
+    return w > 0 ? wc / w : 1;
+  };
   /** tail-bin geometry of the last trace (Stage 1B B2) */
   let lastTail = /** @type {import('./gpu/traceConfig.js').TailGeometry|null} */ (null);
   /** coarse-level records of the last full trace, for auto exposure */
@@ -124,6 +140,8 @@ async function main() {
       const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em, d.tail);
       if (v > 0) I.push(v);
     }
+    // emission-weighted share of the noisy crossings (the first 3) inside the field's range (B4 coverage)
+    noiseCoverage = coverageOf(coarse, em);
     I.sort((a, b) => a - b);
     const top = I.length ? I[Math.min(I.length - 1, Math.floor(0.995 * I.length))] : 0;
     autoExposure = top > 0 ? 1 / top : 1;
@@ -151,7 +169,8 @@ async function main() {
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
         : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over all crossings (the first 3 exact, later ones binned); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
         : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
-          : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon' : '';
+          : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon'
+            : state.view === 'coverage' ? `Noise coverage: emission-weighted share of the first 3 crossings inside the field's radial range (${noise ? `${noiseName}, r = ${Math.exp(noise.meta.xmin).toPrecision(2)}–${Math.exp(noise.meta.xmax).toPrecision(3)} M` : 'no field'}); green 100%, red 0%, grey: no disc emission. Whole image: ${(100 * noiseCoverage).toFixed(2)}%` : '';
   };
 
   const perfRow = (/** @type {string} */ k, /** @type {string} */ v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
@@ -211,13 +230,15 @@ async function main() {
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
     if (!st) return;
     lastStats = st;
-    if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); }
+    if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); $('clock').textContent = clockText(); }
     requestDraw();
     const note = clamped.length ? ` (${clamped.join(', ')})` : '';
     $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms` : `preview (stride ${levels[0]}); release to refine`) + note;
     if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : 'closed-form Kerr shader');
   };
 
+  /** load the field the state asks for (auto: by metric and lambda) and refresh what depends on it */
+  const refreshNoise = () => useNoise(wantedNoise()).then(() => { updateExposure(); $('clock').textContent = clockText(); legend(); requestDraw(); });
   const controls = buildControls(/** @type {HTMLFormElement} */ ($('controls')), state, (key, final, retrace) => {
     if (key === 'view') { controls.set('lo', NaN); controls.set('hi', NaN); legend(); }
     if (key === 'metric') controls.set('maxSteps', MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
@@ -231,12 +252,13 @@ async function main() {
       // presets that also set other state (B3 comparison presets: envelope radius, fluid model); others reset them
       controls.set('envelope', p.state?.envelope ?? 'coordinate');
       if (p.state?.fluidModel) controls.set('fluidModel', p.state.fluidModel);
+      refreshNoise();
       run(true);
       return;
     }
     if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure', 'envelope'].includes(key)) { updateExposure(); legend(); }
     if (['slowLight', 'play'].includes(key)) $('clock').textContent = clockText();
-    if (key === 'noiseField') useNoise(state.noiseField).then(() => { $('clock').textContent = clockText(); requestDraw(); });
+    if (key === 'noiseField' || key === 'metric' || key === 'lambda' || key === 'bh0') refreshNoise();
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;
     if (retrace) run(final, isParam && !final); else { history.replaceState(null, '', `?${stateToQuery(state)}`); legend(); requestDraw(); }
   });
@@ -254,7 +276,7 @@ async function main() {
     }
     requestAnimationFrame(animate);
   };
-  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${state.noiseField}, period ${noise.meta.T_over_M} M)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
+  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
   $('clock').textContent = clockText();
   requestAnimationFrame(animate);
 

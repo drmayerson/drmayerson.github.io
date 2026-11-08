@@ -34,9 +34,9 @@ A new trace runs whenever the spacetime, camera, fluid or tracing settings chang
 | **Spacetime** | the metric and its parameters (sliders clamp to each metric's valid range); for ST3Cr, a log-scale λ slider and a "λ = 0" switch to the supersymmetric black hole; for Kerr, the closed-form validation shader |
 | **Camera** | distance, inclination, screen size and centre (units of M) |
 | **Disc emission** | FOORT presets (KerrExample, JohannsenExample, Test_MNrun, Test_FBdetail); Johnson-SU μ, γ, σ; redshift power; geometric fudge factor and number of passes; the fluid's sub-Keplerian ξ and radial-infall β_r, β_φ; exposure (auto: the 99.5th percentile), tone map, colour map |
-| **Time** | play/pause, speed (M per second), slow vs fast light, noise field (inoisy or the placeholder), noise amplitude σₙ, optional procedural advection of the field with the fluid |
+| **Time** | play/pause, speed (M per second), slow vs fast light, noise field (auto: by metric and λ; or a fixed inoisy field, or the placeholder), noise amplitude σₙ, optional procedural advection of the field with the fluid |
 | **Tracing** | resolution, metric table size, the step parameter ε (FOORT's 0.03), larger steps beyond 20 M (on by default: about 20% faster, escape directions within about 3e-4 rad), max steps (5000; for the fuzzball the disc image is the same as with 10000), FOORT-parity or interpolated disc crossings, recording the constraint \|H\| |
-| **View** | disc emission, or a debug view: four-colour screen, termination, steps, redshift g₁, delay, crossings, sky grid, \|H\|, noise, n = 1 image delay |
+| **View** | disc emission, or a debug view: four-colour screen, termination, steps, redshift g₁, delay, crossings, sky grid, \|H\|, noise, n = 1 image delay, noise coverage |
 
 ### Debug views
 
@@ -52,7 +52,7 @@ The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&
 ### Known limitations
 
 - **Later disc crossings:** each pixel keeps its first 3 disc crossings exactly; every later crossing (light trapped near the photon ring or inside the fuzzball's cap) is summed into 8 log-r bins and drawn **without noise or slow light** (its fluctuations average out over many crossings with spread-out delays). Devices with fewer than 6 WebGL2 draw buffers keep the first 3 crossings only (the performance table says so). Redshift power, fudge factor and max passes re-trace, since the bins are weighted at trace time.
-- **Noise model:** the noise field is sampled at log(r/M) with a Keplerian built-in flow. For the fuzzball, whose emission lies at r ≪ M, this is an approximation.
+- **Noise model:** the noise field is sampled at log(r/M). With the noise field on "auto", black holes use `inoisy_lg21` (Keplerian flow, r = 0.05–190 M). The ST3Cr fuzzball and its λ = 0 black hole use a field made with the viewer's own banded-fluid Ω(r) at the anchor λ nearest in log λ (0, 1e-3, 5e-3, 0.05; r = 1e-4–200 M). Between anchors the flow is approximate. Outside a field's radial range the noise amplitude fades to 0 over one correlation length (coverage guard). The "Noise coverage" view and the clock line show how much of the emission the field covers.
 - **Chaos:** inside the fuzzball, ray scattering is chaotic, and individual pixels there depend on the step size in any integrator, FOORT's included.
 - **Very large images:** on a slow GPU, very large images or very many steps can make the operating system reset the GPU. The page then says so and needs a reload.
 
@@ -134,7 +134,7 @@ Validation scripts (reports in `dev/reports/m<N>/`), by milestone:
 | M6 | `m6TableError.mjs`, `m6Level2.mjs`, `m6GpuVsFoort.mjs`, `m6Level3.mjs`, `m6Continuity.mjs`, `m6Passes.mjs`, `m6Steps.mjs`: fuzzball tables, GPU vs CPU and FOORT, λ = 0 shadow, λ → 0, crossings, steps |
 | M7–M8 | `m7Delays.mjs`, `m7Frames.mjs`; `tools/noise/inspect_field.py`: light delays, animations, noise fields |
 | M9 | `m9Perf.mjs`: acceptance timings |
-| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; the device probe page `probe.html` |
+| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; the device probe page `probe.html` |
 
 ### Local server
 

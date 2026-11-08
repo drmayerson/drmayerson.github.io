@@ -4,6 +4,8 @@
 // GPU timer queries where available. Display pass: draws a view of the record to the canvas.
 // Shader sources are fetched at runtime from shaders/glsl/ (no build step).
 
+import { noiseFadeWidth } from '../noise/noiseField.js';
+
 const VERT = `#version 300 es
 void main() {
   vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
@@ -339,6 +341,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       const nm = noiseMeta, tm = view.time ?? { tObs: 0, slow: true, M: 1, advect: 0, sigma: 0 };
       gl.uniform4i(display.loc('uNoiseN'), nm?.Nt ?? 2, nm?.Nx ?? 2, nm?.Nphi ?? 2, nm && noiseTex && fluidTex ? 1 : 0);
       gl.uniform4f(display.loc('uNoiseP'), tm.sigma, nm?.T_over_M ?? 1, nm?.xmin ?? 0, nm?.xmax ?? 1);
+      gl.uniform4f(display.loc('uNoiseFade'), nm ? noiseFadeWidth(nm) : 1, 0, 0, 0);
       gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
       gl.uniform4i(display.loc('uView'), view.mode, W, H, view.storeH ? 1 : 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
