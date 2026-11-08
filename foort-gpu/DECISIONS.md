@@ -267,3 +267,11 @@ non-trivial implementation choice.
 - 2026-11-08 — **B4 coverage view and readout:**
   - **View** (mode 11, "Noise coverage"): the emission-weighted guard factor of the first 3 crossings, from green (1) to red (0), grey where there is no emission.
   - **Readout:** the clock line and the legend give the whole-image percentage, computed in JS on the coarse records.
+- 2026-11-08 — **CHECKPOINTS B0–B4 accepted with all proposed defaults** (user: "Accept all defaults"):
+  - **E1:** tier time targets ≤ 2 s (BH), ≤ 10 s (fuzzball) at 512²;
+  - **Normal budgets:** as in the plan, Section 1.2;
+  - **E2:** K = 8 tail bins;
+  - **E3:** noise anchors λ = 0, 1e-3, 5e-3, 0.05, nearest anchor at runtime; the B4 fields and animations are approved;
+  - **E4:** banded fluid by default, FOORT's model for parity work;
+  - **Noise data:** 35 MB committed is acceptable.
+  - **Not decided:** merging `foort-gpu-1b` into main, and the device round (no reports yet). E1 stays provisional until the device numbers arrive.
