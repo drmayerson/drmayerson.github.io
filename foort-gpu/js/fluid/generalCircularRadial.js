@@ -38,8 +38,11 @@ export function createFluid(m, params) {
   const clamp01 = (/** @type {number} */ v) => Math.min(Math.max(v, 0), 1);
   const xi = clamp01(params.xi), betaR = clamp01(params.betaR), betaPhi = clamp01(params.betaPhi);
   const rh = m.horizon.kind === 'sphere' ? m.horizon.r : 0;
-  const iscoLower = params.iscoLower ?? (rh > 0 ? rh : 0.05);
-  const iscoUpper = params.iscoUpper ?? (rh > 0 ? 10 * rh : 1000);
+  // FOORT's horizonless bounds (0.05, 1000) are in its raw coordinates: a metric rescaled to unit mass divides them
+  // by its length scale, so the bisection runs over the same raw interval and finds the same ISCO
+  const Ls = m.lengthScale ?? 1;
+  const iscoLower = params.iscoLower ?? (rh > 0 ? rh : 0.05 / Ls);
+  const iscoUpper = params.iscoUpper ?? (rh > 0 ? 10 * rh : 1000 / Ls);
   const logScale = params.rLogScale ?? true;
   const guu = m.g_uu ? m.g_uu.bind(m) : null;
 

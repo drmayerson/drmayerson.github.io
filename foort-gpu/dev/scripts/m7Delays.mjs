@@ -15,15 +15,15 @@ const N = args.includes('--N') ? Number(args[args.indexOf('--N') + 1]) : 256;
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m7');
 mkdirSync(outDir, { recursive: true });
 const DEG = Math.PI / 180;
-const fb = { r: 250, theta: 1.5, screen: 150 };
+const fb = { r: 250 / 24, theta: 1.5, screen: 150 / 24 };   // Test_FBdetail, units of M (B1)
 const CASES = [
   { name: 'kerr_a0_inc80', view: { metric: 'kerr', metricParams: { a: 0 }, camera: { r: 1000, theta: 80 * DEG, screen: 15 } }, M: 1 },
   { name: 'kerr_a0.94_inc80', view: { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 80 * DEG, screen: 15 } }, M: 1 },
   { name: 'kerr_a0.94_inc17', view: { metric: 'kerr', metricParams: { a: 0.94 }, camera: { r: 1000, theta: 0.2967, screen: 15 } }, M: 1 },
-  { name: 'st3cr_l0.05', view: { metric: 'st3cr', metricParams: { lambda: 0.05 }, camera: fb, maxSteps: 10000 }, M: 24 },
-  { name: 'st3cr_l0.005', view: { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: fb, maxSteps: 10000 }, M: 24 },
-  { name: 'st3cr_l1e-4', view: { metric: 'st3cr', metricParams: { lambda: 1e-4 }, camera: fb, maxSteps: 10000 }, M: 24 },
-  { name: 'st3crBH', view: { metric: 'st3crBH', metricParams: {}, camera: fb, maxSteps: 10000 }, M: 24 },
+  { name: 'st3cr_l0.05', view: { metric: 'st3cr', metricParams: { lambda: 0.05 }, camera: fb, maxSteps: 10000 }, M: 1 },
+  { name: 'st3cr_l0.005', view: { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: fb, maxSteps: 10000 }, M: 1 },
+  { name: 'st3cr_l1e-4', view: { metric: 'st3cr', metricParams: { lambda: 1e-4 }, camera: fb, maxSteps: 10000 }, M: 1 },
+  { name: 'st3crBH', view: { metric: 'st3crBH', metricParams: {}, camera: fb, maxSteps: 10000 }, M: 1 },
 ];
 const q = (xs, f) => { if (!xs.length) return NaN; const s = Float64Array.from(xs).sort(); return s[Math.min(s.length - 1, Math.floor(f * s.length))]; };
 const v = await openViewer();

@@ -16,10 +16,13 @@ const args = process.argv.slice(2);
 const N = args.includes('--N') ? Number(args[args.indexOf('--N') + 1]) : 256;
 const outDir = resolve(dirname(fileURLToPath(import.meta.url)), '../reports/m6');
 mkdirSync(outDir, { recursive: true });
-const cam = { r: 250, theta: 1.5, screen: 150 };
-const em = { mu: 0, gamma: -1.5, sigma: 2, redshiftPower: 3, fudge: 1, maxPasses: 0 };
+// Test_FBdetail camera: raw coordinates (FOORT) and units of M (the registry's ST3Cr since Stage 1B B1)
+const camRaw = { r: 250, theta: 1.5, screen: 150 };
+const cam = { r: camRaw.r / 24, theta: camRaw.theta, screen: camRaw.screen / 24 };
+const em = { mu: 0, gamma: -1.5, sigma: 2 / 24, redshiftPower: 3, fudge: 1, maxPasses: 0 };
 const bh = createST3CrBH({ P: 2, q0: 50 });
-const rhoS = cam.r * Math.tan(Math.asin(bh.criticalImpactParameter().b / (cam.r * Math.sqrt(bh.Q(cam.r)))));
+// shadow radius from the raw BH (its Q is in raw units), then in units of M
+const rhoS = camRaw.r * Math.tan(Math.asin(bh.criticalImpactParameter().b / (camRaw.r * Math.sqrt(bh.Q(camRaw.r))))) / 24;
 const quad = (d) => (d.term !== 2 ? 0 : d.theta < Math.PI / 2 ? (d.phi < Math.PI ? 1 : 2) : (d.phi < Math.PI ? 3 : 4));
 const LAMBDAS = [1e-2, 1e-3, 1e-4, 0];
 const v = await openViewer();

@@ -146,7 +146,23 @@ export function initialState(q) {
     else if (c.type === 'select' && typeof c.default === 'string') s[c.key] = raw;
     else s[c.key] = Number(raw);
   }
+  migrateState(s, q);
   return s;
+}
+
+/** URL version written by stateToQuery. 1 (no `v`): Stage 1. 2: Stage 1B, the fuzzball in units of M (B1). */
+export const URL_VERSION = 2;
+
+/**
+ * Migrate the state of an older URL to the current version.
+ * Version 1 -> 2: the ST3Cr fuzzball is traced in units of M_ADM = 24 (B1), so its Johnson-SU mu and sigma, which were
+ * coordinate units of the raw metric, are divided by 24 (also when they took their default values). Camera lengths
+ * were already in units of M in Stage 1.
+ * @param {Record<string, any>} s @param {URLSearchParams} q
+ */
+export function migrateState(s, q) {
+  const v = Number(q.get('v') ?? 1);
+  if (v < 2 && s.metric === 'st3cr') { s.mu /= 24; s.sigma /= 24; }
 }
 
 /** @param {Record<string, any>} s */
@@ -157,6 +173,7 @@ export function stateToQuery(s) {
     if (v === c.default || (typeof v === 'number' && Number.isNaN(v))) continue;
     q.set(c.key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
   }
+  q.set('v', String(URL_VERSION));
   return q.toString();
 }
 

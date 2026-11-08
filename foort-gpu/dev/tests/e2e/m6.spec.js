@@ -15,7 +15,7 @@ test('Test_FBdetail preset: ST3Cr fuzzball, lambda slider, camera in units of M_
   expect(await page.locator('select[name=metric]').inputValue()).toBe('st3cr');
   await expect(page.locator('input[name=lambda]')).toBeVisible();
   expect(await page.locator('select[name=maxSteps]').inputValue()).toBe('5000');
-  await expect(page.locator('#perf')).toContainText('ISCO r = 18.558');
+  await expect(page.locator('#perf')).toContainText('ISCO r = 0.7733');   // 18.558 / 24: units of M (Stage 1B B1)
   await expect(page.locator('#perf')).toContainText('2 stable bands');
   const st = await page.evaluate(() => window.__foort.state);
   expect(st.r).toBeCloseTo(250 / 24, 6);
@@ -28,13 +28,13 @@ test('lambda = 0 switch selects the supersymmetric black hole and hides the lamb
   await page.locator('input[name=bh0]').check();
   await expect(page.locator('input[name=lambda]')).toBeHidden();
   await expect(page.locator('#status')).toContainText('done', { timeout: 100_000 });
-  await expect(page.locator('#perf')).toContainText('ISCO r = 18.72');
+  await expect(page.locator('#perf')).toContainText('ISCO r = 0.780');
 });
 
 test('GPU trace hook: lambda = 0 rays below the shadow edge reach the inner cut, rays near the ring stop at it', async ({ page }) => {
   test.setTimeout(120_000);
   const res = await page.evaluate(async () => {
-    const t = await window.__foort.trace({ metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: { r: 250, theta: 1.5, screen: 150 }, N: 64, maxSteps: 5000 });
+    const t = await window.__foort.trace({ metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: { r: 250 / 24, theta: 1.5, screen: 150 / 24 }, N: 64, maxSteps: 5000 });
     const bin = atob(t.records), buf = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
     const rec = new Float32Array(buf.buffer);
@@ -45,5 +45,5 @@ test('GPU trace hook: lambda = 0 rays below the shadow edge reach the inner cut,
   expect(res.counts[2]).toBeGreaterThan(0.8 * 64 * 64);   // escaped
   expect(res.counts[6]).toBeGreaterThan(0);                // singularity terminations (centres, ring)
   expect(res.counts[4]).toBe(0);                           // no NaN
-  expect(res.isco).toBeCloseTo(18.558, 2);
+  expect(res.isco).toBeCloseTo(18.558 / 24, 4);
 });

@@ -20,15 +20,18 @@ mkdirSync(outDir, { recursive: true });
 const c = /** @type {any} */ (CASES.find((x) => x.name === 'st3cr_l0.005'));
 const run = readFoortRun(resolve(here, '../../tools/foort_parity/build/runs', c.name), c.name);
 const N = c.N;
-const em = { ...c.emission, redshiftPower: 3, fudge: 1, maxPasses: 0 };
+// FOORT works in the raw ST3Cr coordinates; the GPU's ST3Cr is in units of M_ADM = 24 (Stage 1B B1): camera, terminations
+// and the Johnson-SU mu, sigma are divided by 24, and J(r) (1/length) is 24x larger, so GPU intensities are divided by 24
+const L = 24;
+const em = { ...c.emission, mu: c.emission.mu / L, sigma: c.emission.sigma / L, redshiftPower: 3, fudge: 1, maxPasses: 0 };
 const quad = (d) => (d.term !== 2 ? 0 : d.theta < Math.PI / 2 ? (d.phi < Math.PI ? 1 : 2) : (d.phi < Math.PI ? 3 : 4));
 const COL = [[0, 0, 0], [228, 74, 64], [64, 156, 228], [240, 200, 60], [90, 190, 110]];
 const viewer = await openViewer();
 try {
   // FOORT does not project onto H = 0: the parity run does not either; the app run (interpolated crossings) does
   for (const [crossing, project] of [['foort', false], ['interpolate', true]]) {
-    const view = { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: c.camera, N, mesh: 'foort', crossing, maxSteps: c.maxSteps,
-      rInner: c.epsHorizon, singEps: c.singEps, project, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
+    const view = { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: { r: c.camera.r / L, theta: c.camera.theta, screen: c.camera.screen / L }, N, mesh: 'foort', crossing, maxSteps: c.maxSteps,
+      rInner: c.epsHorizon / L, singEps: c.singEps / L, project, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
     const g = await viewer.trace(view);
     const IG = new Float64Array(N * N), IF = new Float64Array(N * N), qG = new Uint8Array(N * N), qF = new Uint8Array(N * N);
     let same = 0, sumF = 0, sumD = 0, many = 0, sumFo = 0, sumDo = 0;
@@ -37,7 +40,7 @@ try {
       const k = j * N + i, d = decodeRecord(g.rec, k), f = /** @type {any} */ (run.pixels.get(`${i},${j}`));
       qG[k] = quad(d); qF[k] = f.quadrant;
       if (qG[k] === qF[k]) same++;
-      IG[k] = discIntensity(d.crossings, em); IF[k] = f.intensity;
+      IG[k] = discIntensity(d.crossings, em) / L; IF[k] = f.intensity;
       if (d.passes > 3) many++;
       sumF += IF[k]; sumD += Math.abs(IG[k] - IF[k]);
       if (qG[k] === qF[k]) { sumFo += IF[k]; sumDo += Math.abs(IG[k] - IF[k]); }

@@ -11,7 +11,7 @@ const opt = (/** @type {string} */ k, /** @type {number} */ d) => (args.includes
 const N = opt('--N', 256);
 const frames = opt('--frames', 40);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../tools/foort_parity/build/m7frames');
-const FB = 'metric=st3cr&r=10.4167&inc=85.9437&screen=6.25&mu=0&gamma=-1.5&sigma=2&maxSteps=10000';
+const FB = 'v=2&metric=st3cr&r=10.4167&inc=85.9437&screen=6.25&mu=0&gamma=-1.5&sigma=0.0833333&maxSteps=10000';
 const m8 = process.argv.includes('--m8');
 const SETS = m8 ? {
   'm8_kerr_a0.94_inc60': 'a=0.94&inc=60',

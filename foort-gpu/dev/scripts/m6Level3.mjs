@@ -25,13 +25,15 @@ const v = await openViewer();
 const rows = [];
 try {
   for (const cam of CAMS) {
-    const rhoS = cam.r * Math.tan(Math.asin(bc / (cam.r * Math.sqrt(bh.Q(cam.r)))));
-    const g = await v.trace({ metric: 'st3crBH', metricParams: {}, camera: cam, N, maxSteps: 20000, fluid: { xi: 1, betaR: 1, betaPhi: 1 } });
+    // cameras are listed in raw coordinates; the registry's ST3Cr-BH is in units of M = 24 (B1): rho_s and the screen / 24
+    const rhoS = cam.r * Math.tan(Math.asin(bc / (cam.r * Math.sqrt(bh.Q(cam.r))))) / 24;
+    const camM = { r: cam.r / 24, theta: cam.theta, screen: cam.screen / 24 };
+    const g = await v.trace({ metric: 'st3crBH', metricParams: {}, camera: camM, N, maxSteps: 20000, fluid: { xi: 1, betaR: 1, betaPhi: 1 } });
     let nG = 0, nA = 0, mis = 0, maxD = 0, other = 0;
-    const px = cam.screen / N;
+    const px = camM.screen / N;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const d = decodeRecord(g.rec, j * N + i);
-      const a = cam.screen * ((i + 0.5) / N - 0.5), b = cam.screen * ((j + 0.5) / N - 0.5);
+      const a = camM.screen * ((i + 0.5) / N - 0.5), b = camM.screen * ((j + 0.5) / N - 0.5);
       const rho = Math.hypot(a, b);
       const inA = rho < rhoS, inG = d.term === 1;
       if (d.term !== 1 && d.term !== 2) other++;

@@ -15,14 +15,15 @@ import { decodeRecord } from '../../js/gpu/traceConfig.js';
 import { discIntensity } from '../../js/fluid/emission.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fbCam = { r: 250, theta: 1.5, screen: 150 };   // Test_FBdetail.cfg
-const fbEm = { mu: 0, gamma: -1.5, sigma: 2, redshiftPower: 3, fudge: 1, maxPasses: 0 };
+// Test_FBdetail.cfg (r = 250, screen 150 coordinate units) in units of M: the registry's ST3Cr is in units of M_ADM = 24 (B1)
+const fbCam = { r: 250 / 24, theta: 1.5, screen: 150 / 24 };
+const fbEm = { mu: 0, gamma: -1.5, sigma: 2 / 24, redshiftPower: 3, fudge: 1, maxPasses: 0 };
 export const M6_CASES = {
   'st3cr_l0.005': { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: fbCam },
   'st3cr_l0.05': { metric: 'st3cr', metricParams: { lambda: 0.05 }, camera: fbCam },
   'st3cr_l1e-4': { metric: 'st3cr', metricParams: { lambda: 1e-4 }, camera: fbCam },
   'st3crBH': { metric: 'st3crBH', metricParams: {}, camera: fbCam },
-  'st3cr_l0.005_faceon': { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: { r: 250, theta: 0.05, screen: 150 } },
+  'st3cr_l0.005_faceon': { metric: 'st3cr', metricParams: { lambda: 0.005 }, camera: { r: 250 / 24, theta: 0.05, screen: 150 / 24 } },
 };
 
 const args = process.argv.slice(2);
@@ -48,7 +49,7 @@ try {
   for (const name of list) {
     const view = { ...M6_CASES[name], N, maxSteps: 10000, fluid: { xi: 1, betaR: 1, betaPhi: 1 } };
     const g = await viewer.trace(grid ? { ...view, grid } : view);
-    const { cpu, cpuSeconds } = await cached(join(cacheDir, `${name}_N${N}.json`), () => traceViewCPU(view));
+    const { cpu, cpuSeconds } = await cached(join(cacheDir, `${name}_N${N}_M1.json`), () => traceViewCPU(view));
     const cmp = compareImages(g.rec, cpu, N);
     writeComparisonPng(join(outDir, `level2_${name}${tag}.png`), cmp);
     const C = new Array(N * N); for (const c of cpu) C[c.j * N + c.i] = c;
@@ -56,7 +57,7 @@ try {
     const mism = [];
     for (let k = 0; k < N * N; k++) if (cmp._maps.mismatch[k]) mism.push([k % N, Math.floor(k / N)]);
     // fine-step CPU results are cached per pixel (the mismatched set depends on the GPU table)
-    const fineFile = join(cacheDir, `${name}_N${N}_fine.json`);
+    const fineFile = join(cacheDir, `${name}_N${N}_M1_fine.json`);
     const fineAll = !recompute && existsSync(fineFile) ? JSON.parse(readFileSync(fineFile, 'utf8')).cpu : [];
     const have = new Set(fineAll.map((f) => `${f.i},${f.j}`));
     const todo = mism.filter(([i, j]) => !have.has(`${i},${j}`));

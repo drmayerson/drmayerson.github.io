@@ -99,7 +99,7 @@ export function fluidSpec(viewIn) {
   const v = normalizeView(viewIn);
   const m = createMetric(v.metric, v.metricParams);
   const fluid = { ...FLUID_DEFAULTS, ...v.fluid };
-  const spec = { fluid, range: { rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) } };
+  const spec = { fluid, range: { rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary, m.lengthScale) } };
   return { kind: /** @type {'fluid'} */ ('fluid'), metric: v.metric, params: m.params, spec, key: JSON.stringify(['fluid', v.metric, m.params, spec]) };
 }
 
@@ -111,7 +111,7 @@ export function tableSpec(viewIn) {
   const v = normalizeView(viewIn);
   if (tracerFor(v) === 'trace_kerr_analytic') return null;
   const m = createMetric(v.metric, v.metricParams);
-  const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary) };
+  const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary, m.lengthScale) };
   return { metric: v.metric, params: m.params, spec, key: JSON.stringify([v.metric, m.params, spec]) };
 }
 

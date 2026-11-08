@@ -83,8 +83,13 @@ export function terminationRadius(m) {
   return m.terminationRadius?.() ?? m.horizon.r * (1 + EPS_HORIZON);
 }
 
-/** Table outer radius: the next of 1.1e3, 1.1e4, ... at or beyond `r`, so camera changes rarely force a re-bake. @param {number} r */
-export const tableRadiusFor = (r) => 1.1 * 10 ** Math.max(3, Math.ceil(Math.log10(r / 1.1)));
+/**
+ * Table outer radius: the next of 1.1e3, 1.1e4, ... at or beyond `r`, so camera changes rarely force a re-bake.
+ * For a metric rescaled to unit mass, `lengthScale` L picks the radius in its raw units (then / L), so the grid
+ * nodes sit at the same raw radii as before the rescaling.
+ * @param {number} r @param {number} [lengthScale]
+ */
+export const tableRadiusFor = (r, lengthScale = 1) => 1.1 * 10 ** Math.max(3, Math.ceil(Math.log10((r * lengthScale) / 1.1))) / lengthScale;
 
 /** 4th-order first derivative along a strided line of n values (one-sided at the ends). */
 function derivLine(f, off, stride, n, h, out) {
