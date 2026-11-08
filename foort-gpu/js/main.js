@@ -9,6 +9,7 @@ import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
 import { decodeRecord, RECORD_FLOATS } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
+import { fluidTableRcirc } from './fluid/fluidTable.js';
 import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
 import { loadNoiseField } from './noise/noiseField.js';
 
@@ -56,7 +57,7 @@ export function viewFromState(s, coarseTables = false) {
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
     // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
     farSteps: s.farSteps ? { r: 20, max: 4 } : null,
-    fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi },
+    fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi, model: s.fluidModel },
     tailEmission: { redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) },
   };
 }
@@ -117,6 +118,7 @@ async function main() {
   const updateExposure = () => {
     if (!coarse) return;
     const em = emissionFromState(state), I = [];
+    if (state.envelope === 'circumferential' && lastFluid) { const F = lastFluid; em.radius = (r) => fluidTableRcirc(F, r); }
     for (let k = 0; k < coarse.length / RECORD_FLOATS; k++) {
       const d = decodeRecord(coarse, k, lastTail ?? undefined);
       const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em, d.tail);
@@ -138,7 +140,7 @@ async function main() {
     const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
     backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r * (lastFluid?.M ?? 1), storeH: !!state.storeH,
       emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap),
-      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail });
+      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail, envelope: state.envelope });
   };
 
   const legend = () => {
@@ -159,7 +161,7 @@ async function main() {
     $('perf').innerHTML =
       perfRow('GPU', String(caps.renderer)) +
       perfRow('metric tables', bake) +
-      perfRow('fluid', lastFluid ? `ξ = ${lastFluid.params.xi}, β_r = ${lastFluid.params.betaR}, β_φ = ${lastFluid.params.betaPhi}; ISCO ${lastFluid.isco ? 'r = ' + lastFluid.isco.toFixed(4) : 'not found'} (${lastFluid.ms.toFixed(0)} ms)` : '') +
+      perfRow('fluid', lastFluid ? `${lastFluid.stableBands ? 'banded' : "FOORT's model"}; ξ = ${lastFluid.params.xi}, β_r = ${lastFluid.params.betaR}, β_φ = ${lastFluid.params.betaPhi}; ISCO ${lastFluid.isco ? 'r = ' + lastFluid.isco.toFixed(4) : 'not found'}${lastFluid.stableBands ? `; circular in ${lastFluid.stableBands.map((b) => `${b.from.toPrecision(3)}–${Number.isFinite(b.to) ? b.to.toPrecision(3) : '∞'}`).join(', ')}` : ''} (${lastFluid.ms.toFixed(0)} ms)` : '') +
       (lastFluid?.bands ? perfRow('circular orbits', bandText(lastFluid.bands)) : '') +
       perfRow('image', `${st.N}² (levels ${st.levels.join(' → ')}, ${st.tiles} tiles)`) +
       perfRow('disc crossings', caps.tailBins ? `first 3 exact, the rest in ${caps.tailBins} log-r bins (no noise or slow light)` : `first 3 only: this device has ${caps.maxDrawBuffers} draw buffers (the binned tail needs 6)`) +
@@ -226,10 +228,13 @@ async function main() {
       controls.set('maxSteps', p.maxSteps ?? MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
       for (const [k, v] of Object.entries(p.emission)) controls.set(k, v);
       controls.set('inc', p.inc); controls.set('r', p.r); controls.set('screen', p.screen);
+      // presets that also set other state (B3 comparison presets: envelope radius, fluid model); others reset them
+      controls.set('envelope', p.state?.envelope ?? 'coordinate');
+      if (p.state?.fluidModel) controls.set('fluidModel', p.state.fluidModel);
       run(true);
       return;
     }
-    if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure'].includes(key)) { updateExposure(); legend(); }
+    if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure', 'envelope'].includes(key)) { updateExposure(); legend(); }
     if (['slowLight', 'play'].includes(key)) $('clock').textContent = clockText();
     if (key === 'noiseField') useNoise(state.noiseField).then(() => { $('clock').textContent = clockText(); requestDraw(); });
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;

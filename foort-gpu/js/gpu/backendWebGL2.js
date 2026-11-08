@@ -345,7 +345,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       const em = view.emission ?? { mu: 0, gamma: 0, sigma: 1, redshiftPower: 3, fudge: 1, maxPasses: 0 };
       gl.uniform4f(display.loc('uEm'), em.mu, em.gamma, em.sigma, em.redshiftPower);
       gl.uniform4f(display.loc('uEm2'), em.fudge, em.maxPasses, view.exposure ?? 1, view.toneMap ?? 0);
-      gl.uniform4i(display.loc('uEm3'), view.colorMap ?? 0, 0, 0, 0);
+      gl.uniform4i(display.loc('uEm3'), view.colorMap ?? 0, view.envelope === 'circumferential' ? 1 : 0, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       lastDisplayMs = performance.now() - t0;
     },

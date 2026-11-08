@@ -1165,3 +1165,50 @@ Please open **`foort-gpu/probe.html`** (after the merge: <https://drmayerson.git
    - **E2:** K = 8 (recommended).
 2. **Device round:** run `probe.html` on your other devices and paste the reports.
 3. **Merging** `foort-gpu-1b` to `main` needs your approval. The branch is pushed; `main` is untouched.
+
+## CHECKPOINT B3 — banded fluid, envelope radius, comparison presets (2026-11-08)
+
+The user asked to continue through B4 and pause there ("continue for now until checkpoint B4, then pause and list all necessary input/decisions etc from me"). B3 is reported here; its decision (E4) is listed at B4.
+
+### Done
+
+- **Fluid model "banded"** (`js/fluid/generalCircularRadial.js`, option `model`):
+  - circular orbits in every stable band, found over the fluid table's range; the inner edges are refined by bisection on the stability sign, so the edge orbit is marginally stable;
+  - in each gap, a plunge with the E and L of the circular orbit at the inner edge of the next stable band outward, which is FOORT's ISCO construction applied per band;
+  - β/ξ mixing as FOORT;
+  - for metrics with a horizon (one stable band) it is FOORT's model.
+- **"FOORT (parity)"** stays selectable; the validation scripts keep using it (`FLUID_DEFAULTS.model = 'foort'`).
+- **Viewer:** a "fluid model" control, banded by default (E4: proposed default, flagged). The performance table names the model and its circular bands.
+- **Envelope radius:** coordinate r (FOORT, default) or circumferential √g_φφ on the equator. It is stored in the fluid table's 4th channel and applied in the display shader to the first 3 crossings and the tail centroids, so it only redraws. The JS mirror is `fluidTableRcirc`, and `discIntensity` takes a `radius` map.
+- **Comparison presets** (Preset menu): "Compare 1A/1B: Kerr a = 0 | ST3Cr λ = 0.005", "2A/2B: Kerr a = 0 | ST3Cr λ = 0 (BH)", "3A/3B: Kerr a = 0.5 | ST3Cr λ = 0.05".
+  - All use the same camera (r = 1000 M, 60°, screen 16 M) and the same disc: Johnson-SU μ = 3, γ = −1.5, σ = 1 in circumferential radius, banded fluid.
+  - Switching between A and B shows the pair; compare mode (B7) will show them side by side.
+
+### Tests
+
+- **Unit** (`dev/tests/unit/b3.test.js`):
+  - **λ = 0.005 bands reproduced:** circular from the inner cut to 0.01304 M (Stage 1's sampling: 0.313/24 = 0.0130), and from 0.773257 M on; the latter equals FOORT's ISCO to 1e-7.
+  - **u·u = −1** to 1e-10 at 300 radii, in both models.
+  - **Circular in the inner band** (u^r = 0), and identical to FOORT's model elsewhere.
+  - **Continuity:** u^μ is continuous at the outer band's edge (the plunge starts with the edge orbit). At the inner band's outer edge the plunging gas meets the circular band, a jump, physically a shock, which the model does not resolve.
+  - **Black holes:** banded = FOORT.
+  - **Fluid table:** its 4th channel is √g_φφ (within 1e-4 linear-table accuracy); `discIntensity` uses the mapped radius.
+  - **Presets:** consistent.
+- **FOORT's model unchanged against the M5 parity runs:** `fluidParity.mjs` rerun gives a byte-identical `dev/reports/m5/fluid_parity.json` (ISCO within about 1e-6 of FOORT, u_μ ≤ 4e-6).
+- **Images and flux of the two models** (`dev/scripts/b3Images.mjs`, `dev/reports/b3/fluid.json`; Test_FBdetail, all crossings, time-averaged, 256²):
+
+  | λ | inner stable band | flux banded / FOORT | flux of pixels whose 1st crossing is in the inner band (FOORT → banded), of the total |
+  |---|---|---|---|
+  | 0.05 | r < 0.0792 M | 1.0020 | 0.24% → 0.37% |
+  | 5e-3 | r < 0.0130 M | 0.9980 | 0.19% → 0.19% |
+  | 1e-3 | r < 0.00274 M | 1.0000 | 0.73% → 0.73% |
+  | 1e-4 | r < 0.000255 M | 1.0000 | 0.26% → 0.26% |
+
+  The inner stable band is tiny and deep in the cap: little light comes from it, and what does is strongly redshifted. The two models therefore give nearly the same images, with flux differences ≤ 0.2%. With the Test_FBdetail disc (μ = 0, σ = 0.083 M) the difference is a few pixels; it could matter for discs concentrated at very small radii.
+- **e2e** (`dev/tests/e2e/b3.spec.js`): the envelope radius redraws without a trace; a comparison preset sets the metric, envelope and fluid model; the fluid model re-traces.
+- **Full suites:** Vitest 113 passed, Playwright 20 passed, `tsc --checkJs` clean.
+
+### Images (git-ignored, `dev/reports/img/b3/`)
+
+- `b3_fluid_models.png`: FOORT's model vs banded, λ = 0.05 … 1e-4, the same exposure per pair.
+- `b3_compare_presets.png`: the three comparison pairs. At equal mass, the same camera and the same disc in circumferential radius, the fuzzballs show a much smaller dark region than Kerr (the λ = 0 black hole's critical impact parameter is 2.07 M against 5.2 M for Schwarzschild), and at λ > 0 their interiors fill with structure.

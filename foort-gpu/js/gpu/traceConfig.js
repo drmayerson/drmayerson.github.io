@@ -8,7 +8,8 @@ import { inverseMetric, toMat4 } from '../metrics/common.js';
 import { tableRadiusFor } from '../bake/bake.js';
 
 /** FOORT defaults of GeneralCircularRadialFluid (KerrExample.cfg). */
-export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
+/** FOORT's GeneralCircularRadial defaults; the viewer uses the banded model for horizonless metrics (Stage 1B B3, E4). */
+export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'foort'|'banded'} */ ('foort') };
 
 /**
  * @typedef {Object} ViewParams
@@ -39,7 +40,7 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1 };
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
  * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
- * @property {{xi:number, betaR:number, betaPhi:number}} [fluid]   GeneralCircularRadialFluid parameters
+ * @property {{xi:number, betaR:number, betaPhi:number, model?:'foort'|'banded'}} [fluid]   GeneralCircularRadialFluid parameters (+ model, B3)
  */
 
 /** Floats per pixel of a read-back record: 16 (rec0-3) + 8 tail bins (Stage 1B B2). */

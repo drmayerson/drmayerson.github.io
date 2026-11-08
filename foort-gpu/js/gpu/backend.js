@@ -8,7 +8,7 @@
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
  *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
- *   time?: DisplayTime, tail?: TailGeometry|null}} DisplayView
+ *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential'}} DisplayView
  * @typedef {import('./traceConfig.js').TailGeometry} TailGeometry
  * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
  *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n

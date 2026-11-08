@@ -20,7 +20,7 @@ uniform ivec4 uView;    // view mode, Nx, Ny, |H| stored in slot 3
 uniform vec4 uRange;    // view range lo, hi; max steps; r_cam
 uniform vec4 uEm;       // Johnson-SU mu, gamma, sigma; redshift power
 uniform vec4 uEm2;      // fudge factor, max passes (0: no bound), exposure, tone map (0 linear, 1 sqrt, 2 log, 3 asinh)
-uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), 0, 0, 0
+uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), envelope radius (0 coordinate r, 1 circumferential, B3), 0, 0
 out vec4 color;
 
 const float PI = 3.14159265358979;
@@ -58,8 +58,10 @@ vec3 quadrantColor(float th, float ph) {
   return ph < PI ? Q3 : Q4;
 }
 
-// FOORT GLMJohnsonSUEmission (true r)
-float johnsonSU(float r) {
+float envelopeR(float r);
+// FOORT GLMJohnsonSUEmission (true r; or the circumferential radius, Stage 1B B3)
+float johnsonSU(float rr) {
+  float r = envelopeR(rr);
   float d = r - uEm.x, t = uEm.y + asinh(d / uEm.z);
   return exp(-0.5 * t * t) / sqrt(d * d + uEm.z * uEm.z);
 }
@@ -74,6 +76,13 @@ float fluidOmega(float r) {
   float f = clamp((log(r - uFluidXD.w) - uFluidXD.x) / uFluidXD.y, 0.0, uFluidXD.z - 1.0);
   int i = min(int(floor(f)), int(uFluidXD.z) - 2);
   return mix(texelFetch(uFluidD, ivec2(i, 0), 0).z, texelFetch(uFluidD, ivec2(i + 1, 0), 0).z, f - float(i));
+}
+// the radius the Johnson-SU envelope sees: coordinate r, or sqrt(g_phiphi) from the fluid table's 4th channel
+float envelopeR(float r) {
+  if (uEm3.y == 0) return r;
+  float f = clamp((log(r - uFluidXD.w) - uFluidXD.x) / uFluidXD.y, 0.0, uFluidXD.z - 1.0);
+  int i = min(int(floor(f)), int(uFluidXD.z) - 2);
+  return mix(texelFetch(uFluidD, ivec2(i, 0), 0).w, texelFetch(uFluidD, ivec2(i + 1, 0), 0).w, f - float(i));
 }
 // exp(sigma X - sigma^2 / 2) at a crossing (r, phi, dt, g); with procedural advection two copies of the field,
 // rotated with the fluid since the last reset of their phase (period D, offset D/2), are crossfaded with

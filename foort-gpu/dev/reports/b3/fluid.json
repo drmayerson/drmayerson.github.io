@@ -1,0 +1,102 @@
+[
+ {
+  "lambda": 0.05,
+  "innerStableBandTo": 0.07922473952582029,
+  "bands": [
+   {
+    "from": 0.0003333333333333336,
+    "to": 0.07922473952582029
+   },
+   {
+    "from": 0.7320749688302816,
+    "to": null
+   }
+  ],
+  "flux": {
+   "foort": {
+    "total": 40274.881143837476,
+    "firstCrossingInInnerBand": 94.6858321452747
+   },
+   "banded": {
+    "total": 40355.800579404284,
+    "firstCrossingInInnerBand": 151.00073745535408
+   }
+  },
+  "totalRatio": 1.0020091787553094
+ },
+ {
+  "lambda": 0.005,
+  "innerStableBandTo": 0.013035249807892666,
+  "bands": [
+   {
+    "from": 0.00003333333333333332,
+    "to": 0.013035249807892666
+   },
+   {
+    "from": 0.7732566823944486,
+    "to": null
+   }
+  ],
+  "flux": {
+   "foort": {
+    "total": 30495.069721066142,
+    "firstCrossingInInnerBand": 56.59856591218009
+   },
+   "banded": {
+    "total": 30434.074387016564,
+    "firstCrossingInInnerBand": 56.7561026487591
+   }
+  },
+  "totalRatio": 0.9979998296574661
+ },
+ {
+  "lambda": 0.001,
+  "innerStableBandTo": 0.0027362266412670117,
+  "bands": [
+   {
+    "from": 0.00000666666666666667,
+    "to": 0.0027362266412670117
+   },
+   {
+    "from": 0.778606032854671,
+    "to": null
+   }
+  ],
+  "flux": {
+   "foort": {
+    "total": 7617.3403954546675,
+    "firstCrossingInInnerBand": 55.417628730990984
+   },
+   "banded": {
+    "total": 7617.093474353302,
+    "firstCrossingInInnerBand": 55.4155660963478
+   }
+  },
+  "totalRatio": 0.9999675843419689
+ },
+ {
+  "lambda": 0.0001,
+  "innerStableBandTo": 0.0002551934621387717,
+  "bands": [
+   {
+    "from": 6.666666666666674e-7,
+    "to": 0.0002551934621387717
+   },
+   {
+    "from": 0.7799694302373189,
+    "to": null
+   }
+  ],
+  "flux": {
+   "foort": {
+    "total": 5098.507121025565,
+    "firstCrossingInInnerBand": 13.353724963706533
+   },
+   "banded": {
+    "total": 5098.507120451339,
+    "firstCrossingInInnerBand": 13.353727697606102
+   }
+  },
+  "totalRatio": 0.9999999998873738
+ }
+]
