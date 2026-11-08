@@ -1271,3 +1271,18 @@ The user asked to continue through B4 and pause there ("continue for now until c
 
 - **Between anchors** the flow is the nearest anchor's. Ω(r) at r ≳ 0.1 M is nearly λ-independent (orbital periods at 1 M agree to 0.2% across the four anchors); the anchors differ mainly inside the cap.
 - **The λ = 0 anchor at small λ:** for λ < 3e-4 the auto choice is the black hole's flow. Its plunge region (r < ISCO) stands in for the tiny fuzzball's inner band.
+
+## Device round — results (Stage 1B B0, collected after checkpoint B4)
+
+| case | laptop (Intel iGPU, 2026-11-08): Msteps/s, predicted 512² | phone (Samsung Xclipse 920, Chrome 157 Android, 2026-11-08): Msteps/s, predicted 512² |
+|---|---|---|
+| Kerr closed-form, Reference | 1071, 0.20 s | 533, 0.40 s |
+| Kerr tabulated, Reference | 97, 2.18 s | 113, 1.87 s |
+| Kerr tabulated, High | 87, 1.89 s | 102, 1.60 s |
+| ST3Cr λ = 1e-3, Reference | 24, 18.1 s | 34, 12.7 s |
+| ST3Cr λ = 1e-3, High | 24, 12.6 s | 42, 7.4 s |
+
+- **Phone report:** `dev/reports/b0/probe_phone_xclipse920.json`.
+- **Phone capabilities:** MAX_DRAW_BUFFERS 8, so the full binned tail (6 attachments) runs; no timer queries.
+- **Speeds:** the phone traces the tabulated metrics faster than this laptop, by 1.2× for Kerr and 1.7× for the fuzzball at High. The texture-fetch-bound tabulated traces favour its GPU; the laptop is faster only for closed-form Kerr.
+- **Against E1 at 512²:** High meets both targets on the phone (1.6 s BH, 7.4 s fuzzball). On the laptop it meets the BH target and misses the fuzzball one (12.6 s). The laptop is the slowest device so far and the binding case for B6's tier selection.
