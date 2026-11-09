@@ -344,3 +344,8 @@ non-trivial implementation choice.
 - 2026-11-09 — **Bug found by the gate and fixed:** an idle pre-trace that started between a trace and the read-back of its records made the read-back return the background set (one corrupted gate scene: eps 0.04, kerr_a0_inc17; rerun clean).
   - **Fix:** read-backs now read the displayed set unless the pipeline asks for its own (refinement).
   - **Scripts:** the gate and the GPU runner open the viewer with `pretrace=0`.
+- 2026-11-09 — **CHECKPOINT B6 accepted; Normal confirmed** (user: "Confirm and merge"):
+  - **Black holes:** High + Bogacki–Shampine 3(2) at tol 0.1.
+  - **Fuzzball:** = High.
+  - **Adaptive refinement:** not in Normal (kept, off).
+  - **Merge:** foort-gpu-1b merged to main.
