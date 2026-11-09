@@ -304,3 +304,16 @@ non-trivial implementation choice.
   - **Idle pre-tracing:** 300 ms after a final trace, the previews of λ ± one slider notch (ST3Cr) and inclination ± 5° are traced into the cache, in a separate background record set (the canvas never shows them). Any input cancels it after the current tile. It is on by default on desktop and off on phones (touch screen < 820 px), as a checkbox.
   - **Limitation:** a dragged slider rarely lands exactly on a pre-traced value, so pre-tracing mainly serves arrow-key and one-notch steps; the cache serves switching back.
 - 2026-11-09 — **Correction:** the B0 device-round table called this laptop's GPU "Intel iGPU"; it is an AMD Radeon integrated GPU (D3D11), as the probe reports. Fixed in PROGRESS.md.
+- 2026-11-09 — **B5 device round; texel reuse adopted (plan 4.1-3: "only if faster on both").** The user ran the B5 probe on their laptop (Firefox, "AMD Radeon R9 200 Series, or similar": Firefox reports a generalised renderer string) and on their phone (Samsung Xclipse 920). The reports are in `dev/reports/b5/probe_user_*.json`.
+
+  | interleaved pair (256²) | user's laptop | phone | this machine (AMD Radeon iGPU) |
+  |---|---|---|---|
+  | G3 = G4 (ST3Cr) | 1.23× | 1.19× | 1.17× |
+  | texel reuse, Kerr tabulated | 2.00× | 1.23× | 1.53× |
+  | texel reuse, ST3Cr | 3.21× | 2.23× | 2.57× |
+  | ray compaction, ST3Cr | 1.01× | 1.07× | 1.07× |
+  | generated Johannsen vs tables | 5.23× | 2.97× | 5.67× |
+
+  - **Texel reuse** is faster on all three GPUs, so the viewer now defaults to it. Scripts and the quality gate's Reference keep the plain tracer (`VIEW_DEFAULTS.texelReuse` false), so Reference stays the Stage 1 integrator.
+  - **Ray compaction** gains at most 7%, so it stays off.
+  - **Not decided by the user:** the user did not decide this explicitly; it is the plan's adoption rule applied to their reports. Flagged at checkpoint B5.

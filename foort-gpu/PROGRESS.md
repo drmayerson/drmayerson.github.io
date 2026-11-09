@@ -1354,3 +1354,19 @@ An idle pre-trace that started while a foreground trace was running cancelled it
 
 - **Device round for texel reuse:** the B5 probe pairs on the phone (or another GPU). This requires the updated `probe.html` to be live, i.e. on `main`.
 - **Adoption:** texel reuse on by default if the phone also gains; compaction stays off.
+
+### B5 device round (2026-11-09)
+
+The user ran the B5 probe on their laptop (Firefox; renderer reported as "AMD Radeon R9 200 Series, or similar") and on their phone (Samsung Xclipse 920). Reports: `dev/reports/b5/probe_user_laptop_firefox.json`, `probe_user_phone_xclipse920.json`.
+
+| interleaved pair (256²) | user's laptop | phone | this machine |
+|---|---|---|---|
+| G3 = G4 (ST3Cr) | 1.23× | 1.19× | 1.17× |
+| texel reuse, Kerr tabulated | 2.00× | 1.23× | 1.53× |
+| texel reuse, ST3Cr | 3.21× | 2.23× | 2.57× |
+| ray compaction, ST3Cr | 1.01× | 1.07× | 1.07× |
+| generated Johannsen vs tables | 5.23× | 2.97× | 5.67× |
+
+- **Texel reuse** is now on by default in the viewer (plan rule: faster on the laptop and another GPU).
+- **Compaction** stays off.
+- **Speed tiers:** both devices' base cases (without the B5 speed-ups) match the B0 round. The phone meets E1 at High (1.8 s BH, 6.0 s fuzzball at 512²). The user's laptop misses it at High (2.0 s BH, 13.2 s fuzzball), and with texel reuse that fuzzball case comes to about 4 s (13.2 / 3.21).

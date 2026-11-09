@@ -125,7 +125,8 @@ export const CONTROLS = [
   { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig },
   { key: 'farSteps', label: 'larger steps beyond 20 M (up to 4×; ~3e-4 rad on escape directions)', type: 'checkbox', group: 'Tracing', default: true },
   // Stage 1B B5 exact speedups (results unchanged beyond float32 rounding)
-  { key: 'texelReuse', label: 'reuse table texels across RK stages (exact; faster on some GPUs)', type: 'checkbox', group: 'Tracing', default: false },
+  // adopted at checkpoint B5: faster on all three GPUs measured (1.2-3.2x)
+  { key: 'texelReuse', label: 'reuse table texels across RK stages (exact; 1.2–3× faster)', type: 'checkbox', group: 'Tracing', default: true },
   { key: 'compact', label: 'ray compaction (exact; trace long rays as a dense image after 1500 steps)', type: 'checkbox', group: 'Tracing', default: false },
   { key: 'pretrace', label: 'idle pre-tracing of neighbouring views (λ ± one notch, inclination ± 5°; off on phones)', type: 'checkbox', group: 'Tracing', default: true, retrace: false },
   { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000 },

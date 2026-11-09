@@ -72,7 +72,9 @@ test('B5: ray compaction and texel reuse re-trace with unchanged step counts', a
   expect((await page.evaluate(() => window.__foort.stats())).steps).toBe(base);
   await page.locator('input[name=compact]').uncheck();
   await expect(page.locator('#status')).toContainText('done', { timeout: 120_000 });
-  await page.locator('input[name=texelReuse]').check();
+  // texel reuse is on by default (B5): switching it off keeps the step count
+  expect(await page.locator('input[name=texelReuse]').isChecked()).toBe(true);
+  await page.locator('input[name=texelReuse]').uncheck();
   await expect(page.locator('#status')).toContainText('done', { timeout: 120_000 });
   const reuse = (await page.evaluate(() => window.__foort.stats())).steps;
   expect(Math.abs(reuse - base) / base).toBeLessThan(1e-3);

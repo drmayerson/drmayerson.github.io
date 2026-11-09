@@ -1,0 +1,26 @@
+{
+ "page": "FOORT-GPU tier probe (Stage 1B B0, B5 cases)",
+ "date": "2026-11-09T12:37:05.139Z",
+ "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+ "renderer": "ANGLE (Samsung Electronics Co. Ltd., ANGLE ((Samsung Xclipse 920) on Vulkan 1.3.279), OpenGL ES 3.2)",
+ "vendor": "Google Inc. (Samsung Electronics Co., Ltd.)",
+ "limits": { "MAX_DRAW_BUFFERS": 8, "MAX_TEXTURE_IMAGE_UNITS": 32 },
+ "timerQueries": false,
+ "devicePixelRatio": 3,
+ "screen": "360x780",
+ "hardwareConcurrency": 8,
+ "results": [
+  { "case": "Kerr a=0.94 closed-form, Reference", "mode": "BH", "N": 256, "wallMs": 73.7, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 674.5, "predicted512s": 0.31, "predicted1024s": 1.25, "withinE1At512": true },
+  { "case": "Kerr a=0.94 tabulated, Reference", "mode": "BH", "N": 256, "wallMs": 442.8, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 112.3, "predicted512s": 1.88, "predicted1024s": 7.51, "withinE1At512": true },
+  { "case": "Kerr a=0.94 tabulated, High", "mode": "BH", "N": 256, "wallMs": 427.8, "gpuMs": null, "stepsPerRay": 589, "msteps_per_s": 90.3, "predicted512s": 1.81, "predicted1024s": 7.26, "withinE1At512": true },
+  { "case": "ST3Cr λ=1e-3, Reference", "mode": "fuzzball", "N": 128, "wallMs": 617.8, "gpuMs": null, "stepsPerRay": 1554, "msteps_per_s": 41.2, "predicted512s": 10.48, "predicted1024s": 41.91, "withinE1At512": false },
+  { "case": "ST3Cr λ=1e-3, High", "mode": "fuzzball", "N": 128, "wallMs": 354.4, "gpuMs": null, "stepsPerRay": 1102, "msteps_per_s": 50.9, "predicted512s": 6.01, "predicted1024s": 24.04, "withinE1At512": true }
+ ],
+ "b5pairs": [
+  { "case": "G3 = G4 (ST3Cr λ=1e-3, High)", "N": 256, "msA": 1641.1, "msB": 1380, "speedup": 1.19 },
+  { "case": "texel reuse (Kerr a=0.94 tabulated, High)", "N": 256, "msA": 368.5, "msB": 298.9, "speedup": 1.23 },
+  { "case": "texel reuse (ST3Cr λ=1e-3, High)", "N": 256, "msA": 1395.1, "msB": 625.2, "speedup": 2.23 },
+  { "case": "ray compaction (ST3Cr λ=1e-3, High)", "N": 256, "msA": 1418, "msB": 1326.1, "speedup": 1.07 },
+  { "case": "generated closed form (Johannsen a=0.94, High)", "N": 256, "msA": 378.5, "msB": 127.5, "speedup": 2.97 }
+ ]
+}

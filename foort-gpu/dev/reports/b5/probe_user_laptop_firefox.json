@@ -1,0 +1,26 @@
+{
+ "page": "FOORT-GPU tier probe (Stage 1B B0, B5 cases)",
+ "date": "2026-11-09T12:37:52.285Z",
+ "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+ "renderer": "ANGLE (AMD, Radeon R9 200 Series Direct3D11 vs_5_0 ps_5_0), or similar",
+ "vendor": "Google Inc. (AMD)",
+ "limits": { "MAX_DRAW_BUFFERS": 8, "MAX_TEXTURE_IMAGE_UNITS": 16 },
+ "timerQueries": false,
+ "devicePixelRatio": 1,
+ "screen": "1920x1080",
+ "hardwareConcurrency": 16,
+ "results": [
+  { "case": "Kerr a=0.94 closed-form, Reference", "mode": "BH", "N": 256, "wallMs": 69, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 720.5, "predicted512s": 0.29, "predicted1024s": 1.17, "withinE1At512": true },
+  { "case": "Kerr a=0.94 tabulated, Reference", "mode": "BH", "N": 256, "wallMs": 542, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 91.7, "predicted512s": 2.3, "predicted1024s": 9.19, "withinE1At512": false },
+  { "case": "Kerr a=0.94 tabulated, High", "mode": "BH", "N": 256, "wallMs": 473, "gpuMs": null, "stepsPerRay": 589, "msteps_per_s": 81.6, "predicted512s": 2.01, "predicted1024s": 8.02, "withinE1At512": false },
+  { "case": "ST3Cr λ=1e-3, Reference", "mode": "fuzzball", "N": 128, "wallMs": 1150, "gpuMs": null, "stepsPerRay": 1554, "msteps_per_s": 22.1, "predicted512s": 19.5, "predicted1024s": 78.02, "withinE1At512": false },
+  { "case": "ST3Cr λ=1e-3, High", "mode": "fuzzball", "N": 128, "wallMs": 780, "gpuMs": null, "stepsPerRay": 1102, "msteps_per_s": 23.1, "predicted512s": 13.23, "predicted1024s": 52.92, "withinE1At512": false }
+ ],
+ "b5pairs": [
+  { "case": "G3 = G4 (ST3Cr λ=1e-3, High)", "N": 256, "msA": 2569, "msB": 2088, "speedup": 1.23 },
+  { "case": "texel reuse (Kerr a=0.94 tabulated, High)", "N": 256, "msA": 457, "msB": 229, "speedup": 2 },
+  { "case": "texel reuse (ST3Cr λ=1e-3, High)", "N": 256, "msA": 2138, "msB": 667, "speedup": 3.21 },
+  { "case": "ray compaction (ST3Cr λ=1e-3, High)", "N": 256, "msA": 2056, "msB": 2032, "speedup": 1.01 },
+  { "case": "generated closed form (Johannsen a=0.94, High)", "N": 256, "msA": 460, "msB": 88, "speedup": 5.23 }
+ ]
+}
