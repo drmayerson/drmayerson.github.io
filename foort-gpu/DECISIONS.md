@@ -275,3 +275,32 @@ non-trivial implementation choice.
   - **E4:** banded fluid by default, FOORT's model for parity work;
   - **Noise data:** 35 MB committed is acceptable.
   - **Not decided:** merging `foort-gpu-1b` into main, and the device round (no reports yet). E1 stays provisional until the device numbers arrive.
+- 2026-11-09 — **B5 started** (user: "Start B5", after accepting B0–B4).
+- 2026-11-09 — **B5 exactness criterion.**
+  - Fuzzball images are chaotic: 37–50% of the pixels change class under eps → eps/2. Even a perturbation of 1e-6 in eps changes the time-averaged emission of 0.1–4% of the non-chaotic pixels by more than 1e-3.
+  - An exact speedup is therefore judged against that **noise floor** (`b5Exact.mjs --feature floor`), not against bit identity, on the quality-gate scene set: termination agreement, escape direction, crossing r/dt/g, tail bins, and emission.
+- 2026-11-09 — **B5-1 closed-form metrics.**
+  - **Generator:** `tools/codegen/gen_metrics.py` (SymPy) writes `shaders/glsl/closed/<metric>.glsl`. Each defines a `lookupTables` with the table lookup's interface; `trace.glsl`, compiled with `CLOSED_FORM`, supplies the Hamiltonian, the force with the dmomQ split, and the terminations.
+  - **Float32 safety:** expressions in e = r − r₊ with Δ factorised; the angle as S = sin δ, C = hemi cos δ; integer powers as products. The generator also writes JS mirrors (`dev/tests/unit/closed/`), tested against the JS metrics in double.
+  - **Default path "auto":**
+    - Kerr uses the hand-written shader. It is 1.1–1.5× faster than the generated one, which agrees with it to emission L1 1e-6 and serves as its cross-check.
+    - Johannsen and RN use the generated shaders: 3.7× and 8.2× faster than the tables, termination 100%, emission L1 ≤ 4e-6.
+    - Manko–Novikov keeps the tables, as plan 4.1-1 prescribes. On 300 pixels where the generated MN shader and the tables disagree, the double CPU reference sides with the tables every time. The errors sit at r = 1.5–1.8, next to the termination radius (1.507) beside the CTC band, where float32 loses digits. MN closed was only 1.3× faster anyway.
+  - **Tables on request:** the Tracing control "metric evaluation" can force the tables, or a closed form.
+- 2026-11-09 — **B5-2 ST3Cr G3 = G4:** g^rr = r² g^θθ holds to 6e-16 for ST3Cr and its λ = 0 black hole. A registry flag `g3equalsG4` gives the `G3_EQUALS_G4` shader define: 16 instead of 20 fetches. It is on by default, as exact: its changes equal the noise floor.
+- 2026-11-09 — **B5-3 texel reuse (`TEXEL_REUSE`):**
+  - **How:** the 20 texels of the current cell stay in registers, and are refetched only when the cell changes.
+  - **Exact:** changes are at the 1e-7 level (compiler reordering).
+  - **Speed:** 1.3–2.0× on this laptop's AMD Radeon iGPU (A/B/A/B at 512²); 1.5–2.6× in the probe's interleaved pairs.
+  - **Status:** off by default until a second GPU confirms it (plan). A viewer checkbox and probe pairs are provided.
+- 2026-11-09 — **B5-4 ray compaction (`COMPACT`, 8 draw buffers):**
+  - **Design:** phase A stops rays at n1 = 1500 steps and writes their state to 2 more attachments. An asynchronous PBO read-back lists the unfinished rays. Phase B traces them as a dense 256-wide image (the state read back, p_t and p_φ recomputed from the pixel), and a point-draw pass scatters the records back. Further rounds run at 2n1, 4n1, …
+  - **Exactness:** identical crossings, termination and escape on every pixel of the 13 scenes. The only difference is the tail centroids, rounded to 12 bits at a phase boundary (emission L1 ≤ 6e-6). Total step counts are identical.
+  - **Speed:** not faster on this laptop: 0.75–0.99× at 512² A/B/A/B; 1.07× in the probe pair at 256². The cost model (waves run as long as their longest ray) predicted at most 1.12–1.21× for the fuzzball and nothing for black holes.
+  - **Status:** off by default, as a viewer checkbox. It stays as the "trace a list of pixels" machinery for B6's adaptive refinement.
+- 2026-11-09 — **B5-5 interaction:**
+  - **Camera azimuth** is a display uniform (control "camera azimuth", no re-trace). The e2e test matches a camera traced at that azimuth on 99.8% of the pixels, with noise on.
+  - **Record cache (E9: 256 MB desktop, 64 MB phone):** an LRU in `TracePipeline`, with records copied on the GPU by float blits. The key covers the program, uniforms, tables, fluid, N and levels. Scripts and tests bypass it.
+  - **Idle pre-tracing:** 300 ms after a final trace, the previews of λ ± one slider notch (ST3Cr) and inclination ± 5° are traced into the cache, in a separate background record set (the canvas never shows them). Any input cancels it after the current tile. It is on by default on desktop and off on phones (touch screen < 820 px), as a checkbox.
+  - **Limitation:** a dragged slider rarely lands exactly on a pre-traced value, so pre-tracing mainly serves arrow-key and one-notch steps; the cache serves switching back.
+- 2026-11-09 — **Correction:** the B0 device-round table called this laptop's GPU "Intel iGPU"; it is an AMD Radeon integrated GPU (D3D11), as the probe reports. Fixed in PROGRESS.md.

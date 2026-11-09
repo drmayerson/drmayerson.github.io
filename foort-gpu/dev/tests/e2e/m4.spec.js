@@ -13,15 +13,20 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });
 });
 
-test('metric switching re-bakes and traces every BH-mode metric', async ({ page }) => {
-  for (const m of ['johannsen', 'mankoNovikov', 'kerr']) {
+test('metric switching traces every BH-mode metric on its path (B5 auto), and the tables when asked', async ({ page }) => {
+  // Stage 1B B5 'auto': hand-written closed-form Kerr, generated Johannsen and RN, tabulated Manko-Novikov
+  for (const [m, perf] of [['johannsen', 'generated closed-form shader (johannsen)'], ['reissnerNordstrom', 'generated closed-form shader (reissnerNordstrom)'],
+    ['mankoNovikov', 'nodes'], ['kerr', 'hand-written closed-form Kerr']]) {
     await page.selectOption('select[name=metric]', m);
     await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });
-    await expect(page.locator('#perf')).toContainText('nodes');
+    await expect(page.locator('#perf')).toContainText(perf);
   }
-  await page.selectOption('select[name=path]', 'analytic');
+  await page.selectOption('select[name=path]', 'tabulated');
   await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });
-  await expect(page.locator('#perf')).toContainText('closed-form');
+  await expect(page.locator('#perf')).toContainText('nodes');
+  await page.selectOption('select[name=metric]', 'johannsen');
+  await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });
+  await expect(page.locator('#perf')).toContainText('nodes');
 });
 
 test('tabulated Johannsen and Manko-Novikov vs CPU reference (sampled pixels)', async ({ page }) => {

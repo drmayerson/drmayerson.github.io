@@ -1,0 +1,114 @@
+{
+ "page": "FOORT-GPU tier probe (Stage 1B B0, B5 cases)",
+ "date": "2026-11-09T11:20:44.151Z",
+ "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "vendor": "Google Inc. (AMD)",
+ "limits": {
+  "MAX_DRAW_BUFFERS": 8,
+  "MAX_TEXTURE_IMAGE_UNITS": 16
+ },
+ "timerQueries": true,
+ "devicePixelRatio": 1,
+ "screen": "1280x720",
+ "hardwareConcurrency": 16,
+ "results": [
+  {
+   "case": "Kerr a=0.94 closed-form, Reference",
+   "mode": "BH",
+   "N": 256,
+   "wallMs": 35.1,
+   "gpuMs": 32,
+   "stepsPerRay": 759,
+   "msteps_per_s": 1553,
+   "predicted512s": 0.14,
+   "predicted1024s": 0.54,
+   "withinE1At512": true
+  },
+  {
+   "case": "Kerr a=0.94 tabulated, Reference",
+   "mode": "BH",
+   "N": 256,
+   "wallMs": 442.9,
+   "gpuMs": 433.9,
+   "stepsPerRay": 759,
+   "msteps_per_s": 114.6,
+   "predicted512s": 1.84,
+   "predicted1024s": 7.36,
+   "withinE1At512": true
+  },
+  {
+   "case": "Kerr a=0.94 tabulated, High",
+   "mode": "BH",
+   "N": 256,
+   "wallMs": 272.2,
+   "gpuMs": 266.6,
+   "stepsPerRay": 589,
+   "msteps_per_s": 144.8,
+   "predicted512s": 1.13,
+   "predicted1024s": 4.52,
+   "withinE1At512": true
+  },
+  {
+   "case": "ST3Cr λ=1e-3, Reference",
+   "mode": "fuzzball",
+   "N": 128,
+   "wallMs": 430.5,
+   "gpuMs": 425.5,
+   "stepsPerRay": 1554,
+   "msteps_per_s": 59.8,
+   "predicted512s": 7.22,
+   "predicted1024s": 28.87,
+   "withinE1At512": true
+  },
+  {
+   "case": "ST3Cr λ=1e-3, High",
+   "mode": "fuzzball",
+   "N": 128,
+   "wallMs": 236.4,
+   "gpuMs": 230.4,
+   "stepsPerRay": 1102,
+   "msteps_per_s": 78.3,
+   "predicted512s": 3.91,
+   "predicted1024s": 15.63,
+   "withinE1At512": true
+  }
+ ],
+ "b5pairs": [
+  {
+   "case": "G3 = G4 (ST3Cr λ=1e-3, High)",
+   "N": 256,
+   "msA": 888.6,
+   "msB": 760.7,
+   "speedup": 1.17
+  },
+  {
+   "case": "texel reuse (Kerr a=0.94 tabulated, High)",
+   "N": 256,
+   "msA": 288.5,
+   "msB": 188.5,
+   "speedup": 1.53
+  },
+  {
+   "case": "texel reuse (ST3Cr λ=1e-3, High)",
+   "N": 256,
+   "msA": 1204.3,
+   "msB": 469.2,
+   "speedup": 2.57
+  },
+  {
+   "case": "ray compaction (ST3Cr λ=1e-3, High)",
+   "N": 256,
+   "msA": 1225.4,
+   "msB": 1147,
+   "speedup": 1.07
+  },
+  {
+   "case": "generated closed form (Johannsen a=0.94, High)",
+   "N": 256,
+   "msA": 280.4,
+   "msB": 49.4,
+   "speedup": 5.67
+  }
+ ]
+}

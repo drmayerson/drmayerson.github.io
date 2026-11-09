@@ -47,6 +47,23 @@ uniform vec4 uTail;     // log r of the first bin edge, 1 / bin width (in log r)
 uniform vec4 uTailEm;   // redshift power p, geometric fudge factor (passes >= 2), max passes (0: all), 0
 #endif
 
+// Stage 1B B5, ray compaction (COMPACT; needs the tail and 8 draw buffers). Phase A traces every pixel and stops a ray
+// that has not terminated after uCompact.y steps, writing its state: rec0 = (8 or 9 for hemi = +1 / -1, + 16 passes;
+// steps; delta; phi, not reduced), the crossings in rec1-3 as usual, the tail bins unpacked (W_b) in tail0-1, and
+//   outCont  = (x, t, p_x, p_delta),
+//   outTailX = the tail centroids as fractions of their bin, two per float: round(4095 f_2k) + f_2k+1 (12 bits each).
+// Phase B (uCompact.x = 2) traces a compact image of the unfinished rays: texel -> pixel index from uIndex, the state
+// from the level's records (uPrev0-7), p_t and p_phi recomputed from the pixel (the same code, so the same bits), and
+// continues the same loop; its records are scattered back (backendWebGL2.js). Up to the tail centroids (12 bits at a
+// phase boundary, 8 bits in the final record anyway) a compacted ray is the single-pass ray.
+#ifdef COMPACT
+uniform ivec4 uCompact;              // mode (1: stop at the step limit; 2: resume the listed rays), step limit (0: none), 0, 0
+uniform highp isampler2D uIndex;     // mode 2: pixel index i + Nx j of the compact texel, -1 = padding
+uniform highp sampler2D uPrev0, uPrev1, uPrev2, uPrev3, uPrev4, uPrev5, uPrev6, uPrev7;   // the level's records
+layout(location = 6) out vec4 outCont;
+layout(location = 7) out vec4 outTailX;
+#endif
+
 const float PI = 3.14159265358979;
 const float HALF_PI = 1.57079632679490;
 const int TERM_HORIZON = 1, TERM_BOUNDARY = 2, TERM_TIMEOUT = 3, TERM_NAN = 4, TERM_SINGULARITY = 6;
@@ -94,6 +111,17 @@ vec4 crossingRecord(vec4 pos, vec2 mom, float pt, float pphi) {
 
 void main() {
   ivec2 ij = ivec2(gl_FragCoord.xy);
+#ifdef COMPACT
+  if (uCompact.x == 2) {
+    int pix = texelFetch(uIndex, ij, 0).x;
+    if (pix < 0) {
+      outRec0 = vec4(0.0); outRec1 = vec4(0.0); outRec2 = vec4(0.0); outRec3 = vec4(0.0);
+      outTail0 = vec4(0.0); outTail1 = vec4(0.0); outCont = vec4(0.0); outTailX = vec4(0.0);
+      return;
+    }
+    ij = ivec2(pix % uImg.x, pix / uImg.x);
+  }
+#endif
 
   // pixel -> screen coordinates (i along alpha, j along beta)
   vec2 unit = uOpt.z == 1 ? vec2(ij) / vec2(uImg.xy - 1) : (vec2(ij) + 0.5) / vec2(uImg.xy);
@@ -128,8 +156,31 @@ void main() {
   int code = TERM_TIMEOUT;
   int steps = 0;
   int maxSteps = uOpt.x;
+  int n0 = 0;
+#ifdef COMPACT
+  bool cont = false;
+  if (uCompact.x == 2) {
+    // resume: the state phase A (or an earlier phase B) left in the level's records
+    vec4 s0 = texelFetch(uPrev0, ij, 0), sc = texelFetch(uPrev6, ij, 0);
+    int c0 = int(s0.x + 0.5);
+    passes = c0 / 16;
+    hemi = (c0 - 16 * passes) == 8 ? 1.0 : -1.0;
+    steps = int(s0.y + 0.5);
+    n0 = steps;
+    pos = vec4(sc.x, s0.z, s0.w, sc.y);
+    mom = sc.zw;
+    cr[0] = texelFetch(uPrev1, ij, 0); cr[1] = texelFetch(uPrev2, ij, 0); cr[2] = texelFetch(uPrev3, ij, 0);
+    vec4 w0 = texelFetch(uPrev4, ij, 0), w1 = texelFetch(uPrev5, ij, 0), fx = texelFetch(uPrev7, ij, 0);
+    for (int b = 0; b < 8; b++) {
+      tW[b] = b < 4 ? w0[b] : w1[b - 4];
+      float pk = fx[b / 2];
+      float f = (b % 2 == 0) ? floor(pk) / 4095.0 : fract(pk);
+      tX[b] = tW[b] * (uTail.x + (float(b) + f) / uTail.y);
+    }
+  }
+#endif
 
-  for (int n = 0; n <= maxSteps; n++) {
+  for (int n = n0; n <= maxSteps; n++) {
     // RK4 as a loop over the stages: one call site of the metric functions keeps the compiled
     // shader small (ANGLE/D3D inlines every call; four call sites of the tabulated lookup took ~30 s to compile)
     vec4 sp = pos, accP = vec4(0.0);
@@ -216,7 +267,27 @@ void main() {
       }
     }
     if (tc != 0) { code = tc; break; }
+#ifdef COMPACT
+    if (uCompact.y > 0 && steps >= uCompact.y) { cont = true; break; }
+#endif
   }
+#ifdef COMPACT
+  if (cont) {
+    outRec0 = vec4(float((hemi > 0.0 ? 8 : 9) + 16 * passes), float(steps), pos.y, pos.z);
+    outRec1 = cr[0]; outRec2 = cr[1]; outRec3 = cr[2];
+    outTail0 = vec4(tW[0], tW[1], tW[2], tW[3]);
+    outTail1 = vec4(tW[4], tW[5], tW[6], tW[7]);
+    outCont = vec4(pos.x, pos.w, mom.x, mom.y);
+    vec4 fx = vec4(0.0);
+    for (int b = 0; b < 8; b++) {
+      float f = tW[b] > 0.0 ? clamp((tX[b] / tW[b] - uTail.x) * uTail.y - float(b), 0.0, 1.0) : 0.0;
+      if (b % 2 == 0) fx[b / 2] = floor(f * 4095.0 + 0.5); else fx[b / 2] += min(f, 0.99975);
+    }
+    outTailX = fx;
+    return;
+  }
+  outCont = vec4(0.0); outTailX = vec4(0.0);
+#endif
 
   float theta = hemi > 0.0 ? pos.y : PI - pos.y;
   outRec0 = vec4(float(code + 16 * passes), float(steps), theta, mod(pos.z, 2.0 * PI));

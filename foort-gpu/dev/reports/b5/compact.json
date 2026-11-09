@@ -1,0 +1,1113 @@
+{
+ "feature": "compact",
+ "N": 512,
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "date": "2026-11-09T11:33:58.043Z",
+ "rows": [
+  {
+   "scene": "kerr_a0_inc17",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.00702667236328125,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 260302,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 135791684,
+   "stepsB": 135791684,
+   "timing": {
+    "A": 872.1000001430511,
+    "B": 938.5,
+    "speedup": 0.9292488014310615,
+    "runsA": [
+     891.7999999523163,
+     872.1000001430511,
+     931.4000000953674
+    ],
+    "runsB": [
+     938.5,
+     952.5,
+     2429.5
+    ]
+   }
+  },
+  {
+   "scene": "kerr_a0_inc80",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.00884246826171875,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 259826,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 109131880,
+   "stepsB": 109131880,
+   "timing": {
+    "A": 618.4000000953674,
+    "B": 714,
+    "speedup": 0.8661064427105987,
+    "runsA": [
+     674,
+     618.4000000953674,
+     734.2000000476837
+    ],
+    "runsB": [
+     714,
+     784,
+     1424.0999999046326
+    ]
+   }
+  },
+  {
+   "scene": "kerr_a0.94_inc17",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.007213592529296875,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 260253,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 154469289,
+   "stepsB": 154469289,
+   "timing": {
+    "A": 905.5999999046326,
+    "B": 1009.7000000476837,
+    "speedup": 0.8969000691907151,
+    "runsA": [
+     998.6000001430511,
+     905.5999999046326,
+     2211.2999999523163
+    ],
+    "runsB": [
+     1011,
+     1009.7000000476837,
+     1160.7999999523163
+    ]
+   }
+  },
+  {
+   "scene": "kerr_a0.94_inc80",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.008701324462890625,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.0840197707861876e-7
+    },
+    "emissionRelL1": 1.6655563501561054e-8,
+    "emissionChanged1e3": 0.0000042130097741826765
+   },
+   "nonChaotic": {
+    "pixels": 259863,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 124538624,
+   "stepsB": 124538624,
+   "timing": {
+    "A": 764.2000000476837,
+    "B": 845.5,
+    "speedup": 0.9038438794177217,
+    "runsA": [
+     773.0999999046326,
+     1446.7000000476837,
+     764.2000000476837
+    ],
+    "runsB": [
+     856.6000001430511,
+     845.5,
+     884.6000001430511
+    ]
+   }
+  },
+  {
+   "scene": "kerr_a0.998_inc80",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.0087432861328125,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.0934926362565636e-7
+    },
+    "emissionRelL1": 4.710928955562163e-9,
+    "emissionChanged1e3": 0.000004145060538609167
+   },
+   "nonChaotic": {
+    "pixels": 259852,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 6.956823241800323e-8,
+     "max": 1.0934926362565636e-7
+    },
+    "emissionRelL1": 4.7507326836335655e-9,
+    "emissionChanged1e3": 0.000004184818316112806
+   },
+   "stepsA": 169690404,
+   "stepsB": 169690404,
+   "timing": {
+    "A": 1154.6000001430511,
+    "B": 1304.9000000953674,
+    "speedup": 0.8848187601032019,
+    "runsA": [
+     1205,
+     1154.6000001430511,
+     1174.9000000953674
+    ],
+    "runsB": [
+     1357.3000001907349,
+     2514.7000000476837,
+     1304.9000000953674
+    ]
+   }
+  },
+  {
+   "scene": "johannsen_a0.94_a13_5.5",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.00927734375,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 259712,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 155244905,
+   "stepsB": 155244905,
+   "timing": {
+    "A": 915.5999999046326,
+    "B": 1025.6999998092651,
+    "speedup": 0.8926586721993699,
+    "runsA": [
+     1003.5,
+     977.4000000953674,
+     915.5999999046326
+    ],
+    "runsB": [
+     1025.6999998092651,
+     1057.9000000953674,
+     2236.7000000476837
+    ]
+   }
+  },
+  {
+   "scene": "mankoNovikov_a0.94_a3_2",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.0081329345703125,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 260012,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 125565064,
+   "stepsB": 125565064,
+   "timing": {
+    "A": 998.4000000953674,
+    "B": 1040.1000001430511,
+    "speedup": 0.9599077011422474,
+    "runsA": [
+     1026.3999998569489,
+     1012.2999999523163,
+     998.4000000953674
+    ],
+    "runsB": [
+     1040.1000001430511,
+     1922.3999998569489,
+     1043.1000001430511
+    ]
+   }
+  },
+  {
+   "scene": "rn_Q0.8_inc60",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.0066986083984375,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 260388,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 114386554,
+   "stepsB": 114386554,
+   "timing": {
+    "A": 750.1999998092651,
+    "B": 830.7999999523163,
+    "speedup": 0.9029850744491127,
+    "runsA": [
+     819.4000000953674,
+     750.1999998092651,
+     755.4000000953674
+    ],
+    "runsB": [
+     830.7999999523163,
+     949.0999999046326,
+     1889.7000000476837
+    ]
+   }
+  },
+  {
+   "scene": "st3cr_l0.05",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.5039215087890625,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1825803548568871e-7
+    },
+    "emissionRelL1": 2.094585815983751e-8,
+    "emissionChanged1e3": 0.00020235031803361305
+   },
+   "nonChaotic": {
+    "pixels": 130044,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1606782632353303e-7
+    },
+    "emissionRelL1": 3.8528879619787246e-7,
+    "emissionChanged1e3": 0.00007696985090939878
+   },
+   "stepsA": 144201387,
+   "stepsB": 144201387,
+   "timing": {
+    "A": 1407.3999998569489,
+    "B": 1525.9000000953674,
+    "speedup": 0.9223409134078168,
+    "runsA": [
+     1607.2000000476837,
+     1496.7999999523163,
+     1407.3999998569489
+    ],
+    "runsB": [
+     1525.9000000953674,
+     3132.600000143051,
+     1562.4000000953674
+    ]
+   }
+  },
+  {
+   "scene": "st3cr_l5e-3",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.4761543273925781,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1881323165930638e-7
+    },
+    "emissionRelL1": 0.0000010604675046349216,
+    "emissionChanged1e3": 0.00038154832309512
+   },
+   "nonChaotic": {
+    "pixels": 137323,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1881323165930638e-7
+    },
+    "emissionRelL1": 0.000006449180790894119,
+    "emissionChanged1e3": 0.000356877540021267
+   },
+   "stepsA": 249103395,
+   "stepsB": 249103395,
+   "timing": {
+    "A": 3418.399999856949,
+    "B": 4260.599999904633,
+    "speedup": 0.8023283105509705,
+    "runsA": [
+     3852.7000000476837,
+     3440.4000000953674,
+     3418.399999856949
+    ],
+    "runsB": [
+     5139.5,
+     4260.599999904633,
+     7996.099999904633
+    ]
+   }
+  },
+  {
+   "scene": "st3cr_l1e-3",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.4494438171386719,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1917434109698551e-7
+    },
+    "emissionRelL1": 0.000004562501432931144,
+    "emissionChanged1e3": 0.00023277645065520846
+   },
+   "nonChaotic": {
+    "pixels": 144325,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1911073355655479e-7
+    },
+    "emissionRelL1": 0.0000061818441860926805,
+    "emissionChanged1e3": 0.00022879170248758977
+   },
+   "stepsA": 290361384,
+   "stepsB": 290361384,
+   "timing": {
+    "A": 2553.7000000476837,
+    "B": 2612.2000000476837,
+    "speedup": 0.9776050838377872,
+    "runsA": [
+     7030.899999856949,
+     2553.7000000476837,
+     2590.0999999046326
+    ],
+    "runsB": [
+     2763.5,
+     2612.2000000476837,
+     2759.100000143051
+    ]
+   }
+  },
+  {
+   "scene": "st3cr_l1e-4",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.39551544189453125,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1920026634107511e-7
+    },
+    "emissionRelL1": 2.370545245906155e-7,
+    "emissionChanged1e3": 0.00010304714215925745
+   },
+   "nonChaotic": {
+    "pixels": 158462,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 1.1903898872093677e-7
+    },
+    "emissionRelL1": 2.1190666271695946e-8,
+    "emissionChanged1e3": 0.00011999343193846232
+   },
+   "stepsA": 385305339,
+   "stepsB": 385305339,
+   "timing": {
+    "A": 6562.900000095367,
+    "B": 8033.200000047684,
+    "speedup": 0.8169720659334276,
+    "runsA": [
+     7120,
+     6562.900000095367,
+     22161.89999985695
+    ],
+    "runsB": [
+     8033.200000047684,
+     9204.400000095367,
+     8452.200000047684
+    ]
+   }
+  },
+  {
+   "scene": "st3cr_l0",
+   "N": 512,
+   "programA": null,
+   "chaoticFraction": 0.368499755859375,
+   "all": {
+    "pixels": 262144,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "nonChaotic": {
+    "pixels": 165544,
+    "termAgreement": 1,
+    "escapeRad": {
+     "median": 0,
+     "p99": 2.1073424255447017e-8,
+     "max": 2.1073424255447017e-8
+    },
+    "crossingRRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "dtM": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "gRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "tailRel": {
+     "median": 0,
+     "p99": 0,
+     "max": 0
+    },
+    "emissionRelL1": 0,
+    "emissionChanged1e3": 0
+   },
+   "stepsA": 117186542,
+   "stepsB": 117186542,
+   "timing": {
+    "A": 836.1000001430511,
+    "B": 860.5,
+    "speedup": 0.9716443929611286,
+    "runsA": [
+     882.3999998569489,
+     881.6000001430511,
+     836.1000001430511
+    ],
+    "runsB": [
+     917.7000000476837,
+     860.5,
+     1079.6000001430511
+    ]
+   }
+  }
+ ]
+}

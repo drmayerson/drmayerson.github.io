@@ -31,11 +31,11 @@ A new trace runs whenever the spacetime, camera, fluid or tracing settings chang
 
 | group | what it does |
 |---|---|
-| **Spacetime** | the metric and its parameters (sliders clamp to each metric's valid range); for ST3Cr, a log-scale λ slider and a "λ = 0" switch to the supersymmetric black hole; for Kerr, the closed-form validation shader |
-| **Camera** | distance, inclination, screen size and centre (units of M) |
+| **Spacetime** | the metric and its parameters (sliders clamp to each metric's valid range); for ST3Cr, a log-scale λ slider and a "λ = 0" switch to the supersymmetric black hole |
+| **Camera** | distance, inclination, screen size and centre (units of M); the camera azimuth only redraws (the spacetimes are axisymmetric) |
 | **Disc emission** | FOORT presets (KerrExample, JohannsenExample, Test_MNrun, Test_FBdetail); Johnson-SU μ, γ, σ; redshift power; geometric fudge factor and number of passes; the fluid's sub-Keplerian ξ and radial-infall β_r, β_φ; exposure (auto: the 99.5th percentile), tone map, colour map |
 | **Time** | play/pause, speed (M per second), slow vs fast light, noise field (auto: by metric and λ; or a fixed inoisy field, or the placeholder), noise amplitude σₙ, optional procedural advection of the field with the fluid |
-| **Tracing** | resolution, metric table size, the step parameter ε (FOORT's 0.03), larger steps beyond 20 M (on by default: about 20% faster, escape directions within about 3e-4 rad), max steps (5000; for the fuzzball the disc image is the same as with 10000), FOORT-parity or interpolated disc crossings, recording the constraint \|H\| |
+| **Tracing** | metric evaluation (auto: closed-form shaders for Kerr, Johannsen and RN, tables for Manko–Novikov and the fuzzball; or forced), resolution, metric table size, the step parameter ε (FOORT's 0.03), larger steps beyond 20 M (on by default: about 20% faster, escape directions within about 3e-4 rad), max steps (5000; for the fuzzball the disc image is the same as with 10000), FOORT-parity or interpolated disc crossings, recording the constraint \|H\|; exact speed options (texel reuse, ray compaction) and idle pre-tracing |
 | **View** | disc emission, or a debug view: four-colour screen, termination, steps, redshift g₁, delay, crossings, sky grid, \|H\|, noise, n = 1 image delay, noise coverage |
 
 ### Debug views
@@ -83,6 +83,8 @@ The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&
 
 - **Metrics:** every metric is stationary, axisymmetric and circular. A metric module gives g_dd (and optionally g^uu) in double precision.
 - **Tables:** a Web Worker bakes five inverse-metric functions on an (x = log(r − r_h), θ) grid as residuals over an analytic background, with finite-difference derivatives (`js/bake/bake.js`).
+- **Closed forms (Stage 1B B5):** for Kerr (hand-written), Johannsen and RN (generated from symbolic metrics by `tools/codegen/gen_metrics.py` into `shaders/glsl/closed/`) the GPU evaluates the metric directly, 4–8× faster than the tables and equal to them within float32 rounding. Manko–Novikov keeps the tables: its closed form loses digits in float32 next to its termination radius. For ST3Cr, g^xx = g^θθ, so its tracer reads four tables instead of five.
+- **Record cache (B5):** the records of recent views stay on the GPU (256 MB, 64 MB on phones), so returning to a view is instant; after a trace, the previews of neighbouring views (λ one notch up and down, inclination ± 5°) are traced in the background.
 - **Tracer:** the GPU integrates Hamilton's equations with RK4 and FOORT's adaptive step, in float32, reading the tables by bicubic Hermite interpolation (`shaders/glsl/`). Nothing on the GPU is metric-specific.
 - **Record:** each pixel's ray writes a 16-float record: termination, steps, escape direction, and up to 3 equatorial crossings (r, φ, delay, redshift).
 - **Display:** a cheap fragment pass turns the record into the disc emission every frame, with noise and slow light, or into a debug view.
@@ -134,7 +136,7 @@ Validation scripts (reports in `dev/reports/m<N>/`), by milestone:
 | M6 | `m6TableError.mjs`, `m6Level2.mjs`, `m6GpuVsFoort.mjs`, `m6Level3.mjs`, `m6Continuity.mjs`, `m6Passes.mjs`, `m6Steps.mjs`: fuzzball tables, GPU vs CPU and FOORT, λ = 0 shadow, λ → 0, crossings, steps |
 | M7–M8 | `m7Delays.mjs`, `m7Frames.mjs`; `tools/noise/inspect_field.py`: light delays, animations, noise fields |
 | M9 | `m9Perf.mjs`: acceptance timings |
-| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; the device probe page `probe.html` |
+| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; `b5Exact.mjs` (any exact speedup against the plain tracer, with the float32 noise floor), `b5Referee.mjs` (disagreeing pixels against the CPU), `b5Compile.mjs`, `b5CompactEstimate.mjs`, `b5Probe.mjs`; the device probe page `probe.html` |
 
 ### Local server
 

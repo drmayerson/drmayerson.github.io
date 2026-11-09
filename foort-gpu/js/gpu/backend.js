@@ -8,10 +8,13 @@
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
  *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
- *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential'}} DisplayView
+ *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential', azimuth?: number}} DisplayView
+ *   azimuth: camera azimuth in rad, display-only (Stage 1B B5)
  * @typedef {import('./traceConfig.js').TailGeometry} TailGeometry
  * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
  *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n
+ *
+ * @typedef {{tex: Map<number, unknown[]>, strides: number[], w: number, h: number, bytes: number}} CacheHandle
  *
  * @typedef {Object} Backend
  * @property {'webgl2'|'webgpu'} kind
@@ -23,8 +26,19 @@
  * @property {(f:import('../noise/noiseField.js').NoiseField) => void} uploadNoise  noise field (3D texture), display pass
  * @property {(strides?:number[]) => void} clearRecords                mark every pixel untraced; the strides the next trace uses
  * @property {(stride:number) => {w:number, h:number}} levelSize   size of the progressive level `stride` (1, 2, 4, 8)
- * @property {(rect:Rect, stride:number) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
- *   trace the pixels of `rect` (in that level's pixels) of the level image `stride`
+ * @property {(rect:Rect, stride:number, toCompact?:boolean) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
+ *   trace the pixels of `rect` (in that level's pixels) of the level image `stride`; toCompact: `rect` of the compact
+ *   image of the unfinished rays (Stage 1B B5 ray compaction)
+ * @property {() => boolean} compactSupported                          ray compaction available (8 draw buffers)
+ * @property {(mode:number, limit:number) => void} setCompactPhase     next tiles: 0 off, 1 stop rays at `limit` steps (0: never)
+ * @property {(stride:number) => Promise<number>} compactList         list the unfinished rays of a level (async read-back); their number
+ * @property {() => {w:number, h:number, M:number}|null} compactSize  the compact image of the current list
+ * @property {() => void} scatterCompact                              copy the compact records back to their pixels
+ * @property {(set:0|1, w?:number, h?:number) => void} useRecordSet  0: the displayed records; 1: a background set of size w x h
+ *   (Stage 1B B5 idle pre-tracing); later trace/clear/read/compaction calls act on it
+ * @property {(strides:number[]) => CacheHandle} cacheStore           copy the record levels of the current set (record cache)
+ * @property {(h:CacheHandle) => void} cacheRestore                   copy cached levels into the displayed set and show them
+ * @property {(h:CacheHandle) => void} cacheFree
  * @property {(view:DisplayView) => void} display
  * @property {(stride?:number) => Promise<Float32Array>} readRecords  one level (default full resolution), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image

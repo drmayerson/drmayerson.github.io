@@ -7,6 +7,10 @@
 // both first derivatives; the 1/sin^2 of g^phiphi is applied analytically.
 // lookupTables is line for line js/bake/hermite.js.
 
+// Stage 1B B5: with CLOSED_FORM defined, a generated closed-form lookupTables (shaders/glsl/closed/<metric>.glsl,
+// tools/codegen/gen_metrics.py) is concatenated before this file and replaces the table lookup below; the Hamiltonian,
+// the force (with the dmomQ split), radiusOf and the singularity test are shared.
+#ifndef CLOSED_FORM
 #ifdef TABLE_HALF
 // M9 accuracy trade: values in R32F, the (pre-scaled) derivative channels in RGBA16F (12 instead of 16 bytes per texel)
 uniform highp sampler2D uTablesV;       // texel (i, 5 j + k): G_k at node (x_i, theta_j)
@@ -19,11 +23,13 @@ vec4 tableTexel(ivec2 p) { return texelFetch(uTables, p, 0); }
 #endif
 uniform vec4 uTab;                      // xMin, dx, thMax (pi/2: symmetric half table, or pi), dtheta
 uniform ivec4 uTabN;                    // nx, ntheta, symmetric (1/0), 0
+#endif
 uniform vec4 uMetric;                   // r0 (0: horizonless, x = log r, bounded background), background mass M, 0, 0
 uniform vec4 uSing;                     // singularities (ST3Cr): axis points at z = +-zc, equatorial ring radius R,
                                         // Euclidean stopping distance eps, on (1/0); zc or R < 0: none
 
 float radiusOf(float x) { return uMetric.x + exp(x); }
+#ifndef CLOSED_FORM
 
 // Analytic background B_k(r) of the tables and its x-derivatives (js/bake/bake.js backgroundG):
 // 1/r^2 forms for horizon metrics (r0 > 0), forms bounded at small r for horizonless ones (r0 = 0)
@@ -45,6 +51,10 @@ void backgroundG(float x, out float B[5], out float dB[5]) {
   dB[4] = dB[2];
 }
 
+#ifdef TEXEL_REUSE
+vec4 tc[20];                    // the 20 texels of cell tcCell (5 functions x 4 corners)
+ivec2 tcCell = ivec2(-1, -1);
+#endif
 // G0..G4 and their x- and delta-derivatives at (x, delta) in hemisphere hemi
 void lookupTables(float x, float delta, float hemi, out float v[5], out float dx[5], out float dd[5]) {
   // table angle and d(table angle)/d(delta)
@@ -66,10 +76,35 @@ void lookupTables(float x, float delta, float hemi, out float v[5], out float dx
   // (F, F_x dx, F_theta dth, F_xtheta dx dth) (pre-scaled at upload, js/gpu/backendWebGL2.js), so a row's
   // (F, F_theta dth)(u) = bu.x c0.xz + bu.y c0.yw + bu.z c1.xz + bu.w c1.yw, and likewise its u-derivative with dbu.
   // Exactly the tensor-product formula of js/bake/hermite.js, with about a third of the arithmetic.
+#ifdef TEXEL_REUSE
+  // Stage 1B B5: the texels of the last cell are kept in registers; the four RK stages of a step mostly fall in one cell
+  if (i != tcCell.x || j != tcCell.y) {
+    tcCell = ivec2(i, j);
+    for (int l = 0; l < 5; l++) {
+#ifdef G3_EQUALS_G4
+      if (l == 3) continue;
+#endif
+      int y0 = 5 * j + l;
+      tc[4 * l] = tableTexel(ivec2(i, y0)); tc[4 * l + 1] = tableTexel(ivec2(i + 1, y0));
+      tc[4 * l + 2] = tableTexel(ivec2(i, y0 + 5)); tc[4 * l + 3] = tableTexel(ivec2(i + 1, y0 + 5));
+    }
+  }
+#endif
+#ifdef G3_EQUALS_G4
+  // Stage 1B B5: metrics with g^xx = g^thth (ST3Cr, x = log r: g^rr = r^2 g^thth) skip table 3 (16 instead of 20
+  // fetches); G3 is set to G4 (with its background) below
+  for (int k = 0; k < 4; k++) {
+    int l = k < 3 ? k : 4;
+#else
   for (int l = 0; l < 5; l++) {
+#endif
+#ifdef TEXEL_REUSE
+    vec4 c00 = tc[4 * l], c10 = tc[4 * l + 1], c01 = tc[4 * l + 2], c11 = tc[4 * l + 3];
+#else
     int y0 = 5 * j + l;
     vec4 c00 = tableTexel(ivec2(i, y0)), c10 = tableTexel(ivec2(i + 1, y0));
     vec4 c01 = tableTexel(ivec2(i, y0 + 5)), c11 = tableTexel(ivec2(i + 1, y0 + 5));
+#endif
     vec2 r0 = bu.x * c00.xz + bu.y * c00.yw + bu.z * c10.xz + bu.w * c10.yw;     // row j: (F, F_theta dth) at u
     vec2 r1 = bu.x * c01.xz + bu.y * c01.yw + bu.z * c11.xz + bu.w * c11.yw;     // row j + 1
     vec2 q0 = dbu.x * c00.xz + dbu.y * c00.yw + dbu.z * c10.xz + dbu.w * c10.yw; // their u-derivatives
@@ -82,7 +117,11 @@ void lookupTables(float x, float delta, float hemi, out float v[5], out float dx
   float B[5], dB[5];
   backgroundG(x, B, dB);
   for (int l = 0; l < 5; l++) { v[l] += B[l]; dx[l] += dB[l]; }
+#ifdef G3_EQUALS_G4
+  v[3] = v[4]; dx[3] = dx[4]; dd[3] = dd[4];
+#endif
 }
+#endif
 
 // Hamilton's equations in (x, delta); same as js/ref/cpuTracer.js with theta -> delta (sin theta = sin delta)
 // dmomQ: the part of dmom quadratic in the spatial momenta (p_x^2, p_delta^2 terms), for the constraint projection

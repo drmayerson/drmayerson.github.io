@@ -2,6 +2,7 @@
 // Viewer bootstrap: BH-mode metrics and the ST3Cr fuzzball (M6) on the tabulated GPU tracer (Kerr also on the
 // closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
 // Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
+import { CLOSED_FORMS } from './metrics/closedForm.js';
 import { createBackend } from './gpu/backend.js';
 import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
@@ -52,12 +53,14 @@ export function viewFromState(s, coarseTables = false) {
   const M = createMetric(metric, metricParams).massADM;
   return {
     metric, metricParams,
-    path: s.metric === 'kerr' ? s.path : 'tabulated', grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
+    // a path the metric does not have falls back: analytic = Kerr only, closed = metrics with a generated shader
+    path: s.path === 'analytic' ? (metric === 'kerr' ? 'analytic' : 'auto') : s.path === 'closed' ? (CLOSED_FORMS[metric] ? 'closed' : 'tabulated') : s.path, grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
     N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
     // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
     farSteps: s.farSteps ? { r: 20, max: 4 } : null,
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi, model: s.fluidModel },
+    texelReuse: !!s.texelReuse, compact: s.compact ? { n1: 1500 } : null,
     tailEmission: { redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) },
   };
 }
@@ -78,7 +81,11 @@ const LEGENDS = {
 };
 
 async function main() {
-  const state = initialState(new URLSearchParams(location.search));
+  const query = new URLSearchParams(location.search);
+  const state = initialState(query);
+  // phones (decision E9): a 64 MB record cache and no idle pre-tracing unless the URL asks for it
+  const isPhone = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 820;
+  if (isPhone && !query.has('pretrace')) state.pretrace = false;
   const canvas = /** @type {HTMLCanvasElement} */ ($('view'));
   const stage = (/** @type {string} */ t) => { $('status').textContent = t; /** @type {any} */ (window).__foortStage = t; };
   const backend = await createBackend(canvas, { onStage: stage });
@@ -94,6 +101,7 @@ async function main() {
   let lastStats = /** @type {import('./gpu/pipeline.js').TraceStats|null} */ (null);
   let level = 0;
   const pipeline = new TracePipeline(backend, {
+    cacheBytes: (isPhone ? 64 : 256) * 2 ** 20,
     onStage: stage,
     onProgress: (p) => { level = p.level; $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`; requestDraw(); },
   });
@@ -158,7 +166,7 @@ async function main() {
     const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
     backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r * (lastFluid?.M ?? 1), storeH: !!state.storeH,
       emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap),
-      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail, envelope: state.envelope });
+      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail, envelope: state.envelope, azimuth: state.az * DEG });
   };
 
   const legend = () => {
@@ -184,7 +192,9 @@ async function main() {
       (lastFluid?.bands ? perfRow('circular orbits', bandText(lastFluid.bands)) : '') +
       perfRow('image', `${st.N}² (levels ${st.levels.join(' → ')}, ${st.tiles} tiles)`) +
       perfRow('disc crossings', caps.tailBins ? `first 3 exact, the rest in ${caps.tailBins} log-r bins (no noise or slow light)` : `first 3 only: this device has ${caps.maxDrawBuffers} draw buffers (the binned tail needs 6)`) +
-      perfRow('trace time', `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')) +
+      perfRow('trace time', st.cached ? `restored from the record cache (traced in ${st.wallMs.toFixed(0)} ms)` : `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')
+        + (st.compacted ? `; ${st.compacted} rays continued in compaction rounds` : '')) +
+      perfRow('record cache', `${pipeline.cache.size} views, ${(pipeline.cacheUsed() / 2 ** 20).toFixed(0)} of ${(pipeline.cacheBytes / 2 ** 20).toFixed(0)} MB${state.pretrace ? '; idle pre-tracing on' : ''}`) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
       (warnings.length ? perfRow('warnings', warnings.join('; ')) : '');
   };
@@ -229,12 +239,47 @@ async function main() {
     const levels = final ? finalLevels(state.N) : [Math.min(8, Math.max(1, state.N / 128))];
     const st = await pipeline.trace(setup, { levels, measureSteps: final });
     if (!st) return;
+    if (final && state.pretrace) schedulePretrace(id);
     lastStats = st;
     if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); $('clock').textContent = clockText(); }
     requestDraw();
     const note = clamped.length ? ` (${clamped.join(', ')})` : '';
     $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms` : `preview (stride ${levels[0]}); release to refine`) + note;
-    if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : 'closed-form Kerr shader');
+    if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : setup.program === 'trace_kerr_analytic' ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${setup.program.slice(7)})`);
+  };
+
+  // Stage 1B B5 idle pre-tracing: after a final trace, with the GPU idle, trace the previews of the neighbouring views
+  // (lambda one slider notch up and down, inclination +- 5 deg) into the record cache, so that those previews are
+  // instant. Any input starts a new trace, which cancels a pre-trace after its current tile.
+  /** @param {number} id the run that finished */
+  const schedulePretrace = (id) => {
+    setTimeout(async () => {
+      if (id !== runId || pipeline.busy) return;
+      const ctl = (/** @type {string} */ k) => CONTROLS.find((c) => c.key === k);
+      /** @type {Record<string, any>[]} */
+      const neighbours = [];
+      const lam = ctl('lambda');
+      if (metricIdFromState(state) === 'st3cr' && lam && lam.scale === 'log') {
+        const notch = (/** @type {number} */ lam.max / /** @type {number} */ (lam.min)) ** (1 / 1000);
+        for (const f of [notch, 1 / notch]) {
+          const l = Number((state.lambda * f).toPrecision(4));
+          if (l >= /** @type {number} */ (lam.min) && l <= /** @type {number} */ (lam.max)) neighbours.push({ ...state, lambda: l, metricDrag: true });
+        }
+      }
+      for (const d of [5, -5]) { const inc = state.inc + d; if (inc > 0 && inc < 180) neighbours.push({ ...state, inc }); }
+      for (const ns of neighbours) {
+        if (id !== runId) return;
+        try {
+          const view = viewFromState(ns, !!ns.metricDrag);
+          const ts = tableSpec(view);
+          const tables = ts ? (await bakes.get(ts)).tables : undefined;
+          const fluid = (await bakes.get(fluidSpec(view))).tables;
+          if (id !== runId) return;
+          const s = gpuTraceSetup(view, tables, fluid);
+          await pipeline.trace(s, { levels: [Math.min(8, Math.max(1, state.N / 128))], measureSteps: false, background: true });
+        } catch (e) { console.warn('pre-trace failed:', e); }
+      }
+    }, 300);
   };
 
   /** load the field the state asks for (auto: by metric and lambda) and refresh what depends on it */
@@ -287,17 +332,20 @@ async function main() {
   /** @type {any} */ (window).__foort = {
     state, backend, pipeline, CONTROLS,
     stats: () => lastStats,
+    /** the view the current state traces (Stage 1B B5 tests) */
+    view: () => viewFromState(state),
     noise: () => noise,
     /** set the observer time (units of M) and redraw */
     setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },
-    /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[], adaptTiles?:boolean, measureSteps?:boolean, records?:boolean}} [o] */
+    /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[], adaptTiles?:boolean, measureSteps?:boolean, records?:boolean, cache?:boolean}} [o] */
     async trace(view, o = {}) {
       const ts = tableSpec(view);
       const tables = ts ? (await bakes.get(ts)).tables : undefined;
       const fluid = (await bakes.get(fluidSpec(view))).tables;
       const setup = gpuTraceSetup(view, tables, fluid);
       lastTail = setup.tail;
-      const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: o.measureSteps ?? true, adaptTiles: o.adaptTiles ?? false });
+      // scripts and tests trace afresh unless they ask for the record cache (timings, A/B comparisons)
+      const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: o.measureSteps ?? true, adaptTiles: o.adaptTiles ?? false, cache: o.cache ?? false });
       if (o.records === false) { requestDraw(); return { stats, records: '', level, isco: fluid.isco, bake: null, tail: setup.tail }; }
       const rec = await backend.readRecords();
       requestDraw();

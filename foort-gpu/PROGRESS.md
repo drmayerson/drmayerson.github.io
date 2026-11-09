@@ -1274,7 +1274,7 @@ The user asked to continue through B4 and pause there ("continue for now until c
 
 ## Device round — results (Stage 1B B0, collected after checkpoint B4)
 
-| case | laptop (Intel iGPU, 2026-11-08): Msteps/s, predicted 512² | phone (Samsung Xclipse 920, Chrome 157 Android, 2026-11-08): Msteps/s, predicted 512² |
+| case | laptop (AMD Radeon integrated graphics, D3D11, 2026-11-08): Msteps/s, predicted 512² | phone (Samsung Xclipse 920, Chrome 157 Android, 2026-11-08): Msteps/s, predicted 512² |
 |---|---|---|
 | Kerr closed-form, Reference | 1071, 0.20 s | 533, 0.40 s |
 | Kerr tabulated, Reference | 97, 2.18 s | 113, 1.87 s |
@@ -1286,3 +1286,71 @@ The user asked to continue through B4 and pause there ("continue for now until c
 - **Phone capabilities:** MAX_DRAW_BUFFERS 8, so the full binned tail (6 attachments) runs; no timer queries.
 - **Speeds:** the phone traces the tabulated metrics faster than this laptop, by 1.2× for Kerr and 1.7× for the fuzzball at High. The texture-fetch-bound tabulated traces favour its GPU; the laptop is faster only for closed-form Kerr.
 - **Against E1 at 512²:** High meets both targets on the phone (1.6 s BH, 7.4 s fuzzball). On the laptop it meets the BH target and misses the fuzzball one (12.6 s). The laptop is the slowest device so far and the binding case for B6's tier selection.
+
+## CHECKPOINT B5 — exact speedups (2026-11-09)
+
+All timings are on this laptop (AMD Radeon integrated graphics, D3D11), traced with the viewer's configuration (High) at 512². They use A/B/A/B order, best of 3 (`dev/scripts/b5Exact.mjs`, reports in `dev/reports/b5/<feature>.json`), unless noted. This GPU's clock varies 2–3× between runs, so only interleaved comparisons are meaningful.
+
+**Exactness criterion.** The fuzzball images are chaotic: 37–50% of the pixels change class under ε → ε/2. Even ε × (1 + 1e-6) changes the time-averaged emission of a few percent of the non-chaotic pixels by more than 1e-3 (`--feature floor`). Exactness therefore means "no larger than this float32 noise floor".
+
+| item | default | exactness (non-chaotic pixels) | speed (this laptop) |
+|---|---|---|---|
+| **1. Closed-form metrics: Kerr, hand-written (M3 shader)** | on ("auto") | termination 100%, emission L1 ≤ 3e-6 | **4.6–8.0×** vs tables |
+| **1. Closed-form metrics: Johannsen and RN, generated** (`tools/codegen/gen_metrics.py` → `shaders/glsl/closed/`) | on ("auto") | termination 100%, emission L1 ≤ 4e-6, no pixel changed > 1e-3 | **3.7× (Johannsen), 8.2× (RN)** vs tables; Johannsen 5.7× in the probe pair |
+| **1. Generated Kerr** (cross-check) | — | equals the hand-written shader to emission L1 1e-6 | 0.65–0.9× of the hand-written one |
+| **1. Generated Manko–Novikov** | off: tables kept (plan) | 0.9% of pixels wrong; on 300 of them the double CPU sides with the tables every time (`referee_*.json`); errors at r = 1.5–1.8, next to the termination radius beside the CTC band | 1.3× |
+| **2. ST3Cr G3 = G4** (16 instead of 20 fetches; identity to 6e-16) | on | equal to the noise floor (pixels changed > 1e-3: 0.30 / 3.6 / 0.06% vs floor 0.30 / 3.8 / 0.09% at λ = 0.05 / 1e-3 / 0) | **1.17–1.25×** |
+| **3. Texel reuse across RK stages** | off: needs a 2nd GPU (plan) | changes at the 1e-7 level (compiler reordering) | **1.27–2.02×** (BH 1.31–1.42×, fuzzball 1.27–2.02×); probe pairs 1.53× (Kerr), 2.57× (ST3Cr) |
+| **4. Ray compaction** (n1 = 1500, then 3000, …) | off | identical crossings, termination and escape on all 13 scenes; identical total step counts; only tail centroids rounded at the phase boundary (emission L1 ≤ 6e-6) | **0.80–0.98×** (slower); probe pair at 256²: 1.07× |
+| **5. Camera azimuth** | display-only | e2e: equals a camera traced at that azimuth on 99.8% of pixels, with noise on | no re-trace |
+| **5. Record cache** (LRU, 256 MB / 64 MB phone) | on | restored records are bit-identical (e2e) | instant return to a recent view |
+| **5. Idle pre-tracing** (λ ± one notch, inclination ± 5°, previews) | on desktop, off on phones | traced into a background record set; never cancels a foreground trace | instant previews of those neighbours |
+
+### Compaction
+
+- The step-count cost model (`b5CompactEstimate.mjs`: a wave runs as long as its longest ray) gives single-pass SIMD efficiencies of 93–95% for black holes and 69–90% for the fuzzball. The best possible gain is therefore 1.12–1.21× (fuzzball, n1 = 1500–2500) and nothing for black holes.
+- In practice the read-back, the restart of long rays and the scatter pass cost more than that on this GPU.
+- The machinery (phase A with continuation state, asynchronous list, dense phase B, scatter) is what B6's adaptive refinement needs for its "trace a list of pixels" passes.
+
+### Compile times (`b5Compile.mjs`, first compile past the driver cache)
+
+| program | ms |
+|---|---|
+| tabulated (Stage 1) | ~330 |
+| tabulated with G3 = G4 | ~320 |
+| hand-written Kerr | 128 |
+| generated Kerr / Johannsen / RN | 175 / 205 / 147 |
+| generated Manko–Novikov (unused) | 435 |
+
+All the programs used by default compile no slower than Stage 1's tracer.
+
+### Viewer changes
+
+- **Tracing** gains:
+  - "metric evaluation" (auto / tabulated / generated closed form / hand-written Kerr);
+  - texel reuse, ray compaction (both off);
+  - idle pre-tracing.
+- **Camera:** "camera azimuth (display only)".
+- **Performance table:** names the closed-form shader instead of a table, reports cache restores, compaction rounds and the cache size.
+- **Probe page:** a "B5 speedup" section of interleaved A/B pairs (G3 = G4, texel reuse ×2, compaction, generated Johannsen) for the device round.
+
+### Tests
+
+- **Unit** (`b5.test.js`, plus `closed/*.js` mirrors written by the generator):
+  - the G3 = G4 identity to 1e-12, and only on the flagged metrics;
+  - the generated metrics against the JS metrics: values to 1e-10 (MN 1e-8); x- and δ-derivatives to finite-difference accuracy.
+- **e2e** (`b5.spec.js`):
+  - the azimuth is display-only, matches a traced azimuth, and visibly changes the frame;
+  - cache restore is bit-identical, and pre-tracing fills the cache;
+  - compaction keeps the step count, as does texel reuse.
+- **Updated:** `m4.spec.js` (metric paths).
+- **Full suites:** Vitest 145, Playwright 24 (three clean runs), tsc clean.
+
+### Bug found and fixed while testing
+
+An idle pre-trace that started while a foreground trace was running cancelled it. Background traces now run only on an idle pipeline and never cancel one.
+
+### Needs the user
+
+- **Device round for texel reuse:** the B5 probe pairs on the phone (or another GPU). This requires the updated `probe.html` to be live, i.e. on `main`.
+- **Adoption:** texel reuse on by default if the phone also gains; compaction stays off.

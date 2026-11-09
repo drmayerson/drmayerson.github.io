@@ -3,8 +3,9 @@
 // double-precision CPU reference (js/ref/cpuTracer.js), so that Level 2 comparisons trace the
 // same rays. Pure math, DOM-free (runs in node for the tests).
 import { TetradCamera } from '../camera/tetradCamera.js';
-import { createMetric } from '../metrics/registry.js';
+import { createMetric, metricEntry } from '../metrics/registry.js';
 import { inverseMetric, toMat4 } from '../metrics/common.js';
+import { CLOSED_FORMS, closedFormUniforms } from '../metrics/closedForm.js';
 import { tableRadiusFor } from '../bake/bake.js';
 
 /** FOORT defaults of GeneralCircularRadialFluid (KerrExample.cfg). */
@@ -38,7 +39,13 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'
  * @property {boolean} [project]                   constraint projection onto H = 0 before every step
  *                                                 (default: on for horizonless metrics, whose throat rays lose the constraint)
  * @property {number} [axisStepFloor]              floor of the axis distance in FOORT's step rule (1e-3)
- * @property {'tabulated'|'analytic'} [path]       tabulated metric (all metrics) or closed-form Kerr shader (validation)
+ * @property {'tabulated'|'analytic'|'closed'|'auto'} [path]  tabulated metric (all metrics), the hand-written closed-form Kerr
+ *                                                 shader (M3), a generated closed-form shader (Stage 1B B5: Kerr, Johannsen,
+ *                                                 Manko-Novikov, RN), or 'auto' = the generated one where it exists
+ * @property {boolean} [g34]                       Stage 1B B5 exact speedup: skip table 3 for metrics with G3 = G4 (default on)
+ * @property {boolean} [texelReuse]                Stage 1B B5: keep the last cell's texels in registers across RK stages
+ * @property {{n1:number}|null} [compact]          Stage 1B B5 ray compaction: stop rays at n1 steps and trace the unfinished
+ *                                                 ones as a dense image (rounds at n1, 2 n1, ...); interpolated crossings only
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
  * @property {{xi:number, betaR:number, betaPhi:number, model?:'foort'|'banded'}} [fluid]   GeneralCircularRadialFluid parameters (+ model, B3)
  */
@@ -65,7 +72,7 @@ export function tailGeometry(m, v) {
 
 export const VIEW_DEFAULTS = {
   tailEmission: { redshiftPower: 3, fudge: 1, maxPasses: 0 },
-  tableHalf: false, farSteps: /** @type {{r:number, max:number}|null} */ (null),
+  tableHalf: false, g34: true, texelReuse: false, compact: /** @type {{n1:number}|null} */ (null), farSteps: /** @type {{r:number, max:number}|null} */ (null),
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
   mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 }, fluid: FLUID_DEFAULTS,
 };
@@ -77,12 +84,33 @@ export function normalizeView(view) {
 
 /** Shader program for a view. @param {Required<ViewParams>} v */
 export function tracerFor(v) {
-  if (v.path === 'analytic') {
+  const path = closedPath(v);
+  if (path === 'closed') return `closed_${v.metric}${compactFlag(v)}`;
+  if (path === 'analytic') {
     if (v.metric !== 'kerr') throw new Error(`metric ${v.metric}: the analytic shader exists for Kerr only`);
     return 'trace_kerr_analytic';
   }
-  if (v.radial === 'log') throw new Error('the tabulated tracer uses x = log(r - r_+) only');
-  return v.tableHalf ? 'trace_half' : 'trace';
+  if (path === 'tabulated' && v.radial === 'log') throw new Error('the tabulated tracer uses x = log(r - r_+) only');
+  return (v.tableHalf ? 'trace_half' : 'trace') + (v.g34 && metricEntry(v.metric).g3equalsG4 ? '+g34' : '') + (v.texelReuse ? '+reuse' : '') + compactFlag(v);
+}
+
+/** Ray compaction of a view (B5): on for compact.n1 < max steps, with interpolated crossings and without |H| storage. @param {Required<ViewParams>} v */
+export const viewCompacts = (v) => !!v.compact && v.compact.n1 < v.maxSteps && v.crossing !== 'foort' && !v.storeH;
+const compactFlag = (/** @type {Required<ViewParams>} */ v) => (viewCompacts(v) ? '+compact' : '');
+
+/**
+ * The path a view resolves to. 'auto' (Stage 1B B5, the viewer's default): the hand-written closed-form Kerr shader for
+ * Kerr, a generated closed-form shader where it is float32-safe (CLOSED_FORMS[..].auto: Johannsen, RN), else the tables.
+ * @param {Required<ViewParams>} v
+ */
+export function closedPath(v) {
+  if (v.path === 'auto') {
+    if (v.tableHalf || v.radial === 'log') return 'tabulated';
+    if (v.metric === 'kerr') return 'analytic';
+    return CLOSED_FORMS[v.metric]?.auto ? 'closed' : 'tabulated';
+  }
+  if (v.path === 'closed' && !CLOSED_FORMS[v.metric]) throw new Error(`metric ${v.metric} has no generated closed-form shader`);
+  return v.path;
 }
 
 /**
@@ -133,7 +161,7 @@ export function fluidSpec(viewIn) {
  */
 export function tableSpec(viewIn) {
   const v = normalizeView(viewIn);
-  if (tracerFor(v) === 'trace_kerr_analytic') return null;
+  if (closedPath(v) !== 'tabulated') return null;
   const m = createMetric(v.metric, v.metricParams);
   const spec = { nx: v.grid.nx, nth: v.grid.nth, rTerm: viewTerminationRadius(m, v), rMax: tableRadiusFor(v.rBoundary, m.lengthScale) };
   return { metric: v.metric, params: m.params, spec, key: JSON.stringify([v.metric, m.params, spec]) };
@@ -179,6 +207,14 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     if (viewProjects(metric, v)) throw new Error('constraint projection needs the tabulated tracer (the closed-form Kerr shader does not split its force)');
     uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
   }
+  else if (program.startsWith('closed_')) {
+    // generated closed form (B5): the metric interface of trace.glsl without tables
+    if (r0 !== rh) throw new Error('the closed-form shaders use x = log(r - r_+) only');
+    Object.assign(uniforms, closedFormUniforms(v.metric, metric.params));
+    uniforms.uMetric = ['4f', [r0, metric.massADM, 0, 0]];
+    const sg = viewSingularities(metric, v);
+    uniforms.uSing = ['4f', [sg.zc, sg.R, sg.eps, sg.eps > 0 ? 1 : 0]];
+  }
   else {
     const ts = /** @type {NonNullable<ReturnType<typeof tableSpec>>} */ (tableSpec(v));
     if (!tables) throw new Error('gpuTraceSetup: the tabulated path needs the baked tables');
@@ -198,7 +234,8 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
   uniforms.uFluidX = ['4f', [fluid.grid.xMin, fluid.grid.dx, fluid.grid.n, fluid.grid.r0]];
   const tail = tailGeometry(metric, v);
   uniforms.uTail = ['4f', [tail.xLo, tail.invWidth, tail.K, 0]];
-  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key, tail };
+  return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key, tail,
+    compact: program.includes('+compact') ? v.compact : null, maxSteps: v.maxSteps };
 }
 
 /**

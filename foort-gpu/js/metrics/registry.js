@@ -24,6 +24,8 @@ import { rescaleToUnitMass } from './common.js';
  * @property {boolean} [hidden]       not in the metric menu (reached through another entry's zeroSwitch)
  * @property {{id:string, label:string, key:string}} [zeroSwitch]  a checkbox (state/URL key `key`) that replaces this metric by
  *   entry `id` (its parameter -> 0 limit)
+ * @property {boolean} [g3equalsG4]   g^xx = g^thth identically (x = log r, g^rr = r^2 g^thth; verified in double by
+ *   dev/tests/unit/b5.test.js): the tabulated tracer skips table 3 (Stage 1B B5)
  *
  * The viewer builds its metric menu and parameter sliders from this list (js/ui/controls.js): a parameter name
  * shared by several metrics (e.g. the spin a) is one slider; `fixed` parameters get no slider.
@@ -71,7 +73,7 @@ export const METRICS = [
     presets: {},
   },
   {
-    id: 'st3cr', label: 'ST3Cr ring fuzzball (P = 2, q0 = 50)', mode: 'fuzzball',
+    id: 'st3cr', label: 'ST3Cr ring fuzzball (P = 2, q0 = 50)', mode: 'fuzzball', g3equalsG4: true,
     zeroSwitch: { id: 'st3crBH', label: 'λ = 0 (supersymmetric black hole)', key: 'bh0' },
     // Stage 1B B2: crossings after the third (trapped light) are kept in the binned tail
     emissionNote: 'light trapped inside the fuzzball crosses the disc many times; crossings after the third are summed in 8 log-r bins and drawn without noise or slow light (their fluctuations average out)',
@@ -85,7 +87,7 @@ export const METRICS = [
     presets: { Test_FBdetail: { lambda: 0.005, P, q0 } },
   },
   {
-    id: 'st3crBH', label: 'ST3Cr black hole (λ = 0)', mode: 'fuzzball', hidden: true,
+    id: 'st3crBH', label: 'ST3Cr black hole (λ = 0)', mode: 'fuzzball', hidden: true, g3equalsG4: true,
     create: (p) => rescaleToUnitMass(createST3CrBH({ P: p.P, q0: p.q0 })),
     params: [
       { name: 'P', label: 'P', min: P, max: P, default: P, fixed: true },

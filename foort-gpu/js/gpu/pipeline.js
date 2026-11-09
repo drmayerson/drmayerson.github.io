@@ -26,6 +26,8 @@ export function tilesCentreOut(w, h, edge) {
  * @property {number|null} gpuMs             sum of GPU timer queries (null if unavailable)
  * @property {number} tiles
  * @property {number|null} steps             total RK4 steps (when measured)
+ * @property {number} [compacted]            rays traced again in compaction rounds (Stage 1B B5)
+ * @property {boolean} [cached]              restored from the record cache (Stage 1B B5)
  */
 
 /**
@@ -62,11 +64,33 @@ export function recut(tiles, edge, w, h) {
   return out.sort((a, b) => d(a) - d(b));
 }
 
+/**
+ * Step limits of the compaction rounds (Stage 1B B5): phase A stops at n1, each later round at twice the previous limit,
+ * the last round runs to max steps (limit 0). Empty when n1 >= max steps.
+ * @param {number} n1 @param {number} maxSteps
+ */
+export function compactLimits(n1, maxSteps) {
+  if (!(n1 > 0) || !(n1 < maxSteps)) return [];
+  const out = [];
+  for (let L = n1; L < maxSteps; L *= 2) out.push(L);
+  return out;
+}
+
+/**
+ * Cache key of a trace: everything its records depend on.
+ * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tableKey?:string|null, fluidKey?:string|null, compact?:{n1:number}|null}} setup
+ * @param {number[]} levels
+ */
+export function traceKey(setup, levels) {
+  const u = Object.entries(setup.uniforms).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, [t, v]]) => [k, t, Array.from(v)]);
+  return JSON.stringify([setup.program, u, setup.tableKey ?? null, setup.fluidKey ?? null, setup.N, levels, setup.compact ?? null]);
+}
+
 export class TracePipeline {
   /**
    * @param {import('./backend.js').Backend} backend
    * @param {{tileRays?: number, targetTileMs?: number, onProgress?: (info:{level:number, done:number, total:number}) => void,
-   *   onStage?: (stage: string) => void}} [opts]
+   *   onStage?: (stage: string) => void, cacheBytes?: number}} [opts]
    */
   constructor(backend, opts = {}) {
     this.backend = backend;
@@ -83,7 +107,37 @@ export class TracePipeline {
     this.fluidKey = /** @type {string|null} */ (null);
     /** key of the metric tables on the GPU */
     this.tableKey = /** @type {string|null} */ (null);
+    /** record cache (Stage 1B B5): trace key -> records on the GPU, least recently used first */
+    this.cache = /** @type {Map<string, {handle: import('./backend.js').CacheHandle, stats: TraceStats}>} */ (new Map());
+    /** its memory budget in bytes (0: off; decision E9: 256 MB desktop, 64 MB phone) */
+    this.cacheBytes = opts.cacheBytes ?? 256 * 2 ** 20;
+    /** setup of the displayed records */
+    this.displayed = /** @type {{fluid?:any, fluidKey?:string|null}|null} */ (null);
+    /** no progress reports (background traces) */
+    this.silent = false;
   }
+
+  /** the fluid table of a displayed setup onto the GPU (the display pass reads it) @param {{fluid?:any, fluidKey?:string|null}} setup */
+  showFluid(setup) {
+    if (setup.fluid && setup.fluidKey !== this.fluidKey) { this.backend.uploadFluid(setup.fluid); this.fluidKey = setup.fluidKey ?? null; }
+  }
+
+  /** bytes held by the record cache */
+  cacheUsed() { let b = 0; for (const e of this.cache.values()) b += e.handle.bytes; return b; }
+
+  /** @param {string} key @param {import('./backend.js').CacheHandle} handle @param {TraceStats} stats */
+  cachePut(key, handle, stats) {
+    this.cache.set(key, { handle, stats });
+    // evict the least recently used entries beyond the budget (the newest entry always stays)
+    while (this.cacheUsed() > this.cacheBytes && this.cache.size > 1) {
+      const [k, e] = /** @type {[string, {handle: import('./backend.js').CacheHandle}]} */ (this.cache.entries().next().value);
+      this.backend.cacheFree(e.handle);
+      this.cache.delete(k);
+    }
+  }
+
+  /** drop every cached trace */
+  cacheClear() { for (const e of this.cache.values()) this.backend.cacheFree(e.handle); this.cache.clear(); }
 
   /** Tile edge for the current rays-per-tile estimate (multiple of 8, at least 16). */
   tileEdge() { return Math.max(16, Math.round(Math.sqrt(this.tileRays) / 8) * 8); }
@@ -92,84 +146,137 @@ export class TracePipeline {
   cancel() { this.generation++; }
 
   /**
+   * Trace all tiles of a w x h image with `submit`, adapting the tile size (the first tile is a small probe: one tile's
+   * cost varies by orders of magnitude between metrics and step limits, and a 128^2 fuzzball tile with 10^4 max steps
+   * can run for seconds and trip the OS GPU watchdog, which loses the context). False if cancelled.
+   * @param {number} gen @param {number} w @param {number} h
+   * @param {(t: import('./backend.js').Rect) => ReturnType<import('./backend.js').Backend['traceTile']>} submit
+   * @param {number} st  level (progress reports) @param {boolean} adapt
+   * @param {Promise<number|null>[]} gpu  GPU timer results (appended) @param {() => void} counted
+   */
+  async runTiles(gen, w, h, submit, st, adapt, gpu, counted) {
+    let probe = adapt;
+    let minRays = MIN_TILE_RAYS;
+    let edge = probe ? PROBE_EDGE : this.tileEdge();
+    let pending = tilesCentreOut(w, h, edge);
+    let done = 0;
+    // two tiles in flight: the next tile is already queued on the GPU while the JS side waits for the fence of the
+    // previous one (serial submit-and-wait left the GPU idle ~10-40 ms per tile: 2x the GPU time for 1000+ tiles).
+    // The probe runs alone, since the rest of the level is cut from its timing.
+    /** @type {{t: import('./backend.js').Rect, p: ReturnType<import('./backend.js').Backend['traceTile']>, at: number}[]} */
+    const inflight = [];
+    let lastDone = performance.now();
+    while (pending.length || inflight.length) {
+      if (gen !== this.generation) { await Promise.allSettled(inflight.map((x) => x.p)); return false; }
+      while (inflight.length < (probe ? 1 : TILES_IN_FLIGHT) && pending.length) {
+        const tt = /** @type {import('./backend.js').Rect} */ (pending.shift());
+        inflight.push({ t: tt, p: submit(tt), at: performance.now() });
+      }
+      const { t, p, at } = /** @type {{t: import('./backend.js').Rect, p: ReturnType<import('./backend.js').Backend['traceTile']>, at: number}} */ (inflight.shift());
+      const res = await p;
+      const now = performance.now();
+      // this tile's own GPU share: from the later of its submission and the previous completion
+      const r = { wallMs: now - Math.max(at, lastDone), gpuMs: res.gpuMs };
+      lastDone = now;
+      gpu.push(r.gpuMs);
+      counted(); done++;
+      if (!this.silent) this.onProgress({ level: st, done, total: done + pending.length + inflight.length });
+      if (adapt) {
+        // rays per tile from the measured rate. The estimate moves both ways (log-space average, at most x2 per tile)
+        // and persists between traces. A wall time includes a fixed fence/yield latency, so a pure rate rule shrinks
+        // tiles without end and tiny tiles leave the GPU idle (M9: 4941 tiles and 20x the M4 time). Tiles therefore
+        // stay >= MIN_TILE_RAYS unless such a tile itself runs longer than DANGER_MS (the OS watchdog risk).
+        const rays = t.w * t.h, ms = Math.max(r.wallMs, 0.5);
+        const want = rays * this.targetTileMs / ms;
+        // the floor drops (for the rest of this image) when a tile at the floor runs dangerously long
+        if (ms > DANGER_MS && rays <= minRays) minRays = Math.max(MIN_TILE_RAYS_DANGER, minRays / 4);
+        const floor = minRays;
+        const next = probe ? want : this.tileRays * Math.min(2, Math.max(0.5, Math.sqrt(want / this.tileRays)));
+        this.tileRays = Math.round(Math.min(1024 * 1024, Math.max(floor, next)));
+        const e = this.tileEdge();
+        // after the probe: tile the image afresh (re-tracing the small probe region is cheaper than many tiny
+        // tiles); when one tile ran far over the target: split the rest
+        if (probe) { pending = tilesCentreOut(w, h, e); edge = e; }
+        else if (ms > 3 * this.targetTileMs && e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
+        probe = false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Trace an image. Starting a new trace cancels the running one.
-   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null, fluid?:any, fluidKey?:string|null}} setup
+   * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null, fluid?:any, fluidKey?:string|null,
+   *   compact?:{n1:number}|null, maxSteps?:number}} setup
+   *   With the record cache on (opts.cache, default true), a trace whose key (program, uniforms, tables, fluid, N, levels) is
+   *   cached is restored instead of traced (stats.cached); background traces (opts.background: idle pre-tracing) run in
+   *   the backend's background record set and only fill the cache.
    *   from traceConfig.gpuTraceSetup
-   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean}} [opts]
+   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean}} [opts]
    * @returns {Promise<TraceStats|null>}  null if cancelled
    */
   async trace(setup, opts = {}) {
+    // a background trace (idle pre-tracing) never cancels or waits for another trace: it runs only on an idle pipeline
+    if (opts.background && this.busy) return null;
     const gen = ++this.generation;
     while (this.busy) { await new Promise((r) => setTimeout(r, 0)); if (gen !== this.generation) return null; }
     this.busy = true;
+    const be = this.backend;
     try {
       const levels = opts.levels ?? finalLevels(setup.N);
-      const be = this.backend;
-      if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program === 'trace' ? 'tabulated' : 'closed-form Kerr'} tracer (first use)…`);
+      const useCache = opts.cache !== false && this.cacheBytes > 0;
+      const key = useCache ? traceKey(setup, levels) : '';
+      const hit = useCache ? this.cache.get(key) : undefined;
+      if (hit) {
+        // most recently used last
+        this.cache.delete(key); this.cache.set(key, hit);
+        if (opts.background) return hit.stats;
+        be.useRecordSet(0);
+        be.resize(setup.N, setup.N);
+        be.cacheRestore(hit.handle);
+        this.showFluid(setup);
+        return { ...hit.stats, cached: true };
+      }
+      if (!opts.background) this.displayed = setup;
+      be.useRecordSet(opts.background ? 1 : 0, setup.N, setup.N);
+      // background traces report no progress (the status line and the redraws belong to the displayed view)
+      this.silent = !!opts.background;
+      if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program.startsWith('trace_kerr') ? 'closed-form Kerr' : 'tabulated'} tracer (first use)…`);
       await be.setTracer(setup.program);
       this.compiled.add(setup.program);
       if (gen !== this.generation) return null;
       if (setup.tables && setup.tableKey !== this.tableKey) { be.uploadTables(setup.tables); this.tableKey = setup.tableKey ?? null; }
       if (setup.fluid && setup.fluidKey !== this.fluidKey) { be.uploadFluid(setup.fluid); this.fluidKey = setup.fluidKey ?? null; }
-      be.resize(setup.N, setup.N);
+      if (!opts.background) be.resize(setup.N, setup.N);
       be.uploadUniforms(setup.uniforms);
       be.clearRecords(levels);
       const t0 = performance.now();
       /** @type {Promise<number|null>[]} */
       const gpu = [];
       let nTiles = 0;
-      // the first tile of every trace is a small probe: one tile's cost varies by orders of magnitude between
-      // metrics and step limits (a 128^2 fuzzball tile with 10^4 max steps runs for seconds and can trip the
-      // OS GPU watchdog, which loses the context)
-      let probe = opts.adaptTiles !== false;
-      let minRays = MIN_TILE_RAYS;
+      const compactRounds = setup.compact ? compactLimits(setup.compact.n1, setup.maxSteps ?? 0) : [];
+      let compacted = 0;
       for (const st of levels) {
         // each level is its own compact image of ceil(N / st)^2 rays
         const { w, h } = be.levelSize(st);
-        let edge = probe ? PROBE_EDGE : this.tileEdge();
-        let pending = tilesCentreOut(w, h, edge);
-        let done = 0;
-        // two tiles in flight: the next tile is already queued on the GPU while the JS side waits for the fence of the
-        // previous one (serial submit-and-wait left the GPU idle ~10-40 ms per tile: 2x the GPU time for 1000+ tiles).
-        // The probe runs alone, since the rest of the level is cut from its timing.
-        /** @type {{t: import('./backend.js').Rect, p: ReturnType<typeof be.traceTile>, at: number}[]} */
-        const inflight = [];
-        let lastDone = performance.now();
-        while (pending.length || inflight.length) {
-          if (gen !== this.generation) { await Promise.allSettled(inflight.map((x) => x.p)); return null; }
-          while (inflight.length < (probe ? 1 : TILES_IN_FLIGHT) && pending.length) {
-            const tt = /** @type {import('./backend.js').Rect} */ (pending.shift());
-            inflight.push({ t: tt, p: be.traceTile(tt, st), at: performance.now() });
-          }
-          const { t, p, at } = /** @type {{t: import('./backend.js').Rect, p: ReturnType<typeof be.traceTile>, at: number}} */ (inflight.shift());
-          const res = await p;
-          const now = performance.now();
-          // this tile's own GPU share: from the later of its submission and the previous completion
-          const r = { wallMs: now - Math.max(at, lastDone), gpuMs: res.gpuMs };
-          lastDone = now;
-          gpu.push(r.gpuMs);
-          nTiles++; done++;
-          this.onProgress({ level: st, done, total: done + pending.length + inflight.length });
-          if (opts.adaptTiles !== false) {
-            // rays per tile from the measured rate. The estimate moves both ways (log-space average, at most x2 per tile)
-            // and persists between traces. A wall time includes a fixed fence/yield latency, so a pure rate rule shrinks
-            // tiles without end and tiny tiles leave the GPU idle (M9: 4941 tiles and 20x the M4 time). Tiles therefore
-            // stay >= MIN_TILE_RAYS unless such a tile itself runs longer than DANGER_MS (the OS watchdog risk).
-            const rays = t.w * t.h, ms = Math.max(r.wallMs, 0.5);
-            const want = rays * this.targetTileMs / ms;
-            // the floor drops (for the rest of this trace) when a tile at the floor runs dangerously long
-            if (ms > DANGER_MS && rays <= minRays) minRays = Math.max(MIN_TILE_RAYS_DANGER, minRays / 4);
-            const floor = minRays;
-            const next = probe ? want : this.tileRays * Math.min(2, Math.max(0.5, Math.sqrt(want / this.tileRays)));
-            this.tileRays = Math.round(Math.min(1024 * 1024, Math.max(floor, next)));
-            const e = this.tileEdge();
-            // after the probe: tile the level afresh (re-tracing the small probe region is cheaper than many tiny
-            // tiles); when one tile ran far over the target: split the rest of this level
-            if (probe) { pending = tilesCentreOut(w, h, e); edge = e; }
-            else if (ms > 3 * this.targetTileMs && e < edge / 1.5) { pending = recut(pending, e, w, h); edge = e; }
-            probe = false;
-          }
+        // Stage 1B B5 ray compaction: phase A stops rays at the first limit; each later round traces the unfinished rays
+        // as a dense compact image (up to the next limit, the last one without a limit) and scatters them back
+        be.setCompactPhase(compactRounds.length ? 1 : 0, compactRounds[0] ?? 0);
+        const ok = await this.runTiles(gen, w, h, (t) => be.traceTile(t, st), st, opts.adaptTiles !== false, gpu, () => nTiles++);
+        if (!ok) return null;
+        for (let k = 1; k < compactRounds.length + 1 && compactRounds.length; k++) {
+          const M = await be.compactList(st);
+          if (gen !== this.generation) return null;
+          if (!M) break;
+          compacted += M;
+          be.setCompactPhase(2, compactRounds[k] ?? 0);
+          const cs = /** @type {{w:number, h:number}} */ (be.compactSize());
+          // the continuing rays are the long ones: start with a probe tile again
+          const ok2 = await this.runTiles(gen, cs.w, cs.h, (t) => be.traceTile(t, st, true), st, opts.adaptTiles !== false, gpu, () => nTiles++);
+          if (!ok2) return null;
+          be.scatterCompact();
         }
+        be.setCompactPhase(0, 0);
       }
       const wallMs = performance.now() - t0;
       // GPU timer results arrive a little after the fences
@@ -179,9 +286,16 @@ export class TracePipeline {
         Promise.all(gpu),
       ]);
       if (Array.isArray(settled) && settled.every((x) => x !== null)) gpuMs = settled.reduce((a, b) => a + /** @type {number} */ (b), 0);
-      const steps = opts.measureSteps ? await be.readSteps() : null;
-      return { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps };
+      const steps = opts.measureSteps && !opts.background ? await be.readSteps() : null;
+      const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted };
+      if (useCache) this.cachePut(key, be.cacheStore(levels), stats);
+      return stats;
     } finally {
+      be.useRecordSet(0);
+      be.setCompactPhase(0, 0);
+      this.silent = false;
+      // a background trace may have replaced the fluid table the display reads (Omega, envelope radius)
+      if (opts.background && this.displayed) this.showFluid(this.displayed);
       this.busy = false;
     }
   }

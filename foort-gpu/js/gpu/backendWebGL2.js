@@ -38,7 +38,9 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   // Stage 1B B2: the record is 4 RGBA32F attachments + 2 for the tail bins (8 bins), when the device has >= 6 draw
   // buffers (typically 8); otherwise the tail is off (TAIL_BINS 0) and the performance table says so
   const TAIL_BINS = gl.getParameter(gl.MAX_DRAW_BUFFERS) >= 6 ? 8 : 0;
-  const NATT = TAIL_BINS ? 6 : 4;
+  // Stage 1B B5 ray compaction: 2 more attachments (continuation state, tail centroids) where 8 draw buffers exist
+  const COMPACT_OK = TAIL_BINS > 0 && gl.getParameter(gl.MAX_DRAW_BUFFERS) >= 8;
+  const NATT = COMPACT_OK ? 8 : TAIL_BINS ? 6 : 4;
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 
@@ -80,6 +82,44 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   const display = build(HEADER + await load('display'), 'display.glsl');
   const vao = gl.createVertexArray();
 
+  // B5 compaction, scatter pass: one point per listed ray copies its 8 compact record texels to its pixel in the level
+  const SCATTER_VS = `#version 300 es
+precision highp float; precision highp int;
+uniform highp isampler2D uIndex;
+uniform ivec4 uSc;   // level width, level height, compact width, 0
+flat out ivec2 vC;
+void main() {
+  int k = gl_VertexID;
+  ivec2 c = ivec2(k % uSc.z, k / uSc.z);
+  int p = texelFetch(uIndex, c, 0).x;
+  vC = c;
+  vec2 ij = vec2(float(p % uSc.x), float(p / uSc.x));
+  gl_Position = vec4((ij + 0.5) / vec2(uSc.xy) * 2.0 - 1.0, 0.0, 1.0);
+  gl_PointSize = 1.0;
+}`;
+  const SCATTER_FS = `#version 300 es
+precision highp float; precision highp int;
+uniform highp sampler2D uC0, uC1, uC2, uC3, uC4, uC5, uC6, uC7;
+flat in ivec2 vC;
+layout(location = 0) out vec4 o0; layout(location = 1) out vec4 o1; layout(location = 2) out vec4 o2; layout(location = 3) out vec4 o3;
+layout(location = 4) out vec4 o4; layout(location = 5) out vec4 o5; layout(location = 6) out vec4 o6; layout(location = 7) out vec4 o7;
+void main() {
+  o0 = texelFetch(uC0, vC, 0); o1 = texelFetch(uC1, vC, 0); o2 = texelFetch(uC2, vC, 0); o3 = texelFetch(uC3, vC, 0);
+  o4 = texelFetch(uC4, vC, 0); o5 = texelFetch(uC5, vC, 0); o6 = texelFetch(uC6, vC, 0); o7 = texelFetch(uC7, vC, 0);
+}`;
+  /** @type {{prog: WebGLProgram, loc: (n: string) => WebGLUniformLocation|null}|null} */
+  let scatter = null;
+  /** the compact image of the current compaction round */
+  let compact = /** @type {{fbo: WebGLFramebuffer, tex: WebGLTexture[], index: WebGLTexture, w: number, h: number, M: number, stride: number}|null} */ (null);
+  /** compaction phase of the next tiles: mode 0 off, 1 stop at the limit, 2 resume the listed rays */
+  let compactPhase = { mode: 0, limit: 0 };
+  const freeCompact = () => {
+    if (!compact) return;
+    for (const t of compact.tex) gl.deleteTexture(t);
+    gl.deleteTexture(compact.index); gl.deleteFramebuffer(compact.fbo);
+    compact = null;
+  };
+
   // one record set (4 RGBA32F targets) per progressive level, stride s -> ceil(N / s)^2 pixels:
   // a coarse level traced as a compact image keeps every SIMD lane busy (a strided pass over the
   // full image costs as much as a full trace, since a wave runs as long as its longest ray)
@@ -87,6 +127,66 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */
   const levels = new Map();
   let W = 0, H = 0;
+  /** attachments of the record proper (rec0-3, tail0-1), the part that is cached */
+  const RECORD_ATT = Math.min(NATT, 6);
+  /** @param {number} lw @param {number} lh */
+  const makeLevel = (lw, lh) => {
+    const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    const tex = Array.from({ length: NATT }, (_, k) => {
+      const t = /** @type {WebGLTexture} */ (gl.createTexture());
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, lw, lh);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
+      return t;
+    });
+    gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('RGBA32F MRT framebuffer incomplete');
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fbo, tex, w: lw, h: lh };
+  };
+  /** @param {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[]}>} set */
+  const freeLevels = (set) => { for (const L of set.values()) { for (const t of L.tex) gl.deleteTexture(t); gl.deleteFramebuffer(L.fbo); } set.clear(); };
+  /** background record set (B5 idle pre-tracing) */
+  const bg = { W: 0, H: 0, levels: /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */ (new Map()) };
+  /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */
+  let target = levels;
+  /** a level of the current record set (background levels are made on first use) @param {number} st */
+  const getLevel = (st) => {
+    let L = target.get(st);
+    if (!L && target === bg.levels && STRIDES.includes(st)) { L = makeLevel(Math.ceil(bg.W / st), Math.ceil(bg.H / st)); target.set(st, L); }
+    if (!L) throw new Error(`unsupported stride ${st} (${STRIDES.join(', ')})`);
+    return L;
+  };
+  const blitFbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+  /**
+   * Float blit of one attachment: from attachment `ka` of fbo `src` (or texture `t` if src is null) to texture `t`
+   * (or attachment `kd` of fbo `dst`).
+   * @param {WebGLFramebuffer|null} src @param {number} ka @param {WebGLFramebuffer|null} dst @param {WebGLTexture} t
+   * @param {number} w @param {number} h @param {number} [kd]
+   */
+  const blit = (src, ka, dst, t, w, h, kd = 0) => {
+    gl.disable(gl.SCISSOR_TEST);
+    if (src) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0 + ka);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, blitFbo);
+      gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    } else {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, blitFbo);
+      gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
+      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k === kd ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
+    }
+    gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    if (dst) gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  };
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
   /** @type {WebGLTexture|null} */
@@ -129,43 +229,74 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     kind: 'webgl2',
 
     async setTracer(name) {
-      // variants: '<file>_half' = <file>.glsl with TABLE_HALF defined (half-float derivative tables, M9 accuracy trade)
-      const half = name.endsWith('_half'), file = half ? name.slice(0, -5) : name;
-      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + `#define TAIL_BINS ${TAIL_BINS}\n` + (half ? '#define TABLE_HALF 1\n' : '') + await load(file) + '\n' + common, `${name}: ${file}.glsl + common.glsl`));
+      // variants: '<file>_half' = <file>.glsl with TABLE_HALF defined (half-float derivative tables, M9 accuracy trade);
+      // '+flag' suffixes (Stage 1B B5, exact speedups): '+g34' G3_EQUALS_G4, '+reuse' TEXEL_REUSE
+      // 'closed_<metric>' = trace.glsl with CLOSED_FORM and the generated shaders/glsl/closed/<metric>.glsl before it
+      const [base, ...flags] = name.split('+');
+      const closed = base.startsWith('closed_') ? base.slice(7) : null;
+      const half = base.endsWith('_half'), file = closed ? 'trace' : half ? base.slice(0, -5) : base;
+      const pre = closed ? '#define CLOSED_FORM 1\n' + await load(`closed/${closed}`) + '\n' : '';
+      const FLAG_DEFINES = /** @type {Record<string, string>} */ ({ g34: 'G3_EQUALS_G4', reuse: 'TEXEL_REUSE', compact: 'COMPACT' });
+      if (flags.includes('compact') && !COMPACT_OK) throw new Error('ray compaction needs 8 draw buffers');
+      // a '+#text' flag only adds a comment (a distinct source, e.g. for compile-time measurements past the driver's cache)
+      const defs = flags.map((f) => { if (f.startsWith('#')) return `// ${f}\n`; if (!FLAG_DEFINES[f]) throw new Error(`unknown tracer flag ${f}`); return `#define ${FLAG_DEFINES[f]} 1\n`; }).join('');
+      if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + `#define TAIL_BINS ${TAIL_BINS}\n` + (half ? '#define TABLE_HALF 1\n' : '') + defs + pre + await load(file) + '\n' + common, `${name}: ${closed ? `closed/${closed}.glsl + ` : ''}${file}.glsl + common.glsl`));
       tracer = /** @type {ReturnType<typeof build>} */ (tracePrograms.get(name));
     },
 
     resize(w, h) {
       if (w === W && h === H) return;
-      for (const L of levels.values()) { for (const t of L.tex) gl.deleteTexture(t); gl.deleteFramebuffer(L.fbo); }
-      levels.clear();
-      for (const st of STRIDES) {
-        const lw = Math.ceil(w / st), lh = Math.ceil(h / st);
-        const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        const tex = Array.from({ length: NATT }, (_, k) => {
-          const t = /** @type {WebGLTexture} */ (gl.createTexture());
-          gl.bindTexture(gl.TEXTURE_2D, t);
-          gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, lw, lh);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
-          return t;
-        });
-        gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('RGBA32F MRT framebuffer incomplete');
-        levels.set(st, { fbo, tex, w: lw, h: lh });
-      }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      freeLevels(levels);
+      for (const st of STRIDES) levels.set(st, makeLevel(Math.ceil(w / st), Math.ceil(h / st)));
       W = w; H = h;
       canvas.width = w; canvas.height = h;
     },
 
+    useRecordSet(set, w = W, h = H) {
+      // Stage 1B B5 idle pre-tracing: set 1 is a background record set (levels made on first use), so that the canvas
+      // never shows a background trace; the display always reads set 0
+      if (set === 1) {
+        if (bg.W !== w || bg.H !== h) { freeLevels(bg.levels); bg.W = w; bg.H = h; }
+        target = bg.levels;
+      } else target = levels;
+    },
+
     levelSize(stride) {
-      const L = levels.get(stride);
-      if (!L) throw new Error(`unsupported stride ${stride} (${STRIDES.join(', ')})`);
+      const L = getLevel(stride);
       return { w: L.w, h: L.h };
     },
+
+    cacheStore(strides) {
+      // copy the record attachments (0-5) of the given levels of the current set into new textures (float blits)
+      /** @type {Map<number, WebGLTexture[]>} */
+      const tex = new Map();
+      let bytes = 0;
+      for (const st of strides) {
+        const L = getLevel(st);
+        const copies = Array.from({ length: RECORD_ATT }, (_, k) => {
+          const t = /** @type {WebGLTexture} */ (gl.createTexture());
+          gl.bindTexture(gl.TEXTURE_2D, t);
+          gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, L.w, L.h);
+          for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+          blit(L.fbo, k, null, t, L.w, L.h);
+          return t;
+        });
+        bytes += 16 * RECORD_ATT * L.w * L.h;
+        tex.set(st, copies);
+      }
+      return { tex, strides: [...strides], w: target === levels ? W : bg.W, h: target === levels ? H : bg.H, bytes };
+    },
+
+    cacheRestore(handle) {
+      // the cached levels back into the display set (its size must match: resize first), and display them
+      for (const [st, copies] of handle.tex) {
+        const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(st));
+        copies.forEach((t, k) => blit(null, 0, L.fbo, t, L.w, L.h, k));
+      }
+      activeStrides = [...handle.strides].sort((a, b) => a - b).slice(0, 2);
+    },
+
+    cacheFree(handle) { for (const copies of handle.tex.values()) for (const t of copies) gl.deleteTexture(t); handle.tex.clear(); },
 
     uploadUniforms(u) { traceUniforms = u; },
 
@@ -237,20 +368,27 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     },
 
     clearRecords(strides) {
-      if (strides) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 2);
+      if (strides && target === levels) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 2);
       const z = new Float32Array(4);
-      for (const L of levels.values()) {
+      for (const st of strides ?? STRIDES) getLevel(st);
+      for (const L of target.values()) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
+        gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
         for (let k = 0; k < NATT; k++) gl.clearBufferfv(gl.COLOR, k, z);
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
 
-    async traceTile(rect, stride) {
+    async traceTile(rect, stride, toCompact = false) {
       if (!tracer) throw new Error('setTracer first');
-      const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
-      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-      gl.viewport(0, 0, L.w, L.h);
+      const L = getLevel(stride);
+      const C = toCompact ? compact : null;
+      if (toCompact && !C) throw new Error('compactList first');
+      gl.bindFramebuffer(gl.FRAMEBUFFER, C ? C.fbo : L.fbo);
+      // a program without the compaction outputs leaves attachments 6-7 off (WebGL rejects draw buffers without outputs)
+      const hasCont = !!tracer.loc('uCompact');
+      if (!C) gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k < 6 || hasCont ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
+      gl.viewport(0, 0, C ? C.w : L.w, C ? C.h : L.h);
       gl.enable(gl.SCISSOR_TEST);
       gl.scissor(rect.x, rect.y, rect.w, rect.h);
       gl.useProgram(tracer.prog);
@@ -276,6 +414,18 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.bindTexture(gl.TEXTURE_2D, fluidTex);
       gl.uniform1i(tracer.loc('uFluid'), 1);
       gl.uniform4i(tracer.loc('uImg'), L.w, L.h, 0, 0);
+      if (tracer.loc('uCompact')) {
+        gl.uniform4i(tracer.loc('uCompact'), C ? 2 : compactPhase.mode ? 1 : 0, compactPhase.limit, 0, 0);
+        // the index list and the level's records (read while the compact image is the target)
+        gl.activeTexture(gl.TEXTURE3);
+        gl.bindTexture(gl.TEXTURE_2D, C ? C.index : null);
+        gl.uniform1i(tracer.loc('uIndex'), 3);
+        for (let k = 0; k < 8; k++) {
+          gl.activeTexture(gl.TEXTURE4 + k);
+          gl.bindTexture(gl.TEXTURE_2D, C ? L.tex[k] : null);
+          gl.uniform1i(tracer.loc(`uPrev${k}`), 4 + k);
+        }
+      }
       /** @type {Promise<number|null>} */
       let gpu = Promise.resolve(null);
       if (timerExt) {
@@ -302,6 +452,105 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       pollQueries();
       lastTraceMs = wallMs;
       return { wallMs, gpuMs: gpu };
+    },
+
+    compactSupported: () => COMPACT_OK,
+
+    setCompactPhase(mode, limit) { compactPhase = { mode, limit }; },
+
+    async compactList(stride) {
+      // the unfinished rays of level `stride` (termination code 8/9): read rec0 back asynchronously (PBO + fence), list them
+      const L = getLevel(stride);
+      const n = L.w * L.h;
+      const pbo = gl.createBuffer();
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, 16 * n, gl.STREAM_READ);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      const sync = /** @type {WebGLSync} */ (gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0));
+      gl.flush();
+      for (;;) {
+        const st = gl.clientWaitSync(sync, 0, 0);
+        if (st === gl.ALREADY_SIGNALED || st === gl.CONDITION_SATISFIED) break;
+        if (st === gl.WAIT_FAILED) throw new Error('clientWaitSync failed');
+        if (gl.isContextLost()) throw new Error('WebGL context lost (GPU watchdog?)');
+        await yieldNow();
+      }
+      gl.deleteSync(sync);
+      const rec0 = new Float32Array(4 * n);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, rec0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      gl.deleteBuffer(pbo);
+      const list = [];
+      for (let p = 0; p < n; p++) { const c = Math.round(rec0[4 * p]) & 15; if (c === 8 || c === 9) list.push(p); }
+      freeCompact();
+      const M = list.length;
+      if (!M) return 0;
+      // compact image: 256 wide (or narrower), padding -1
+      const w = Math.min(M, 256), h = Math.ceil(M / w);
+      const idx = new Int32Array(w * h).fill(-1);
+      idx.set(list);
+      const index = /** @type {WebGLTexture} */ (gl.createTexture());
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, index);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32I, w, h);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RED_INTEGER, gl.INT, idx);
+      for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+      const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      const tex = Array.from({ length: 8 }, (_, k) => {
+        const t = /** @type {WebGLTexture} */ (gl.createTexture());
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, w, h);
+        for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
+        return t;
+      });
+      gl.drawBuffers(Array.from({ length: 8 }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('compact framebuffer incomplete');
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      compact = { fbo, tex, index, w, h, M, stride };
+      return M;
+    },
+
+    compactSize: () => (compact ? { w: compact.w, h: compact.h, M: compact.M } : null),
+
+    scatterCompact() {
+      if (!compact) return;
+      if (!scatter) {
+        const prog = /** @type {WebGLProgram} */ (gl.createProgram());
+        for (const [type, src] of /** @type {[number, string][]} */ ([[gl.VERTEX_SHADER, SCATTER_VS], [gl.FRAGMENT_SHADER, SCATTER_FS]])) {
+          const sh = /** @type {WebGLShader} */ (gl.createShader(type));
+          gl.shaderSource(sh, src); gl.compileShader(sh);
+          if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(`scatter: GLSL compile error\n${gl.getShaderInfoLog(sh)}`);
+          gl.attachShader(prog, sh);
+        }
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(`scatter: link error\n${gl.getProgramInfoLog(prog)}`);
+        const locs = new Map();
+        scatter = { prog, loc: (n) => { if (!locs.has(n)) locs.set(n, gl.getUniformLocation(prog, n)); return locs.get(n) ?? null; } };
+      }
+      const L = getLevel(compact.stride);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
+      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+      gl.viewport(0, 0, L.w, L.h);
+      gl.useProgram(scatter.prog);
+      gl.bindVertexArray(vao);
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, compact.index);
+      gl.uniform1i(scatter.loc('uIndex'), 3);
+      for (let k = 0; k < 8; k++) {
+        gl.activeTexture(gl.TEXTURE4 + k);
+        gl.bindTexture(gl.TEXTURE_2D, compact.tex[k]);
+        gl.uniform1i(scatter.loc(`uC${k}`), 4 + k);
+      }
+      gl.uniform4i(scatter.loc('uSc'), L.w, L.h, compact.w, 0);
+      gl.drawArrays(gl.POINTS, 0, compact.M);
+      for (let k = 4; k < 12; k++) { gl.activeTexture(gl.TEXTURE0 + k); gl.bindTexture(gl.TEXTURE_2D, null); }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      freeCompact();
     },
 
     display(view) {
@@ -343,6 +592,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
       gl.uniform4f(display.loc('uNoiseP'), tm.sigma, nm?.T_over_M ?? 1, nm?.xmin ?? 0, nm?.xmax ?? 1);
       gl.uniform4f(display.loc('uNoiseFade'), nm ? noiseFadeWidth(nm) : 1, 0, 0, 0);
       gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
+      gl.uniform4f(display.loc('uCamAz'), view.azimuth ?? 0, 0, 0, 0);
       gl.uniform4i(display.loc('uView'), view.mode, W, H, view.storeH ? 1 : 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
       const em = view.emission ?? { mu: 0, gamma: 0, sigma: 1, redshiftPower: 3, fudge: 1, maxPasses: 0 };
@@ -354,12 +604,12 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     },
 
     async readRecords(stride = 1) {
-      const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
+      const L = getLevel(stride);
       gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
       // 24 floats per pixel (js/gpu/traceConfig.js RECORD_FLOATS): the record, then the tail bins (zeros without a tail)
       const out = new Float32Array(24 * L.w * L.h);
       const one = new Float32Array(4 * L.w * L.h);
-      for (let k = 0; k < NATT; k++) {
+      for (let k = 0; k < Math.min(NATT, 6); k++) {
         gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
         gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, one);
         for (let p = 0; p < L.w * L.h; p++) for (let c = 0; c < 4; c++) out[24 * p + 4 * k + c] = one[4 * p + c];
@@ -382,7 +632,7 @@ export async function createWebGL2Backend(canvas, opts = {}) {
 
     pollTiming: pollQueries,
 
-    capabilities: () => ({ renderer, timerQueries: !!timerExt, maxTexture: gl.getParameter(gl.MAX_TEXTURE_SIZE), maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), tailBins: TAIL_BINS }),
+    capabilities: () => ({ renderer, timerQueries: !!timerExt, maxTexture: gl.getParameter(gl.MAX_TEXTURE_SIZE), maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS), tailBins: TAIL_BINS, compaction: COMPACT_OK }),
     timing: () => ({ traceMs: lastTraceMs, displayMs: lastDisplayMs }),
   };
   return backend;

@@ -15,6 +15,8 @@ uniform ivec4 uNoiseN;  // Nt, Nx, Nphi, noise on (1/0)
 uniform vec4 uNoiseP;   // sigma_n, T_over_M, xmin, xmax
 uniform vec4 uNoiseFade;  // B4 coverage guard: width (in x = log r) over which sigma_n fades to 0 outside [xmin, xmax], 0, 0, 0
 uniform vec4 uTime;     // t_obs / M, slow light (1/0), M_ADM, procedural advection duration D / M (0: off)
+uniform vec4 uCamAz;    // camera azimuth (rad), 0, 0, 0 (Stage 1B B5: display-only; in an axisymmetric spacetime rotating the
+                        // camera about the axis adds it to every crossing and escape phi)
 uniform highp sampler2D uFluidD;  // fluid table (1/u^t, u^r/u^t, Omega) (js/fluid/fluidTable.js), for advection
 uniform vec4 uFluidXD;  // xMin, dx, nodes, r0 of the fluid table
 uniform ivec4 uView;    // view mode, Nx, Ny, |H| stored in slot 3
@@ -97,6 +99,7 @@ float noiseCover(float x) {
 float noiseFactor(vec4 c) {
   if (uNoiseN.w == 0 || uNoiseP.x == 0.0) return 1.0;
   float M = uTime.z;
+  c.y += uCamAz.x;
   float tau = uTime.x + (uTime.y > 0.5 ? c.z / M : 0.0);
   float x = log(c.x / M);
   float X;
@@ -166,7 +169,7 @@ void main() {
   if (lv < 0) { color = vec4(0.08, 0.08, 0.1, 1.0); return; }
   int packed = int(r0.x + 0.5);
   int code = packed % 16, passes = packed / 16;
-  float th = r0.z, ph = r0.w;
+  float th = r0.z, ph = mod(r0.w + uCamAz.x, 2.0 * PI);
   int mode = uView.x;
   vec3 c = vec3(0.0);
   if (mode == V_FOURCOLOR) {
