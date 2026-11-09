@@ -34,13 +34,17 @@
  * @property {(stride:number) => Promise<number>} compactList         list the unfinished rays of a level (async read-back); their number
  * @property {() => {w:number, h:number, M:number}|null} compactSize  the compact image of the current list
  * @property {() => void} scatterCompact                              copy the compact records back to their pixels
+ * @property {(stride:number, list:Int32Array) => number} pixelList  compact image of a list of pixels of a level, traced afresh
+ *   (Stage 1B B6 adaptive refinement); their number
+ * @property {(from:number) => void} interpolateLevel                fill the full-resolution level by interpolating level `from`
  * @property {(set:0|1, w?:number, h?:number) => void} useRecordSet  0: the displayed records; 1: a background set of size w x h
  *   (Stage 1B B5 idle pre-tracing); later trace/clear/read/compaction calls act on it
  * @property {(strides:number[]) => CacheHandle} cacheStore           copy the record levels of the current set (record cache)
  * @property {(h:CacheHandle) => void} cacheRestore                   copy cached levels into the displayed set and show them
  * @property {(h:CacheHandle) => void} cacheFree
  * @property {(view:DisplayView) => void} display
- * @property {(stride?:number) => Promise<Float32Array>} readRecords  one level (default full resolution), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
+ * @property {(stride?:number, currentSet?:boolean) => Promise<Float32Array>} readRecords  one level (default full resolution) of the
+ *   displayed records (or of the set being traced), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image
  * @property {() => void} pollTiming                                  resolve finished GPU timer queries
  * @property {() => Record<string, unknown>} capabilities

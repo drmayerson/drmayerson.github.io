@@ -3,6 +3,7 @@
 // closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
 // Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
 import { CLOSED_FORMS } from './metrics/closedForm.js';
+import { tierSettings, pickTier, TIERS, TIER_LABELS, NORMAL_TRACED } from './gpu/tiers.js';
 import { createBackend } from './gpu/backend.js';
 import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
@@ -46,8 +47,12 @@ export function metricParamsFromState(s) {
   return { params, clamped };
 }
 
-/** @param {Record<string, any>} s @param {boolean} [coarseTables] @returns {import('./gpu/traceConfig.js').ViewParams} */
-export function viewFromState(s, coarseTables = false) {
+/**
+ * @param {Record<string, any>} s @param {boolean} [coarseTables]
+ * @param {import('./gpu/tiers.js').Tier} [autoTier]  the tier 'auto' resolves to (default High)
+ * @returns {import('./gpu/traceConfig.js').ViewParams}
+ */
+export function viewFromState(s, coarseTables = false, autoTier = 'high') {
   const [nx, nth] = String(s.grid).split('x').map(Number);
   const metric = metricIdFromState(s), metricParams = metricParamsFromState(s).params;
   const M = createMetric(metric, metricParams).massADM;
@@ -56,9 +61,11 @@ export function viewFromState(s, coarseTables = false) {
     // a path the metric does not have falls back: analytic = Kerr only, closed = metrics with a generated shader
     path: s.path === 'analytic' ? (metric === 'kerr' ? 'analytic' : 'auto') : s.path === 'closed' ? (CLOSED_FORMS[metric] ? 'closed' : 'tabulated') : s.path, grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
-    N: s.N, eps: s.eps, maxSteps: s.maxSteps, crossing: s.crossing, storeH: s.storeH,
-    // larger steps beyond 20 M, up to 4x (M9 accuracy trade, adopted by the user): escape directions shift ~3e-4 rad
-    farSteps: s.farSteps ? { r: 20, max: 4 } : null,
+    N: s.N, crossing: s.crossing, storeH: s.storeH,
+    // quality tier (B6): its eps, far steps, max steps and refinement; 'custom' takes them from the controls
+    ...(s.quality === 'custom'
+      ? { eps: s.eps, maxSteps: s.maxSteps, farSteps: s.farSteps ? { r: 20, max: 4 } : null, refine: null, bs3: null }
+      : tierSettings(s.quality === 'auto' ? autoTier : s.quality, metricEntry(metric).mode)),
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi, model: s.fluidModel },
     texelReuse: !!s.texelReuse, compact: s.compact ? { n1: 1500 } : null,
     tailEmission: { redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) },
@@ -194,6 +201,8 @@ async function main() {
       perfRow('disc crossings', caps.tailBins ? `first 3 exact, the rest in ${caps.tailBins} log-r bins (no noise or slow light)` : `first 3 only: this device has ${caps.maxDrawBuffers} draw buffers (the binned tail needs 6)`) +
       perfRow('trace time', st.cached ? `restored from the record cache (traced in ${st.wallMs.toFixed(0)} ms)` : `${st.wallMs.toFixed(0)} ms wall` + (st.gpuMs !== null ? `, ${st.gpuMs.toFixed(0)} ms GPU` : '')
         + (st.compacted ? `; ${st.compacted} rays continued in compaction rounds` : '')) +
+      perfRow('quality', `${/** @type {any} */ (TIER_LABELS)[tierNow] ?? tierNow}${state.quality === 'auto' ? ` (auto; predicted full trace here: ${Object.entries(autoPredicted[metricEntry(metricIdFromState(state)).mode] ?? {}).map(([t, x]) => `${t} ${x.toFixed(1)} s`).join(', ')})` : ''}`
+        + (st.traced !== undefined && st.traced < 1 ? `; adaptive refinement traced ${(100 * st.traced).toFixed(0)}% of the pixels` : '')) +
       perfRow('record cache', `${pipeline.cache.size} views, ${(pipeline.cacheUsed() / 2 ** 20).toFixed(0)} of ${(pipeline.cacheBytes / 2 ** 20).toFixed(0)} MB${state.pretrace ? '; idle pre-tracing on' : ''}`) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
       (warnings.length ? perfRow('warnings', warnings.join('; ')) : '');
@@ -207,6 +216,38 @@ async function main() {
   };
 
   const bakes = new BakeClient();
+  /** the tier 'auto' picked per metric mode, and the predicted full-trace times (s) per tier */
+  const autoTiers = /** @type {Record<string, import('./gpu/tiers.js').Tier>} */ ({});
+  const autoPredicted = /** @type {Record<string, Record<string, number>>} */ ({});
+  let tierNow = /** @type {string} */ ('high');
+  /**
+   * Probe traces of the current view at 64^2 for each tier (in the background record set, twice: the first compiles),
+   * scaled to the full image: the highest tier within E1's target (B6, plan 1.2).
+   * @param {'BH'|'fuzzball'} mode
+   */
+  const probeTier = async (mode) => {
+    const n = 64;
+    /** @type {Partial<Record<import('./gpu/tiers.js').Tier, number>>} */
+    const ms = {};
+    for (const t of TIERS) {
+      try {
+        const view = { ...viewFromState({ ...state, quality: t }), N: n, refine: null };
+        const ts = tableSpec(view);
+        const tables = ts ? (await bakes.get(ts)).tables : undefined;
+        const fluid = (await bakes.get(fluidSpec(view))).tables;
+        const setup = gpuTraceSetup(view, tables, fluid);
+        let best = Infinity;
+        for (let k = 0; k < 2; k++) {
+          const st = await pipeline.trace(setup, { levels: [1], measureSteps: false, background: true, cache: false });
+          if (!st) return null;
+          best = Math.min(best, st.gpuMs ?? st.wallMs);
+        }
+        // Normal traces only part of the full level with refinement: its measured share
+        ms[t] = t === 'normal' ? best * NORMAL_TRACED[mode] : best;
+      } catch (e) { console.warn('tier probe failed:', e); return null; }
+    }
+    return pickTier(ms, n * n, state.N * state.N * (1 + 1 / 16), mode);
+  };
   let runId = 0;
   let lastBake = '';
   /** @type {import('./fluid/fluidTable.js').FluidTable|null} */
@@ -218,7 +259,16 @@ async function main() {
     const { clamped } = metricParamsFromState(state);
     let setup;
     try {
-      const view = viewFromState(state, metricDrag);
+      // quality tier (B6): 'auto' probes this device once per metric mode (before the first final trace)
+      const mode = metricEntry(metricIdFromState(state)).mode;
+      if (state.quality === 'auto' && final && !autoTiers[mode]) {
+        $('status').textContent = 'measuring this device (quality auto)…';
+        const pk = await probeTier(mode);
+        if (id !== runId) return;
+        if (pk) { autoTiers[mode] = pk.tier; autoPredicted[mode] = pk.predictedS; }
+      }
+      tierNow = state.quality === 'auto' ? autoTiers[mode] ?? 'high' : state.quality;
+      const view = viewFromState(state, metricDrag, autoTiers[mode] ?? 'high');
       const ts = tableSpec(view);
       let tables;
       if (ts) {
@@ -244,8 +294,9 @@ async function main() {
     if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); $('clock').textContent = clockText(); }
     requestDraw();
     const note = clamped.length ? ` (${clamped.join(', ')})` : '';
-    $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms` : `preview (stride ${levels[0]}); release to refine`) + note;
-    if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : setup.program === 'trace_kerr_analytic' ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${setup.program.slice(7)})`);
+    const q = `quality ${/** @type {any} */ (TIER_LABELS)[tierNow] ?? tierNow}${state.quality === 'auto' ? ' (auto)' : ''}`;
+    $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}` : `preview (stride ${levels[0]}, draft); release to refine`) + note;
+    if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : setup.program.startsWith('trace_kerr_analytic') ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${setup.program.slice(7).split('+')[0]})`);
   };
 
   // Stage 1B B5 idle pre-tracing: after a final trace, with the GPU idle, trace the previews of the neighbouring views
@@ -270,7 +321,7 @@ async function main() {
       for (const ns of neighbours) {
         if (id !== runId) return;
         try {
-          const view = viewFromState(ns, !!ns.metricDrag);
+          const view = viewFromState(ns, !!ns.metricDrag, autoTiers[metricEntry(metricIdFromState(ns)).mode] ?? 'high');
           const ts = tableSpec(view);
           const tables = ts ? (await bakes.get(ts)).tables : undefined;
           const fluid = (await bakes.get(fluidSpec(view))).tables;
@@ -333,7 +384,9 @@ async function main() {
     state, backend, pipeline, CONTROLS,
     stats: () => lastStats,
     /** the view the current state traces (Stage 1B B5 tests) */
-    view: () => viewFromState(state),
+    view: () => viewFromState(state, false, autoTiers[metricEntry(metricIdFromState(state)).mode] ?? 'high'),
+    /** the quality tier of the last trace (B6) */
+    tier: () => tierNow,
     noise: () => noise,
     /** set the observer time (units of M) and redraw */
     setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },

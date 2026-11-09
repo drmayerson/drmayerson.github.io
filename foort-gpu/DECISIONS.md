@@ -317,3 +317,30 @@ non-trivial implementation choice.
   - **Texel reuse** is faster on all three GPUs, so the viewer now defaults to it. Scripts and the quality gate's Reference keep the plain tracer (`VIEW_DEFAULTS.texelReuse` false), so Reference stays the Stage 1 integrator.
   - **Ray compaction** gains at most 7%, so it stays off.
   - **Not decided by the user:** the user did not decide this explicitly; it is the plan's adoption rule applied to their reports. Flagged at checkpoint B5.
+- 2026-11-09 — **B5 merged; B6 started** (user: "Merge, start B6").
+- 2026-11-09 — **B6 quality tiers** (`js/gpu/tiers.js`, plan 1.2):
+  - **Tiers:** Reference, High and Normal as in the plan. Draft is the coarse preview while dragging (coarse level; coarse tables for metric parameters).
+  - **"quality" control:** auto, reference, high, normal, or custom (the ε, far-step and max-step controls, shown only then); URL `quality=`.
+  - **URL v3:** a link from before v3 that set ε, farSteps or maxSteps opens as custom.
+  - **Auto selection:** once per metric mode, before the first final trace, the current view is traced at 64² for each tier in the background record set (twice each; the first compiles). The full trace at the current resolution is predicted from those timings, and the highest tier within E1 (2 s BH, 10 s fuzzball) is chosen; Normal if none fits.
+    - The probe is longer than the plan's "~100 ms": about 0.3 s for black holes, about 1 s for the fuzzball (Reference has 10000 max steps there).
+    - The status line and the performance table name the tier and the predictions.
+  - **Quality gate:** the B5 exact speedups are now in every gate configuration (closed-form path "auto", texel reuse), as plan 1.2 allows. Option `--out`; option `--refhash` reuses Reference records cached under an earlier code version, used here because the B6 shader options are all off in Reference.
+- 2026-11-09 — **B6 Normal candidates (plan 4.2), gate at 512² against Reference** (`dev/reports/b6/summary.md`):
+  - **Near-field ε = 0.04, 0.05, 0.06, 0.08** (far steps kept): none passes. From 0.04 on, the sky errors exceed High's (black holes: p99 up to 0.42 px at 0.04 vs High's ≤ 0.30); from 0.05 on, the noisy-frame emission L1 and delays fail too. Speed vs High: 1.2–2.1× (black holes).
+  - **Bogacki–Shampine 3(2)** (`+bs3`, FSAL, error control on (x, δ, sin δ φ), tolerance tol × the pixel's angle at the camera, steps capped at 4 × FOORT's rule):
+    - at tol 0.1 it passes **every** budget on all 8 black-hole scenes: sky p99 ≤ 0.10 px (High 0.22–0.30), emission L1 ≤ 1.8e-3, p99 ≤ 6.5e-3, dt p99 ≤ 0.23 M; 1.19× High (geometric mean, 0.9–2.2× per scene vs Reference);
+    - at tol 0.3 and 1 it is 1.5× and 2.0× faster but fails the noisy-frame emission L1 (4–5e-3);
+    - it fails on the fuzzball at every tolerance: different steps change the chaotic interior (class agreement 93–95% vs High's 97.5%).
+  - **Adaptive refinement** (`js/gpu/refine.js` + interpolation pass + the B5 pixel-list machinery, from stride 4):
+    - **Marking:** termination class or crossing count differ, or a corner not cleanly escaped or captured, or the interpolation error estimated from second differences exceeds the thresholds (sky in fine pixels via the Jacobian; r, g relative; dt in M). A first-difference rule marked 93% of the Kerr cells (lensing is steep but smooth); second differences mark 32%.
+    - **Result:** fails the sky budget on every scene (p99 1.5–2.5 px vs High 0.3), and the per-pixel emission p99 on three black-hole scenes; 1.14–1.31× High.
+    - **Why:** interpolating escape directions across 4-pixel cells cannot match a fully traced image to a few tenths of a pixel; the budget "no worse than High" is set by High's 0.25 px.
+    - The machinery stays, off. Two-stage refinement (4 → 2 → 1) or a looser sky budget would be the next things to try.
+- 2026-11-09 — **B6 Normal (proposed, for the user to confirm at checkpoint B6):**
+  - **Black holes:** High + BS3 at tol 0.1.
+  - **Fuzzball:** = High. No candidate passes; its chaotic interior makes any change of steps visible.
+  - **Refinement:** not in Normal.
+- 2026-11-09 — **Bug found by the gate and fixed:** an idle pre-trace that started between a trace and the read-back of its records made the read-back return the background set (one corrupted gate scene: eps 0.04, kerr_a0_inc17; rerun clean).
+  - **Fix:** read-backs now read the displayed set unless the pipeline asks for its own (refinement).
+  - **Scripts:** the gate and the GPU runner open the viewer with `pretrace=0`.

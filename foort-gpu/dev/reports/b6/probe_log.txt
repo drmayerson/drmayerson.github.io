@@ -1,0 +1,14 @@
+Kerr a=0.94 closed-form, Reference          1176.3 Msteps/s   0.18 s @512
+Kerr a=0.94 tabulated, Reference              93.2 Msteps/s   2.26 s @512
+Kerr a=0.94 tabulated, High                   77.6 Msteps/s   2.11 s @512
+ST3Cr λ=1e-3, Reference                       27.9 Msteps/s   15.5 s @512
+ST3Cr λ=1e-3, High                            27.9 Msteps/s  10.97 s @512
+B6 Kerr a=0.94 closed-form, High              1119 Msteps/s   0.15 s @512
+B6 Kerr a=0.94 closed-form, Normal             974 Msteps/s   0.08 s @512
+B6 Manko-Novikov a=0.94 tabulated, High      129.6 Msteps/s   1.12 s @512
+B6 Manko-Novikov a=0.94 tabulated, Normal    189.1 Msteps/s    0.4 s @512
+G3 = G4 (ST3Cr λ=1e-3, High)                       2846 -> 2532.8 ms 1.12x
+texel reuse (Kerr a=0.94 tabulated, High)          384.5 -> 234.9 ms 1.64x
+texel reuse (ST3Cr λ=1e-3, High)                   888.9 -> 457.1 ms 1.94x
+ray compaction (ST3Cr λ=1e-3, High)                1431.2 -> 990.8 ms 1.44x
+generated closed form (Johannsen a=0.94, High)     488.4 -> 69.6 ms 7.02x

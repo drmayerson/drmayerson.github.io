@@ -18,7 +18,7 @@
 //  - timing: GPU time, Reference and configuration alternating A/B/A/B, best of 3 (the iGPU varies 2-3x between runs).
 // Budgets (Normal tier, Section 1.2) are checked and reported; other tiers are reported without a verdict.
 //
-// Usage (from dev/): node scripts/qualityGate.mjs --config high [--N 512] [--scenes a,b] [--no-timing] [--recompute]
+// Usage (from dev/): node scripts/qualityGate.mjs --config high [--N 512] [--scenes a,b] [--no-timing] [--recompute] [--out b6]
 // Output: dev/reports/b0/gate_<config>.json and .md. Reference records are cached in tools/foort_parity/build/gate/,
 // keyed by a hash of the tracer sources (a code change invalidates them).
 import { createHash } from 'node:crypto';
@@ -42,7 +42,7 @@ const N = Number(opt('--N', 512));
 const sceneFilter = opt('--scenes', '');
 const timing = !args.includes('--no-timing');
 const recompute = args.includes('--recompute');
-const outDir = resolve(here, '../reports/b0');
+const outDir = resolve(here, '../reports', opt('--out', 'b0'));
 const cacheDir = resolve(root, 'tools/foort_parity/build/gate');
 mkdirSync(outDir, { recursive: true }); mkdirSync(cacheDir, { recursive: true });
 const config = GATE_CONFIGS[configName];
@@ -109,12 +109,16 @@ function skyPx(A, k, b) {
 
 const viewer = await openViewer();
 const base = viewer.page.url().replace(/index\.html.*$/, 'index.html');
-await viewer.page.goto(`${base}?N=128&play=0`);   // paused: no animation frames during traces
+await viewer.page.goto(`${base}?N=128&play=0&pretrace=0`);   // no idle pre-tracing between the gate's traces   // paused: no animation frames during traces
 await viewer.page.waitForFunction(() => window.__foort && /done/.test(document.getElementById('status').textContent), null, { timeout: 60_000 });
-const trace = async (view) => (await viewer.trace({ ...view, N }, { levels: [1], adaptTiles: true })).rec;
-const gpuTime = (view, n) => viewer.page.evaluate(([v, nn]) => window.__foort.trace({ ...v, N: nn }, { levels: [1], adaptTiles: true, measureSteps: false, records: false }).then((r) => r.stats.gpuMs ?? r.stats.wallMs), [view, n]);
+// adaptive refinement (B6) refines from the stride-4 level, as the viewer's final traces
+const levelsOf = (view) => (view.refine ? [4, 1] : [1]);
+const trace = async (view) => (await viewer.trace({ ...view, N }, { levels: levelsOf(view), adaptTiles: true })).rec;
+const gpuTime = (view, n) => viewer.page.evaluate(([v, nn, lv]) => window.__foort.trace({ ...v, N: nn }, { levels: lv, adaptTiles: true, measureSteps: false, records: false }).then((r) => r.stats.gpuMs ?? r.stats.wallMs), [view, n, levelsOf(view)]);
 const cached = async (name, view) => {
-  const f = join(cacheDir, `${name}_N${N}_${codeHash}.bin`);
+  // --refhash: reuse Reference records cached under another code version (only when the change cannot affect the
+  // Reference configuration, e.g. new shader options that are off there; say so in the report)
+  const f = join(cacheDir, `${name}_N${N}_${opt('--refhash', codeHash)}.bin`);
   if (!recompute && existsSync(f)) { const b = readFileSync(f); return new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4); }
   const rec = await trace(view);
   writeFileSync(f, Buffer.from(rec.buffer, rec.byteOffset, rec.byteLength));
@@ -214,7 +218,7 @@ try {
   }
 } finally { await viewer.close(); }
 
-const report = { config: configName, description: config.description, N, codeHash, renderer: viewer.renderer, date: new Date().toISOString(), rows };
+const report = { config: configName, description: config.description, N, codeHash, referenceHash: opt('--refhash', codeHash), renderer: viewer.renderer, date: new Date().toISOString(), rows };
 writeFileSync(join(outDir, `gate_${configName}.json`), JSON.stringify(report, null, 1));
 // markdown summary
 const e = (x) => (Number.isFinite(x) ? x.toExponential(1) : '—');
@@ -224,4 +228,4 @@ const md = [`# Quality gate: ${configName} vs Reference (${N}², code ${codeHash
   ...rows.map((r) => `| ${r.scene} | ${(100 * r.chaosFraction).toFixed(2)}% | ${(100 * r.classAgreement).toFixed(3)}% | ${e(r.sky.medianPx)} / ${e(r.sky.p99Px)} | ${r.emission.map((x) => e(x.relL1)).join(' / ')} | ${e(Math.max(...r.emission.map((x) => x.relP99 || 0)))} | ${e(Math.max(...r.emission.map((x) => Math.abs(x.fluxRel))))} | ${e(r.dtP99M)} | ${r.lightCurve.correlation.toFixed(6)} | ${e(r.chaotic.fluxRel)} | ${e(r.chaotic.maxClassFractionDiff)} | ${r.speed ? r.speed.speedup.toFixed(2) + '×' : '—'} |`),
   '', 'Normal budgets passed per scene: ' + rows.map((r) => `${r.scene}: ${Object.entries(r.budget).filter(([, v]) => !v).map(([k]) => k).join(', ') || 'all'}`).join('; ')].join('\n');
 writeFileSync(join(outDir, `gate_${configName}.md`), md + '\n');
-console.log(`wrote dev/reports/b0/gate_${configName}.json/.md`);
+console.log(`wrote ${outDir}/gate_${configName}.json/.md`);

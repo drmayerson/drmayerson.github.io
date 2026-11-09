@@ -122,14 +122,19 @@ export const CONTROLS = [
     visible: (s) => s.advect },
   { key: 'grid', label: 'metric table (x × θ nodes per hemisphere)', type: 'select', group: 'Tracing',
     options: ['256x128', '512x128', '512x256', '1024x256'], default: '512x128', visible: (s) => s.path === 'tabulated' || (s.path === 'auto' && !['kerr', 'johannsen', 'reissnerNordstrom'].includes(s.metric)) },
-  { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig },
-  { key: 'farSteps', label: 'larger steps beyond 20 M (up to 4×; ~3e-4 rad on escape directions)', type: 'checkbox', group: 'Tracing', default: true },
+  // Stage 1B B6 quality tiers (plan 1.2): auto picks the highest tier that traces the image within E1's time target on
+  // this device; custom exposes the step parameter, far steps and max steps
+  { key: 'quality', label: 'quality', type: 'select', group: 'Tracing', options: ['auto', 'reference', 'high', 'normal', 'custom'],
+    optionLabels: { auto: 'auto (the best that fits 2 s black holes / 10 s fuzzball here)', reference: 'Reference (validation: ε 0.03, no trades)',
+      high: 'High (far steps; fuzzball 5000 steps)', normal: 'Normal (High + gated speedups)', custom: 'custom (ε, far steps, max steps below)' }, default: 'auto' },
+  { key: 'eps', label: 'step parameter ε', type: 'range', group: 'Tracing', min: 0.003, max: 0.1, scale: 'log', default: 0.03, format: sig, visible: (s) => s.quality === 'custom' },
+  { key: 'farSteps', label: 'larger steps beyond 20 M (up to 4×; ~3e-4 rad on escape directions)', type: 'checkbox', group: 'Tracing', default: true, visible: (s) => s.quality === 'custom' },
   // Stage 1B B5 exact speedups (results unchanged beyond float32 rounding)
   // adopted at checkpoint B5: faster on all three GPUs measured (1.2-3.2x)
   { key: 'texelReuse', label: 'reuse table texels across RK stages (exact; 1.2–3× faster)', type: 'checkbox', group: 'Tracing', default: true },
   { key: 'compact', label: 'ray compaction (exact; trace long rays as a dense image after 1500 steps)', type: 'checkbox', group: 'Tracing', default: false },
   { key: 'pretrace', label: 'idle pre-tracing of neighbouring views (λ ± one notch, inclination ± 5°; off on phones)', type: 'checkbox', group: 'Tracing', default: true, retrace: false },
-  { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000 },
+  { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000, visible: (s) => s.quality === 'custom' },
   { key: 'crossing', label: 'equatorial crossings', type: 'select', group: 'Tracing', options: ['interpolate', 'foort'],
     optionLabels: { interpolate: 'interpolated (app)', foort: 'FOORT parity' }, default: 'interpolate' },
   { key: 'storeH', label: 'record |H| (replaces crossing 3)', type: 'checkbox', group: 'Tracing', default: false },
@@ -168,7 +173,7 @@ export function initialState(q) {
 }
 
 /** URL version written by stateToQuery. 1 (no `v`): Stage 1. 2: Stage 1B, the fuzzball in units of M (B1). */
-export const URL_VERSION = 2;
+export const URL_VERSION = 3;
 
 /**
  * Migrate the state of an older URL to the current version.
@@ -180,6 +185,8 @@ export const URL_VERSION = 2;
 export function migrateState(s, q) {
   const v = Number(q.get('v') ?? 1);
   if (v < 2 && s.metric === 'st3cr') { s.mu /= 24; s.sigma /= 24; }
+  // v3 (Stage 1B B6): tracing settings belong to a quality tier; a link that set them keeps them as 'custom'
+  if (v < 3 && !q.has('quality') && ['eps', 'farSteps', 'maxSteps'].some((k) => q.has(k))) s.quality = 'custom';
 }
 
 /** @param {Record<string, any>} s */

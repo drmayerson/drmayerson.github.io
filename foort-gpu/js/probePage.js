@@ -26,6 +26,12 @@ const CASES = [
   { name: 'Kerr a=0.94 tabulated, High', mode: 'BH', N: 256, view: { metric: 'kerr', metricParams: { a: 0.94 }, maxSteps: 5000, farSteps: far } },
   { name: 'ST3Cr λ=1e-3, Reference', mode: 'fuzzball', N: 128, view: { metric: 'st3cr', metricParams: { lambda: 1e-3 }, maxSteps: 10000 } },
   { name: 'ST3Cr λ=1e-3, High', mode: 'fuzzball', N: 128, view: { metric: 'st3cr', metricParams: { lambda: 1e-3 }, maxSteps: 5000, farSteps: far } },
+  // Stage 1B B6: the viewer's tiers for black holes on their default path (closed form) and the tables; Normal = High +
+  // the Bogacki-Shampine 3(2) integrator (the fuzzball's Normal is its High)
+  { name: 'B6 Kerr a=0.94 closed-form, High', mode: 'BH', N: 256, view: { metric: 'kerr', metricParams: { a: 0.94 }, path: 'auto', texelReuse: true, maxSteps: 5000, farSteps: far } },
+  { name: 'B6 Kerr a=0.94 closed-form, Normal', mode: 'BH', N: 256, view: { metric: 'kerr', metricParams: { a: 0.94 }, path: 'auto', texelReuse: true, maxSteps: 5000, farSteps: far, bs3: { tol: 0.1, cap: 4 } } },
+  { name: 'B6 Manko-Novikov a=0.94 tabulated, High', mode: 'BH', N: 256, view: { metric: 'mankoNovikov', metricParams: { a: 0.94, alpha3: 2 }, texelReuse: true, maxSteps: 5000, farSteps: far } },
+  { name: 'B6 Manko-Novikov a=0.94 tabulated, Normal', mode: 'BH', N: 256, view: { metric: 'mankoNovikov', metricParams: { a: 0.94, alpha3: 2 }, texelReuse: true, maxSteps: 5000, farSteps: far, bs3: { tol: 0.1, cap: 4 } } },
 ];
 /**
  * Stage 1B B5 exact speedups, measured as interleaved A/B pairs (A, B, A, B, A, B; best of 3 each): the GPU clock
@@ -104,7 +110,7 @@ async function run() {
   }
   const caps = probeWebGL2();
   const report = {
-    page: 'FOORT-GPU tier probe (Stage 1B B0, B5 cases)', date: new Date().toISOString(), userAgent: navigator.userAgent,
+    page: 'FOORT-GPU tier probe (Stage 1B B0, B5, B6 cases)', date: new Date().toISOString(), userAgent: navigator.userAgent,
     renderer: caps.renderer ?? null, vendor: caps.vendor ?? null,
     limits: { MAX_DRAW_BUFFERS: /** @type {any} */ (caps).limits?.MAX_DRAW_BUFFERS, MAX_TEXTURE_IMAGE_UNITS: /** @type {any} */ (caps).limits?.MAX_TEXTURE_IMAGE_UNITS },
     timerQueries: !!caps.extensions?.EXT_disjoint_timer_query_webgl2, devicePixelRatio: devicePixelRatio,

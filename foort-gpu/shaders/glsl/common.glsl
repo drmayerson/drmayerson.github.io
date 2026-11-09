@@ -57,7 +57,8 @@ uniform vec4 uTailEm;   // redshift power p, geometric fudge factor (passes >= 2
 // continues the same loop; its records are scattered back (backendWebGL2.js). Up to the tail centroids (12 bits at a
 // phase boundary, 8 bits in the final record anyway) a compacted ray is the single-pass ray.
 #ifdef COMPACT
-uniform ivec4 uCompact;              // mode (1: stop at the step limit; 2: resume the listed rays), step limit (0: none), 0, 0
+uniform ivec4 uCompact;              // mode (1: stop at the step limit; 2: resume the listed rays; 3: trace the listed pixels
+                                     // afresh, B6 adaptive refinement), step limit (0: none), 0, 0
 uniform highp isampler2D uIndex;     // mode 2: pixel index i + Nx j of the compact texel, -1 = padding
 uniform highp sampler2D uPrev0, uPrev1, uPrev2, uPrev3, uPrev4, uPrev5, uPrev6, uPrev7;   // the level's records
 layout(location = 6) out vec4 outCont;
@@ -72,6 +73,9 @@ const int TERM_HORIZON = 1, TERM_BOUNDARY = 2, TERM_TIMEOUT = 3, TERM_NAN = 4, T
 // min(theta, pi - theta) = delta. The axis distance is floored (uAux.y): with FOORT's h2 ~ theta a
 // ray aimed straight at the axis (p_phi = 0) takes geometrically shrinking steps and never crosses
 // it (FOORT ends such rays with its ThetaSingularity termination instead).
+#ifdef BS3
+uniform vec4 uBS;       // B6 embedded integrator: error tolerance (rad), step cap factor on FOORT's eps, 0, 0
+#endif
 uniform vec4 uFar;      // larger steps at large r (M9 accuracy trade): eps *= clamp(r / r_far, 1, k_max); x = r_far (0: off), y = k_max
 
 float adaptiveStep(vec4 pos, vec4 v) {
@@ -112,7 +116,7 @@ vec4 crossingRecord(vec4 pos, vec2 mom, float pt, float pphi) {
 void main() {
   ivec2 ij = ivec2(gl_FragCoord.xy);
 #ifdef COMPACT
-  if (uCompact.x == 2) {
+  if (uCompact.x >= 2) {
     int pix = texelFetch(uIndex, ij, 0).x;
     if (pix < 0) {
       outRec0 = vec4(0.0); outRec1 = vec4(0.0); outRec2 = vec4(0.0); outRec3 = vec4(0.0);
@@ -180,7 +184,66 @@ void main() {
   }
 #endif
 
+#ifdef BS3
+  vec4 k1p = vec4(0.0);
+  vec2 k1m = vec2(0.0), k1q = vec2(0.0);
+  bool haveK1 = false;
+  float hNext = -1.0;
+#endif
   for (int n = n0; n <= maxSteps; n++) {
+#ifdef BS3
+    // Stage 1B B6 (plan 4.2-1, Normal-tier candidate): Bogacki-Shampine 3(2) with error control and FSAL (k4 of an
+    // accepted step is k1 of the next: 3 metric evaluations per step). Error: the embedded 2nd-order difference in
+    // (x, delta, sin(delta) phi), against the tolerance uBS.x (a fraction of the pixel's angle at the camera); the step
+    // is capped by FOORT's rule at eps * uBS.y and floored at hmin. A rejected attempt counts as a step (time-out).
+    // One call site of the metric functions, as for RK4: the stages are a loop.
+    vec4 prevPos = pos;
+    vec2 prevMom = mom;
+    float prevHemi = hemi;
+    float h = 0.0, xStageMin = 1e30;
+    vec4 k2p = vec4(0.0), k3p = vec4(0.0), k4p = vec4(0.0), y1p = pos;
+    vec2 k2m = vec2(0.0), k3m = vec2(0.0), k4m = vec2(0.0), k4q = vec2(0.0), y1m = mom;
+    for (int st = haveK1 ? 0 : -1; st < 3; st++) {
+      vec4 sp = pos; vec2 sm = mom;
+      if (st == 0) {
+        // constraint projection on k1 (as for RK4's first stage), then the step
+        if (uAux.w > 0.5) {
+          float B = pt * k1p.w + pphi * k1p.z, A = mom.x * k1p.x + mom.y * k1p.y;
+          if (A > 0.0 && B < 0.0) {
+            float sc = sqrt(-B / A);
+            mom *= sc;
+            k1p.xy *= sc; k1m += (sc * sc - 1.0) * k1q;
+          }
+        }
+        float hcap = adaptiveStep(pos, k1p) * uBS.y;
+        h = max(min(hNext > 0.0 ? hNext : hcap / uBS.y, hcap), uStep.y);
+        sp = pos + 0.5 * h * k1p; sm = mom + 0.5 * h * k1m;
+      } else if (st == 1) {
+        sp = pos + 0.75 * h * k2p; sm = mom + 0.75 * h * k2m;
+      } else if (st == 2) {
+        sp = pos + h * ((2.0 / 9.0) * k1p + (1.0 / 3.0) * k2p + (4.0 / 9.0) * k3p);
+        sm = mom + h * ((2.0 / 9.0) * k1m + (1.0 / 3.0) * k2m + (4.0 / 9.0) * k3m);
+        y1p = sp; y1m = sm;
+      }
+      if (st >= 0) xStageMin = min(xStageMin, sp.x);
+      vec4 kp; vec2 km, kq;
+      geodesicRHS(sp, sm, hemi, pt, pphi, kp, km, kq);
+      if (st == -1) { k1p = kp; k1m = km; k1q = kq; haveK1 = true; }
+      else if (st == 0) { k2p = kp; k2m = km; }
+      else if (st == 1) { k3p = kp; k3m = km; }
+      else { k4p = kp; k4m = km; k4q = kq; }
+    }
+    vec4 ev = h * ((-5.0 / 72.0) * k1p + (1.0 / 12.0) * k2p + (1.0 / 9.0) * k3p - 0.125 * k4p);
+    float err = max(max(abs(ev.x), abs(ev.y)), abs(ev.z) * sin(pos.y)) / uBS.x;
+    steps = n + 1;
+    if (!(err <= 1.0) && h > uStep.y * 1.0001 && err == err) {
+      hNext = h * max(0.2, 0.9 * pow(err, -1.0 / 3.0));
+      continue;
+    }
+    hNext = h * clamp(0.9 * pow(max(err, 1e-6), -1.0 / 3.0), 0.2, 4.0);
+    pos = y1p; mom = y1m;
+    k1p = k4p; k1m = k4m; k1q = k4q;   // FSAL
+#else
     // RK4 as a loop over the stages: one call site of the metric functions keeps the compiled
     // shader small (ANGLE/D3D inlines every call; four call sites of the tabulated lookup took ~30 s to compile)
     vec4 sp = pos, accP = vec4(0.0);
@@ -216,11 +279,20 @@ void main() {
     pos += h / 6.0 * accP;
     mom += h / 6.0 * accM;
     steps = n + 1;
+#endif
 
     // axis reflection (plan Section 3.5), the same at both poles
-    if (pos.y < 0.0) { pos.y = -pos.y; pos.z += PI; mom.y = -mom.y; }
+    if (pos.y < 0.0) { pos.y = -pos.y; pos.z += PI; mom.y = -mom.y;
+#ifdef BS3
+      haveK1 = false;   // k1 was evaluated in the other chart
+#endif
+    }
     // equator: change hemisphere
-    if (pos.y > HALF_PI) { pos.y = PI - pos.y; hemi = -hemi; mom.y = -mom.y; }
+    if (pos.y > HALF_PI) { pos.y = PI - pos.y; hemi = -hemi; mom.y = -mom.y;
+#ifdef BS3
+      haveK1 = false;
+#endif
+    }
 
     // terminations, FOORT order (horizon: any RK stage inside counts; boundary; time out; singularity),
     // except that NaN/Inf is tested first: GLSL comparisons and min() with NaN are undefined

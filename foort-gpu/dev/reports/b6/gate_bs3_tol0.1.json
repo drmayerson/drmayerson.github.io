@@ -1,0 +1,1077 @@
+{
+ "config": "bs3_tol0.1",
+ "description": "High with the Bogacki-Shampine 3(2) integrator, tolerance 0.1 pixel angles, steps capped at 4x FOORT's rule.",
+ "N": 512,
+ "codeHash": "48a078bd6a71",
+ "referenceHash": "1b1e6fd727c8",
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+ "date": "2026-11-09T14:42:31.883Z",
+ "rows": [
+  {
+   "scene": "kerr_a0_inc17",
+   "N": 512,
+   "chaosFraction": 0.0000152587890625,
+   "classAgreement": 0.9999847409781033,
+   "sky": {
+    "medianPx": 0.007518510858502016,
+    "p99Px": 0.07737547936639236,
+    "maxPx": 23.95907286724696
+   },
+   "dtP99M": 0.1583251953125,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.0001633132222172519,
+     "relP99": 0.0013773192841453976,
+     "fluxRel": -0.00005488465324907747,
+     "chaoticFluxRel": 0.00008284160378913214
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0015359675803325282,
+     "relP99": 0.0050946642437451044,
+     "fluxRel": -0.0001769024471902707,
+     "chaoticFluxRel": 0.0001675419296407812
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.001409403950658765,
+     "relP99": 0.005331402581545313,
+     "fluxRel": -0.000004310935042819514,
+     "chaoticFluxRel": 0.000822069127945486
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.001310375572054303,
+     "relP99": 0.0056431564992427425,
+     "fluxRel": -0.00007602963746719917,
+     "chaoticFluxRel": 0.0007534565784026538
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.999999664512391,
+    "relRMS": 0.0003140203480696205
+   },
+   "chaotic": {
+    "pixels": 4,
+    "fluxRel": 0.00008284160378913214,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 101.61327999999999,
+    "configMs": 46.80267,
+    "speedup": 2.171100067581614
+   },
+   "seconds": 33.463,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "kerr_a0_inc80",
+   "N": 512,
+   "chaosFraction": 0.0000457763671875,
+   "classAgreement": 1,
+   "sky": {
+    "medianPx": 0.007146258404911689,
+    "p99Px": 0.07238272007705375,
+    "maxPx": 6.363137453325716
+   },
+   "dtP99M": 0.022216796875,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.0003467888336137622,
+     "relP99": 0.0009785616146811254,
+     "fluxRel": -0.0002308483115939381,
+     "chaoticFluxRel": -0.00011521431973612039
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0014413294292095528,
+     "relP99": 0.0047980805464894,
+     "fluxRel": -0.0005875235451526656,
+     "chaoticFluxRel": 0.0016989995681363254
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.001627063225230938,
+     "relP99": 0.005170048111263898,
+     "fluxRel": -0.0002012895869693081,
+     "chaoticFluxRel": -0.0005282323931386368
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.0014875160358728862,
+     "relP99": 0.004920074623010412,
+     "fluxRel": -0.00011878058803681336,
+     "chaoticFluxRel": 0.002498109320136268
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999982838678629,
+    "relRMS": 0.00115377565060014
+   },
+   "chaotic": {
+    "pixels": 12,
+    "fluxRel": -0.00011521431973612039,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 129.10926000000003,
+    "configMs": 85.30944000000002,
+    "speedup": 1.5134228990367302
+   },
+   "seconds": 36.699,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "kerr_a0.94_inc17",
+   "N": 512,
+   "chaosFraction": 0.0000457763671875,
+   "classAgreement": 0.9999847405124136,
+   "sky": {
+    "medianPx": 0.010045238569683684,
+    "p99Px": 0.08491151449466211,
+    "maxPx": 16.659243049146543
+   },
+   "dtP99M": 0.1365966796875,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.00016901443179762662,
+     "relP99": 0.0011352737312074457,
+     "fluxRel": -0.00008144458731665896,
+     "chaoticFluxRel": 0.000266849505640577
+    },
+    {
+     "tau": 0,
+     "relL1": 0.001516328180310373,
+     "relP99": 0.006475849357750039,
+     "fluxRel": -0.0001726325697197801,
+     "chaoticFluxRel": 0.001217101920675585
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0016748208657090444,
+     "relP99": 0.005754663785025319,
+     "fluxRel": 0.0000948530551187256,
+     "chaoticFluxRel": 0.0024589085489367443
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.001338126305278825,
+     "relP99": 0.005431804892012292,
+     "fluxRel": -0.000013001401363197824,
+     "chaoticFluxRel": 0.000583684804307388
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.999999654530646,
+    "relRMS": 0.000349028534885676
+   },
+   "chaotic": {
+    "pixels": 12,
+    "fluxRel": 0.000266849505640577,
+    "maxClassFractionDiff": 0.08333333333333337,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.9166666666666666,
+     "trapped": 0.08333333333333333,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 67.73592000000002,
+    "configMs": 52.677710000000005,
+    "speedup": 1.2858554405648996
+   },
+   "seconds": 29.565,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "kerr_a0.94_inc80",
+   "N": 512,
+   "chaosFraction": 0.00009918212890625,
+   "classAgreement": 0.9999923698486941,
+   "sky": {
+    "medianPx": 0.008541791829221317,
+    "p99Px": 0.0960114452636838,
+    "maxPx": 86.54365054447813
+   },
+   "dtP99M": 0.0234375,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.00027832651952157964,
+     "relP99": 0.0008878322336059189,
+     "fluxRel": -0.00023607789369756214,
+     "chaoticFluxRel": -0.00013277521703163923
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0014158387521389585,
+     "relP99": 0.004898492759367948,
+     "fluxRel": 0.0002466380751731951,
+     "chaoticFluxRel": 0.0009471370779906217
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0016402865054060487,
+     "relP99": 0.005243230193541309,
+     "fluxRel": 0.00012220890545663115,
+     "chaoticFluxRel": -0.0007536606921114045
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.0016465034000303,
+     "relP99": 0.005141132154496881,
+     "fluxRel": 0.000143035309473296,
+     "chaoticFluxRel": -0.0014988586771877588
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999991659766766,
+    "relRMS": 0.0007936819972061405
+   },
+   "chaotic": {
+    "pixels": 26,
+    "fluxRel": -0.00013277521703163923,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 80.55068000000001,
+    "configMs": 87.03564999999998,
+    "speedup": 0.9254906466488162
+   },
+   "seconds": 39.132,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "kerr_a0.998_inc80",
+   "N": 512,
+   "chaosFraction": 0.000152587890625,
+   "classAgreement": 0.9999923694411379,
+   "sky": {
+    "medianPx": 0.008609245621368623,
+    "p99Px": 0.09817945421886289,
+    "maxPx": 24.33846638280766
+   },
+   "dtP99M": 0.028076171875,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.00028670462083987055,
+     "relP99": 0.0008739607907171519,
+     "fluxRel": -0.0002387625445107363,
+     "chaoticFluxRel": 0.00006739323777859663
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0014500784689188632,
+     "relP99": 0.0050956217388772864,
+     "fluxRel": 0.00023374435086649035,
+     "chaoticFluxRel": 0.0007903419680343958
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0016919256349255216,
+     "relP99": 0.005270605839931591,
+     "fluxRel": 0.00019898086324584934,
+     "chaoticFluxRel": 0.001692793480198123
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.001679927055352473,
+     "relP99": 0.00522784058208509,
+     "fluxRel": 0.00016492437338925687,
+     "chaoticFluxRel": 0.0023863717105597395
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999991608233312,
+    "relRMS": 0.0007895795853235342
+   },
+   "chaotic": {
+    "pixels": 40,
+    "fluxRel": 0.00006739323777859663,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 205.01828000000003,
+    "configMs": 109.19623,
+    "speedup": 1.8775215957547255
+   },
+   "seconds": 35.268,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "johannsen_a0.94_a13_5.5",
+   "N": 512,
+   "chaosFraction": 0.000030517578125,
+   "classAgreement": 0.999992370372631,
+   "sky": {
+    "medianPx": 0.008451071874659882,
+    "p99Px": 0.08295488124973084,
+    "maxPx": 25.062969981065873
+   },
+   "dtP99M": 0.22705078125,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.00019646529728691058,
+     "relP99": 0.0019251456160469544,
+     "fluxRel": -0.00007045753120920331,
+     "chaoticFluxRel": 0.00045405969070602665
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0015960256467434859,
+     "relP99": 0.006024583009608301,
+     "fluxRel": -0.00021472903931169657,
+     "chaoticFluxRel": -0.001500427348676888
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0017188869403682323,
+     "relP99": 0.00536457092146192,
+     "fluxRel": 0.00013596730089358028,
+     "chaoticFluxRel": -0.0003756888693638562
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.0014896964923197884,
+     "relP99": 0.005904726296549398,
+     "fluxRel": -0.00007083524467028416,
+     "chaoticFluxRel": 0.0019619383444413863
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999996529060108,
+    "relRMS": 0.0003338356148619868
+   },
+   "chaotic": {
+    "pixels": 8,
+    "fluxRel": 0.00045405969070602665,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 164.15879999999993,
+    "configMs": 91.61027999999999,
+    "speedup": 1.7919255349945438
+   },
+   "seconds": 33.229,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "mankoNovikov_a0.94_a3_2",
+   "N": 512,
+   "chaosFraction": 0.000102996826171875,
+   "classAgreement": 0.9999809245489609,
+   "sky": {
+    "medianPx": 0.009401535463620943,
+    "p99Px": 0.09088802184251858,
+    "maxPx": 176.7547941990253
+   },
+   "dtP99M": 0.1268310546875,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.00018408326269510783,
+     "relP99": 0.001097187493433612,
+     "fluxRel": -0.00010099406047833869,
+     "chaoticFluxRel": 0.004135437328536702
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0014258200625976696,
+     "relP99": 0.006351486681540924,
+     "fluxRel": -0.00021575062437872351,
+     "chaoticFluxRel": 0.00390858685063098
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0017516362390168022,
+     "relP99": 0.0057477669690932575,
+     "fluxRel": 0.00011722518302041122,
+     "chaoticFluxRel": 0.0062428567089931955
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.0013661545021356506,
+     "relP99": 0.0054552963732006085,
+     "fluxRel": -0.00007385308130249,
+     "chaoticFluxRel": 0.004066072487337029
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999994734860863,
+    "relRMS": 0.0004556489027463541
+   },
+   "chaotic": {
+    "pixels": 27,
+    "fluxRel": 0.004135437328536702,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 0.9629629629629629,
+     "trapped": 0.037037037037037035,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.9629629629629629,
+     "trapped": 0.037037037037037035,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 967.7835600000002,
+    "configMs": 446.73271,
+    "speedup": 2.166359297934553
+   },
+   "seconds": 49.087,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "rn_Q0.8_inc60",
+   "N": 512,
+   "chaosFraction": 0.00005340576171875,
+   "classAgreement": 1,
+   "sky": {
+    "medianPx": 0.008125276835837228,
+    "p99Px": 0.0807333506696222,
+    "maxPx": 7.206541638497122
+   },
+   "dtP99M": 0.0823974609375,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.0002443866032624301,
+     "relP99": 0.0007476869997287164,
+     "fluxRel": -0.00018355020348565502,
+     "chaoticFluxRel": 0.0008622019169925541
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0012722817663232391,
+     "relP99": 0.00452928369298673,
+     "fluxRel": -0.00022645748792875198,
+     "chaoticFluxRel": 0.0004122871161048609
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.0014428760714835025,
+     "relP99": 0.005079994595722814,
+     "fluxRel": -0.00040791817812332523,
+     "chaoticFluxRel": 0.00014692742591807808
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.0013102762666629137,
+     "relP99": 0.004797385055472658,
+     "fluxRel": -0.00015533349905402644,
+     "chaoticFluxRel": 0.0013542905928157528
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999992900303779,
+    "relRMS": 0.0006286320780042008
+   },
+   "chaotic": {
+    "pixels": 14,
+    "fluxRel": 0.0008622019169925541,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 512,
+    "referenceMs": 139.34116,
+    "configMs": 114.76836000000003,
+    "speedup": 1.2141077906837736
+   },
+   "seconds": 34.224,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  },
+  {
+   "scene": "st3cr_l0.05",
+   "N": 512,
+   "chaosFraction": 0.020854949951171875,
+   "classAgreement": 0.999119515967539,
+   "sky": {
+    "medianPx": 0.2594854234532861,
+    "p99Px": 4.096870814476861,
+    "maxPx": 300.5085056154934
+   },
+   "dtP99M": 0.029346466064453125,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 121.08709587263303,
+     "relP99": 0.04878775432144209,
+     "fluxRel": 95.85795849163807,
+     "chaoticFluxRel": 19.619528972691267
+    },
+    {
+     "tau": 0,
+     "relL1": 67.97629631184874,
+     "relP99": 0.08924297352780465,
+     "fluxRel": 60.829141192246446,
+     "chaoticFluxRel": 22.950711325437165
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 36.458853149377646,
+     "relP99": 0.0654288480644163,
+     "fluxRel": 31.37138632966414,
+     "chaoticFluxRel": 9.116316567461165
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 24.47902616233648,
+     "relP99": 0.13812843796149382,
+     "fluxRel": 19.832636232034247,
+     "chaoticFluxRel": 3.1938510437804157
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.2704278581023123,
+    "relRMS": 116.67602903384827
+   },
+   "chaotic": {
+    "pixels": 5467,
+    "fluxRel": 19.619528972691267,
+    "maxClassFractionDiff": 0.04097311139564661,
+    "reference": {
+     "escaped": 0.935064935064935,
+     "trapped": 0,
+     "singular": 0.06164258276934333,
+     "timeout": 0.0032924821657216025,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.8968355588073897,
+     "trapped": 0,
+     "singular": 0.10261569416498995,
+     "timeout": 0.000548747027620267,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 256,
+    "referenceMs": 570.50849,
+    "configMs": 196.78740000000002,
+    "speedup": 2.8991108678706055
+   },
+   "seconds": 58.806,
+   "budget": {
+    "emissionL1": false,
+    "emissionP99": false,
+    "flux": false,
+    "dt": true,
+    "lightCurve": false,
+    "classAgreement": true,
+    "chaoticFlux": false,
+    "chaoticFractions": false
+   }
+  },
+  {
+   "scene": "st3cr_l5e-3",
+   "N": 512,
+   "chaosFraction": 0.03298187255859375,
+   "classAgreement": 0.9785284302045776,
+   "sky": {
+    "medianPx": 0.2900482571364068,
+    "p99Px": 4.774869276989479,
+    "maxPx": 614.8180792846838
+   },
+   "dtP99M": 0.06353759765625,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.01337231993599229,
+     "relP99": 0.03268323666358387,
+     "fluxRel": 0.011340923022185796,
+     "chaoticFluxRel": 0.0009764217117528784
+    },
+    {
+     "tau": 0,
+     "relL1": 0.010171355329488041,
+     "relP99": 0.05378057330851104,
+     "fluxRel": 0.0076288745297709215,
+     "chaoticFluxRel": 0.0001983651543480576
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.031635376299826996,
+     "relP99": 0.06501130767847103,
+     "fluxRel": 0.02740220072196071,
+     "chaoticFluxRel": 0.003304273969710369
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.01183613780135741,
+     "relP99": 0.12833767967552434,
+     "fluxRel": 0.007888318133214117,
+     "chaoticFluxRel": 0.001194264029005787
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9992531855411841,
+    "relRMS": 0.02304419685236139
+   },
+   "chaotic": {
+    "pixels": 8646,
+    "fluxRel": 0.0009764217117528784,
+    "maxClassFractionDiff": 0.1151977793199167,
+    "reference": {
+     "escaped": 0.6991672449687717,
+     "trapped": 0.0005783021050196623,
+     "singular": 0.03874624103631737,
+     "timeout": 0.26150821188989126,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.8143650242886884,
+     "trapped": 0.00011566042100393245,
+     "singular": 0.031806615776081425,
+     "timeout": 0.15371269951422623,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 256,
+    "referenceMs": 781.24532,
+    "configMs": 569.2525800000001,
+    "speedup": 1.3724054092121987
+   },
+   "seconds": 53.714,
+   "budget": {
+    "emissionL1": false,
+    "emissionP99": false,
+    "flux": false,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": false,
+    "chaoticFlux": true,
+    "chaoticFractions": false
+   }
+  },
+  {
+   "scene": "st3cr_l1e-3",
+   "N": 512,
+   "chaosFraction": 0.02474212646484375,
+   "classAgreement": 0.9544313105789766,
+   "sky": {
+    "medianPx": 0.3468293062505523,
+    "p99Px": 4.734327493382693,
+    "maxPx": 1590.7255490432838
+   },
+   "dtP99M": 0.35577392578125,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.0020393481715054508,
+     "relP99": 0.07098165678303543,
+     "fluxRel": -0.00047278685129490875,
+     "chaoticFluxRel": -0.0026998713973581845
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0028265346704276543,
+     "relP99": 0.21217692296363494,
+     "fluxRel": -0.0008996206289702578,
+     "chaoticFluxRel": -0.0012369589721781457
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.009386200361476063,
+     "relP99": 0.1770772361797674,
+     "fluxRel": -0.00019466989787101624,
+     "chaoticFluxRel": -0.006049656543402969
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.005381437932115631,
+     "relP99": 0.23154319047636007,
+     "fluxRel": -0.0006680069741646617,
+     "chaoticFluxRel": -0.0013558375195418847
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999997716363158,
+    "relRMS": 0.0006662604006622177
+   },
+   "chaotic": {
+    "pixels": 6486,
+    "fluxRel": -0.0026998713973581845,
+    "maxClassFractionDiff": 0.09821153253160655,
+    "reference": {
+     "escaped": 0.4872032069071847,
+     "trapped": 0.0038544557508479803,
+     "singular": 0.15510329941412274,
+     "timeout": 0.3538390379278446,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.48257786000616715,
+     "trapped": 0.0032377428307123032,
+     "singular": 0.2533148319457293,
+     "timeout": 0.2608695652173913,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 256,
+    "referenceMs": 1131.7640900000004,
+    "configMs": 811.4844600000001,
+    "speedup": 1.3946836270900371
+   },
+   "seconds": 58.949,
+   "budget": {
+    "emissionL1": false,
+    "emissionP99": false,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": false,
+    "chaoticFlux": true,
+    "chaoticFractions": false
+   }
+  },
+  {
+   "scene": "st3cr_l1e-4",
+   "N": 512,
+   "chaosFraction": 0.0304412841796875,
+   "classAgreement": 0.9316937095733463,
+   "sky": {
+    "medianPx": 0.3793232807065987,
+    "p99Px": 3.8024776411458947,
+    "maxPx": 418.6950997799281
+   },
+   "dtP99M": 3.896484375,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.0023480050989415436,
+     "relP99": 0.13659316806871347,
+     "fluxRel": -0.0007113227901920845,
+     "chaoticFluxRel": -0.0029097201437334004
+    },
+    {
+     "tau": 0,
+     "relL1": 0.002230310253886225,
+     "relP99": 0.15615483578333647,
+     "fluxRel": -0.0009543430426597074,
+     "chaoticFluxRel": -0.0035777565476718203
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.006492092687246282,
+     "relP99": 0.13254395675820657,
+     "fluxRel": -0.00045801070629852657,
+     "chaoticFluxRel": -0.010182880639147579
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.00949579155365654,
+     "relP99": 0.5615107312294413,
+     "fluxRel": -0.000967200912948216,
+     "chaoticFluxRel": -0.0037778752405580067
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999998692004581,
+    "relRMS": 0.0008267850946216285
+   },
+   "chaotic": {
+    "pixels": 7980,
+    "fluxRel": -0.0029097201437334004,
+    "maxClassFractionDiff": 0.08045112781954886,
+    "reference": {
+     "escaped": 0.25952380952380955,
+     "trapped": 0.07844611528822056,
+     "singular": 0.20175438596491227,
+     "timeout": 0.46027568922305767,
+     "other": 0
+    },
+    "config": {
+     "escaped": 0.22055137844611528,
+     "trapped": 0.04536340852130326,
+     "singular": 0.2822055137844611,
+     "timeout": 0.4518796992481203,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 256,
+    "referenceMs": 1211.9738099999997,
+    "configMs": 946.4270500000001,
+    "speedup": 1.2805781597218715
+   },
+   "seconds": 70.382,
+   "budget": {
+    "emissionL1": false,
+    "emissionP99": false,
+    "flux": true,
+    "dt": false,
+    "lightCurve": true,
+    "classAgreement": false,
+    "chaoticFlux": true,
+    "chaoticFractions": false
+   }
+  },
+  {
+   "scene": "st3cr_l0",
+   "N": 512,
+   "chaosFraction": 0.00074005126953125,
+   "classAgreement": 1,
+   "sky": {
+    "medianPx": 0.3748756935437427,
+    "p99Px": 3.576691058813474,
+    "maxPx": 19.998356121803724
+   },
+   "dtP99M": 0.020883798599243164,
+   "emission": [
+    {
+     "tau": null,
+     "relL1": 0.000642358394828171,
+     "relP99": 0.0024730476804042056,
+     "fluxRel": -0.0006093977819739886,
+     "chaoticFluxRel": -0.0003389684511282611
+    },
+    {
+     "tau": 0,
+     "relL1": 0.0010083837709691636,
+     "relP99": 0.004949192571753375,
+     "fluxRel": -0.0008999565438360872,
+     "chaoticFluxRel": -0.00022617498431767126
+    },
+    {
+     "tau": 66.66666666666667,
+     "relL1": 0.000812416796779325,
+     "relP99": 0.004476162437298193,
+     "fluxRel": -0.0005943127808339472,
+     "chaoticFluxRel": -0.00032696349356972024
+    },
+    {
+     "tau": 133.33333333333334,
+     "relL1": 0.000742526529949479,
+     "relP99": 0.003955998941194245,
+     "fluxRel": -0.0006100001284916694,
+     "chaoticFluxRel": -0.000027224734744499907
+    }
+   ],
+   "lightCurve": {
+    "correlation": 0.9999999517848088,
+    "relRMS": 0.0007563740406772283
+   },
+   "chaotic": {
+    "pixels": 194,
+    "fluxRel": -0.0003389684511282611,
+    "maxClassFractionDiff": 0,
+    "reference": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    },
+    "config": {
+     "escaped": 1,
+     "trapped": 0,
+     "singular": 0,
+     "timeout": 0,
+     "other": 0
+    }
+   },
+   "speed": {
+    "N": 256,
+    "referenceMs": 209.63735000000003,
+    "configMs": 73.57979999999999,
+    "speedup": 2.849115518117745
+   },
+   "seconds": 37.822,
+   "budget": {
+    "emissionL1": true,
+    "emissionP99": true,
+    "flux": true,
+    "dt": true,
+    "lightCurve": true,
+    "classAgreement": true,
+    "chaoticFlux": true,
+    "chaoticFractions": true
+   }
+  }
+ ]
+}

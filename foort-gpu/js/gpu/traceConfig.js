@@ -44,6 +44,10 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'
  *                                                 Manko-Novikov, RN), or 'auto' = the generated one where it exists
  * @property {boolean} [g34]                       Stage 1B B5 exact speedup: skip table 3 for metrics with G3 = G4 (default on)
  * @property {boolean} [texelReuse]                Stage 1B B5: keep the last cell's texels in registers across RK stages
+ * @property {{tol:number, cap:number}|null} [bs3]  Stage 1B B6 candidate integrator: Bogacki-Shampine 3(2) with error control,
+ *                                                 tolerance tol x the pixel's angle at the camera, steps capped at FOORT's rule x cap
+ * @property {import('./refine.js').RefineParams|null} [refine]  Stage 1B B6 adaptive refinement (Normal tier): trace only the
+ *                                                 marked cells of the coarse level at full resolution, interpolate the rest
  * @property {{n1:number}|null} [compact]          Stage 1B B5 ray compaction: stop rays at n1 steps and trace the unfinished
  *                                                 ones as a dense image (rounds at n1, 2 n1, ...); interpolated crossings only
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
@@ -72,7 +76,7 @@ export function tailGeometry(m, v) {
 
 export const VIEW_DEFAULTS = {
   tailEmission: { redshiftPower: 3, fudge: 1, maxPasses: 0 },
-  tableHalf: false, g34: true, texelReuse: false, compact: /** @type {{n1:number}|null} */ (null), farSteps: /** @type {{r:number, max:number}|null} */ (null),
+  tableHalf: false, g34: true, texelReuse: false, compact: /** @type {{n1:number}|null} */ (null), refine: /** @type {import('./refine.js').RefineParams|null} */ (null), bs3: /** @type {{tol:number, cap:number}|null} */ (null), farSteps: /** @type {{r:number, max:number}|null} */ (null),
   eps: 0.03, hmin: 1e-12, maxSteps: 5000, epsHorizon: 0.01, radial: 'logShifted', crossing: 'interpolate',
   mesh: 'centers', threshold: 0.001, storeH: false, axisStepFloor: 1e-3, path: 'tabulated', grid: { nx: 512, nth: 128 }, fluid: FLUID_DEFAULTS,
 };
@@ -85,18 +89,19 @@ export function normalizeView(view) {
 /** Shader program for a view. @param {Required<ViewParams>} v */
 export function tracerFor(v) {
   const path = closedPath(v);
-  if (path === 'closed') return `closed_${v.metric}${compactFlag(v)}`;
+  if (path === 'closed') return `closed_${v.metric}${compactFlag(v)}${v.bs3 ? '+bs3' : ''}`;
   if (path === 'analytic') {
     if (v.metric !== 'kerr') throw new Error(`metric ${v.metric}: the analytic shader exists for Kerr only`);
-    return 'trace_kerr_analytic';
+    return `trace_kerr_analytic${compactFlag(v)}${v.bs3 ? '+bs3' : ''}`;
   }
   if (path === 'tabulated' && v.radial === 'log') throw new Error('the tabulated tracer uses x = log(r - r_+) only');
-  return (v.tableHalf ? 'trace_half' : 'trace') + (v.g34 && metricEntry(v.metric).g3equalsG4 ? '+g34' : '') + (v.texelReuse ? '+reuse' : '') + compactFlag(v);
+  return (v.tableHalf ? 'trace_half' : 'trace') + (v.g34 && metricEntry(v.metric).g3equalsG4 ? '+g34' : '') + (v.texelReuse ? '+reuse' : '') + compactFlag(v) + (v.bs3 ? '+bs3' : '');
 }
 
 /** Ray compaction of a view (B5): on for compact.n1 < max steps, with interpolated crossings and without |H| storage. @param {Required<ViewParams>} v */
 export const viewCompacts = (v) => !!v.compact && v.compact.n1 < v.maxSteps && v.crossing !== 'foort' && !v.storeH;
-const compactFlag = (/** @type {Required<ViewParams>} */ v) => (viewCompacts(v) ? '+compact' : '');
+// the compaction outputs (and the list modes) serve ray compaction and adaptive refinement (B6)
+const compactFlag = (/** @type {Required<ViewParams>} */ v) => (viewCompacts(v) || (v.refine && !v.storeH) ? '+compact' : '');
 
 /**
  * The path a view resolves to. 'auto' (Stage 1B B5, the viewer's default): the hand-written closed-form Kerr shader for
@@ -199,11 +204,13 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
     uTail: ['4f', [0, 0, 0, 0]],
     uTailEm: ['4f', [v.tailEmission.redshiftPower, v.tailEmission.fudge, v.tailEmission.maxPasses, 0]],
     uFar: ['4f', v.farSteps ? [v.farSteps.r * metric.massADM, v.farSteps.max, 0, 0] : [0, 1, 0, 0]],
+    // B6 embedded integrator: the tolerance as an angle (tol x the pixel's angle at the camera), the step cap factor
+    uBS: ['4f', v.bs3 ? [v.bs3.tol * v.camera.screen / (v.N * v.camera.r), v.bs3.cap, 0, 0] : [1, 1, 0, 0]],
     uOpt: ['4i', [v.maxSteps, v.crossing === 'foort' ? 1 : 0, v.mesh === 'foort' ? 1 : 0, v.storeH ? 1 : 0]],
   };
   /** @type {string|null} */
   let tableKey = null;
-  if (program === 'trace_kerr_analytic') {
+  if (program.startsWith('trace_kerr_analytic')) {
     if (viewProjects(metric, v)) throw new Error('constraint projection needs the tabulated tracer (the closed-form Kerr shader does not split its force)');
     uniforms.uMetric = ['4f', [metric.params.a, r0, 0, 0]];
   }
@@ -235,7 +242,9 @@ export function gpuTraceSetup(viewIn, tables, fluid) {
   const tail = tailGeometry(metric, v);
   uniforms.uTail = ['4f', [tail.xLo, tail.invWidth, tail.K, 0]];
   return { program, uniforms, N: v.N, warnings: cam.warnings, metric, view: v, tables: tables ?? null, tableKey, fluid, fluidKey: fs.key, tail,
-    compact: program.includes('+compact') ? v.compact : null, maxSteps: v.maxSteps };
+    compact: program.includes('+compact') ? v.compact : null, maxSteps: v.maxSteps,
+    // refinement lists pixels: it needs the compaction outputs; off with |H| in the third crossing slot
+    refine: v.refine && !v.storeH ? { ...v.refine, M: metric.massADM, spacing: v.camera.screen / (v.N * v.camera.r) } : null };
 }
 
 /**

@@ -1,0 +1,2229 @@
+[
+ {
+  "config": "bs3_tol0.1",
+  "description": "High with the Bogacki-Shampine 3(2) integrator, tolerance 0.1 pixel angles, steps capped at 4x FOORT's rule.",
+  "pass": false,
+  "failing": [
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, chaoticFractions, sky",
+   "st3cr_l5e-3: emissionL1, emissionP99, flux, classAgreement, sky",
+   "st3cr_l1e-3: emissionL1, emissionP99, classAgreement, sky",
+   "st3cr_l1e-4: emissionL1, emissionP99, dt, classAgreement, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 1.5573531992957532,
+   "fuzzball": 1.825020803186713
+  },
+  "speedupVsHigh": {
+   "BH": 1.1890469586046493,
+   "fuzzball": 1.2267040212936564
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [],
+    "speedup": 2.171100067581614,
+    "emissionL1": 0.0015359675803325282,
+    "p99": 0.0056431564992427425,
+    "flux": 0.0001769024471902707,
+    "skyP99": 0.07737547936639236,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.1583251953125,
+    "cls": 0.9999847409781033
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [],
+    "speedup": 1.5134228990367302,
+    "emissionL1": 0.001627063225230938,
+    "p99": 0.005170048111263898,
+    "flux": 0.0005875235451526656,
+    "skyP99": 0.07238272007705375,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.022216796875,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [],
+    "speedup": 1.2858554405648996,
+    "emissionL1": 0.0016748208657090444,
+    "p99": 0.006475849357750039,
+    "flux": 0.0001726325697197801,
+    "skyP99": 0.08491151449466211,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.1365966796875,
+    "cls": 0.9999847405124136
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [],
+    "speedup": 0.9254906466488162,
+    "emissionL1": 0.0016465034000303,
+    "p99": 0.005243230193541309,
+    "flux": 0.0002466380751731951,
+    "skyP99": 0.0960114452636838,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.0234375,
+    "cls": 0.9999923698486941
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [],
+    "speedup": 1.8775215957547255,
+    "emissionL1": 0.0016919256349255216,
+    "p99": 0.005270605839931591,
+    "flux": 0.0002387625445107363,
+    "skyP99": 0.09817945421886289,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.028076171875,
+    "cls": 0.9999923694411379
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [],
+    "speedup": 1.7919255349945438,
+    "emissionL1": 0.0017188869403682323,
+    "p99": 0.006024583009608301,
+    "flux": 0.00021472903931169657,
+    "skyP99": 0.08295488124973084,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.22705078125,
+    "cls": 0.999992370372631
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [],
+    "speedup": 2.166359297934553,
+    "emissionL1": 0.0017516362390168022,
+    "p99": 0.006351486681540924,
+    "flux": 0.00021575062437872351,
+    "skyP99": 0.09088802184251858,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.1268310546875,
+    "cls": 0.9999809245489609
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [],
+    "speedup": 1.2141077906837736,
+    "emissionL1": 0.0014428760714835025,
+    "p99": 0.005079994595722814,
+    "flux": 0.00040791817812332523,
+    "skyP99": 0.0807333506696222,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.0823974609375,
+    "cls": 1
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "chaoticFractions",
+     "sky"
+    ],
+    "speedup": 2.8991108678706055,
+    "emissionL1": 121.08709587263303,
+    "p99": 0.13812843796149382,
+    "flux": 95.85795849163807,
+    "skyP99": 4.096870814476861,
+    "highSkyP99": 0,
+    "dt": 0.029346466064453125,
+    "cls": 0.999119515967539
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.3724054092121987,
+    "emissionL1": 0.031635376299826996,
+    "p99": 0.12833767967552434,
+    "flux": 0.02740220072196071,
+    "skyP99": 4.774869276989479,
+    "highSkyP99": 0,
+    "dt": 0.06353759765625,
+    "cls": 0.9785284302045776
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.3946836270900371,
+    "emissionL1": 0.009386200361476063,
+    "p99": 0.23154319047636007,
+    "flux": 0.0008996206289702578,
+    "skyP99": 4.734327493382693,
+    "highSkyP99": 0,
+    "dt": 0.35577392578125,
+    "cls": 0.9544313105789766
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.2805781597218715,
+    "emissionL1": 0.00949579155365654,
+    "p99": 0.5615107312294413,
+    "flux": 0.000967200912948216,
+    "skyP99": 3.8024776411458947,
+    "highSkyP99": 0,
+    "dt": 3.896484375,
+    "cls": 0.9316937095733463
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 2.849115518117745,
+    "emissionL1": 0.0010083837709691636,
+    "p99": 0.004949192571753375,
+    "flux": 0.0008999565438360872,
+    "skyP99": 3.576691058813474,
+    "highSkyP99": 0,
+    "dt": 0.020883798599243164,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "bs3_tol0.3",
+  "description": "High with the Bogacki-Shampine 3(2) integrator, tolerance 0.3 pixel angles, steps capped at 4x FOORT's rule.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: emissionL1",
+   "kerr_a0_inc80: emissionL1",
+   "kerr_a0.94_inc17: emissionL1",
+   "kerr_a0.94_inc80: emissionL1",
+   "kerr_a0.998_inc80: emissionL1",
+   "johannsen_a0.94_a13_5.5: emissionL1, dt",
+   "mankoNovikov_a0.94_a3_2: emissionL1",
+   "rn_Q0.8_inc60: emissionL1",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, sky",
+   "st3cr_l5e-3: emissionL1, emissionP99, classAgreement, sky",
+   "st3cr_l1e-3: emissionL1, emissionP99, dt, classAgreement, sky",
+   "st3cr_l1e-4: emissionL1, emissionP99, dt, classAgreement, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 1.9714649319700164,
+   "fuzzball": 2.0804058409708532
+  },
+  "speedupVsHigh": {
+   "BH": 1.5052233381706335,
+   "fuzzball": 1.3983633537686662
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 1.6471390358379554,
+    "emissionL1": 0.004364203530254763,
+    "p99": 0.015323271828350266,
+    "flux": 0.0005425654498726687,
+    "skyP99": 0.10550918464083897,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.3682861328125,
+    "cls": 0.9999618524452583
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 2.0888807666025713,
+    "emissionL1": 0.004817787264171022,
+    "p99": 0.01427514109017906,
+    "flux": 0.0016162586638237355,
+    "skyP99": 0.1093023398923873,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.060302734375,
+    "cls": 0.9999465917934476
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 1.3044895693865637,
+    "emissionL1": 0.004515017042405498,
+    "p99": 0.016687866224385284,
+    "flux": 0.0004999207081500112,
+    "skyP99": 0.11646613501855915,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.310302734375,
+    "cls": 0.9999771107686204
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 1.7595687600493606,
+    "emissionL1": 0.004764613945569149,
+    "p99": 0.01448250470382725,
+    "flux": 0.0008769952447761154,
+    "skyP99": 0.16199939414127057,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.0609130859375,
+    "cls": 0.9999923698486941
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 1.7919156733291937,
+    "emissionL1": 0.0048952841697515815,
+    "p99": 0.014532267933306477,
+    "flux": 0.0008368965154799076,
+    "skyP99": 0.16715685958694332,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.0677490234375,
+    "cls": 0.9999923694411379
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "emissionL1",
+     "dt"
+    ],
+    "speedup": 3.6026216014868884,
+    "emissionL1": 0.004415662384969638,
+    "p99": 0.014995380553288428,
+    "flux": 0.0005712419266933291,
+    "skyP99": 0.12074795220443789,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.5198974609375,
+    "cls": 0.999992370372631
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 3.128871780696267,
+    "emissionL1": 0.005054587853688736,
+    "p99": 0.017305003015578434,
+    "flux": 0.0006153562477491475,
+    "skyP99": 0.14106611288247042,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.3353271484375,
+    "cls": 0.9999732943685453
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "emissionL1"
+    ],
+    "speedup": 1.4305324143897613,
+    "emissionL1": 0.004231895483485053,
+    "p99": 0.014370208101143886,
+    "flux": 0.0011228560878049757,
+    "skyP99": 0.12384409786627877,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.257568359375,
+    "cls": 1
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "sky"
+    ],
+    "speedup": 3.50861295233891,
+    "emissionL1": 34.76015362212934,
+    "p99": 0.26821326679687807,
+    "flux": 28.70055052913023,
+    "skyP99": 4.663930489144482,
+    "highSkyP99": 0,
+    "dt": 0.04366302490234375,
+    "cls": 0.9992714579023442
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.9766771673121493,
+    "emissionL1": 0.005995900003177664,
+    "p99": 0.36856370748972284,
+    "flux": 0.000774803079622385,
+    "skyP99": 5.351820340356397,
+    "highSkyP99": 0,
+    "dt": 0.15045928955078125,
+    "cls": 0.9757394535657086
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.6394708370217375,
+    "emissionL1": 0.010897827480811289,
+    "p99": 0.3072250873316354,
+    "flux": 0.0009878321916306715,
+    "skyP99": 4.86530986952008,
+    "highSkyP99": 0,
+    "dt": 0.791778564453125,
+    "cls": 0.9491664645737665
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.129264953061326,
+    "emissionL1": 0.00969788545461874,
+    "p99": 0.5881590008548384,
+    "flux": 0.0009533395862373001,
+    "skyP99": 3.820505422016105,
+    "highSkyP99": 0,
+    "dt": 8.047607421875,
+    "cls": 0.9298602477140744
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 3.0350759850568907,
+    "emissionL1": 0.0010083837709691636,
+    "p99": 0.004949192571753375,
+    "flux": 0.0008999565438360872,
+    "skyP99": 3.576691058813474,
+    "highSkyP99": 0,
+    "dt": 0.020883798599243164,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "bs3_tol1",
+  "description": "High with the Bogacki-Shampine 3(2) integrator, tolerance 1 pixel angles, steps capped at 4x FOORT's rule.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: emissionL1, emissionP99, dt",
+   "kerr_a0_inc80: emissionL1, emissionP99, flux",
+   "kerr_a0.94_inc17: emissionL1, emissionP99, dt",
+   "kerr_a0.94_inc80: emissionL1, emissionP99, flux",
+   "kerr_a0.998_inc80: emissionL1, emissionP99, flux",
+   "johannsen_a0.94_a13_5.5: emissionL1, emissionP99, dt",
+   "mankoNovikov_a0.94_a3_2: emissionL1, emissionP99, dt",
+   "rn_Q0.8_inc60: emissionL1, emissionP99, flux, dt",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, sky",
+   "st3cr_l5e-3: emissionL1, emissionP99, classAgreement, sky",
+   "st3cr_l1e-3: emissionL1, emissionP99, dt, classAgreement, sky",
+   "st3cr_l1e-4: emissionL1, emissionP99, dt, classAgreement, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 2.6666038761446362,
+   "fuzzball": 1.8136275288408348
+  },
+  "speedupVsHigh": {
+   "BH": 2.0359653996068268,
+   "fuzzball": 1.2190459302563452
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt"
+    ],
+    "speedup": 2.5171025556033246,
+    "emissionL1": 0.014348803706174414,
+    "p99": 0.053075446041174784,
+    "flux": 0.001729507966246087,
+    "skyP99": 0.17165484029303438,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 1.0203857421875,
+    "cls": 0.9998321507591363
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux"
+    ],
+    "speedup": 2.977001258593023,
+    "emissionL1": 0.016116503250684144,
+    "p99": 0.047061159756108195,
+    "flux": 0.004768027540156064,
+    "skyP99": 0.1651069497056041,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.212890625,
+    "cls": 0.9998397753803427
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt"
+    ],
+    "speedup": 2.217759500847409,
+    "emissionL1": 0.014925721362803,
+    "p99": 0.05559978760841757,
+    "flux": 0.001496545698640481,
+    "skyP99": 0.1887173849677,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.8447265625,
+    "cls": 0.9999580364091374
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux"
+    ],
+    "speedup": 2.7202742157210906,
+    "emissionL1": 0.015410021818757474,
+    "p99": 0.049692909673052,
+    "flux": 0.003913731260591335,
+    "skyP99": 0.2895169952580885,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.1905517578125,
+    "cls": 0.9999618492434705
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux"
+    ],
+    "speedup": 2.454560759789566,
+    "emissionL1": 0.01581626403096195,
+    "p99": 0.049245017357460445,
+    "flux": 0.003797026194697605,
+    "skyP99": 0.3065411811953274,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.20166015625,
+    "cls": 0.9999923694411379
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt"
+    ],
+    "speedup": 3.2862673148663504,
+    "emissionL1": 0.01432405752870953,
+    "p99": 0.051293316483368864,
+    "flux": 0.0016348107218729527,
+    "skyP99": 0.24601590557946384,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 1.3939208984375,
+    "cls": 0.999900814844203
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt"
+    ],
+    "speedup": 3.6064615563172135,
+    "emissionL1": 0.016928413903245725,
+    "p99": 0.05775036833724018,
+    "flux": 0.0018739016759359488,
+    "skyP99": 0.24395660681742004,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.98193359375,
+    "cls": 0.9998969925643891
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt"
+    ],
+    "speedup": 1.944030188199899,
+    "emissionL1": 0.013815546864727652,
+    "p99": 0.04806548986660141,
+    "flux": 0.0032443756067440503,
+    "skyP99": 0.18107789917486083,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.823486328125,
+    "cls": 0.9999771105939801
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "sky"
+    ],
+    "speedup": 2.00133378602451,
+    "emissionL1": 6.29740494859916,
+    "p99": 0.47527881220838636,
+    "flux": 8.667235523764539,
+    "skyP99": 5.028943661155349,
+    "highSkyP99": 0,
+    "dt": 0.062152862548828125,
+    "cls": 0.9993454808962237
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.4623978215114635,
+    "emissionL1": 0.00905077287826658,
+    "p99": 0.6703437615061018,
+    "flux": 0.0007884366324581974,
+    "skyP99": 6.731894363701837,
+    "highSkyP99": 0,
+    "dt": 0.27693939208984375,
+    "cls": 0.9751477329209698
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.6166788167481771,
+    "emissionL1": 0.010922360671980784,
+    "p99": 0.30154975837040876,
+    "flux": 0.0009551528250978018,
+    "skyP99": 4.857677548466345,
+    "highSkyP99": 0,
+    "dt": 1.798675537109375,
+    "cls": 0.9466083596054103
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.125086148782523,
+    "emissionL1": 0.009702167347873514,
+    "p99": 0.5881590008548384,
+    "flux": 0.0009501059259255739,
+    "skyP99": 3.820505422016105,
+    "highSkyP99": 0,
+    "dt": 17.015838623046875,
+    "cls": 0.9272713680930423
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 3.68592005987959,
+    "emissionL1": 0.0010083837709691636,
+    "p99": 0.004949192571753375,
+    "flux": 0.0008999565438360872,
+    "skyP99": 3.576691058813474,
+    "highSkyP99": 0,
+    "dt": 0.020883798599243164,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "eps0.04",
+  "description": "High with the step parameter eps = 0.04 (instead of 0.03); far steps kept.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: sky",
+   "kerr_a0_inc80: sky",
+   "kerr_a0.94_inc17: sky",
+   "kerr_a0.94_inc80: sky",
+   "kerr_a0.998_inc80: sky",
+   "johannsen_a0.94_a13_5.5: sky",
+   "mankoNovikov_a0.94_a3_2: sky",
+   "rn_Q0.8_inc60: sky",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, sky",
+   "st3cr_l5e-3: sky",
+   "st3cr_l1e-3: sky",
+   "st3cr_l1e-4: sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 1.6981273556784946,
+   "fuzzball": 1.5324061934311444
+  },
+  "speedupVsHigh": {
+   "BH": 1.2965287312511675,
+   "fuzzball": 1.030020499741652
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.4681476177367394,
+    "emissionL1": 0.0015468234257112834,
+    "p99": 0.006408154748569959,
+    "flux": 0.00012146663762794341,
+    "skyP99": 0.34061075732471197,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.2064208984375,
+    "cls": 0.9999694819562066
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.8041785145841154,
+    "emissionL1": 0.0025257268396274893,
+    "p99": 0.009015715424813052,
+    "flux": 0.000395197761958678,
+    "skyP99": 0.33903428658371737,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.061279296875,
+    "cls": 0.9999694810248272
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.8885287629974359,
+    "emissionL1": 0.0015851484863480608,
+    "p99": 0.0060391417029855505,
+    "flux": 0.00010038729783862907,
+    "skyP99": 0.34715522754934863,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.2025146484375,
+    "cls": 0.9999732958967238
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.1632946312995058,
+    "emissionL1": 0.0019075761089907787,
+    "p99": 0.008657264650651279,
+    "flux": 0.00030725363490507557,
+    "skyP99": 0.4109079215809032,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.076171875,
+    "cls": 0.999996184924347
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.8659957785166985,
+    "emissionL1": 0.0018943349338535688,
+    "p99": 0.008530513944356628,
+    "flux": 0.0003092331717884913,
+    "skyP99": 0.4173743764601577,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.107421875,
+    "cls": 0.9999809236028446
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.9338795147982577,
+    "emissionL1": 0.001778012470695695,
+    "p99": 0.006854942568849978,
+    "flux": 0.00007434631901992721,
+    "skyP99": 0.3089327110226887,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.2752685546875,
+    "cls": 0.999992370372631
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7900553077893662,
+    "emissionL1": 0.0018351808805224786,
+    "p99": 0.006547957624420194,
+    "flux": 0.0001679662392325815,
+    "skyP99": 0.3655555447822842,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.298095703125,
+    "cls": 0.999961849097922
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.8394711775692736,
+    "emissionL1": 0.0016788930879914523,
+    "p99": 0.0068489159370179594,
+    "flux": 0.000351020266080882,
+    "skyP99": 0.37789674739461243,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.4329833984375,
+    "cls": 0.9999771105939801
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "sky"
+    ],
+    "speedup": 1.3304791631568136,
+    "emissionL1": 0.9066558555251665,
+    "p99": 0.11652629632380135,
+    "flux": 7.691916155912639,
+    "skyP99": 1.2022639019099277,
+    "highSkyP99": 0,
+    "dt": 0.0055294036865234375,
+    "cls": 0.9994000241548717
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7627249037872446,
+    "emissionL1": 0.0005317280870771242,
+    "p99": 0.016071245522994444,
+    "flux": 0.000217503386123433,
+    "skyP99": 1.0902989462889476,
+    "highSkyP99": 0,
+    "dt": 0.00559234619140625,
+    "cls": 0.9909230053097066
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7458707840892522,
+    "emissionL1": 0.0002153988533798437,
+    "p99": 0.004853520505100132,
+    "flux": 0.00004215604284663058,
+    "skyP99": 1.0243916852082893,
+    "highSkyP99": 0,
+    "dt": 0.04217529296875,
+    "cls": 0.9822614586674385
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.6539821670372075,
+    "emissionL1": 0.00035553330538424415,
+    "p99": 0.014647839061198795,
+    "flux": 0.00004663271446592366,
+    "skyP99": 1.0331913974701752,
+    "highSkyP99": 0,
+    "dt": 0.327392578125,
+    "cls": 0.9810358666058135
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.2477683201654983,
+    "emissionL1": 0.00006479853894861891,
+    "p99": 0.0004687531009390885,
+    "flux": 0.00004124629295891445,
+    "skyP99": 1.0317344686742125,
+    "highSkyP99": 0,
+    "dt": 0.0018100738525390625,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "eps0.05",
+  "description": "High with the step parameter eps = 0.05 (instead of 0.03); far steps kept.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: emissionL1, sky",
+   "kerr_a0_inc80: emissionL1, emissionP99, sky",
+   "kerr_a0.94_inc17: emissionL1, sky",
+   "kerr_a0.94_inc80: emissionL1, emissionP99, sky",
+   "kerr_a0.998_inc80: emissionL1, emissionP99, sky",
+   "johannsen_a0.94_a13_5.5: emissionL1, dt, sky",
+   "mankoNovikov_a0.94_a3_2: emissionL1, sky",
+   "rn_Q0.8_inc60: emissionL1, dt, sky",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, sky",
+   "st3cr_l5e-3: emissionP99, sky",
+   "st3cr_l1e-3: sky",
+   "st3cr_l1e-4: dt, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 2.136091266811487,
+   "fuzzball": 1.639667495070913
+  },
+  "speedupVsHigh": {
+   "BH": 1.6309163683952481,
+   "fuzzball": 1.1021171409530535
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "emissionL1",
+     "sky"
+    ],
+    "speedup": 1.8110855710419913,
+    "emissionL1": 0.0037895809785606026,
+    "p99": 0.0155650093547084,
+    "flux": 0.00029996700982740256,
+    "skyP99": 0.4509764213227951,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.3651123046875,
+    "cls": 0.9999618524452583
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 2.5656387411478714,
+    "emissionL1": 0.006400592358342965,
+    "p99": 0.022130084544156273,
+    "flux": 0.0011375705227148923,
+    "skyP99": 0.44540560907697146,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.1531982421875,
+    "cls": 0.9999389620496544
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "emissionL1",
+     "sky"
+    ],
+    "speedup": 2.139956286713378,
+    "emissionL1": 0.0038657813829177687,
+    "p99": 0.014136315712333808,
+    "flux": 0.00024105664639771475,
+    "skyP99": 0.4514280130054499,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.329833984375,
+    "cls": 0.9999389620496544
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 2.3760421850711793,
+    "emissionL1": 0.0046990492623824485,
+    "p99": 0.022745923231227413,
+    "flux": 0.0006158093516008325,
+    "skyP99": 0.5295051878310327,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.1766357421875,
+    "cls": 0.9999275135625939
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.946155485128803,
+    "emissionL1": 0.004642705881438078,
+    "p99": 0.022484719512802682,
+    "flux": 0.0006380409130740944,
+    "skyP99": 0.5390051730337351,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.25390625,
+    "cls": 0.9999198791319476
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "emissionL1",
+     "dt",
+     "sky"
+    ],
+    "speedup": 2.326485528639898,
+    "emissionL1": 0.0043589115300238825,
+    "p99": 0.016933585802692618,
+    "flux": 0.00020173120911789628,
+    "skyP99": 0.4301209598089577,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.7423095703125,
+    "cls": 0.999946592608417
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "emissionL1",
+     "sky"
+    ],
+    "speedup": 2.2832530451229616,
+    "emissionL1": 0.00438505139915305,
+    "p99": 0.015458345852277258,
+    "flux": 0.0003712692651389255,
+    "skyP99": 0.47527495580216217,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.4661865234375,
+    "cls": 0.9999084378350126
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "emissionL1",
+     "dt",
+     "sky"
+    ],
+    "speedup": 1.7747327991769135,
+    "emissionL1": 0.004107285367108748,
+    "p99": 0.018021427425685008,
+    "flux": 0.0008464302364329402,
+    "skyP99": 0.49225478334062944,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.606689453125,
+    "cls": 0.999916072177927
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "sky"
+    ],
+    "speedup": 1.6869954829059615,
+    "emissionL1": 1.100548725797538,
+    "p99": 0.1933935099764927,
+    "flux": 0.19065749360799475,
+    "skyP99": 1.7319052228401204,
+    "highSkyP99": 0,
+    "dt": 0.010711669921875,
+    "cls": 0.9994467755194272
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.7797006017938108,
+    "emissionL1": 0.0010543048725463835,
+    "p99": 0.056177852329590536,
+    "flux": 0.0002141699989034877,
+    "skyP99": 1.5938101556758268,
+    "highSkyP99": 0,
+    "dt": 0.016876220703125,
+    "cls": 0.9907652131377762
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7123366504004738,
+    "emissionL1": 0.0004376041532885568,
+    "p99": 0.012396167311432369,
+    "flux": 0.00008432005769073528,
+    "skyP99": 1.3038183411070043,
+    "highSkyP99": 0,
+    "dt": 0.091827392578125,
+    "cls": 0.9844010357587089
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "dt",
+     "sky"
+    ],
+    "speedup": 1.546670170834582,
+    "emissionL1": 0.0004229450784887881,
+    "p99": 0.017381233679207155,
+    "flux": 0.00010006323778641958,
+    "skyP99": 1.289006089705019,
+    "highSkyP99": 0,
+    "dt": 0.666015625,
+    "cls": 0.984903448167325
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.4904973464159257,
+    "emissionL1": 0.00011908164555089978,
+    "p99": 0.000817791258536517,
+    "flux": 0.00009405966423783905,
+    "skyP99": 1.2872864603260665,
+    "highSkyP99": 0,
+    "dt": 0.0030052661895751953,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "eps0.06",
+  "description": "High with the step parameter eps = 0.06 (instead of 0.03); far steps kept.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: emissionL1, emissionP99, dt, sky",
+   "kerr_a0_inc80: emissionL1, emissionP99, flux, sky",
+   "kerr_a0.94_inc17: emissionL1, emissionP99, dt, sky",
+   "kerr_a0.94_inc80: emissionL1, emissionP99, sky",
+   "kerr_a0.998_inc80: emissionL1, emissionP99, dt, sky",
+   "johannsen_a0.94_a13_5.5: emissionL1, emissionP99, dt, sky",
+   "mankoNovikov_a0.94_a3_2: emissionL1, emissionP99, dt, sky",
+   "rn_Q0.8_inc60: emissionL1, emissionP99, dt, sky",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, chaoticFractions, sky",
+   "st3cr_l5e-3: emissionP99, sky",
+   "st3cr_l1e-3: sky",
+   "st3cr_l1e-4: dt, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 2.7556757301703234,
+   "fuzzball": 1.5498934497079762
+  },
+  "speedupVsHigh": {
+   "BH": 2.103972205753572,
+   "fuzzball": 1.0417747151230465
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.8295103071238676,
+    "emissionL1": 0.007847383778613309,
+    "p99": 0.03375544120376473,
+    "flux": 0.0006488965669189207,
+    "skyP99": 0.6057506029851661,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 1.188232421875,
+    "cls": 0.9999389639124132
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "sky"
+    ],
+    "speedup": 2.881302917208453,
+    "emissionL1": 0.013761332326598279,
+    "p99": 0.048887728954706354,
+    "flux": 0.003197810709457856,
+    "skyP99": 0.5858732837850252,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.344970703125,
+    "cls": 0.9999389620496544
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 1.8714972995745112,
+    "emissionL1": 0.007947621127343402,
+    "p99": 0.028846299573195483,
+    "flux": 0.0005419366267854923,
+    "skyP99": 0.5769178305740184,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.9249267578125,
+    "cls": 0.9998626646117224
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 3.1082385424436696,
+    "emissionL1": 0.009766872724573054,
+    "p99": 0.051337159367540096,
+    "flux": 0.0012501188944488409,
+    "skyP99": 0.704456283434659,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.3658447265625,
+    "cls": 0.9998588422008409
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 2.267448440842139,
+    "emissionL1": 0.009633580577054721,
+    "p99": 0.05059615184752088,
+    "flux": 0.001194028026144517,
+    "skyP99": 0.7191192118028426,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.5181884765625,
+    "cls": 0.9997901596312914
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.2123065417502574,
+    "emissionL1": 0.009003379949243193,
+    "p99": 0.037037004872429245,
+    "flux": 0.00046340965007562,
+    "skyP99": 0.6337666575779749,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 2.0452880859375,
+    "cls": 0.999824518570513
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 2.2669598795634487,
+    "emissionL1": 0.00883223383461122,
+    "p99": 0.033737684288533853,
+    "flux": 0.0008397699801140105,
+    "skyP99": 0.620106648918479,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 1.2659912109375,
+    "cls": 0.9998321360308564
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.1375520982469536,
+    "emissionL1": 0.00865820075920844,
+    "p99": 0.04041687666336755,
+    "flux": 0.0017919056366858907,
+    "skyP99": 0.6269843496506092,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.8656005859375,
+    "cls": 0.9998550337618739
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "chaoticFractions",
+     "sky"
+    ],
+    "speedup": 1.3501073247452684,
+    "emissionL1": 0.7165334878040567,
+    "p99": 0.25743515817852836,
+    "flux": 0.48164707234859644,
+    "skyP99": 1.8240378481953858,
+    "highSkyP99": 0,
+    "dt": 0.014068603515625,
+    "cls": 0.9993337930550847
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.6649914553540215,
+    "emissionL1": 0.0016738746906717987,
+    "p99": 0.05910017546569255,
+    "flux": 0.001417485058356563,
+    "skyP99": 1.7598811270611716,
+    "highSkyP99": 0,
+    "dt": 0.022924423217773438,
+    "cls": 0.9893411387861049
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.6513990769763502,
+    "emissionL1": 0.0005539809194840224,
+    "p99": 0.01150354978653853,
+    "flux": 0.00015516511939225373,
+    "skyP99": 1.6063293069665086,
+    "highSkyP99": 0,
+    "dt": 0.20574951171875,
+    "cls": 0.9820815307950465
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "dt",
+     "sky"
+    ],
+    "speedup": 1.4432955265787348,
+    "emissionL1": 0.0005060316593446315,
+    "p99": 0.018224026481412515,
+    "flux": 0.00016066355105260585,
+    "skyP99": 1.60197453514086,
+    "highSkyP99": 0,
+    "dt": 1.6767578125,
+    "cls": 0.9790174847736107
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.6692508594150879,
+    "emissionL1": 0.0001900511456476744,
+    "p99": 0.0012500871667322255,
+    "flux": 0.0001577397107383101,
+    "skyP99": 1.5999183714277712,
+    "highSkyP99": 0,
+    "dt": 0.004696369171142578,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "eps0.08",
+  "description": "High with the step parameter eps = 0.08 (instead of 0.03); far steps kept.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: emissionL1, emissionP99, flux, dt, sky",
+   "kerr_a0_inc80: emissionL1, emissionP99, flux, dt, sky",
+   "kerr_a0.94_inc17: emissionL1, emissionP99, dt, sky",
+   "kerr_a0.94_inc80: emissionL1, emissionP99, flux, dt, sky",
+   "kerr_a0.998_inc80: emissionL1, emissionP99, flux, dt, sky",
+   "johannsen_a0.94_a13_5.5: emissionL1, emissionP99, dt, sky",
+   "mankoNovikov_a0.94_a3_2: emissionL1, emissionP99, flux, dt, sky",
+   "rn_Q0.8_inc60: emissionL1, emissionP99, flux, dt, sky",
+   "st3cr_l0.05: emissionL1, emissionP99, flux, lightCurve, chaoticFlux, chaoticFractions, sky",
+   "st3cr_l5e-3: emissionP99, classAgreement, sky",
+   "st3cr_l1e-3: classAgreement, sky",
+   "st3cr_l1e-4: emissionP99, dt, classAgreement, sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 3.399967944774631,
+   "fuzzball": 1.7463552223494916
+  },
+  "speedupVsHigh": {
+   "BH": 2.5958925347928297,
+   "fuzzball": 1.1738282490383918
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.401287756678323,
+    "emissionL1": 0.022691088498354696,
+    "p99": 0.12234071069170722,
+    "flux": 0.0021569023045927066,
+    "skyP99": 1.431252000828108,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 5.7628173828125,
+    "cls": 0.9997100785839628
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.4069575704183217,
+    "emissionL1": 0.04567796640717859,
+    "p99": 0.17437162703934703,
+    "flux": 0.010650155021521404,
+    "skyP99": 1.03416595471133,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 1.3172607421875,
+    "cls": 0.999511696397235
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 4.735546163442719,
+    "emissionL1": 0.022874624790157755,
+    "p99": 0.10092573276780827,
+    "flux": 0.001970675634604881,
+    "skyP99": 1.1404520374100602,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 4.7288818359375,
+    "cls": 0.9995460302443044
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 2.7353285896634247,
+    "emissionL1": 0.029733590752793266,
+    "p99": 0.1824567713534738,
+    "flux": 0.005247891025741255,
+    "skyP99": 1.8038079421421658,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 1.072265625,
+    "cls": 0.9993361768363866
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.4127949635161063,
+    "emissionL1": 0.029329416359429653,
+    "p99": 0.18293971398810902,
+    "flux": 0.005049851748224264,
+    "skyP99": 1.841900887712104,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 1.591796875,
+    "cls": 0.9993170649818393
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "dt",
+     "sky"
+    ],
+    "speedup": 3.3490733541831488,
+    "emissionL1": 0.026270425305795892,
+    "p99": 0.13643322105705677,
+    "flux": 0.0016913758767619364,
+    "skyP99": 2.5810741633679717,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 8.5643310546875,
+    "cls": 0.9993362224188971
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 2.474748286836227,
+    "emissionL1": 0.02458501086370362,
+    "p99": 0.12302753663418897,
+    "flux": 0.0029954122036285977,
+    "skyP99": 1.567773450575795,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 6.46484375,
+    "cls": 0.9995002231827772
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "dt",
+     "sky"
+    ],
+    "speedup": 4.205745708273888,
+    "emissionL1": 0.02776777077586732,
+    "p99": 0.1460942392619618,
+    "flux": 0.0061018863130634675,
+    "skyP99": 1.0444860052480114,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 4.8941650390625,
+    "cls": 0.9996108800976614
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "emissionL1",
+     "emissionP99",
+     "flux",
+     "lightCurve",
+     "chaoticFlux",
+     "chaoticFractions",
+     "sky"
+    ],
+    "speedup": 2.245810589943457,
+    "emissionL1": 7897.2976276901945,
+    "p99": 0.3613913942107105,
+    "flux": 6477.386907260068,
+    "skyP99": 3.0289259834368636,
+    "highSkyP99": 0,
+    "dt": 0.025508880615234375,
+    "cls": 0.9994701512017049
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "emissionP99",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.8451706845437257,
+    "emissionL1": 0.002865042349505799,
+    "p99": 0.19208563377816582,
+    "flux": 0.0009363033844949036,
+    "skyP99": 2.9293544631301867,
+    "highSkyP99": 0,
+    "dt": 0.06191253662109375,
+    "cls": 0.9835541108805592
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.7356522482554555,
+    "emissionL1": 0.0007518504626758131,
+    "p99": 0.016215694881729206,
+    "flux": 0.00029801304238072325,
+    "skyP99": 2.327503072100281,
+    "highSkyP99": 0,
+    "dt": 0.432373046875,
+    "cls": 0.9708321272950582
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "emissionP99",
+     "dt",
+     "classAgreement",
+     "sky"
+    ],
+    "speedup": 1.1884775509467886,
+    "emissionL1": 0.0006917140956039183,
+    "p99": 0.023473398111851403,
+    "flux": 0.0003276761993354128,
+    "skyP99": 2.3231698444059123,
+    "highSkyP99": 0,
+    "dt": 4.13232421875,
+    "cls": 0.9655694748272768
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.9002011074126852,
+    "emissionL1": 0.00037481594472193254,
+    "p99": 0.002363684418463617,
+    "flux": 0.0003234006950244876,
+    "skyP99": 2.3243876475779257,
+    "highSkyP99": 0,
+    "dt": 0.00861501693725586,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "high",
+  "description": "High: Reference + the Stage 1 trades (larger steps beyond 20 M up to 4x; fuzzball max steps 5000) = the viewer since M9.",
+  "pass": true,
+  "failing": [],
+  "speedupVsReference": {
+   "BH": 1.309749112956239,
+   "fuzzball": 1.4877433932776094
+  },
+  "speedupVsHigh": {
+   "BH": 1,
+   "fuzzball": 1
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [],
+    "speedup": 1.0822356002015678,
+    "emissionL1": 0.0005093749734377036,
+    "p99": 0.0022991587108031324,
+    "flux": 0.00004855120491203982,
+    "skyP99": 0.24273556595136594,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.1387939453125,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [],
+    "speedup": 1.4589287671900666,
+    "emissionL1": 0.0007816186223972302,
+    "p99": 0.002880676622928625,
+    "flux": 0.00012635015695487575,
+    "skyP99": 0.2414315338882713,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.026123046875,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [],
+    "speedup": 1.2103566459178983,
+    "emissionL1": 0.0005243918212883682,
+    "p99": 0.002334399070226661,
+    "flux": 0.00003905824426701954,
+    "skyP99": 0.2525881180015043,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.1405029296875,
+    "cls": 0.9999961851281034
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [],
+    "speedup": 1.1869134159848298,
+    "emissionL1": 0.0006160480234558087,
+    "p99": 0.002791869821524427,
+    "flux": 0.00009752074949177035,
+    "skyP99": 0.29636553754555556,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.0294189453125,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [],
+    "speedup": 1.8176957620105998,
+    "emissionL1": 0.0006155417378906838,
+    "p99": 0.0028204364568588606,
+    "flux": 0.00009596581136295461,
+    "skyP99": 0.3041442374745977,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.0362548828125,
+    "cls": 1
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [],
+    "speedup": 1.4295199941968948,
+    "emissionL1": 0.0005797043161471615,
+    "p99": 0.0024054320565028648,
+    "flux": 0.00003335960013043497,
+    "skyP99": 0.21589234383980818,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.1617431640625,
+    "cls": 1
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [],
+    "speedup": 1.2487934016592235,
+    "emissionL1": 0.0006033586821177645,
+    "p99": 0.0025018758853414085,
+    "flux": 0.00005685869995625244,
+    "skyP99": 0.26238058736430925,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.181396484375,
+    "cls": 0.9999809245489609
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [],
+    "speedup": 1.1765613509556674,
+    "emissionL1": 0.0005422919996672204,
+    "p99": 0.002358604904770269,
+    "flux": 0.00011674228109665069,
+    "skyP99": 0.27395935955978923,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.2662353515625,
+    "cls": 1
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [],
+    "speedup": 1.3748246118175778,
+    "emissionL1": 0,
+    "p99": 0,
+    "flux": 0,
+    "skyP99": 0,
+    "highSkyP99": 0,
+    "dt": 0,
+    "cls": 0.9998597459063336
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [],
+    "speedup": 1.702173041319509,
+    "emissionL1": 0,
+    "p99": 0,
+    "flux": 0,
+    "skyP99": 0,
+    "highSkyP99": 0,
+    "dt": 0,
+    "cls": 0.9868874705125878
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [],
+    "speedup": 1.488417799614099,
+    "emissionL1": 0,
+    "p99": 0,
+    "flux": 0,
+    "skyP99": 0,
+    "highSkyP99": 0,
+    "dt": 0,
+    "cls": 0.975830992967167
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [],
+    "speedup": 1.9863988126377523,
+    "emissionL1": 0,
+    "p99": 0,
+    "flux": 0,
+    "skyP99": 0,
+    "highSkyP99": 0,
+    "dt": 0,
+    "cls": 0.9751735100171542
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [],
+    "speedup": 1.0534109867648498,
+    "emissionL1": 0,
+    "p99": 0,
+    "flux": 0,
+    "skyP99": 0,
+    "highSkyP99": 0,
+    "dt": 0,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "refine_loose",
+  "description": "High with adaptive refinement from stride 4: interpolation error sky 0.3 px, r 3e-3, g 3e-3, dt 0.3 M.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: sky",
+   "kerr_a0_inc80: emissionP99, sky",
+   "kerr_a0.94_inc17: sky",
+   "kerr_a0.94_inc80: emissionP99, sky",
+   "kerr_a0.998_inc80: emissionP99, sky",
+   "johannsen_a0.94_a13_5.5: sky",
+   "mankoNovikov_a0.94_a3_2: sky",
+   "rn_Q0.8_inc60: sky",
+   "st3cr_l0.05: sky",
+   "st3cr_l5e-3: sky",
+   "st3cr_l1e-3: sky",
+   "st3cr_l1e-4: sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 1.7217764329622103,
+   "fuzzball": 1.8204159772801833
+  },
+  "speedupVsHigh": {
+   "BH": 1.3145849200660902,
+   "fuzzball": 1.2236088464622057
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.5501306447736034,
+    "emissionL1": 0.0007998856862374683,
+    "p99": 0.013999640561132464,
+    "flux": 0.00003814419846714931,
+    "skyP99": 1.521024169530686,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.13916015625,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 2.6817307800820007,
+    "emissionL1": 0.0018894865283095963,
+    "p99": 0.023983577623997047,
+    "flux": 0.0009538211163579734,
+    "skyP99": 1.5183742588701525,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.103759765625,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7929731254909411,
+    "emissionL1": 0.0007232885889574449,
+    "p99": 0.013299629897069785,
+    "flux": 0.00004223401094897729,
+    "skyP99": 1.5083614782790757,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.1463623046875,
+    "cls": 0.9999961851281034
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.7373876606730658,
+    "emissionL1": 0.0018663159700755977,
+    "p99": 0.023677998270422232,
+    "flux": 0.0009792426334125964,
+    "skyP99": 2.0010483762362297,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.112060546875,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.5320598130182654,
+    "emissionL1": 0.0019058413663960159,
+    "p99": 0.024882945907018027,
+    "flux": 0.0009236277912398438,
+    "skyP99": 2.5184641638513297,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.119140625,
+    "cls": 1
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7988653648210402,
+    "emissionL1": 0.0009384409343839812,
+    "p99": 0.015562164384385901,
+    "flux": 0.00007055012751989253,
+    "skyP99": 1.5299878381469738,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.1617431640625,
+    "cls": 1
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7013360329713645,
+    "emissionL1": 0.0010040359142284231,
+    "p99": 0.016907183953769753,
+    "flux": 0.00021159549679902295,
+    "skyP99": 1.5366532760206344,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.1868896484375,
+    "cls": 0.9999732943685453
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.2720248625860846,
+    "emissionL1": 0.0012342466971479926,
+    "p99": 0.016946090489219353,
+    "flux": 0.000491251072000941,
+    "skyP99": 1.4963982529638038,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.3043212890625,
+    "cls": 1
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.7420816356468778,
+    "emissionL1": 0.0006850980344595061,
+    "p99": 0.007453366432822002,
+    "flux": 0.000532389332508006,
+    "skyP99": 0.8201629291287991,
+    "highSkyP99": 0,
+    "dt": 0.009794235229492188,
+    "cls": 0.9998597459063336
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 2.261625348168493,
+    "emissionL1": 0.0007909420034749862,
+    "p99": 0.008988315896671753,
+    "flux": 0.0007104823215188262,
+    "skyP99": 0.8580408962605529,
+    "highSkyP99": 0,
+    "dt": 0.010667800903320312,
+    "cls": 0.9868874705125878
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 2.0182187696580525,
+    "emissionL1": 0.0007628656529297412,
+    "p99": 0.00930652040892923,
+    "flux": 0.0006910696605731865,
+    "skyP99": 0.9314667724296136,
+    "highSkyP99": 0,
+    "dt": 0.010508537292480469,
+    "cls": 0.975830992967167
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.8784509181839175,
+    "emissionL1": 0.0007795837580318345,
+    "p99": 0.010425545389564785,
+    "flux": 0.0007065979565905708,
+    "skyP99": 1.0848089988032799,
+    "highSkyP99": 0,
+    "dt": 0.010400772094726562,
+    "cls": 0.9751735100171542
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.3384308374868896,
+    "emissionL1": 0.0007801408932528553,
+    "p99": 0.010420242214994331,
+    "flux": 0.0007064256157114978,
+    "skyP99": 1.0898131144716092,
+    "highSkyP99": 0,
+    "dt": 0.011927127838134766,
+    "cls": 1
+   }
+  ]
+ },
+ {
+  "config": "refine_tight",
+  "description": "High with adaptive refinement from stride 4: interpolation error sky 0.1 px, r 1e-3, g 1e-3, dt 0.1 M.",
+  "pass": false,
+  "failing": [
+   "kerr_a0_inc17: sky",
+   "kerr_a0_inc80: emissionP99, sky",
+   "kerr_a0.94_inc17: sky",
+   "kerr_a0.94_inc80: emissionP99, sky",
+   "kerr_a0.998_inc80: emissionP99, sky",
+   "johannsen_a0.94_a13_5.5: sky",
+   "mankoNovikov_a0.94_a3_2: sky",
+   "rn_Q0.8_inc60: sky",
+   "st3cr_l0.05: sky",
+   "st3cr_l5e-3: sky",
+   "st3cr_l1e-3: sky",
+   "st3cr_l1e-4: sky",
+   "st3cr_l0: sky"
+  ],
+  "speedupVsReference": {
+   "BH": 1.4897164426097107,
+   "fuzzball": 1.2796759474880703
+  },
+  "speedupVsHigh": {
+   "BH": 1.1374059565096912,
+   "fuzzball": 0.8601456092968082
+  },
+  "scenes": [
+   {
+    "scene": "kerr_a0_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.6299777126394754,
+    "emissionL1": 0.0007930273542756669,
+    "p99": 0.012410607357344278,
+    "flux": 0.00003978471127110168,
+    "skyP99": 1.5196419204096936,
+    "highSkyP99": 0.24273556595136594,
+    "dt": 0.1387939453125,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.7838785653263607,
+    "emissionL1": 0.0012790068736024077,
+    "p99": 0.02152102959409907,
+    "flux": 0.00031820776829015685,
+    "skyP99": 1.5133739558353567,
+    "highSkyP99": 0.2414315338882713,
+    "dt": 0.0882568359375,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.94_inc17",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.407761462233207,
+    "emissionL1": 0.0007217944329484712,
+    "p99": 0.013229068271800216,
+    "flux": 0.00004161452395967434,
+    "skyP99": 1.5083614782790757,
+    "highSkyP99": 0.2525881180015043,
+    "dt": 0.1405029296875,
+    "cls": 0.9999961851281034
+   },
+   {
+    "scene": "kerr_a0.94_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.55731917243738,
+    "emissionL1": 0.0011863635165148955,
+    "p99": 0.02183542525334062,
+    "flux": 0.0004344478995867258,
+    "skyP99": 1.5100881920052265,
+    "highSkyP99": 0.29636553754555556,
+    "dt": 0.090087890625,
+    "cls": 1
+   },
+   {
+    "scene": "kerr_a0.998_inc80",
+    "fails": [
+     "emissionP99",
+     "sky"
+    ],
+    "speedup": 1.2575624442838456,
+    "emissionL1": 0.0011898070804019691,
+    "p99": 0.02142071227631937,
+    "flux": 0.0004213752648326357,
+    "skyP99": 1.5051648461538703,
+    "highSkyP99": 0.3041442374745977,
+    "dt": 0.093017578125,
+    "cls": 1
+   },
+   {
+    "scene": "johannsen_a0.94_a13_5.5",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.4318977451736519,
+    "emissionL1": 0.0009363274850484709,
+    "p99": 0.015508786731027764,
+    "flux": 0.00007330781166508572,
+    "skyP99": 1.5299878381469738,
+    "highSkyP99": 0.21589234383980818,
+    "dt": 0.1617431640625,
+    "cls": 1
+   },
+   {
+    "scene": "mankoNovikov_a0.94_a3_2",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.4003428919881822,
+    "emissionL1": 0.0007833234716175428,
+    "p99": 0.013570868171893763,
+    "flux": 0.00007961886408205373,
+    "skyP99": 1.51756847216368,
+    "highSkyP99": 0.26238058736430925,
+    "dt": 0.181396484375,
+    "cls": 0.9999732943685453
+   },
+   {
+    "scene": "rn_Q0.8_inc60",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.5090348821223676,
+    "emissionL1": 0.0009468858850100254,
+    "p99": 0.012400245906237619,
+    "flux": 0.0001789582605367704,
+    "skyP99": 0.7855496541249198,
+    "highSkyP99": 0.27395935955978923,
+    "dt": 0.274169921875,
+    "cls": 1
+   },
+   {
+    "scene": "st3cr_l0.05",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.0348159716755718,
+    "emissionL1": 0.00022268268609837642,
+    "p99": 0.004207443966417761,
+    "flux": 0.00018201322471322553,
+    "skyP99": 0.319603618453804,
+    "highSkyP99": 0,
+    "dt": 0.0017223358154296875,
+    "cls": 0.9998597459063336
+   },
+   {
+    "scene": "st3cr_l5e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.5017273867625356,
+    "emissionL1": 0.00024514674238702546,
+    "p99": 0.004244110327344116,
+    "flux": 0.00023399227554809406,
+    "skyP99": 0.31349984506822537,
+    "highSkyP99": 0,
+    "dt": 0.0015692710876464844,
+    "cls": 0.9868874705125878
+   },
+   {
+    "scene": "st3cr_l1e-3",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.4501280474905966,
+    "emissionL1": 0.00021727045768389115,
+    "p99": 0.004196146364078079,
+    "flux": 0.00020873397381240258,
+    "skyP99": 0.32565600661977373,
+    "highSkyP99": 0,
+    "dt": 0.0014414787292480469,
+    "cls": 0.975830992967167
+   },
+   {
+    "scene": "st3cr_l1e-4",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 1.5583474133527009,
+    "emissionL1": 0.00023185788579598173,
+    "p99": 0.004245347071607223,
+    "flux": 0.0002235153916127621,
+    "skyP99": 0.36040203428696227,
+    "highSkyP99": 0,
+    "dt": 0.0013866424560546875,
+    "cls": 0.9751735100171542
+   },
+   {
+    "scene": "st3cr_l0",
+    "fails": [
+     "sky"
+    ],
+    "speedup": 0.9771813609783716,
+    "emissionL1": 0.00023677059230601646,
+    "p99": 0.0042675789928758,
+    "flux": 0.00023104586121500063,
+    "skyP99": 0.35912823128963334,
+    "highSkyP99": 0,
+    "dt": 0.0025315284729003906,
+    "cls": 1
+   }
+  ]
+ }
+]

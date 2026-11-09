@@ -76,7 +76,7 @@ describe('rescaleToUnitMass', () => {
 });
 
 describe('URL migration (version 1 -> 2)', () => {
-  it('old fuzzball URLs divide mu and sigma by 24; new URLs carry v=2 and are left alone', () => {
+  it('old fuzzball URLs divide mu and sigma by 24; new URLs carry the version (v=3 since B6) and are left alone', () => {
     const old = initialState(new URLSearchParams('metric=st3cr&mu=0&sigma=2&gamma=-1.5&lambda=0.005'));
     expect(old.sigma).toBeCloseTo(2 / 24, 15);
     expect(old.mu).toBe(0);
@@ -84,7 +84,7 @@ describe('URL migration (version 1 -> 2)', () => {
     const oldDefaults = initialState(new URLSearchParams('metric=st3cr'));
     expect(oldDefaults.mu).toBeCloseTo(2.02 / 24, 15);
     const q = stateToQuery(old);
-    expect(q).toContain('v=2');
+    expect(q).toContain('v=3');
     const again = initialState(new URLSearchParams(q));
     expect(again.sigma).toBeCloseTo(2 / 24, 15);
     expect(initialState(new URLSearchParams('a=0.5&mu=3')).mu).toBe(3);   // BH URLs unchanged

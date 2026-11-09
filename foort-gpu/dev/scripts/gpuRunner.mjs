@@ -26,7 +26,7 @@ export async function openViewer(opts = {}) {
   });
   const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
   page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.goto(base + 'index.html?N=128');
+  await page.goto(base + 'index.html?N=128&pretrace=0');   // scripts trace themselves: no idle pre-tracing
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 });
   const err = await page.evaluate(() => window.__foortError);
   if (err) throw new Error(err);

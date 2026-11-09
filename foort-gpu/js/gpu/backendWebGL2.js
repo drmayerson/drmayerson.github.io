@@ -109,8 +109,85 @@ void main() {
 }`;
   /** @type {{prog: WebGLProgram, loc: (n: string) => WebGLUniformLocation|null}|null} */
   let scatter = null;
+  /** a plain program from vertex and fragment sources @param {string} vs @param {string} fs @param {string} label */
+  const buildPlain = (vs, fs, label) => {
+    const prog = /** @type {WebGLProgram} */ (gl.createProgram());
+    for (const [type, src] of /** @type {[number, string][]} */ ([[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]])) {
+      const sh = /** @type {WebGLShader} */ (gl.createShader(type));
+      gl.shaderSource(sh, src); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(`${label}: GLSL compile error\n${gl.getShaderInfoLog(sh)}`);
+      gl.attachShader(prog, sh);
+    }
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(`${label}: link error\n${gl.getProgramInfoLog(prog)}`);
+    /** @type {Map<string, WebGLUniformLocation|null>} */
+    const locs = new Map();
+    return { prog, loc: (/** @type {string} */ n) => { if (!locs.has(n)) locs.set(n, gl.getUniformLocation(prog, n)); return locs.get(n) ?? null; } };
+  };
+  // B6 adaptive refinement: the full-resolution record interpolated from a coarse level. Bilinear in the coarse sample
+  // grid (clamped at the borders); phi with wrap-around (unit vectors), escape directions on the sphere, the crossing
+  // record of corner 0 for the termination code, the tail bins' weights and centroids weight-averaged. Pixels whose cell
+  // corners differ in topology are traced instead (js/gpu/refine.js), so no interpolation crosses topologies.
+  const INTERP_VS = VERT;
+  const INTERP_FS = `#version 300 es
+precision highp float; precision highp int;
+uniform highp sampler2D uC0, uC1, uC2, uC3, uC4, uC5;
+uniform ivec4 uIp;   // coarse stride s, coarse width, coarse height, tail (1/0)
+layout(location = 0) out vec4 o0; layout(location = 1) out vec4 o1; layout(location = 2) out vec4 o2; layout(location = 3) out vec4 o3;
+layout(location = 4) out vec4 o4; layout(location = 5) out vec4 o5;
+const float PI = 3.14159265358979;
+ivec2 c00, c10, c01, c11; float fx, fy;
+vec4 at(highp sampler2D t, ivec2 c) { return texelFetch(t, c, 0); }
+vec4 bil(highp sampler2D t) {
+  return mix(mix(at(t, c00), at(t, c10), fx), mix(at(t, c01), at(t, c11), fx), fy);
+}
+float wrapPhi(float a, float b, float c, float d) {
+  vec2 v = mix(mix(vec2(cos(a), sin(a)), vec2(cos(b), sin(b)), fx), mix(vec2(cos(c), sin(c)), vec2(cos(d), sin(d)), fx), fy);
+  return mod(atan(v.y, v.x), 2.0 * PI);
+}
+vec3 dirOf(vec4 r0) { return vec3(sin(r0.z) * cos(r0.w), sin(r0.z) * sin(r0.w), cos(r0.z)); }
+vec4 crossing(highp sampler2D t) {
+  vec4 a = at(t, c00), b = at(t, c10), c = at(t, c01), d = at(t, c11);
+  if (!(a.x > 0.0)) return vec4(0.0);
+  vec4 m = mix(mix(a, b, fx), mix(c, d, fx), fy);
+  m.y = wrapPhi(a.y, b.y, c.y, d.y);
+  return m;
+}
+// tail bins: W in the high bits, the centroid fraction in the low 8 bits (common.glsl)
+vec2 unpackBin(float v) { uint u = floatBitsToUint(v); return vec2(uintBitsToFloat(u & 0xFFFFFF00u), float(u & 0xFFu) / 255.0); }
+float packBin(float W, float f) { return W > 0.0 ? uintBitsToFloat((floatBitsToUint(W) & 0xFFFFFF00u) | uint(clamp(f, 0.0, 1.0) * 255.0 + 0.5)) : 0.0; }
+vec4 tail(highp sampler2D t) {
+  vec4 q[4]; q[0] = at(t, c00); q[1] = at(t, c10); q[2] = at(t, c01); q[3] = at(t, c11);
+  float w[4]; w[0] = (1.0 - fx) * (1.0 - fy); w[1] = fx * (1.0 - fy); w[2] = (1.0 - fx) * fy; w[3] = fx * fy;
+  vec4 o = vec4(0.0);
+  for (int b = 0; b < 4; b++) {
+    float W = 0.0, X = 0.0;
+    for (int k = 0; k < 4; k++) { vec2 u = unpackBin(q[k][b]); W += w[k] * u.x; X += w[k] * u.x * u.y; }
+    o[b] = packBin(W, W > 0.0 ? X / W : 0.0);
+  }
+  return o;
+}
+void main() {
+  float s = float(uIp.x);
+  vec2 u = (gl_FragCoord.xy - 0.5 - 0.5 * (s - 1.0)) / s;   // fine pixel centre in coarse sample units
+  ivec2 n = uIp.yz;
+  ivec2 i0 = clamp(ivec2(floor(u)), ivec2(0), max(n - 2, ivec2(0)));
+  vec2 f = clamp(u - vec2(i0), 0.0, 1.0);
+  fx = f.x; fy = f.y;
+  ivec2 i1 = min(i0 + 1, n - 1);
+  c00 = i0; c10 = ivec2(i1.x, i0.y); c01 = ivec2(i0.x, i1.y); c11 = i1;
+  vec4 r00 = at(uC0, c00), r10 = at(uC0, c10), r01 = at(uC0, c01), r11 = at(uC0, c11);
+  vec3 d = normalize(mix(mix(dirOf(r00), dirOf(r10), fx), mix(dirOf(r01), dirOf(r11), fx), fy));
+  float steps = mix(mix(r00.y, r10.y, fx), mix(r01.y, r11.y, fx), fy);
+  o0 = vec4(r00.x, floor(steps + 0.5), acos(clamp(d.z, -1.0, 1.0)), mod(atan(d.y, d.x), 2.0 * PI));
+  o1 = crossing(uC1); o2 = crossing(uC2);
+  o3 = crossing(uC3);   // (refinement is off when |H| is recorded in this slot)
+  if (uIp.w == 1) { o4 = tail(uC4); o5 = tail(uC5); } else { o4 = vec4(0.0); o5 = vec4(0.0); }
+}`;
+  /** @type {{prog: WebGLProgram, loc: (n: string) => WebGLUniformLocation|null}|null} */
+  let interp = null;
   /** the compact image of the current compaction round */
-  let compact = /** @type {{fbo: WebGLFramebuffer, tex: WebGLTexture[], index: WebGLTexture, w: number, h: number, M: number, stride: number}|null} */ (null);
+  let compact = /** @type {{fbo: WebGLFramebuffer, tex: WebGLTexture[], index: WebGLTexture, w: number, h: number, M: number, stride: number, fresh: boolean}|null} */ (null);
   /** compaction phase of the next tiles: mode 0 off, 1 stop at the limit, 2 resume the listed rays */
   let compactPhase = { mode: 0, limit: 0 };
   const freeCompact = () => {
@@ -118,6 +195,40 @@ void main() {
     for (const t of compact.tex) gl.deleteTexture(t);
     gl.deleteTexture(compact.index); gl.deleteFramebuffer(compact.fbo);
     compact = null;
+  };
+  /**
+   * The compact image of a list of pixels of level `stride` (fresh: trace them afresh, B6 refinement; else resume them,
+   * B5 compaction). @param {Int32Array} list @param {number} stride @param {boolean} fresh
+   */
+  const makeCompact = (list, stride, fresh) => {
+    freeCompact();
+    const M = list.length;
+    if (!M) return 0;
+    // compact image: 256 wide (or narrower), padding -1
+    const w = Math.min(M, 256), h = Math.ceil(M / w);
+    const idx = new Int32Array(w * h).fill(-1);
+    idx.set(list);
+    const index = /** @type {WebGLTexture} */ (gl.createTexture());
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, index);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32I, w, h);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RED_INTEGER, gl.INT, idx);
+    for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+    const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    const tex = Array.from({ length: 8 }, (_, k) => {
+      const t = /** @type {WebGLTexture} */ (gl.createTexture());
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, w, h);
+      for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
+      return t;
+    });
+    gl.drawBuffers(Array.from({ length: 8 }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('compact framebuffer incomplete');
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    compact = { fbo, tex, index, w, h, M, stride, fresh };
+    return M;
   };
 
   // one record set (4 RGBA32F targets) per progressive level, stride s -> ceil(N / s)^2 pixels:
@@ -236,7 +347,7 @@ void main() {
       const closed = base.startsWith('closed_') ? base.slice(7) : null;
       const half = base.endsWith('_half'), file = closed ? 'trace' : half ? base.slice(0, -5) : base;
       const pre = closed ? '#define CLOSED_FORM 1\n' + await load(`closed/${closed}`) + '\n' : '';
-      const FLAG_DEFINES = /** @type {Record<string, string>} */ ({ g34: 'G3_EQUALS_G4', reuse: 'TEXEL_REUSE', compact: 'COMPACT' });
+      const FLAG_DEFINES = /** @type {Record<string, string>} */ ({ g34: 'G3_EQUALS_G4', reuse: 'TEXEL_REUSE', compact: 'COMPACT', bs3: 'BS3' });
       if (flags.includes('compact') && !COMPACT_OK) throw new Error('ray compaction needs 8 draw buffers');
       // a '+#text' flag only adds a comment (a distinct source, e.g. for compile-time measurements past the driver's cache)
       const defs = flags.map((f) => { if (f.startsWith('#')) return `// ${f}\n`; if (!FLAG_DEFINES[f]) throw new Error(`unknown tracer flag ${f}`); return `#define ${FLAG_DEFINES[f]} 1\n`; }).join('');
@@ -415,7 +526,7 @@ void main() {
       gl.uniform1i(tracer.loc('uFluid'), 1);
       gl.uniform4i(tracer.loc('uImg'), L.w, L.h, 0, 0);
       if (tracer.loc('uCompact')) {
-        gl.uniform4i(tracer.loc('uCompact'), C ? 2 : compactPhase.mode ? 1 : 0, compactPhase.limit, 0, 0);
+        gl.uniform4i(tracer.loc('uCompact'), C ? (C.fresh ? 3 : 2) : compactPhase.mode ? 1 : 0, compactPhase.limit, 0, 0);
         // the index list and the level's records (read while the compact image is the target)
         gl.activeTexture(gl.TEXTURE3);
         gl.bindTexture(gl.TEXTURE_2D, C ? C.index : null);
@@ -485,35 +596,35 @@ void main() {
       gl.deleteBuffer(pbo);
       const list = [];
       for (let p = 0; p < n; p++) { const c = Math.round(rec0[4 * p]) & 15; if (c === 8 || c === 9) list.push(p); }
-      freeCompact();
-      const M = list.length;
-      if (!M) return 0;
-      // compact image: 256 wide (or narrower), padding -1
-      const w = Math.min(M, 256), h = Math.ceil(M / w);
-      const idx = new Int32Array(w * h).fill(-1);
-      idx.set(list);
-      const index = /** @type {WebGLTexture} */ (gl.createTexture());
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, index);
-      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32I, w, h);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RED_INTEGER, gl.INT, idx);
-      for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
-      const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
-      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-      const tex = Array.from({ length: 8 }, (_, k) => {
-        const t = /** @type {WebGLTexture} */ (gl.createTexture());
-        gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, w, h);
-        for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
-        return t;
-      });
-      gl.drawBuffers(Array.from({ length: 8 }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
-      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('compact framebuffer incomplete');
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      compact = { fbo, tex, index, w, h, M, stride };
-      return M;
+      return makeCompact(Int32Array.from(list), stride, false);
     },
+
+    pixelList(stride, list) { return makeCompact(list, stride, true); },
+
+    interpolateLevel(from) {
+      // B6 adaptive refinement: fill the full-resolution level (stride 1) of the current set from level `from` by
+      // interpolation; the marked pixels are traced afterwards (pixelList, traceTile toCompact) and scattered over it
+      if (!interp) interp = buildPlain(INTERP_VS, INTERP_FS, 'interpolate');
+      const C = getLevel(from), L = getLevel(1);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
+      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k < 6 ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
+      gl.viewport(0, 0, L.w, L.h);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.useProgram(interp.prog);
+      gl.bindVertexArray(vao);
+      for (let k = 0; k < 6; k++) {
+        gl.activeTexture(gl.TEXTURE4 + k);
+        gl.bindTexture(gl.TEXTURE_2D, C.tex[Math.min(k, NATT - 1)]);
+        gl.uniform1i(interp.loc(`uC${k}`), 4 + k);
+      }
+      gl.uniform4i(interp.loc('uIp'), from, C.w, C.h, TAIL_BINS ? 1 : 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      for (let k = 4; k < 10; k++) { gl.activeTexture(gl.TEXTURE0 + k); gl.bindTexture(gl.TEXTURE_2D, null); }
+      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    },
+
+
 
     compactSize: () => (compact ? { w: compact.w, h: compact.h, M: compact.M } : null),
 
@@ -603,8 +714,10 @@ void main() {
       lastDisplayMs = performance.now() - t0;
     },
 
-    async readRecords(stride = 1) {
-      const L = getLevel(stride);
+    async readRecords(stride = 1, currentSet = false) {
+      // the displayed records unless the pipeline asks for the set it is tracing (B6 refinement): an idle pre-trace may
+      // switch the current set between a trace and the read-back of its records
+      const L = currentSet ? getLevel(stride) : /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
       gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
       // 24 floats per pixel (js/gpu/traceConfig.js RECORD_FLOATS): the record, then the tail bins (zeros without a tail)
       const out = new Float32Array(24 * L.w * L.h);

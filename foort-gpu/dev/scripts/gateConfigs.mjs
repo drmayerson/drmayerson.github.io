@@ -39,14 +39,33 @@ export function sceneSet() {
   });
 }
 
+/** the exact speedups of B5, in every configuration (plan 1.2: allowed in Reference, they change nothing beyond float32 rounding) */
+const EXACT = { path: 'auto', texelReuse: true };
+const high = (s) => ({ ...s.view, ...EXACT, eps: 0.03, farSteps: { r: 20, max: 4 }, maxSteps: 5000 });
+
 /** configurations: apply(scene) -> the view to trace */
 export const GATE_CONFIGS = {
   reference: {
-    description: 'Reference: Stage 1 integrator without accuracy trades (eps 0.03, no larger far steps, max steps 5000 BH / 10000 fuzzball).',
-    apply: (s) => ({ ...s.view, eps: 0.03, farSteps: null, maxSteps: s.fuzzball ? 10000 : 5000 }),
+    description: 'Reference: Stage 1 integrator without accuracy trades (eps 0.03, no larger far steps, max steps 5000 BH / 10000 fuzzball), with the exact B5 speedups.',
+    apply: (s) => ({ ...s.view, ...EXACT, eps: 0.03, farSteps: null, maxSteps: s.fuzzball ? 10000 : 5000 }),
   },
   high: {
     description: 'High: Reference + the Stage 1 trades (larger steps beyond 20 M up to 4x; fuzzball max steps 5000) = the viewer since M9.',
-    apply: (s) => ({ ...s.view, eps: 0.03, farSteps: { r: 20, max: 4 }, maxSteps: 5000 }),
+    apply: high,
   },
+  // Stage 1B B6, plan 4.2-1: an embedded error-controlled integrator (Bogacki-Shampine 3(2), FSAL), tolerance = tol x the
+  // pixel's angle at the camera, steps capped at FOORT's rule x 4
+  ...Object.fromEntries([0.1, 0.3, 1].map((tol) => [`bs3_tol${tol}`, {
+    description: `High with the Bogacki-Shampine 3(2) integrator, tolerance ${tol} pixel angles, steps capped at 4x FOORT's rule.`,
+    apply: (s) => ({ ...high(s), bs3: { tol, cap: 4 } }),
+  }])),
+  // Stage 1B B6, plan 4.2-2: adaptive refinement from the stride-4 level (thresholds on the estimated interpolation error:
+  // escape direction in fine pixels, crossing r and g relative, dt in M)
+  refine_tight: { description: 'High with adaptive refinement from stride 4: interpolation error sky 0.1 px, r 1e-3, g 1e-3, dt 0.1 M.', apply: (s) => ({ ...high(s), refine: { sky: 0.1, r: 1e-3, g: 1e-3, dt: 0.1 } }) },
+  refine_loose: { description: 'High with adaptive refinement from stride 4: interpolation error sky 0.3 px, r 3e-3, g 3e-3, dt 0.3 M.', apply: (s) => ({ ...high(s), refine: { sky: 0.3, r: 3e-3, g: 3e-3, dt: 0.3 } }) },
+  // Stage 1B B6, plan 4.2-1: larger near-field step parameter, the far-step rule kept
+  ...Object.fromEntries([0.04, 0.05, 0.06, 0.08].map((eps) => [`eps${eps}`, {
+    description: `High with the step parameter eps = ${eps} (instead of 0.03); far steps kept.`,
+    apply: (s) => ({ ...high(s), eps }),
+  }])),
 };

@@ -28,6 +28,7 @@ export function tilesCentreOut(w, h, edge) {
  * @property {number|null} steps             total RK4 steps (when measured)
  * @property {number} [compacted]            rays traced again in compaction rounds (Stage 1B B5)
  * @property {boolean} [cached]              restored from the record cache (Stage 1B B5)
+ * @property {number} [traced]               fraction of the full-resolution pixels traced (Stage 1B B6 refinement)
  */
 
 /**
@@ -78,13 +79,15 @@ export function compactLimits(n1, maxSteps) {
 
 /**
  * Cache key of a trace: everything its records depend on.
- * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tableKey?:string|null, fluidKey?:string|null, compact?:{n1:number}|null}} setup
+ * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tableKey?:string|null, fluidKey?:string|null, compact?:{n1:number}|null, refine?:object|null}} setup
  * @param {number[]} levels
  */
 export function traceKey(setup, levels) {
   const u = Object.entries(setup.uniforms).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, [t, v]]) => [k, t, Array.from(v)]);
-  return JSON.stringify([setup.program, u, setup.tableKey ?? null, setup.fluidKey ?? null, setup.N, levels, setup.compact ?? null]);
+  return JSON.stringify([setup.program, u, setup.tableKey ?? null, setup.fluidKey ?? null, setup.N, levels, setup.compact ?? null, setup.refine ?? null]);
 }
+
+import { refineList } from './refine.js';
 
 export class TracePipeline {
   /**
@@ -207,7 +210,7 @@ export class TracePipeline {
   /**
    * Trace an image. Starting a new trace cancels the running one.
    * @param {{program:string, uniforms:import('./backend.js').Uniforms, N:number, tables?:any, tableKey?:string|null, fluid?:any, fluidKey?:string|null,
-   *   compact?:{n1:number}|null, maxSteps?:number}} setup
+   *   compact?:{n1:number}|null, maxSteps?:number, refine?:(import('./refine.js').RefineParams & {M:number, spacing:number})|null}} setup
    *   With the record cache on (opts.cache, default true), a trace whose key (program, uniforms, tables, fluid, N, levels) is
    *   cached is restored instead of traced (stats.cached); background traces (opts.background: idle pre-tracing) run in
    *   the backend's background record set and only fill the cache.
@@ -241,6 +244,8 @@ export class TracePipeline {
       be.useRecordSet(opts.background ? 1 : 0, setup.N, setup.N);
       // background traces report no progress (the status line and the redraws belong to the displayed view)
       this.silent = !!opts.background;
+      // devices without 8 draw buffers: no compaction or refinement (the plain program, every pixel traced)
+      if (setup.program.includes('+compact') && !be.compactSupported()) setup = { ...setup, program: setup.program.replace('+compact', ''), compact: null, refine: null };
       if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program.startsWith('trace_kerr') ? 'closed-form Kerr' : 'tabulated'} tracer (first use)…`);
       await be.setTracer(setup.program);
       this.compiled.add(setup.program);
@@ -256,7 +261,26 @@ export class TracePipeline {
       let nTiles = 0;
       const compactRounds = setup.compact ? compactLimits(setup.compact.n1, setup.maxSteps ?? 0) : [];
       let compacted = 0;
-      for (const st of levels) {
+      /** fraction of the full-resolution pixels traced (B6 adaptive refinement; 1 without it) */
+      let traced = 1;
+      for (const [li, st] of levels.entries()) {
+        // Stage 1B B6 adaptive refinement: the full level from the coarse one before it, tracing only the marked cells
+        const cs = li > 0 ? levels[li - 1] : 0;
+        if (setup.refine && st === 1 && cs > 1) {
+          const { w: cw, h: ch } = be.levelSize(cs), { w, h } = be.levelSize(1);
+          const coarse = await be.readRecords(cs, true);
+          const r = refineList(coarse, cw, ch, cs, w, h, setup.refine, setup.refine.spacing * cs, setup.refine.M);
+          be.interpolateLevel(cs);
+          traced = r.list.length / (w * h);
+          if (be.pixelList(1, r.list)) {
+            be.setCompactPhase(0, 0);
+            const cz = /** @type {{w:number, h:number}} */ (be.compactSize());
+            const ok = await this.runTiles(gen, cz.w, cz.h, (t) => be.traceTile(t, 1, true), 1, opts.adaptTiles !== false, gpu, () => nTiles++);
+            if (!ok) return null;
+            be.scatterCompact();
+          }
+          continue;
+        }
         // each level is its own compact image of ceil(N / st)^2 rays
         const { w, h } = be.levelSize(st);
         // Stage 1B B5 ray compaction: phase A stops rays at the first limit; each later round traces the unfinished rays
@@ -287,7 +311,7 @@ export class TracePipeline {
       ]);
       if (Array.isArray(settled) && settled.every((x) => x !== null)) gpuMs = settled.reduce((a, b) => a + /** @type {number} */ (b), 0);
       const steps = opts.measureSteps && !opts.background ? await be.readSteps() : null;
-      const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted };
+      const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted, traced };
       if (useCache) this.cachePut(key, be.cacheStore(levels), stats);
       return stats;
     } finally {

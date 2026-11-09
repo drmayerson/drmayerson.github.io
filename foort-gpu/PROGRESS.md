@@ -1370,3 +1370,68 @@ The user ran the B5 probe on their laptop (Firefox; renderer reported as "AMD Ra
 - **Texel reuse** is now on by default in the viewer (plan rule: faster on the laptop and another GPU).
 - **Compaction** stays off.
 - **Speed tiers:** both devices' base cases (without the B5 speed-ups) match the B0 round. The phone meets E1 at High (1.8 s BH, 6.0 s fuzzball at 512²). The user's laptop misses it at High (2.0 s BH, 13.2 s fuzzball), and with texel reuse that fuzzball case comes to about 4 s (13.2 / 3.21).
+
+## CHECKPOINT B6 — quality tiers and accuracy-budgeted speedups (2026-11-09)
+
+### Tiers (`js/gpu/tiers.js`)
+
+- **Reference, High, Normal** as in plan 1.2. Draft is the coarse preview while dragging.
+- **"quality" control:** auto, reference, high, normal, or custom (ε, far steps and max steps shown only then); URL `quality=`, URL version 3 (older links that set those parameters open as custom).
+- **Auto:** once per metric mode, small test traces of the current view (64², each tier, in the background record set) predict the full trace on this device. The viewer picks the highest tier within E1 (2 s BH / 10 s fuzzball); the status line and the performance table name it.
+
+### Normal candidates (quality gate, 512², against Reference; `dev/reports/b6/summary.md`)
+
+| candidate | black holes (8 scenes) pass | fuzzball (5) pass | speed vs High, BH / fuzzball | BH sky p99 (High 0.22–0.30 px) | BH emission L1 (budget 3e-3) |
+|---|---|---|---|---|---|
+| ε 0.04 | 0 | 0 | 1.30 / 1.03× | 0.42 px | 2.5e-3 |
+| ε 0.05 | 0 | 0 | 1.63 / 1.10× | 0.54 px | 6.4e-3 |
+| ε 0.06 | 0 | 0 | 2.10 / 1.04× | 0.72 px | 1.4e-2 |
+| ε 0.08 | 0 | 0 | 2.60 / 1.17× | 2.6 px | 4.6e-2 |
+| **BS3, tol 0.1** | **8** | 0 | **1.19** / 1.23× | **0.10 px** | **1.8e-3** |
+| BS3, tol 0.3 | 0 | 0 | 1.51 / 1.40× | 0.17 px | 5.1e-3 |
+| BS3, tol 1 | 0 | 0 | 2.04 / 1.22× | 0.31 px | 1.7e-2 |
+| refinement, tight | 0 | 0 | 1.14 / 0.86× | 1.5 px | 1.3e-3 |
+| refinement, loose | 0 | 0 | 1.31 / 1.22× | 2.5 px | 1.9e-3 |
+
+- **Budgets** as in plan 1.2. Sky is "no worse than High". For the fuzzball, class agreement and the chaotic class fractions are judged against High, because its 5000-step limit dominates them.
+- **Speeds** are geometric means over the scenes, from A/B/A/B timing against Reference divided by High's own speed-up.
+
+**What the numbers say:**
+
+- **The error-controlled integrator is the only candidate that passes.** BS3 at tol 0.1 passes every budget on all eight black-hole scenes and is *more* accurate than High on the sky (p99 0.10 vs 0.25 px). It is faster by 1.19× on average; the per-scene range is 0.9–2.2× against Reference. The local probe shows larger gains at 256²: closed-form Kerr 0.15 → 0.08 s, tabulated Manko–Novikov 1.12 → 0.40 s at 512² predicted.
+- **Larger fixed ε** buys speed at once at the cost of sky accuracy; already ε = 0.04 is worse than High.
+- **Adaptive refinement** cannot meet a sky budget of a few tenths of a pixel by interpolation, even with second-difference marking (32% of a Kerr image traced). Its emission is good (L1 ≤ 1.9e-3), but sky p99 is 1.5–2.5 px.
+- **The fuzzball's interior is chaotic.** Any change of the step sequence changes it (class agreement 93–96%), so nothing passes there.
+
+### Proposed Normal (the user decides)
+
+| mode | Normal |
+|---|---|
+| black holes | High + BS3 at tol 0.1 |
+| fuzzball | High (unchanged) |
+| refinement | not in Normal (machinery kept, off) |
+
+### Speed per tier (this machine, probe 2026-11-09)
+
+| case | predicted 512² |
+|---|---|
+| Kerr closed form, High → Normal | 0.15 → 0.08 s |
+| Manko–Novikov tabulated, High → Normal | 1.12 → 0.40 s |
+| ST3Cr λ = 1e-3, Reference / High | 15.5 / 11.0 s (this GPU's clock was low this run; 3.9–12.6 s in other runs) |
+
+### Tests
+
+- **Unit** (`b6.test.js`): tier settings, auto selection, URL v3 migration, refinement marking (topology, curvature thresholds, steep-but-linear mappings not marked).
+- **e2e** (`b6.spec.js`): auto names a tier and its predictions; fixed tiers and custom; old links open as custom; refinement traces 5–90% of a 256² image and agrees on the termination class on > 99.5% of the pixels.
+- **Full suites:** Vitest 151, Playwright 27, tsc clean.
+
+### Bug found and fixed
+
+An idle pre-trace that started between a trace and the read-back of its records made the read-back return the background set. It corrupted one gate scene, and could also hit the viewer's exposure read-back. Read-backs now always read the displayed set.
+
+### Needs the user
+
+1. **Confirm Normal** as proposed above, or ask for more candidates: BS3 between tol 0.1 and 0.3 for black holes, two-stage refinement, or a looser sky budget for Normal.
+2. **Device round for B6:** the probe's new "B6" rows on the laptop and phone (after a merge to main).
+3. **Merge** foort-gpu-1b to main.
+
