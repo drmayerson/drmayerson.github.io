@@ -1453,3 +1453,44 @@ Predicted full trace at 512², High → Normal (these rows run one after another
   - **At High:** 6.8 s (laptop) and 6.1 s (phone) predicted at 512², within the 10 s target. These probe rows run without texel reuse, which the viewer adds (another 1.9–3×).
   - **At Reference:** 10.4 s and 10.8 s, just outside the target.
 - **B5 pairs repeated:** G3 = G4 1.16–1.31×; texel reuse 1.29–3.0×; generated Johannsen 3.6–4.2×; ray compaction 0.95× (laptop), 1.16× (phone), so it stays off.
+
+## CHECKPOINT B7 — panels, interaction, compare, phones (2026-11-10)
+
+### Done
+
+- **Normal and expert panels from one control list** (levels per control):
+  - normal is the default; the toolbar button or key `e` switches, URL `ui=expert`; the state is kept;
+  - the normal panel: black hole / fuzzball, spin or λ (with a λ = 0 position on the slider), viewing angle, field of view, azimuth, brightness, time-averaged, play and speed, compare;
+  - the expert panel adds the B6 options for custom quality (integrator, BS3 tolerance, refinement threshold), the compaction threshold, the cache size, and the compare side being edited.
+- **On the image:** drag for azimuth (instant, no trace) and viewing angle (previews, then the full trace); wheel and pinch to zoom, with an instant digital zoom; shift- or two-finger drag to pan.
+- **Toolbar and keys:** fullscreen, hide panel, snapshot (PNG), reset to defaults, help overlay; the shortcuts of plan 5.2. `r` (video) says it comes in B9.
+- **Remembered view:** localStorage; the URL takes precedence.
+- **Long traces:** a progress bar with ETA and cancel; a warning before a trace predicted above 15 s.
+- **Compare:** split (draggable divider), side by side, blink.
+  - **Normal panel:** B is the other family at matched settings.
+  - **Expert panel:** "the panel edits A / B", so B can differ in anything.
+  - Both sides are drawn from the record cache, each with its own fluid table and noise field.
+- **Phone-safe defaults:** quality auto halves the resolution when no tier fits (not below 256), on top of B5's phone cache size and no pre-tracing.
+
+### Screenshots (git-ignored, `dev/reports/img/b7/`, `dev/scripts/b7Shots.mjs`)
+
+`normal_kerr.png`, `expert_kerr.png`, `compare_split_normal.png` (Kerr a = 0.94 | ST3Cr λ = 0.005 at 60°), `compare_side_phone.png` (390 px wide).
+
+### Tests
+
+- **e2e** (`dev/tests/e2e/b7.spec.js`):
+  - normal panel by default; the panel switch keeps the state (button and key);
+  - the family switch, and the λ = 0 slider position;
+  - drag: azimuth starts no run, viewing angle starts one; wheel and synthetic pinch zoom;
+  - compare split, side by side (the canvas doubles), blink and the `b` key; expert edit of A / B keeps each side's metric;
+  - persistence, the URL taking precedence, reset;
+  - cancel of a 1024² Reference fuzzball trace; the help overlay;
+  - a pre-B7 link (v=2) opening with its state in the normal panel.
+- **Updated:** the older e2e specs open the expert panel (`ui=expert`); `m6.spec.js` (λ slider at zero instead of hidden).
+- **Full suites:** Vitest 151, Playwright 33 (three clean runs with 4 workers), tsc clean.
+
+### Needs the user (checkpoint B7: try both panels on laptop and phone)
+
+1. **Merge** foort-gpu-1b to main, so the new viewer is live for the phone.
+2. **Try** the normal and expert panels, drag, pinch, compare and the long-trace warning, on the laptop and the phone; report anything awkward.
+3. **The normal panel's contents:** anything to add or drop? Units, telescope blur and video export come in B8–B9.

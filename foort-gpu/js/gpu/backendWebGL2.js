@@ -74,6 +74,26 @@ export async function createWebGL2Backend(canvas, opts = {}) {
 
   /** @type {Map<string, ReturnType<typeof build>>} */
   const tracePrograms = new Map();
+  /** B7: noise fields by name, and fluid-table textures by key (compare mode draws two views per frame) */
+  const noiseSet = /** @type {Map<string, {tex: WebGLTexture, meta: any}>} */ (new Map());
+  const fluidSet = /** @type {Map<string, {tex: WebGLTexture, grid: any}>} */ (new Map());
+  /** @param {import('../fluid/fluidTable.js').FluidTable} F @param {string} key */
+  const fluidFor = (F, key) => {
+    let e = fluidSet.get(key);
+    if (!e) {
+      const tex = /** @type {WebGLTexture} */ (gl.createTexture());
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, F.grid.n, 1);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, F.grid.n, 1, gl.RGBA, gl.FLOAT, F.data);
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
+      e = { tex, grid: F.grid };
+      fluidSet.set(key, e);
+      // keep a few
+      if (fluidSet.size > 6) { const [k0, e0] = /** @type {[string, {tex: WebGLTexture}]} */ (fluidSet.entries().next().value); gl.deleteTexture(e0.tex); fluidSet.delete(k0); }
+    }
+    return e;
+  };
   stage('loading shaders…');
   // fetch every shader source at once (the trace programs are compiled on first use)
   await Promise.all(['common', 'display', 'trace', 'trace_kerr_analytic'].map(load));
@@ -458,12 +478,18 @@ void main() {
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
     },
 
-    uploadNoise(F) {
+    canvasSize(w, h) { if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } },
+
+    clearCanvas() { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); gl.clearColor(0.08, 0.08, 0.1, 1); gl.clear(gl.COLOR_BUFFER_BIT); },
+
+    uploadNoise(F, name = '') {
       const m = F.meta;
+      // B7: fields stay loaded by name (compare mode can show two anchors); the current one is the last uploaded
+      if (name && noiseSet.has(name)) { const e = /** @type {{tex: WebGLTexture, meta: any}} */ (noiseSet.get(name)); noiseTex = e.tex; noiseMeta = e.meta; return; }
       const max3 = gl.getParameter(gl.MAX_3D_TEXTURE_SIZE);
       if (Math.max(m.Nt, m.Nx, m.Nphi) > max3) throw new Error(`noise field ${m.Nphi} x ${m.Nx} x ${m.Nt} exceeds MAX_3D_TEXTURE_SIZE ${max3}`);
       gl.activeTexture(gl.TEXTURE0);
-      if (noiseTex) gl.deleteTexture(noiseTex);
+      if (noiseTex && ![...noiseSet.values()].some((e) => e.tex === noiseTex)) gl.deleteTexture(noiseTex);
       noiseTex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_3D, noiseTex);
       // C order (t, x, phi) = texel (phi, x, t): width Nphi, height Nx, depth Nt; R16F is filterable in WebGL2
@@ -476,6 +502,7 @@ void main() {
       gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.REPEAT);          // t
       gl.bindTexture(gl.TEXTURE_3D, null);
       noiseMeta = m;
+      if (name) noiseSet.set(name, { tex: /** @type {WebGLTexture} */ (noiseTex), meta: m });
     },
 
     clearRecords(strides) {
@@ -664,24 +691,30 @@ void main() {
       freeCompact();
     },
 
-    display(view) {
+    display(view, src = {}) {
       const t0 = performance.now();
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.viewport(0, 0, W, H);
+      // Stage 1B B7: a view may draw a cached record set (compare mode) into part of the canvas, with its own fluid table
+      // and noise field
+      const RW = src.handle ? src.handle.w : W, RH = src.handle ? src.handle.h : H;
+      const vp = src.viewport ?? [0, 0, RW, RH];
+      gl.viewport(vp[0], vp[1], vp[2], vp[3]);
+      if (src.scissor) { gl.enable(gl.SCISSOR_TEST); gl.scissor(src.scissor[0], src.scissor[1], src.scissor[2], src.scissor[3]); }
       gl.useProgram(display.prog);
       gl.bindVertexArray(vao);
       // the six record attachments (4 + 2 tail) of the (at most 2) levels of the current trace, finest first: 12 units,
       // plus the noise field and the fluid table (16 texture units is the WebGL2 minimum)
       let unit = 0;
       const lv = [-1, -1, -1, -1];
-      const bound = activeStrides.filter((st) => levels.has(st));
-      if (!bound.length) return;   // no records yet (before the first resize)
+      const texOf = (/** @type {number} */ st) => (src.handle ? /** @type {WebGLTexture[]} */ (src.handle.tex.get(st)) : /** @type {{tex: WebGLTexture[]}} */ (levels.get(st)).tex);
+      const bound = src.handle ? [...src.handle.strides].sort((a, b) => a - b).slice(0, 2) : activeStrides.filter((st) => levels.has(st));
+      if (!bound.length) { gl.disable(gl.SCISSOR_TEST); return; }   // no records yet (before the first resize)
       bound.forEach((st, li) => {
-        const L = /** @type {{tex: WebGLTexture[]}} */ (levels.get(st));
+        const T = texOf(st);
         lv[li] = Math.round(Math.log2(st));
         for (let k = 0; k < 6; k++) {
           gl.activeTexture(gl.TEXTURE0 + unit);
-          gl.bindTexture(gl.TEXTURE_2D, L.tex[Math.min(k, NATT - 1)]);   // without a tail, its samplers see a record texture (unused)
+          gl.bindTexture(gl.TEXTURE_2D, T[Math.min(k, T.length - 1)]);   // without a tail, its samplers see a record texture (unused)
           gl.uniform1i(display.loc(`uS${li}R${k}`), unit++);
         }
       });
@@ -690,27 +723,33 @@ void main() {
       gl.uniform4i(display.loc('uLevels'), lv[0], lv[1], -1, -1);
       const tg = view.tail;
       gl.uniform4f(display.loc('uTail'), tg ? tg.xLo : 0, tg ? tg.invWidth : 1, tg ? tg.K : 0, tg && TAIL_BINS ? 1 : 0);
+      const nz = src.noiseName && noiseSet.has(src.noiseName) ? /** @type {{tex: WebGLTexture, meta: any}} */ (noiseSet.get(src.noiseName)) : { tex: noiseTex, meta: noiseMeta };
       gl.activeTexture(gl.TEXTURE0 + 12);
-      gl.bindTexture(gl.TEXTURE_3D, noiseTex);
+      gl.bindTexture(gl.TEXTURE_3D, nz.tex);
       gl.uniform1i(display.loc('uNoise'), 12);
+      const fl = src.fluid ? fluidFor(src.fluid, src.fluidKey ?? '') : { tex: fluidTex, grid: fluidGrid };
       gl.activeTexture(gl.TEXTURE0 + 13);
-      gl.bindTexture(gl.TEXTURE_2D, fluidTex);
+      gl.bindTexture(gl.TEXTURE_2D, fl.tex);
       gl.uniform1i(display.loc('uFluidD'), 13);
-      const fg = fluidGrid ?? { xMin: 0, dx: 1, n: 2, r0: 0 };
+      const fg = fl.grid ?? { xMin: 0, dx: 1, n: 2, r0: 0 };
       gl.uniform4f(display.loc('uFluidXD'), fg.xMin, fg.dx, fg.n, fg.r0);
-      const nm = noiseMeta, tm = view.time ?? { tObs: 0, slow: true, M: 1, advect: 0, sigma: 0 };
-      gl.uniform4i(display.loc('uNoiseN'), nm?.Nt ?? 2, nm?.Nx ?? 2, nm?.Nphi ?? 2, nm && noiseTex && fluidTex ? 1 : 0);
+      const nm = nz.meta, tm = view.time ?? { tObs: 0, slow: true, M: 1, advect: 0, sigma: 0 };
+      gl.uniform4i(display.loc('uNoiseN'), nm?.Nt ?? 2, nm?.Nx ?? 2, nm?.Nphi ?? 2, nm && nz.tex && fl.tex ? 1 : 0);
       gl.uniform4f(display.loc('uNoiseP'), tm.sigma, nm?.T_over_M ?? 1, nm?.xmin ?? 0, nm?.xmax ?? 1);
       gl.uniform4f(display.loc('uNoiseFade'), nm ? noiseFadeWidth(nm) : 1, 0, 0, 0);
       gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
       gl.uniform4f(display.loc('uCamAz'), view.azimuth ?? 0, 0, 0, 0);
-      gl.uniform4i(display.loc('uView'), view.mode, W, H, view.storeH ? 1 : 0);
+      gl.uniform4i(display.loc('uView'), view.mode, RW, RH, view.storeH ? 1 : 0);
+      gl.uniform4i(display.loc('uOrigin'), vp[0], vp[1], 0, 0);
+      const zm = view.zoom ?? { s: 1, ox: 0, oy: 0 };
+      gl.uniform4f(display.loc('uZoom'), zm.s, zm.ox, zm.oy, 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
       const em = view.emission ?? { mu: 0, gamma: 0, sigma: 1, redshiftPower: 3, fudge: 1, maxPasses: 0 };
       gl.uniform4f(display.loc('uEm'), em.mu, em.gamma, em.sigma, em.redshiftPower);
       gl.uniform4f(display.loc('uEm2'), em.fudge, em.maxPasses, view.exposure ?? 1, view.toneMap ?? 0);
       gl.uniform4i(display.loc('uEm3'), view.colorMap ?? 0, view.envelope === 'circumferential' ? 1 : 0, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.disable(gl.SCISSOR_TEST);
       lastDisplayMs = performance.now() - t0;
     },
 

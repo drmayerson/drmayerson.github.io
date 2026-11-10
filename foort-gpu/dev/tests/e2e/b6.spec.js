@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 const ready = async (page, q) => {
-  await page.goto(`index.html?${q}`);
+  await page.goto(`index.html?ui=expert&${q}`);
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 });
   expect(await page.evaluate(() => window.__foortError)).toBeUndefined();
   await expect(page.locator('#status')).toContainText('done', { timeout: 120_000 });

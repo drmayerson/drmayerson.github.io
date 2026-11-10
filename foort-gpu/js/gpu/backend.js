@@ -8,8 +8,11 @@
  * @typedef {Record<string, ['4f'|'4i'|'m4', ArrayLike<number>]>} Uniforms
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
  *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
- *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential', azimuth?: number}} DisplayView
- *   azimuth: camera azimuth in rad, display-only (Stage 1B B5)
+ *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential', azimuth?: number,
+ *   zoom?: {s:number, ox:number, oy:number}}} DisplayView
+ *   azimuth: camera azimuth in rad, display-only (Stage 1B B5); zoom: instant digital zoom while re-tracing (B7)
+ * @typedef {{handle?: CacheHandle, viewport?: number[], scissor?: number[], fluid?: import('../fluid/fluidTable.js').FluidTable,
+ *   fluidKey?: string, noiseName?: string}} DisplaySource  B7: a cached record set drawn into part of the canvas (compare mode)
  * @typedef {import('./traceConfig.js').TailGeometry} TailGeometry
  * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
  *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n
@@ -23,7 +26,7 @@
  * @property {(u:Uniforms) => void} uploadUniforms                    trace uniforms for the next tiles
  * @property {(t:import('../bake/bake.js').BakedTables) => void} uploadTables  metric tables of the tabulated tracer
  * @property {(f:import('../fluid/fluidTable.js').FluidTable) => void} uploadFluid  fluid four-velocity table (both tracers)
- * @property {(f:import('../noise/noiseField.js').NoiseField) => void} uploadNoise  noise field (3D texture), display pass
+ * @property {(f:import('../noise/noiseField.js').NoiseField, name?:string) => void} uploadNoise  noise field (3D texture), display pass; kept by name (B7)
  * @property {(strides?:number[]) => void} clearRecords                mark every pixel untraced; the strides the next trace uses
  * @property {(stride:number) => {w:number, h:number}} levelSize   size of the progressive level `stride` (1, 2, 4, 8)
  * @property {(rect:Rect, stride:number, toCompact?:boolean) => Promise<{wallMs:number, gpuMs:Promise<number|null>}>} traceTile
@@ -42,7 +45,9 @@
  * @property {(strides:number[]) => CacheHandle} cacheStore           copy the record levels of the current set (record cache)
  * @property {(h:CacheHandle) => void} cacheRestore                   copy cached levels into the displayed set and show them
  * @property {(h:CacheHandle) => void} cacheFree
- * @property {(view:DisplayView) => void} display
+ * @property {(view:DisplayView, src?:DisplaySource) => void} display
+ * @property {(w:number, h:number) => void} canvasSize               canvas size (compare side by side: two records wide)
+ * @property {() => void} clearCanvas
  * @property {(stride?:number, currentSet?:boolean) => Promise<Float32Array>} readRecords  one level (default full resolution) of the
  *   displayed records (or of the set being traced), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image

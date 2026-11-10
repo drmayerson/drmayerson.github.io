@@ -349,3 +349,36 @@ non-trivial implementation choice.
   - **Fuzzball:** = High.
   - **Adaptive refinement:** not in Normal (kept, off).
   - **Merge:** foort-gpu-1b merged to main.
+- 2026-11-10 — **B7 started** (user: "Start B7").
+- 2026-11-10 — **B7 panels:**
+  - **Tagging:** each control carries a level (expert, both, normal, or hidden: state and URL only). The normal panel is generated from the same `CONTROLS` list, with its own labels where useful.
+  - **Default:** the normal panel; `ui=expert` or the toolbar button (key `e`) for the expert panel. Old links without `ui` open in the normal panel with their state.
+  - **Normal panel:**
+    - **Spacetime:** family (black hole = Kerr, fuzzball = ST3Cr), spin a (Kerr), λ.
+    - **Camera:** viewing angle, field of view, azimuth.
+    - **Disc emission:** brightness (a factor on the auto exposure), time-averaged (σₙ = 0 for the display).
+    - **Time:** play, speed.
+    - **Compare** on/off with its layout.
+    - The quality tier is shown in the status line, not chosen.
+  - **λ = 0:** the λ slider has one position below its minimum, which sets λ = 0 (the ST3Cr black hole); the checkbox stays in the expert panel.
+  - **Expert additions:**
+    - for custom quality: the integrator (RK4 / BS3) with its tolerance, and adaptive refinement with its threshold;
+    - the compaction threshold N₁;
+    - the record-cache size;
+    - which compare side the panel edits, and the blink rate.
+  - **Not done:**
+    - tail bins stay fixed at 8 (E2);
+    - no "refined pixels" view (refinement is off in every tier);
+    - units, telescope blur and video are B8–B9.
+- 2026-11-10 — **B7 interaction** (`js/ui/interaction.js`):
+  - **Drag:** horizontal = azimuth (0.5°/px, display-only); vertical = viewing angle (0.3°/px, previews at the coarse level, the full trace on release). Shift-drag or two fingers pan; a pinch or the wheel zooms (wheel: the full trace 300 ms after the last event). During zoom and pan the display shows an instant digital zoom of the current records (`uZoom`, `uOrigin` in display.glsl).
+  - **Toolbar:** expert/normal, hide panel, fullscreen (the image), snapshot (PNG of the canvas), reset to defaults, help (`?`).
+  - **Persistence:** localStorage holds the last URL; a URL with parameters takes precedence.
+  - **Progress:** the levels weighted by their rays; shown after 400 ms, with an ETA and a cancel button.
+  - **Long-trace warning:** before a final trace predicted above 15 s (from the tier probe), with "trace anyway", "lower resolution" and "use Normal quality".
+- 2026-11-10 — **B7 compare:**
+  - **Layouts:** split (draggable divider), side by side (the canvas two records wide), blink (a rate, or the `b` key by hand).
+  - **State:** A and B share camera, time and display settings (`SHARED_KEYS`). The panel edits one side, and the other side's own settings wait in a stash (expert). In the normal panel B is the other family at matched settings.
+  - **Drawing:** both sides are drawn every frame from the record cache (pinned, never evicted), each with its own fluid table and noise field (the backend keeps both by name and key). Both use side A's auto exposure, so brightness compares directly.
+- 2026-11-10 — **B7 phone-safe defaults:** with quality auto, when no tier fits E1 at the default resolution and the link did not set N, the resolution is halved (not below 256). Phones also get the 64 MB cache and no idle pre-tracing (B5).
+- 2026-11-10 — **Tests:** Playwright now runs at most 4 workers. With more, this laptop's iGPU occasionally returned a wrong frame or timed out under 33 GPU-heavy tests; at 4 the suite is also faster (1.2 vs 1.8 min).

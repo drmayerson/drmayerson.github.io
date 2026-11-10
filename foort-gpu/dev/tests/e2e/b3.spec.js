@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.goto('index.html?N=128&play=0&maxSteps=2000');
+  await page.goto('index.html?ui=expert&N=128&play=0&maxSteps=2000');
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 });
   expect(await page.evaluate(() => window.__foortError)).toBeUndefined();
   await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });

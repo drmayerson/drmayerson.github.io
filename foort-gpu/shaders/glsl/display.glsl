@@ -20,6 +20,8 @@ uniform vec4 uCamAz;    // camera azimuth (rad), 0, 0, 0 (Stage 1B B5: display-o
 uniform highp sampler2D uFluidD;  // fluid table (1/u^t, u^r/u^t, Omega) (js/fluid/fluidTable.js), for advection
 uniform vec4 uFluidXD;  // xMin, dx, nodes, r0 of the fluid table
 uniform ivec4 uView;    // view mode, Nx, Ny, |H| stored in slot 3
+uniform ivec4 uOrigin;  // Stage 1B B7: lower-left canvas pixel of this view (compare side by side), 0, 0
+uniform vec4 uZoom;     // B7 instant digital zoom while a re-trace runs: scale (> 1 zooms in), offset x, y (record pixels), 0
 uniform vec4 uRange;    // view range lo, hi; max steps; r_cam
 uniform vec4 uEm;       // Johnson-SU mu, gamma, sigma; redshift power
 uniform vec4 uEm2;      // fudge factor, max passes (0: no bound), exposure, tone map (0 linear, 1 sqrt, 2 log, 3 asinh)
@@ -156,7 +158,11 @@ float tailEmission(int l, ivec2 q) {
 }
 
 void main() {
-  ivec2 p = ivec2(gl_FragCoord.xy);
+  // record pixel of this canvas pixel: the view's origin, then the digital zoom about the image centre
+  vec2 c0 = 0.5 * vec2(uView.yz);
+  vec2 pf = (gl_FragCoord.xy - vec2(uOrigin.xy) - c0) / max(uZoom.x, 1e-6) + c0 + uZoom.yz;
+  if (pf.x < 0.0 || pf.y < 0.0 || pf.x >= float(uView.y) || pf.y >= float(uView.z)) { color = vec4(0.08, 0.08, 0.1, 1.0); return; }
+  ivec2 p = ivec2(pf);
   int lv = -1;
   ivec2 q;
   vec4 r0;

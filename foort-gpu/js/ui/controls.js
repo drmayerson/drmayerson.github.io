@@ -18,6 +18,11 @@ import { METRICS } from '../metrics/registry.js';
  * @property {(s:Record<string, any>) => boolean} [visible]
  * @property {boolean} [retrace]             false: display-only (no new trace)
  * @property {boolean} [metricParam]         a metric parameter (dragging it re-bakes coarse tables)
+ * @property {'expert'|'both'|'normal'|'hidden'} [level]  Stage 1B B7 panels: expert (default; the expert panel only), both,
+ *                                           normal (the normal panel only), hidden (state and URL only, no widget)
+ * @property {string} [normalLabel]          label in the normal panel
+ * @property {string} [zeroEnd]              log slider with one more position below its minimum: there it sets this state
+ *                                           key (the metric's zero-limit switch, e.g. "lambda = 0 (black hole)")
  */
 
 export const VIEWS = {
@@ -56,13 +61,16 @@ function metricParamControls() {
   const out = [];
   for (const { spec, ids, min, max } of byName.values()) {
     const log = spec.scale === 'log';
+    const zk = ids.map(zeroKey).find(Boolean) ?? '';
     out.push({ key: spec.name, label: spec.label, type: 'range', group: 'Spacetime', min, max, default: spec.default,
       ...(log ? { scale: 'log' } : { step: spec.step ?? (max - min) / 1000 }),
       format: log ? (v) => Number(v).toPrecision(3) : fmt(Math.max(0, Math.ceil(-Math.log10(spec.step ?? (max - min) / 1000)))),
-      visible: (s) => ids.includes(s.metric) && !(zeroKey(s.metric) && s[zeroKey(s.metric)]), metricParam: true });
+      // the normal panel has the spin of Kerr and the fuzzball's lambda (the slider's lowest position: lambda = 0)
+      level: spec.name === 'a' || spec.name === 'lambda' ? 'both' : 'expert', ...(log && zk ? { zeroEnd: zk } : {}),
+      visible: (s) => ids.includes(s.metric) && (s.ui !== 'normal' || spec.name !== 'a' || s.metric === 'kerr'), metricParam: true });
   }
   for (const m of METRICS) if (m.zeroSwitch)
-    out.push({ key: m.zeroSwitch.key, label: m.zeroSwitch.label, type: 'checkbox', group: 'Spacetime', default: false, visible: (s) => s.metric === m.id });
+    out.push({ key: m.zeroSwitch.key, label: m.zeroSwitch.label, type: 'checkbox', group: 'Spacetime', default: false, visible: (s) => s.metric === m.id, level: 'both' });
   return out;
 }
 /** state key of a metric's zero-limit switch (registry zeroSwitch.key), or '' @param {string} id */
@@ -70,6 +78,10 @@ export const zeroKey = (id) => METRICS.find((m) => m.id === id)?.zeroSwitch?.key
 
 /** @type {Control[]} */
 export const CONTROLS = [
+  // Stage 1B B7: the panel (URL ui=normal|expert) and the normal panel's spacetime family
+  { key: 'ui', label: 'panel', type: 'select', group: 'Spacetime', options: ['normal', 'expert'], default: 'normal', level: 'hidden', retrace: false },
+  { key: 'family', label: 'spacetime', type: 'select', group: 'Spacetime', options: ['bh', 'fuzzball'],
+    optionLabels: { bh: 'black hole (Kerr)', fuzzball: 'fuzzball (ST3Cr ring)' }, default: 'bh', level: 'normal', retrace: false },
   { key: 'metric', label: 'metric', type: 'select', group: 'Spacetime', options: METRICS.filter((m) => !m.hidden).map((m) => m.id),
     optionLabels: Object.fromEntries(METRICS.map((m) => [m.id, m.label])), default: 'kerr' },
   { key: 'path', label: 'metric evaluation', type: 'select', group: 'Tracing', options: ['auto', 'tabulated', 'closed', 'analytic'],
@@ -77,10 +89,10 @@ export const CONTROLS = [
       closed: 'generated closed-form shader (Kerr, Johannsen, RN, Manko–Novikov)', analytic: 'hand-written closed-form Kerr shader' }, default: 'auto' },
   ...metricParamControls(),
   { key: 'r', label: 'camera distance r (M)', type: 'range', group: 'Camera', min: 2, max: 100000, scale: 'log', default: 1000, format: sig },
-  { key: 'inc', label: 'inclination (deg)', type: 'range', group: 'Camera', min: 0.01, max: 179.99, step: 0.01, default: 17, format: fmt(2) },
-  { key: 'screen', label: 'screen size (M)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: sig },
+  { key: 'inc', label: 'inclination (deg)', normalLabel: 'viewing angle from the spin axis (deg)', type: 'range', group: 'Camera', min: 0.01, max: 179.99, step: 0.01, default: 17, format: fmt(2), level: 'both' },
+  { key: 'screen', label: 'screen size (M)', normalLabel: 'field of view (M; smaller = zoom in)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: sig, level: 'both' },
   // Stage 1B B5: rotating the camera about the symmetry axis adds a constant to every phi: display only, no re-trace
-  { key: 'az', label: 'camera azimuth (deg; display only)', type: 'range', group: 'Camera', min: 0, max: 360, step: 0.5, default: 0, format: fmt(1), retrace: false },
+  { key: 'az', label: 'camera azimuth (deg; display only)', normalLabel: 'azimuth (deg)', type: 'range', group: 'Camera', min: 0, max: 360, step: 0.5, default: 0, format: fmt(1), retrace: false, level: 'both' },
   { key: 'cx', label: 'screen centre α (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
   { key: 'cy', label: 'screen centre β (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
   { key: 'N', label: 'resolution', type: 'select', group: 'Tracing', options: [128, 256, 512, 1024, 2048], default: 512 },
@@ -102,14 +114,18 @@ export const CONTROLS = [
   { key: 'betaR', label: 'fluid β_r', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'betaPhi', label: 'fluid β_φ', type: 'range', group: 'Disc emission', min: 0, max: 1, step: 0.01, default: 1, format: fmt(2) },
   { key: 'autoExposure', label: 'auto exposure', type: 'checkbox', group: 'Disc emission', default: true, retrace: false },
+  // B7 normal panel: brightness on top of the auto exposure, and the time-averaged disc
+  { key: 'brightness', label: 'brightness', type: 'range', group: 'Disc emission', min: 0.1, max: 10, scale: 'log', default: 1, format: sig, retrace: false, level: 'both',
+    visible: (s) => s.autoExposure },
+  { key: 'timeAvg', label: 'time-averaged (no flicker)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false, level: 'both' },
   { key: 'exposure', label: 'exposure', type: 'range', group: 'Disc emission', min: 0.01, max: 1000, scale: 'log', default: 1, format: sig, retrace: false,
     visible: (s) => !s.autoExposure },
   { key: 'toneMap', label: 'tone map', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3],
     optionLabels: { 0: 'linear', 1: 'sqrt', 2: 'log', 3: 'asinh' }, default: 1, retrace: false },
   { key: 'colorMap', label: 'colour map', type: 'select', group: 'Disc emission', options: [0, 1, 2],
     optionLabels: { 0: 'afmhot', 1: 'inferno', 2: 'grey' }, default: 0, retrace: false },
-  { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false },
-  { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false },
+  { key: 'play', label: 'play', type: 'checkbox', group: 'Time', default: true, retrace: false, level: 'both' },
+  { key: 'speed', label: 'speed (M per second)', type: 'range', group: 'Time', min: 0.1, max: 1000, scale: 'log', default: 20, format: sig, retrace: false, level: 'both' },
   { key: 'slowLight', label: 'slow light (each point at its emission time)', type: 'checkbox', group: 'Time', default: true, retrace: false },
   { key: 'noiseField', label: 'noise field', type: 'select', group: 'Time',
     options: ['auto', 'inoisy_lg21', 'inoisy_st3cr_l0', 'inoisy_st3cr_l1e-3', 'inoisy_st3cr_l5e-3', 'inoisy_st3cr_l0.05', 'placeholder'],
@@ -134,6 +150,17 @@ export const CONTROLS = [
   { key: 'texelReuse', label: 'reuse table texels across RK stages (exact; 1.2–3× faster)', type: 'checkbox', group: 'Tracing', default: true },
   { key: 'compact', label: 'ray compaction (exact; trace long rays as a dense image after 1500 steps)', type: 'checkbox', group: 'Tracing', default: false },
   { key: 'pretrace', label: 'idle pre-tracing of neighbouring views (λ ± one notch, inclination ± 5°; off on phones)', type: 'checkbox', group: 'Tracing', default: true, retrace: false },
+  // B7 expert: the B6 options for custom quality, the compaction threshold, the record cache
+  { key: 'integrator', label: 'integrator', type: 'select', group: 'Tracing', options: ['rk4', 'bs3'],
+    optionLabels: { rk4: "RK4 with FOORT's step rule", bs3: 'Bogacki–Shampine 3(2), error-controlled' }, default: 'rk4', visible: (s) => s.quality === 'custom' },
+  { key: 'bs3Tol', label: 'BS3 tolerance (pixel angles)', type: 'range', group: 'Tracing', min: 0.01, max: 3, scale: 'log', default: 0.1, format: sig,
+    visible: (s) => s.quality === 'custom' && s.integrator === 'bs3' },
+  { key: 'refine', label: 'adaptive refinement (from stride 4; fails the Normal sky budget, B6)', type: 'checkbox', group: 'Tracing', default: false, visible: (s) => s.quality === 'custom' },
+  { key: 'refineSky', label: 'refinement: interpolation error allowed (px)', type: 'range', group: 'Tracing', min: 0.02, max: 2, scale: 'log', default: 0.2, format: sig,
+    visible: (s) => s.quality === 'custom' && s.refine },
+  { key: 'compactN1', label: 'compaction: first stop (steps)', type: 'select', group: 'Tracing', options: [500, 1000, 1500, 2500], default: 1500, visible: (s) => s.compact },
+  { key: 'cacheMB', label: 'record cache (MB)', type: 'select', group: 'Tracing', options: ['auto', '0', '64', '256', '512'],
+    optionLabels: { auto: 'auto (256; 64 on phones)', 0: 'off', 64: '64', 256: '256', 512: '512' }, default: 'auto', retrace: false },
   { key: 'maxSteps', label: 'max steps', type: 'select', group: 'Tracing', options: [1000, 2000, 5000, 10000, 20000, 50000], default: 5000, visible: (s) => s.quality === 'custom' },
   { key: 'crossing', label: 'equatorial crossings', type: 'select', group: 'Tracing', options: ['interpolate', 'foort'],
     optionLabels: { interpolate: 'interpolated (app)', foort: 'FOORT parity' }, default: 'interpolate' },
@@ -144,7 +171,19 @@ export const CONTROLS = [
     visible: (s) => 'lo' in VIEWS[s.view] },
   { key: 'hi', label: 'range high', type: 'number', group: 'View', step: 0.1, default: NaN, retrace: false,
     visible: (s) => 'hi' in VIEWS[s.view] },
+  // B7 compare mode: A and B share camera and time; the panel edits A or B (expert); normal: B is the other family
+  { key: 'compare', label: 'compare', type: 'select', group: 'Compare', options: ['off', 'split', 'side', 'blink'],
+    optionLabels: { off: 'off', split: 'split screen (drag the divider)', side: 'side by side', blink: 'blink' }, default: 'off', retrace: false, level: 'both' },
+  { key: 'cmpEdit', label: 'the panel edits', type: 'select', group: 'Compare', options: ['A', 'B'], optionLabels: { A: 'A (left)', B: 'B (right)' }, default: 'A', retrace: false,
+    visible: (s) => s.compare !== 'off' },
+  { key: 'blinkHz', label: 'blink rate (per second)', type: 'range', group: 'Compare', min: 0.25, max: 8, scale: 'log', default: 1, format: sig, retrace: false,
+    visible: (s) => s.compare === 'blink', level: 'both' },
+  { key: 'cmpDiv', label: 'divider', type: 'number', group: 'Compare', default: 0.5, retrace: false, level: 'hidden' },
 ];
+
+/** keys A and B share in compare mode (camera, observer time, display) */
+export const SHARED_KEYS = ['ui', 'inc', 'screen', 'az', 'cx', 'cy', 'r', 'N', 'play', 'speed', 'slowLight', 'view', 'lo', 'hi', 'toneMap', 'colorMap',
+  'autoExposure', 'exposure', 'brightness', 'timeAvg', 'compare', 'cmpEdit', 'blinkHz', 'cmpDiv', 'quality', 'pretrace', 'cacheMB', 'family'];
 
 const SLIDER_STEPS = 1000;
 
@@ -169,6 +208,8 @@ export function initialState(q) {
     else s[c.key] = Number(raw);
   }
   migrateState(s, q);
+  // the normal panel's family follows the metric
+  s.family = METRICS.find((m) => m.id === s.metric)?.mode === 'fuzzball' ? 'fuzzball' : 'bh';
   return s;
 }
 
@@ -212,7 +253,11 @@ export function buildControls(form, state, onChange) {
   const groups = {};
   /** @type {{c:Control, row:HTMLElement, input:HTMLInputElement|HTMLSelectElement, out?:HTMLOutputElement}[]} */
   const widgets = [];
-  for (const c of CONTROLS) {
+  // groups in a fixed order (the first appearance in CONTROLS would put Tracing before Camera)
+  const ORDER = ['Spacetime', 'Camera', 'Disc emission', 'Time', 'View', 'Compare', 'Tracing'];
+  const ordered = [...CONTROLS].sort((a, b) => (ORDER.indexOf(a.group) + 1 || 99) - (ORDER.indexOf(b.group) + 1 || 99));
+  for (const c of ordered) {
+    if (c.level === 'hidden') continue;
     if (!groups[c.group]) {
       const fs = document.createElement('fieldset');
       fs.innerHTML = `<legend>${c.group}</legend>`;
@@ -223,6 +268,8 @@ export function buildControls(form, state, onChange) {
     row.className = `ctl ctl-${c.type}`;
     const name = document.createElement('span');
     name.textContent = c.label;
+    name.dataset.label = c.label;
+    if (c.normalLabel) name.dataset.normalLabel = c.normalLabel;
     row.appendChild(name);
     /** @type {HTMLInputElement|HTMLSelectElement} */
     let input;
@@ -242,12 +289,12 @@ export function buildControls(form, state, onChange) {
       const inp = document.createElement('input');
       inp.type = c.type;
       if (c.type === 'range') {
-        inp.min = String(c.scale === 'log' ? 0 : c.min);
+        inp.min = String(c.scale === 'log' ? (c.zeroEnd ? -1 : 0) : c.min);
         inp.max = String(c.scale === 'log' ? SLIDER_STEPS : c.max);
         inp.step = c.scale === 'log' ? '1' : String(c.step ?? 'any');
-        inp.value = String(toSlider(c, state[c.key]));
+        inp.value = String(c.zeroEnd && state[c.zeroEnd] ? -1 : toSlider(c, state[c.key]));
         out = document.createElement('output');
-        out.textContent = (c.format ?? String)(state[c.key]);
+        out.textContent = c.zeroEnd && state[c.zeroEnd] ? '0' : (c.format ?? String)(state[c.key]);
       } else if (c.type === 'checkbox') inp.checked = !!state[c.key];
       else { inp.step = String(c.step ?? 'any'); inp.value = Number.isNaN(state[c.key]) ? '' : String(state[c.key]); }
       input = inp;
@@ -265,10 +312,17 @@ export function buildControls(form, state, onChange) {
       return input.value === '' ? NaN : Number(input.value);
     };
     const handler = (/** @type {boolean} */ final) => () => {
+      // the zero position of a log slider: the zero-limit switch (lambda = 0), the parameter keeps its last value
+      if (c.zeroEnd) {
+        const z = Number(input.value) < 0;
+        if (z !== !!state[c.zeroEnd]) { state[c.zeroEnd] = z; sync(c.zeroEnd); }
+        if (z) { if (out) out.textContent = '0'; refreshVisibility(); onChange(c.zeroEnd, final, true); return; }
+      }
       const v = read();
       if (c.type === 'number' && !Number.isFinite(v) && !Number.isNaN(c.default)) return;
       state[c.key] = v;
       if (out) out.textContent = (c.format ?? String)(v);
+      sync(c.key);   // e.g. the lambda = 0 checkbox moves the lambda slider to its zero position
       refreshVisibility();
       onChange(c.key, final, c.retrace !== false);
     };
@@ -277,17 +331,52 @@ export function buildControls(form, state, onChange) {
       input.addEventListener('change', handler(true));
     } else input.addEventListener('change', handler(true));
   }
-  const refreshVisibility = () => { for (const w of widgets) w.row.hidden = w.c.visible ? !w.c.visible(state) : false; };
+  const levelShown = (/** @type {Control} */ c) => {
+    const l = c.level ?? 'expert';
+    return l === 'both' || (state.ui === 'normal' ? l === 'normal' : l === 'expert');
+  };
+  const refreshVisibility = () => {
+    for (const w of widgets) {
+      w.row.hidden = !levelShown(w.c) || (w.c.visible ? !w.c.visible(state) : false);
+      const span = /** @type {HTMLElement} */ (w.row.firstChild);
+      span.textContent = state.ui === 'normal' && span.dataset.normalLabel ? span.dataset.normalLabel : span.dataset.label ?? '';
+    }
+    for (const fs of Object.values(groups)) fs.hidden = !Array.from(fs.querySelectorAll('.ctl')).some((r) => !(/** @type {HTMLElement} */ (r)).hidden);
+  };
+  /** show a state value in its widget */
+  const sync = (/** @type {string} */ key) => {
+    for (const w of widgets) {
+      const v = state[w.c.key];
+      if (w.c.key === key && w.c.type === 'checkbox') /** @type {HTMLInputElement} */ (w.input).checked = !!v;
+      if (w.c.zeroEnd === key || (w.c.key === key && w.c.zeroEnd)) {
+        const z = !!state[/** @type {string} */ (w.c.zeroEnd)];
+        w.input.value = String(z ? -1 : toSlider(w.c, state[w.c.key]));
+        if (w.out) w.out.textContent = z ? '0' : (w.c.format ?? String)(state[w.c.key]);
+      }
+    }
+  };
   refreshVisibility();
   /** set a value programmatically (e.g. a range reset when the view changes) */
   return {
     set(/** @type {string} */ key, /** @type {any} */ v) {
       const w = widgets.find((x) => x.c.key === key);
-      if (!w) return;
       state[key] = v;
-      if (w.c.type === 'range') { w.input.value = String(toSlider(w.c, v)); if (w.out) w.out.textContent = (w.c.format ?? String)(v); }
+      sync(key);
+      if (!w) { refreshVisibility(); return; }
+      if (w.c.type === 'range') { w.input.value = String(toSlider(w.c, v)); if (w.out) w.out.textContent = (w.c.format ?? String)(v); sync(key); }
       else if (w.c.type === 'checkbox') /** @type {HTMLInputElement} */ (w.input).checked = !!v;
       else w.input.value = Number.isNaN(v) ? '' : String(v);
+      refreshVisibility();
+    },
+    /** re-show every widget from the state (panel switch, compare A/B, reset) */
+    refresh() {
+      for (const w of widgets) {
+        const v = state[w.c.key];
+        if (w.c.type === 'range') { w.input.value = String(toSlider(w.c, v)); if (w.out) w.out.textContent = (w.c.format ?? String)(v); }
+        else if (w.c.type === 'checkbox') /** @type {HTMLInputElement} */ (w.input).checked = !!v;
+        else w.input.value = typeof v === 'number' && Number.isNaN(v) ? '' : String(v);
+        if (w.c.zeroEnd) sync(w.c.zeroEnd);
+      }
       refreshVisibility();
     },
   };

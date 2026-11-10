@@ -2,8 +2,9 @@
 // Viewer bootstrap: BH-mode metrics and the ST3Cr fuzzball (M6) on the tabulated GPU tracer (Kerr also on the
 // closed-form shader), progressive refinement, live re-bake of the metric tables, disc emission, debug views.
 // Camera lengths in the UI are in units of the metric's M_ADM (1 for the BH metrics, 24 for ST3Cr).
+// Stage 1B B7: normal and expert panels, interaction on the image, compare mode, persistence, progress and cancel.
 import { CLOSED_FORMS } from './metrics/closedForm.js';
-import { tierSettings, pickTier, TIERS, TIER_LABELS, NORMAL_TRACED } from './gpu/tiers.js';
+import { tierSettings, pickTier, TIERS, TIER_LABELS, NORMAL_TRACED, TIER_TARGET_S } from './gpu/tiers.js';
 import { createBackend } from './gpu/backend.js';
 import { TracePipeline, finalLevels } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
@@ -12,11 +13,14 @@ import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
 import { decodeRecord, RECORD_FLOATS } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { fluidTableRcirc } from './fluid/fluidTable.js';
-import { CONTROLS, VIEWS, buildControls, initialState, stateToQuery } from './ui/controls.js';
+import { CONTROLS, VIEWS, SHARED_KEYS, buildControls, initialState, stateToQuery } from './ui/controls.js';
+import { attachInteraction } from './ui/interaction.js';
 import { loadNoiseField, autoNoiseField, noiseCover } from './noise/noiseField.js';
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const DEG = Math.PI / 180;
+/** localStorage key of the remembered view (B7) */
+const STORE_KEY = 'foort-gpu:last-view';
 
 /** Metric parameters with a slider (non-fixed), per registry id. @param {string} id */
 const paramKeys = (id) => metricEntry(id).params.filter((p) => !p.fixed).map((p) => p.name);
@@ -62,24 +66,39 @@ export function viewFromState(s, coarseTables = false, autoTier = 'high') {
     path: s.path === 'analytic' ? (metric === 'kerr' ? 'analytic' : 'auto') : s.path === 'closed' ? (CLOSED_FORMS[metric] ? 'closed' : 'tabulated') : s.path, grid: coarseTables ? { nx: 128, nth: 64 } : { nx, nth },
     camera: { r: s.r * M, theta: s.inc * DEG, screen: s.screen * M, cx: s.cx * M, cy: s.cy * M },
     N: s.N, crossing: s.crossing, storeH: s.storeH,
-    // quality tier (B6): its eps, far steps, max steps and refinement; 'custom' takes them from the controls
+    // quality tier (B6): its eps, far steps, max steps, integrator and refinement; 'custom' takes them from the controls
     ...(s.quality === 'custom'
-      ? { eps: s.eps, maxSteps: s.maxSteps, farSteps: s.farSteps ? { r: 20, max: 4 } : null, refine: null, bs3: null }
+      ? { eps: s.eps, maxSteps: s.maxSteps, farSteps: s.farSteps ? { r: 20, max: 4 } : null,
+        refine: s.refine ? { sky: s.refineSky, r: 2e-3, g: 2e-3, dt: 0.2 } : null, bs3: s.integrator === 'bs3' ? { tol: s.bs3Tol, cap: 4 } : null }
       : tierSettings(s.quality === 'auto' ? autoTier : s.quality, metricEntry(metric).mode)),
     fluid: { xi: s.xi, betaR: s.betaR, betaPhi: s.betaPhi, model: s.fluidModel },
-    texelReuse: !!s.texelReuse, compact: s.compact ? { n1: 1500 } : null,
+    texelReuse: !!s.texelReuse, compact: s.compact ? { n1: Number(s.compactN1) } : null,
     tailEmission: { redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) },
   };
 }
 
 /**
- * Display time of the state: observer time, slow/fast light, M_ADM, procedural advection, noise amplitude.
+ * Display time of the state: observer time, slow/fast light, M_ADM, procedural advection, noise amplitude
+ * (0 when the normal panel's "time-averaged" is on).
  * @param {Record<string, any>} s @param {number} tObs @param {number} M @returns {import('./gpu/backend.js').DisplayTime}
  */
-export const timeFromState = (s, tObs, M) => ({ tObs, slow: !!s.slowLight, M, advect: s.advect ? s.advectD : 0, sigma: s.sigmaN });
+export const timeFromState = (s, tObs, M) => ({ tObs, slow: !!s.slowLight, M, advect: s.advect ? s.advectD : 0, sigma: s.timeAvg ? 0 : s.sigmaN });
 
 /** @param {Record<string, any>} s @returns {import('./fluid/emission.js').EmissionParams} */
 export const emissionFromState = (s) => ({ mu: s.mu, gamma: s.gamma, sigma: s.sigma, redshiftPower: s.redshiftPower, fudge: s.fudge, maxPasses: Number(s.maxPasses) });
+
+/** keys a compare side has of its own (everything not shared) */
+const SIDE_KEYS = CONTROLS.map((c) => c.key).filter((k) => !SHARED_KEYS.includes(k));
+
+/**
+ * Normal-panel compare (B7): the other spacetime family at matched settings (Kerr a = 0 <-> the ST3Cr fuzzball).
+ * @param {Record<string, any>} s @returns {Record<string, any>}
+ */
+export function otherFamily(s) {
+  return metricEntry(metricIdFromState(s)).mode === 'fuzzball'
+    ? { ...s, metric: 'kerr', a: 0, family: 'bh' }
+    : { ...s, metric: 'st3cr', bh0: false, family: 'fuzzball' };
+}
 
 const LEGENDS = {
   fourColor: [['#e44a40', 'θ < π/2, φ < π'], ['#409ce4', 'θ < π/2, φ > π'], ['#f0c83c', 'θ > π/2, φ < π'], ['#5abe6e', 'θ > π/2, φ > π'], ['#000', 'horizon']],
@@ -87,8 +106,17 @@ const LEGENDS = {
   passes: [['#000', '0'], ['#4073d9', '1'], ['#f29933', '2'], ['#fff', '≥ 3']],
 };
 
+/** safe localStorage (private windows and blocked storage throw) */
+const store = {
+  get: () => { try { return localStorage.getItem(STORE_KEY); } catch { return null; } },
+  set: (/** @type {string} */ v) => { try { localStorage.setItem(STORE_KEY, v); } catch { /* not available */ } },
+  clear: () => { try { localStorage.removeItem(STORE_KEY); } catch { /* not available */ } },
+};
+
 async function main() {
-  const query = new URLSearchParams(location.search);
+  // B7 persistence: the URL takes precedence; without one, the remembered view
+  const stored = location.search.length > 1 ? null : store.get();
+  const query = new URLSearchParams(stored ?? location.search);
   const state = initialState(query);
   // phones (decision E9): a 64 MB record cache and no idle pre-tracing unless the URL asks for it
   const isPhone = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 820;
@@ -105,25 +133,74 @@ async function main() {
       + 'and try a lower resolution or fewer max steps.';
     $('status').textContent = 'GPU context lost';
   });
+  const cacheBytesOf = () => (state.cacheMB === 'auto' ? (isPhone ? 64 : 256) : Number(state.cacheMB)) * 2 ** 20;
   let lastStats = /** @type {import('./gpu/pipeline.js').TraceStats|null} */ (null);
   let level = 0;
+  // progress bar (B7): weighted by the rays of each level, with an ETA; shown after 400 ms
+  const prog = { levels: /** @type {number[]} */ ([]), t0: 0, on: false };
+  let cancelled = false;
   const pipeline = new TracePipeline(backend, {
-    cacheBytes: (isPhone ? 64 : 256) * 2 ** 20,
+    cacheBytes: cacheBytesOf(),
     onStage: stage,
-    onProgress: (p) => { level = p.level; $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`; requestDraw(); },
+    onProgress: (p) => {
+      if (cancelled) return;   // tiles still in flight after a cancel
+      level = p.level;
+      $('status').textContent = `tracing: stride ${p.level}, tile ${p.done}/${p.total}`;
+      showProgress(p);
+      requestDraw();
+    },
   });
+  /** @param {{level:number, done:number, total:number}} p */
+  const showProgress = (p) => {
+    if (!prog.on) return;
+    const el = performance.now() - prog.t0;
+    const w = prog.levels.map((st) => 1 / (st * st)), W = w.reduce((a, b) => a + b, 0) || 1;
+    const i = Math.max(0, prog.levels.indexOf(p.level));
+    const frac = (w.slice(0, i).reduce((a, b) => a + b, 0) + w[i] * (p.total ? p.done / p.total : 0)) / W;
+    if (el < 400) return;
+    $('progress').hidden = false;
+    /** @type {HTMLElement} */ ($('progressBar')).style.width = `${(100 * frac).toFixed(1)}%`;
+    const eta = frac > 0.02 ? (el * (1 - frac)) / frac / 1000 : NaN;
+    $('progressText').textContent = `${(100 * frac).toFixed(0)}%${Number.isFinite(eta) ? `, about ${eta < 10 ? eta.toFixed(1) : eta.toFixed(0)} s left` : ''}`;
+  };
+  const hideProgress = () => { prog.on = false; $('progress').hidden = true; };
 
-  // noise field: inoisy production field (M8) or the M7 placeholder
+  // noise fields: kept on the GPU by name (compare mode may show two anchors)
   let noise = /** @type {import('./noise/noiseField.js').NoiseField|null} */ (null);
   let noiseName = '';
-  /** the field the state asks for ('auto': by metric and lambda, Stage 1B B4) */
-  const wantedNoise = () => (state.noiseField === 'auto' ? autoNoiseField(metricIdFromState(state), metricParamsFromState(state).params) : state.noiseField);
-  /** load and upload a noise field by name (noise/<name>.json/.bin) */
-  const useNoise = async (/** @type {string} */ name) => {
-    if (name === noiseName) return;
-    try { const f = await loadNoiseField(name); backend.uploadNoise(f); noise = f; noiseName = name; }
-    catch (e) { console.warn(`noise field ${name} not loaded:`, e); }
+  /** @type {Map<string, import('./noise/noiseField.js').NoiseField>} */
+  const noiseLoaded = new Map();
+  /** the field a state asks for ('auto': by metric and lambda, Stage 1B B4) @param {Record<string, any>} s */
+  const wantedNoiseOf = (s) => (s.noiseField === 'auto' ? autoNoiseField(metricIdFromState(s), metricParamsFromState(s).params) : s.noiseField);
+  const wantedNoise = () => wantedNoiseOf(sideState('A'));
+  /** load a field onto the GPU by name (noise/<name>.json/.bin) @param {string} name */
+  const ensureNoise = async (name) => {
+    if (noiseLoaded.has(name)) return noiseLoaded.get(name);
+    try { const f = await loadNoiseField(name); backend.uploadNoise(f, name); noiseLoaded.set(name, f); return f; }
+    catch (e) { console.warn(`noise field ${name} not loaded:`, e); return undefined; }
   };
+  /** make a field the current one (side A) @param {string} name */
+  const useNoise = async (name) => {
+    if (name === noiseName) return;
+    const f = await ensureNoise(name);
+    if (f) { backend.uploadNoise(f, name); noise = f; noiseName = name; }
+  };
+
+  // B7 compare: the panel edits one side; the other side's own settings wait in `stash`
+  /** @type {Record<string, any>|null} */
+  let stash = null;
+  /** the full state of a compare side @param {'A'|'B'} side @returns {Record<string, any>} */
+  const sideState = (side) => {
+    if (state.compare === 'off' || side === (state.ui === 'normal' ? 'A' : state.cmpEdit)) return state;
+    if (state.ui === 'normal') return otherFamily(state);
+    return { ...state, ...(stash ?? {}) };
+  };
+  /** what each side's last trace left: its cache key, fluid table, noise field, tail geometry, mass */
+  const sides = /** @type {Record<'A'|'B', {key:string, fluid:any, fluidKey:string, noiseName:string, tail:any, M:number, label:string}|null>} */ ({ A: null, B: null });
+  /** the side being traced (drawn from the live records) */
+  let liveSide = /** @type {'A'|'B'|null} */ (null);
+  let blinkManual = /** @type {'A'|'B'|null} */ (null);
+
   stage('loading the noise field…');
   await useNoise(wantedNoise());
   /** observer time t_obs in units of M */
@@ -148,11 +225,12 @@ async function main() {
   let coarse = /** @type {Float32Array|null} */ (null);
   const updateExposure = () => {
     if (!coarse) return;
-    const em = emissionFromState(state), I = [];
-    if (state.envelope === 'circumferential' && lastFluid) { const F = lastFluid; em.radius = (r) => fluidTableRcirc(F, r); }
+    const sA = sideState('A');
+    const em = emissionFromState(sA), I = [];
+    if (sA.envelope === 'circumferential' && lastFluid) { const F = lastFluid; em.radius = (r) => fluidTableRcirc(F, r); }
     for (let k = 0; k < coarse.length / RECORD_FLOATS; k++) {
       const d = decodeRecord(coarse, k, lastTail ?? undefined);
-      const v = discIntensity(state.storeH ? d.crossings.slice(0, 2) : d.crossings, em, d.tail);
+      const v = discIntensity(sA.storeH ? d.crossings.slice(0, 2) : d.crossings, em, d.tail);
       if (v > 0) I.push(v);
     }
     // emission-weighted share of the noisy crossings (the first 3) inside the field's range (B4 coverage)
@@ -167,13 +245,61 @@ async function main() {
     drawQueued = true;
     requestAnimationFrame(() => { drawQueued = false; draw(); });
   };
+  /** camera of the records on screen, for the instant digital zoom and pan while a re-trace runs (B7) */
+  let shown = { screen: state.screen, cx: state.cx, cy: state.cy, N: state.N };
+  /** display parameters of a state @param {Record<string, any>} s @param {{tail:any, M:number}|null} info */
+  const displayView = (s, info) => {
+    const v = VIEWS[/** @type {keyof typeof VIEWS} */ (s.view)];
+    const lo = Number.isNaN(s.lo) ? /** @type {any} */ (v).lo ?? 0 : s.lo;
+    const hi = Number.isNaN(s.hi) ? /** @type {any} */ (v).hi ?? 1 : s.hi;
+    const M = info?.M ?? lastFluid?.M ?? 1;
+    const pix = shown.screen / shown.N;
+    return { mode: v.mode, lo, hi, maxSteps: s.maxSteps, rCam: s.r * M, storeH: !!s.storeH,
+      emission: emissionFromState(s), exposure: s.autoExposure ? autoExposure * s.brightness : s.exposure, toneMap: Number(s.toneMap), colorMap: Number(s.colorMap),
+      time: timeFromState(s, tObs, M), tail: info?.tail ?? lastTail, envelope: s.envelope, azimuth: s.az * DEG,
+      zoom: { s: shown.screen / s.screen, ox: (s.cx - shown.cx) / pix, oy: (s.cy - shown.cy) / pix } };
+  };
   const draw = () => {
-    const v = VIEWS[/** @type {keyof typeof VIEWS} */ (state.view)];
-    const lo = Number.isNaN(state.lo) ? /** @type {any} */ (v).lo ?? 0 : state.lo;
-    const hi = Number.isNaN(state.hi) ? /** @type {any} */ (v).hi ?? 1 : state.hi;
-    backend.display({ mode: v.mode, lo, hi, maxSteps: state.maxSteps, rCam: state.r * (lastFluid?.M ?? 1), storeH: !!state.storeH,
-      emission: emissionFromState(state), exposure: state.autoExposure ? autoExposure : state.exposure, toneMap: Number(state.toneMap), colorMap: Number(state.colorMap),
-      time: timeFromState(state, tObs, lastFluid?.M ?? 1), tail: lastTail, envelope: state.envelope, azimuth: state.az * DEG });
+    if (state.compare === 'off') {
+      backend.canvasSize(state.N, state.N);
+      backend.display(displayView(state, null));
+      return;
+    }
+    const N = state.N;
+    const side = state.compare === 'side';
+    backend.canvasSize(side ? 2 * N : N, N);
+    backend.clearCanvas();
+    /** @param {'A'|'B'} sd @param {number[]} viewport @param {number[]|undefined} scissor */
+    const one = (sd, viewport, scissor) => {
+      const info = sides[sd];
+      const handle = info && liveSide !== sd ? pipeline.cache.get(info.key)?.handle : undefined;
+      if (liveSide !== sd && !handle) return;
+      backend.display(displayView(sideState(sd), info), { handle, viewport, scissor, fluid: info?.fluid, fluidKey: info?.fluidKey, noiseName: info?.noiseName });
+    };
+    if (side) { one('A', [0, 0, N, N], undefined); one('B', [N, 0, N, N], undefined); }
+    else if (state.compare === 'split') {
+      const x = Math.round(state.cmpDiv * N);
+      one('A', [0, 0, N, N], [0, 0, x, N]); one('B', [0, 0, N, N], [x, 0, N - x, N]);
+    } else {
+      const sd = blinkManual ?? (Math.floor((performance.now() / 1000) * state.blinkHz * 2) % 2 ? 'B' : 'A');
+      one(sd, [0, 0, N, N], undefined);
+      $('labelA').style.visibility = sd === 'A' ? 'visible' : 'hidden';
+      $('labelB').style.visibility = sd === 'B' ? 'visible' : 'hidden';
+    }
+  };
+  const layoutCompare = () => {
+    const on = state.compare !== 'off';
+    $('canvasWrap').classList.toggle('side', state.compare === 'side');
+    $('divider').hidden = state.compare !== 'split';
+    /** @type {HTMLElement} */ ($('divider')).style.left = `${100 * state.cmpDiv}%`;
+    $('sideLabels').hidden = !on;
+    const SHORT = /** @type {Record<string, string>} */ ({ kerr: 'Kerr', johannsen: 'Johannsen', mankoNovikov: 'Manko–Novikov', reissnerNordstrom: 'RN', st3cr: 'ST3Cr', st3crBH: 'ST3Cr λ = 0 (BH)' });
+    const lab = (/** @type {'A'|'B'} */ sd) => {
+      const s = sideState(sd), id = metricIdFromState(s);
+      return `${sd}: ${SHORT[id] ?? id}${id === 'st3cr' ? ` λ = ${s.lambda}` : id === 'kerr' || id === 'johannsen' || id === 'mankoNovikov' ? ` a = ${s.a}` : id === 'reissnerNordstrom' ? ` Q = ${s.Q}` : ''}`;
+    };
+    $('labelA').textContent = lab('A'); $('labelB').textContent = lab('B');
+    $('labelA').style.visibility = $('labelB').style.visibility = 'visible';
   };
 
   const legend = () => {
@@ -182,10 +308,10 @@ async function main() {
     $('legend').innerHTML = items
       ? items.map(([c, t]) => `<span style="background:${c}"></span>${t}`).join('')
       : 'lo' in v ? `inferno colour map from ${Number.isNaN(state.lo) ? v.lo : state.lo} to ${Number.isNaN(state.hi) ? v.hi : state.hi}`
-        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over all crossings (the first 3 exact, later ones binned); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
-        : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
-          : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon'
-            : state.view === 'coverage' ? `Noise coverage: emission-weighted share of the first 3 crossings inside the field's radial range (${noise ? `${noiseName}, r = ${Math.exp(noise.meta.xmin).toPrecision(2)}–${Math.exp(noise.meta.xmax).toPrecision(3)} M` : 'no field'}); green 100%, red 0%, grey: no disc emission. Whole image: ${(100 * noiseCoverage).toFixed(2)}%` : '';
+        : state.view === 'emission' ? `disc emission Σ F g^${state.redshiftPower} J(r) over all crossings (the first 3 exact, later ones binned); ${['linear', 'sqrt', 'log', 'asinh'][Number(state.toneMap)]} tone map, exposure ${(state.autoExposure ? autoExposure * state.brightness : state.exposure).toPrecision(3)}${lastFluid?.isco ? `; ISCO r = ${lastFluid.isco.toFixed(3)}${lastFluid.M !== 1 ? ` (${(lastFluid.isco / lastFluid.M).toFixed(3)} M)` : ''}` : ''}${metricEntry(metricIdFromState(state)).emissionNote ? `. Note: ${metricEntry(metricIdFromState(state)).emissionNote}` : ''}`
+          : state.view === 'steps' ? `inferno colour map of log(steps), from 1 to max steps (${state.maxSteps})`
+            : state.view === 'sky' ? '15° grid in the escape direction (θ, φ), tinted by FOORT quadrant; black: horizon'
+              : state.view === 'coverage' ? `Noise coverage: emission-weighted share of the first 3 crossings inside the field's radial range (${noise ? `${noiseName}, r = ${Math.exp(noise.meta.xmin).toPrecision(2)}–${Math.exp(noise.meta.xmax).toPrecision(3)} M` : 'no field'}); green 100%, red 0%, grey: no disc emission. Whole image: ${(100 * noiseCoverage).toFixed(2)}%` : '';
   };
 
   const perfRow = (/** @type {string} */ k, /** @type {string} */ v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
@@ -216,22 +342,23 @@ async function main() {
   };
 
   const bakes = new BakeClient();
-  /** the tier 'auto' picked per metric mode, and the predicted full-trace times (s) per tier */
+  /** the tier 'auto' picked per metric mode, the predicted full-trace times (s) per tier, and the probe timings */
   const autoTiers = /** @type {Record<string, import('./gpu/tiers.js').Tier>} */ ({});
   const autoPredicted = /** @type {Record<string, Record<string, number>>} */ ({});
+  const autoProbe = /** @type {Record<string, {ms: Partial<Record<import('./gpu/tiers.js').Tier, number>>, rays: number}>} */ ({});
   let tierNow = /** @type {string} */ ('high');
   /**
    * Probe traces of the current view at 64^2 for each tier (in the background record set, twice: the first compiles),
    * scaled to the full image: the highest tier within E1's target (B6, plan 1.2).
-   * @param {'BH'|'fuzzball'} mode
+   * @param {'BH'|'fuzzball'} mode @param {Record<string, any>} s
    */
-  const probeTier = async (mode) => {
+  const probeTier = async (mode, s) => {
     const n = 64;
     /** @type {Partial<Record<import('./gpu/tiers.js').Tier, number>>} */
     const ms = {};
     for (const t of TIERS) {
       try {
-        const view = { ...viewFromState({ ...state, quality: t }), N: n, refine: null };
+        const view = { ...viewFromState({ ...s, quality: t }), N: n, refine: null };
         const ts = tableSpec(view);
         const tables = ts ? (await bakes.get(ts)).tables : undefined;
         const fluid = (await bakes.get(fluidSpec(view))).tables;
@@ -246,57 +373,138 @@ async function main() {
         ms[t] = t === 'normal' ? best * NORMAL_TRACED[mode] : best;
       } catch (e) { console.warn('tier probe failed:', e); return null; }
     }
-    return pickTier(ms, n * n, state.N * state.N * (1 + 1 / 16), mode);
+    autoProbe[mode] = { ms, rays: n * n };
+    return pickTier(ms, n * n, s.N * s.N * (1 + 1 / 16), mode);
+  };
+  /** predicted full trace (s) of a state on this device, from the probe of its mode (null: not probed) @param {Record<string, any>} s */
+  const predictS = (s) => {
+    const mode = metricEntry(metricIdFromState(s)).mode, pr = autoProbe[mode];
+    const t = s.quality === 'auto' ? autoTiers[mode] : s.quality;
+    const ms = pr?.ms[/** @type {import('./gpu/tiers.js').Tier} */ (t)];
+    return ms === undefined ? null : (ms * s.N * s.N * (1 + 1 / 16)) / pr.rays / 1000;
   };
   let runId = 0;
   let lastBake = '';
   /** @type {import('./fluid/fluidTable.js').FluidTable|null} */
   let lastFluid = null;
-  /** @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged */
-  const run = async (final, metricDrag = false) => {
-    const id = ++runId;
-    history.replaceState(null, '', `?${stateToQuery(state)}`);
-    const { clamped } = metricParamsFromState(state);
+  /** URL and remembered view @param {Record<string, any>} [s] */
+  const saveUrl = (s = state) => {
+    // the URL carries the state of side A (the panel may be editing B)
+    const q = stateToQuery(s);
+    history.replaceState(null, '', `?${q}`);
+    store.set(q);
+  };
+  let urlTimer = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
+  const saveUrlSoon = () => { if (urlTimer) clearTimeout(urlTimer); urlTimer = setTimeout(() => { urlTimer = null; saveUrl(sideState('A')); }, 250); };
+
+  /**
+   * Trace one state into the displayed records. Returns the stats and the setup, or null (superseded or failed).
+   * @param {Record<string, any>} s @param {boolean} final @param {boolean} metricDrag @param {number} id
+   */
+  const traceState = async (s, final, metricDrag, id) => {
     let setup;
     try {
       // quality tier (B6): 'auto' probes this device once per metric mode (before the first final trace)
-      const mode = metricEntry(metricIdFromState(state)).mode;
-      if (state.quality === 'auto' && final && !autoTiers[mode]) {
+      const mode = metricEntry(metricIdFromState(s)).mode;
+      if (s.quality === 'auto' && final && !autoTiers[mode]) {
         $('status').textContent = 'measuring this device (quality auto)…';
-        const pk = await probeTier(mode);
-        if (id !== runId) return;
-        if (pk) { autoTiers[mode] = pk.tier; autoPredicted[mode] = pk.predictedS; }
+        const pk = await probeTier(mode, s);
+        if (id !== runId) return null;
+        if (pk) {
+          autoTiers[mode] = pk.tier; autoPredicted[mode] = pk.predictedS;
+          // B7 phone-safe resolution: when no tier fits the target and the link did not set N, halve it (down to 256)
+          if (!query.has('N') && pk.predictedS[pk.tier] > TIER_TARGET_S[mode] && s.N > 256) {
+            const n = Math.max(256, s.N / 2 ** Math.ceil(Math.log2(Math.sqrt(pk.predictedS[pk.tier] / TIER_TARGET_S[mode]))));
+            controls.set('N', n);
+            if (s !== state) s.N = n;
+          }
+        }
       }
-      tierNow = state.quality === 'auto' ? autoTiers[mode] ?? 'high' : state.quality;
-      const view = viewFromState(state, metricDrag, autoTiers[mode] ?? 'high');
+      tierNow = s.quality === 'auto' ? autoTiers[mode] ?? 'high' : s.quality;
+      const view = viewFromState(s, metricDrag, autoTiers[mode] ?? 'high');
       const ts = tableSpec(view);
       let tables;
       if (ts) {
         $('status').textContent = 'baking metric tables…';
         const bk = await bakes.get(ts);
-        if (id !== runId) return;   // superseded while baking
+        if (id !== runId) return null;   // superseded while baking
         tables = bk.tables;
         if (!tables.validation.ok) throw new Error(`metric not valid on its table: ${tables.validation.messages.join('; ')}`);
         if (!bk.cached) lastBake = `${tables.grid.nx} × ${tables.grid.nth} nodes${tables.grid.symmetric ? ' (θ ≤ π/2)' : ''}, ${bk.ms.toFixed(0)} ms in the worker (bake ${tables.timing.totalMs.toFixed(0)} ms)`;
       }
       const fs = fluidSpec(view);
       const fb = await bakes.get(fs);
-      if (id !== runId) return;
-      lastFluid = fb.tables;
+      if (id !== runId) return null;
       setup = gpuTraceSetup(view, tables, fb.tables);
-      lastTail = setup.tail;
-    } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return; }
-    const levels = final ? finalLevels(state.N) : [Math.min(8, Math.max(1, state.N / 128))];
-    const st = await pipeline.trace(setup, { levels, measureSteps: final });
-    if (!st) return;
-    if (final && state.pretrace) schedulePretrace(id);
-    lastStats = st;
-    if (final) { coarse = await backend.readRecords(state.N >= 512 ? 4 : 1); updateExposure(); legend(); $('clock').textContent = clockText(); }
+      const levels = final ? finalLevels(s.N) : [Math.min(8, Math.max(1, s.N / 128))];
+      prog.levels = levels; prog.t0 = performance.now(); prog.on = final;
+      const st = await pipeline.trace(setup, { levels, measureSteps: final });
+      if (!st) return null;
+      return { st, setup, fluid: fb.tables, fluidKey: fs.key, levels };
+    } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return null; }
+  };
+
+  /** @type {{final:boolean, metricDrag:boolean}|null} */
+  let pendingWarn = null;
+  /**
+   * @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged
+   * @param {boolean} [skipWarn] start a trace predicted above 15 s without asking (B7)
+   */
+  const run = async (final, metricDrag = false, skipWarn = false) => {
+    const id = ++runId;
+    cancelled = false;
+    $('warnBox').hidden = true;
+    saveUrl(sideState('A'));
+    // B7: warn before a trace predicted above 15 s on this device
+    const pred = final ? predictS(state) : null;
+    if (final && !skipWarn && pred !== null && pred > 15) {
+      pendingWarn = { final, metricDrag };
+      $('warnText').textContent = `This trace is predicted to take about ${pred.toFixed(0)} s on this device (${state.N}², quality ${state.quality}). Lower the resolution or the quality for a faster image.`;
+      $('warnBox').hidden = false;
+      $('status').textContent = 'waiting: long trace';
+      return;
+    }
+    const { clamped } = metricParamsFromState(state);
+    const order = /** @type {('A'|'B')[]} */ (state.compare === 'off' ? ['A'] : state.ui === 'normal' || state.cmpEdit === 'A' ? ['A', 'B'] : ['B', 'A']);
+    let res = null;
+    for (const sd of order) {
+      const s = sideState(sd);
+      liveSide = state.compare === 'off' ? null : sd;
+      if (state.compare !== 'off') {
+        // the other side's noise field must be on the GPU too
+        await ensureNoise(wantedNoiseOf(s));
+        layoutCompare();
+      }
+      const r = await traceState(s, final, metricDrag, id);
+      if (!r || id !== runId) { liveSide = null; hideProgress(); return; }
+      const M = createMetric(metricIdFromState(s), metricParamsFromState(s).params).massADM;
+      if (pipeline.lastKey) {
+        const old = sides[sd]?.key;
+        if (old && old !== pipeline.lastKey) pipeline.pins.delete(old);
+        if (state.compare !== 'off') pipeline.pins.add(pipeline.lastKey);
+      }
+      sides[sd] = { key: pipeline.lastKey, fluid: r.fluid, fluidKey: r.fluidKey, noiseName: wantedNoiseOf(s), tail: r.setup.tail, M, label: sd };
+      if (sd === 'A' || state.compare === 'off') {
+        lastFluid = r.fluid; lastTail = r.setup.tail; res = r;
+        if (final) { coarse = await backend.readRecords(s.N >= 512 ? 4 : 1); updateExposure(); }
+      }
+      if (sd === order[0] && state.compare === 'off') break;
+    }
+    liveSide = null;
+    hideProgress();
+    if (state.compare === 'off') { for (const k of pipeline.pins) pipeline.pins.delete(k); }
+    if (!res) res = /** @type {any} */ (null);
+    const st = res?.st ?? (pipeline.lastKey ? pipeline.cache.get(pipeline.lastKey)?.stats : undefined);
+    shown = { screen: state.screen, cx: state.cx, cy: state.cy, N: state.N };
+    if (final && state.pretrace && state.compare === 'off') schedulePretrace(id);
+    if (st) lastStats = st;
+    if (final) { legend(); $('clock').textContent = clockText(); }
     requestDraw();
+    if (!st) return;
     const note = clamped.length ? ` (${clamped.join(', ')})` : '';
     const q = `quality ${/** @type {any} */ (TIER_LABELS)[tierNow] ?? tierNow}${state.quality === 'auto' ? ' (auto)' : ''}`;
-    $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}` : `preview (stride ${levels[0]}, draft); release to refine`) + note;
-    if (final) showPerf(st, setup.warnings, setup.tables ? lastBake : setup.program.startsWith('trace_kerr_analytic') ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${setup.program.slice(7).split('+')[0]})`);
+    $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}${state.compare !== 'off' ? ', compare A | B' : ''}` : `preview (stride ${res?.levels?.[0] ?? '?'}, draft); release to refine`) + note;
+    if (final && res) showPerf(st, res.setup.warnings, res.setup.tables ? lastBake : res.setup.program.startsWith('trace_kerr_analytic') ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${res.setup.program.slice(7).split('+')[0]})`);
   };
 
   // Stage 1B B5 idle pre-tracing: after a final trace, with the GPU idle, trace the previews of the neighbouring views
@@ -335,9 +543,40 @@ async function main() {
 
   /** load the field the state asks for (auto: by metric and lambda) and refresh what depends on it */
   const refreshNoise = () => useNoise(wantedNoise()).then(() => { updateExposure(); $('clock').textContent = clockText(); legend(); requestDraw(); });
+  const applyPanel = () => {
+    $('uiToggle').textContent = state.ui === 'normal' ? 'Expert panel' : 'Normal panel';
+    $('perfBox').hidden = state.ui === 'normal';
+  };
+  /** swap the side the panel edits (expert compare): the other side's own settings come out of the stash */
+  const swapEditedSide = () => {
+    const mine = Object.fromEntries(SIDE_KEYS.map((k) => [k, state[k]]));
+    if (stash) Object.assign(state, stash);
+    stash = mine;
+    controls.refresh();
+  };
+  let editedSide = state.cmpEdit;
   const controls = buildControls(/** @type {HTMLFormElement} */ ($('controls')), state, (key, final, retrace) => {
     if (key === 'view') { controls.set('lo', NaN); controls.set('hi', NaN); legend(); }
-    if (key === 'metric') controls.set('maxSteps', MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
+    if (key === 'family') {
+      // normal panel: black hole = Kerr, fuzzball = ST3Cr
+      controls.set('metric', state.family === 'bh' ? 'kerr' : 'st3cr');
+      key = 'metric'; retrace = true; final = true;
+    }
+    if (key === 'metric') {
+      controls.set('maxSteps', MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
+      controls.set('family', metricEntry(metricIdFromState(state)).mode === 'fuzzball' ? 'fuzzball' : 'bh');
+    }
+    if (key === 'cacheMB') { pipeline.cacheBytes = cacheBytesOf(); pipeline.cacheTrim(); }
+    if (key === 'compare') {
+      if (state.compare !== 'off' && !stash) stash = Object.fromEntries(SIDE_KEYS.map((k) => [k, otherFamily(state)[k]]));
+      if (state.compare === 'off') { sides.B = null; for (const k of pipeline.pins) pipeline.pins.delete(k); }
+      layoutCompare(); run(true); return;
+    }
+    if (key === 'cmpEdit') {
+      if (state.cmpEdit !== editedSide) { const want = state.cmpEdit; state.cmpEdit = editedSide; swapEditedSide(); state.cmpEdit = want; editedSide = want; controls.refresh(); }
+      layoutCompare(); refreshNoise(); requestDraw(); return;
+    }
+    if (key === 'blinkHz' || key === 'cmpDiv') { requestDraw(); return; }
     if (key === 'preset' && state.preset !== 'custom') {
       const p = /** @type {any} */ (EMISSION_PRESETS)[state.preset];
       controls.set('metric', p.metric);
@@ -345,6 +584,7 @@ async function main() {
       controls.set('maxSteps', p.maxSteps ?? MAX_STEPS_DEFAULT[metricEntry(metricIdFromState(state)).mode]);
       for (const [k, v] of Object.entries(p.emission)) controls.set(k, v);
       controls.set('inc', p.inc); controls.set('r', p.r); controls.set('screen', p.screen);
+      controls.set('family', metricEntry(metricIdFromState(state)).mode === 'fuzzball' ? 'fuzzball' : 'bh');
       // presets that also set other state (B3 comparison presets: envelope radius, fluid model); others reset them
       controls.set('envelope', p.state?.envelope ?? 'coordinate');
       if (p.state?.fluidModel) controls.set('fluidModel', p.state.fluidModel);
@@ -352,27 +592,104 @@ async function main() {
       run(true);
       return;
     }
-    if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure', 'envelope'].includes(key)) { updateExposure(); legend(); }
-    if (['slowLight', 'play'].includes(key)) $('clock').textContent = clockText();
+    if (['mu', 'gamma', 'sigma', 'redshiftPower', 'fudge', 'maxPasses', 'autoExposure', 'envelope', 'brightness'].includes(key)) { updateExposure(); legend(); }
+    if (['slowLight', 'play', 'timeAvg'].includes(key)) $('clock').textContent = clockText();
     if (key === 'noiseField' || key === 'metric' || key === 'lambda' || key === 'bh0') refreshNoise();
+    if (state.compare !== 'off') layoutCompare();
     const isParam = !!CONTROLS.find((c) => c.key === key)?.metricParam;
-    if (retrace) run(final, isParam && !final); else { history.replaceState(null, '', `?${stateToQuery(state)}`); legend(); requestDraw(); }
+    if (retrace) run(final, isParam && !final); else { saveUrlSoon(); legend(); requestDraw(); }
   });
+  applyPanel();
+  layoutCompare();
+
+  // toolbar (B7)
+  const togglePanelMode = () => { controls.set('ui', state.ui === 'normal' ? 'expert' : 'normal'); controls.refresh(); applyPanel(); layoutCompare(); saveUrlSoon(); requestDraw(); };
+  const toggleHide = () => { const l = $('layout'); l.classList.toggle('nopanel'); $('hidePanel').textContent = l.classList.contains('nopanel') ? 'Show panel' : 'Hide panel'; };
+  const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else $('stage').requestFullscreen?.().catch(() => {}); };
+  const snapshot = () => {
+    draw();
+    canvas.toBlob((b) => {
+      if (!b) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `foort-gpu-${metricIdFromState(state)}-${Date.now()}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  };
+  const toggleHelp = (/** @type {boolean|undefined} */ force = undefined) => { $('helpOverlay').hidden = force === undefined ? !$('helpOverlay').hidden : !force; };
+  $('uiToggle').addEventListener('click', togglePanelMode);
+  $('hidePanel').addEventListener('click', toggleHide);
+  $('fullscreen').addEventListener('click', toggleFullscreen);
+  $('snapshot').addEventListener('click', snapshot);
+  $('help').addEventListener('click', () => toggleHelp());
+  $('helpClose').addEventListener('click', () => { $('helpOverlay').hidden = true; });
+  $('resetView').addEventListener('click', () => { store.clear(); location.href = location.pathname; });
+  $('cancel').addEventListener('click', () => {
+    cancelled = true;
+    runId++;
+    pipeline.cancel();
+    hideProgress();
+    liveSide = null;
+    $('status').textContent = 'cancelled (the image shows what was traced so far)';
+  });
+  $('warnGo').addEventListener('click', () => { const w = pendingWarn; $('warnBox').hidden = true; if (w) run(w.final, w.metricDrag, true); });
+  $('warnLower').addEventListener('click', () => { $('warnBox').hidden = true; controls.set('N', Math.max(128, state.N / 2)); run(true); });
+  $('warnTier').addEventListener('click', () => { $('warnBox').hidden = true; controls.set('quality', 'normal'); run(true, false, true); });
+
+  // interaction on the image (B7)
+  let previewQueued = false;
+  const preview = () => {
+    if (previewQueued) return;
+    previewQueued = true;
+    requestAnimationFrame(() => { previewQueued = false; run(false); });
+  };
+  attachInteraction(canvas, {
+    azimuth: (d) => { controls.set('az', ((state.az + d) % 360 + 360) % 360); saveUrlSoon(); requestDraw(); },
+    inclination: (d, final) => {
+      if (d) controls.set('inc', Math.min(179.99, Math.max(0.01, Number((state.inc + d).toFixed(2)))));
+      if (final) run(true); else preview();
+    },
+    zoom: (f, final) => {
+      if (f !== 1) controls.set('screen', Math.min(500, Math.max(0.05, Number((state.screen * f).toPrecision(4)))));
+      if (final) run(true); else requestDraw();   // instant digital zoom of the current image
+    },
+    pan: (dx, dy, final) => {
+      if (dx || dy) { controls.set('cx', Number((state.cx + dx * state.screen).toPrecision(4))); controls.set('cy', Number((state.cy + dy * state.screen).toPrecision(4))); }
+      if (final) run(true); else requestDraw();
+    },
+    divider: () => (state.compare === 'split' ? state.cmpDiv : null),
+    setDivider: (f) => { state.cmpDiv = f; /** @type {HTMLElement} */ ($('divider')).style.left = `${100 * f}%`; requestDraw(); saveUrlSoon(); },
+    keys: {
+      ' ': () => { controls.set('play', !state.play); $('clock').textContent = clockText(); },
+      f: toggleFullscreen, h: toggleHide, s: snapshot, e: togglePanelMode,
+      r: () => { $('status').textContent = 'video recording comes with export (Stage 1B B9)'; },
+      c: () => { controls.set('compare', state.compare === 'off' ? 'split' : 'off'); if (state.compare !== 'off' && !stash) stash = Object.fromEntries(SIDE_KEYS.map((k) => [k, otherFamily(state)[k]])); layoutCompare(); run(true); },
+      b: () => {
+        if (state.compare === 'off') return;
+        const showing = blinkManual ?? (state.compare === 'blink' && Math.floor((performance.now() / 1000) * state.blinkHz * 2) % 2 ? 'B' : 'A');
+        blinkManual = showing === 'A' ? 'B' : 'A'; if (state.compare !== 'blink') controls.set('compare', 'blink'); layoutCompare(); requestDraw(); },
+      '?': () => toggleHelp(),
+      Escape: () => toggleHelp(false),
+    },
+  });
+
   // animation (M7): advance t_obs while playing; the display pass is cheap, the trace is not repeated
   let lastFrame = performance.now(), lastLegend = 0;
   const animate = (/** @type {number} */ now) => {
     const dts = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    if (state.play && noise && state.sigmaN > 0 && state.view === 'emission' || state.play && state.view === 'noise') {
+    const noisy = state.play && noise && state.sigmaN > 0 && !state.timeAvg && state.view === 'emission' || state.play && state.view === 'noise';
+    if (noisy) {
       tObs += state.speed * dts;
-      // no animation frames while a trace runs: redrawing the canvas at 60 fps competes with the trace tiles for the
-      // GPU (up to 3x slower traces on integrated graphics, M9); the progress callback still draws each finished tile
-      if (!pipeline.busy) draw();
       if (now - lastLegend > 250) { lastLegend = now; $('clock').textContent = clockText(); }
     }
+    // no animation frames while a trace runs: redrawing the canvas at 60 fps competes with the trace tiles for the
+    // GPU (up to 3x slower traces on integrated graphics, M9); the progress callback still draws each finished tile
+    if ((noisy || (state.compare === 'blink' && !blinkManual)) && !pipeline.busy) draw();
     requestAnimationFrame(animate);
   };
-  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light`;
+  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light${state.timeAvg ? ', time-averaged' : ''}`;
   $('clock').textContent = clockText();
   requestAnimationFrame(animate);
 
@@ -387,6 +704,10 @@ async function main() {
     view: () => viewFromState(state, false, autoTiers[metricEntry(metricIdFromState(state)).mode] ?? 'high'),
     /** the quality tier of the last trace (B6) */
     tier: () => tierNow,
+    /** the state of a compare side (B7) */
+    side: (/** @type {'A'|'B'} */ sd) => ({ ...sideState(sd) }),
+    /** the run counter (B7 tests: a display-only change starts no run) */
+    runs: () => runId,
     noise: () => noise,
     /** set the observer time (units of M) and redraw */
     setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },
@@ -399,6 +720,7 @@ async function main() {
       lastTail = setup.tail;
       // scripts and tests trace afresh unless they ask for the record cache (timings, A/B comparisons)
       const stats = await pipeline.trace(setup, { levels: o.levels ?? [1], measureSteps: o.measureSteps ?? true, adaptTiles: o.adaptTiles ?? false, cache: o.cache ?? false });
+      shown = { screen: state.screen, cx: state.cx, cy: state.cy, N: view.N };
       if (o.records === false) { requestDraw(); return { stats, records: '', level, isco: fluid.isco, bake: null, tail: setup.tail }; }
       const rec = await backend.readRecords();
       requestDraw();

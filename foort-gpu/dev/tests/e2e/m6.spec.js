@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.goto('index.html?N=128&maxSteps=2000');
+  await page.goto('index.html?ui=expert&N=128&maxSteps=2000');
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 });
   expect(await page.evaluate(() => window.__foortError)).toBeUndefined();
   await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });
@@ -21,12 +21,13 @@ test('Test_FBdetail preset: ST3Cr fuzzball, lambda slider, camera in units of M_
   expect(st.r).toBeCloseTo(250 / 24, 6);
 });
 
-test('lambda = 0 switch selects the supersymmetric black hole and hides the lambda slider', async ({ page }) => {
+test('lambda = 0 switch selects the supersymmetric black hole; the lambda slider moves to its zero position (B7)', async ({ page }) => {
   test.setTimeout(120_000);
   await page.selectOption('select[name=metric]', 'st3cr');
   await expect(page.locator('#status')).toContainText('done', { timeout: 100_000 });
   await page.locator('input[name=bh0]').check();
-  await expect(page.locator('input[name=lambda]')).toBeHidden();
+  await expect(page.locator('input[name=lambda]')).toHaveValue('-1');
+  await expect(page.locator('label:has(input[name=lambda]) output')).toHaveText('0');
   await expect(page.locator('#status')).toContainText('done', { timeout: 100_000 });
   await expect(page.locator('#perf')).toContainText('ISCO r = 0.780');
 });

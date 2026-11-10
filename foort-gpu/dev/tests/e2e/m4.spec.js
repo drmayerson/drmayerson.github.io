@@ -6,7 +6,7 @@ const quadrant = (d) => fourColorQuadrant({ term: d.term, theta: d.theta, phi: d
 
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.goto('index.html?N=128');
+  await page.goto('index.html?ui=expert&N=128');
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 })
     .catch(async (e) => { throw new Error(`${e.message}; startup: ${await page.evaluate(() => JSON.stringify({ stage: window.__foortStage, ready: document.readyState, loaded: performance.getEntriesByType('resource').map((r) => r.name.split('/').slice(-2).join('/')) }))}`); });
   expect(await page.evaluate(() => window.__foortError)).toBeUndefined();

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const N = 128;
 test.beforeEach(async ({ page }) => {
   page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.goto(`index.html?N=${N}&a=0.94&inc=60&play=0`);
+  await page.goto(`index.html?ui=expert&N=${N}&a=0.94&inc=60&play=0`);
   await page.waitForFunction(() => window.__foort || window.__foortError, null, { timeout: 60_000 });
   expect(await page.evaluate(() => window.__foortError)).toBeUndefined();
   await expect(page.locator('#status')).toContainText('done', { timeout: 60_000 });

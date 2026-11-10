@@ -114,6 +114,9 @@ export class TracePipeline {
     this.cache = /** @type {Map<string, {handle: import('./backend.js').CacheHandle, stats: TraceStats}>} */ (new Map());
     /** its memory budget in bytes (0: off; decision E9: 256 MB desktop, 64 MB phone) */
     this.cacheBytes = opts.cacheBytes ?? 256 * 2 ** 20;
+    /** cache key of the last foreground trace ('' without the cache), and keys that eviction skips (B7 compare sides) */
+    this.lastKey = '';
+    this.pins = /** @type {Set<string>} */ (new Set());
     /** setup of the displayed records */
     this.displayed = /** @type {{fluid?:any, fluidKey?:string|null}|null} */ (null);
     /** no progress reports (background traces) */
@@ -132,8 +135,14 @@ export class TracePipeline {
   cachePut(key, handle, stats) {
     this.cache.set(key, { handle, stats });
     // evict the least recently used entries beyond the budget (the newest entry always stays)
-    while (this.cacheUsed() > this.cacheBytes && this.cache.size > 1) {
-      const [k, e] = /** @type {[string, {handle: import('./backend.js').CacheHandle}]} */ (this.cache.entries().next().value);
+    this.cacheTrim();
+  }
+
+  /** evict the least recently used entries beyond the budget (the newest and the pinned ones stay) */
+  cacheTrim() {
+    for (const [k, e] of [...this.cache.entries()]) {
+      if (this.cacheUsed() <= this.cacheBytes || this.cache.size <= 1) break;
+      if (this.pins.has(k)) continue;
       this.backend.cacheFree(e.handle);
       this.cache.delete(k);
     }
@@ -230,6 +239,7 @@ export class TracePipeline {
       const useCache = opts.cache !== false && this.cacheBytes > 0;
       const key = useCache ? traceKey(setup, levels) : '';
       const hit = useCache ? this.cache.get(key) : undefined;
+      if (!opts.background) this.lastKey = useCache ? key : '';
       if (hit) {
         // most recently used last
         this.cache.delete(key); this.cache.set(key, hit);

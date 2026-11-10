@@ -8,6 +8,9 @@ const PORT = 8765;
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 120_000,
+  // at most 4 GPU-heavy browsers at once: with more, the laptop's iGPU occasionally returned a wrong frame or timed out
+  // (Stage 1B B7: 33 tests)
+  workers: 4,
   use: {
     baseURL: `http://127.0.0.1:${PORT}/`,
     channel: process.env.PW_CHANNEL ?? 'chrome',

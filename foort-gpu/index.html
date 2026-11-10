@@ -15,10 +15,33 @@
       equatorial disc that flickers with inoisy turbulence and shows each point at its emission time (slow light).
       <a href="https://github.com/drmayerson/drmayerson.github.io/blob/main/foort-gpu/README.md">Guide</a> ·
       <a href="./caps.html">Device capabilities</a> · <a href="./bench/">Benchmark</a></p>
+    <nav class="toolbar" aria-label="viewer tools">
+      <button type="button" id="uiToggle" class="secondary" title="switch between the normal and the expert panel (e)">Expert panel</button>
+      <button type="button" id="hidePanel" class="secondary" title="hide or show the panel (h)">Hide panel</button>
+      <button type="button" id="fullscreen" class="secondary" title="fullscreen (f)">Fullscreen</button>
+      <button type="button" id="snapshot" class="secondary" title="save the image as PNG (s)">Snapshot</button>
+      <button type="button" id="resetView" class="secondary" title="forget the remembered view and load the defaults">Reset to defaults</button>
+      <button type="button" id="help" class="secondary" title="keyboard and mouse (?)">?</button>
+    </nav>
   </header>
-  <div class="layout">
-    <figure class="stage">
-      <canvas id="view" width="512" height="512" aria-label="ray-traced image"></canvas>
+  <div class="layout" id="layout">
+    <figure class="stage" id="stage">
+      <div class="canvasWrap" id="canvasWrap">
+        <canvas id="view" width="512" height="512" aria-label="ray-traced image" tabindex="0"></canvas>
+        <div id="divider" class="divider" hidden></div>
+        <div id="sideLabels" class="sideLabels" hidden><span id="labelA">A</span><span id="labelB">B</span></div>
+      </div>
+      <div id="progress" class="progress" hidden>
+        <div class="bar"><div id="progressBar"></div></div>
+        <span id="progressText"></span>
+        <button type="button" id="cancel" class="secondary">Cancel</button>
+      </div>
+      <div id="warnBox" class="warnBox" hidden>
+        <p id="warnText"></p>
+        <button type="button" id="warnGo">Trace anyway</button>
+        <button type="button" id="warnLower" class="secondary">Lower resolution</button>
+        <button type="button" id="warnTier" class="secondary">Use Normal quality</button>
+      </div>
       <figcaption id="status">starting…</figcaption>
       <div id="clock" class="legend"></div>
       <div id="legend" class="legend"></div>
@@ -33,6 +56,28 @@
     <h2>Error</h2>
     <pre id="error"></pre>
   </section>
+  <div id="helpOverlay" class="overlay" hidden role="dialog" aria-label="keyboard and mouse">
+    <div class="overlayBox">
+      <h2>Keyboard and mouse</h2>
+      <table>
+        <tr><th>drag left–right</th><td>azimuth (instant)</td></tr>
+        <tr><th>drag up–down</th><td>viewing angle (preview while dragging)</td></tr>
+        <tr><th>wheel / pinch</th><td>zoom (instant digital zoom while re-tracing)</td></tr>
+        <tr><th>shift-drag / two-finger drag</th><td>pan</td></tr>
+        <tr><th>space</th><td>play / pause</td></tr>
+        <tr><th>← → / ↑ ↓</th><td>azimuth / viewing angle</td></tr>
+        <tr><th>+ −</th><td>zoom</td></tr>
+        <tr><th>c</th><td>compare on / off; b: blink A ↔ B by hand</td></tr>
+        <tr><th>e</th><td>normal / expert panel</td></tr>
+        <tr><th>h</th><td>hide the panel</td></tr>
+        <tr><th>f</th><td>fullscreen</td></tr>
+        <tr><th>s</th><td>snapshot (PNG)</td></tr>
+        <tr><th>r</th><td>record a video (Stage 1B B9)</td></tr>
+        <tr><th>?</th><td>this help; Esc closes it</td></tr>
+      </table>
+      <p><button type="button" id="helpClose">Close</button></p>
+    </div>
+  </div>
 </main>
 <script type="module" src="./js/main.js"></script>
 </body>

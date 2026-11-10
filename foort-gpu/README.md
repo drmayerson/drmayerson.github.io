@@ -27,6 +27,21 @@ The camera is a static observer at distance r, inclination θ from the spin axis
 
 A new trace runs whenever the spacetime, camera, fluid or tracing settings change. It refines progressively: a coarse image first, then finer levels, centre first. While a slider is dragged only the coarse level is traced, on a coarse metric table; the full image follows on release. Emission, exposure, tone map, colour map, time and noise settings only redraw and never retrace.
 
+### Panels and interaction
+
+- **Two panels (Stage 1B B7):** the **normal** panel (the default) has the spacetime family (black hole or fuzzball), the spin or λ (the λ slider's lowest position is λ = 0, the supersymmetric black hole), the viewing angle, field of view and azimuth, brightness and a time-averaged disc, play and speed, and compare. The **expert** panel (button "Expert panel", key `e`, URL `ui=expert`) has every control below. Switching keeps the state.
+- **On the image:**
+  - drag left–right for the azimuth (instant) and up–down for the viewing angle (a preview while dragging, the full image on release);
+  - the wheel or a pinch zooms, showing a digital zoom of the current image at once while it re-traces;
+  - shift-drag or a two-finger drag pans.
+- **Keys:** space play/pause, arrows, `+`/`−`, `c` compare, `b` blink A/B, `e` panel, `h` hide panel, `f` fullscreen, `s` snapshot (PNG), `?` help.
+- **Remembered view:** the last view is remembered in the browser; a link's own settings take precedence. "Reset to defaults" forgets it.
+- **Long traces:** a progress bar shows the time left, with a cancel button. Before a trace predicted to take over 15 s, the viewer asks first.
+- **Compare (normal and expert):** two images A and B share the camera and the clock, shown split screen (drag the divider), side by side, or blinking.
+  - In the normal panel, B is the other family at the same settings (Kerr a = 0 against the fuzzball).
+  - In the expert panel, "the panel edits" switches between A and B, so B can differ in anything.
+  - Both stay in the record cache.
+
 ### Controls
 
 | group | what it does |
@@ -47,7 +62,7 @@ The legend under the image explains the colours of each debug view. The performa
 
 ### Sharing a view
 
-The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&inc=60&view=fourColor`, so a link reproduces the view.
+The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&inc=60&view=fourColor`, so a link reproduces the view. In compare mode the URL holds side A.
 
 ### Known limitations
 
