@@ -402,3 +402,4 @@ non-trivial implementation choice.
   - **How:** a click (no movement, < 0.6 s) with the inspector on. The CPU reference (`cpuTracer.js`, now with optional path recording) traces the pixel in a module worker (`js/ref/inspectWorker.js`), with the view's own parameters (the B6 integrator and refinement off: RK4 at the view's ε). The GPU record is read from the displayed records.
   - **Display:** the meridional plane of the camera and the equatorial plane, scaled to 4 × the closest approach (so the fuzzball's cap is visible), with the horizon or the point and ring singularities; up to 3 rays.
   - **Limitations:** compare mode off only; no tap-and-hold on touch yet (a tap works).
+- 2026-11-10 — **B8 merged to main** for the user's trial of B7 and B8 together (user: "Merge to main").
