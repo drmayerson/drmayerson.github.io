@@ -96,10 +96,69 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   };
   stage('loading shaders…');
   // fetch every shader source at once (the trace programs are compiled on first use)
-  await Promise.all(['common', 'display', 'trace', 'trace_kerr_analytic'].map(load));
+  await Promise.all(['common', 'display', 'trace', 'trace_kerr_analytic', 'post'].map(load));
   const common = await load('common');
   stage('compiling the display shader…');
   const display = build(HEADER + await load('display'), 'display.glsl');
+  // Stage 1B B8 post passes (telescope blur, light-curve reduction, tone map of the linear emission)
+  const post = build(HEADER + await load('post'), 'post.glsl');
+  /** a float render target @param {number} w @param {number} h */
+  const makeTarget = (w, h) => {
+    const tex = /** @type {WebGLTexture} */ (gl.createTexture());
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, w, h);
+    for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
+    const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { tex, fbo, w, h };
+  };
+  /** per view (compare side) and size: the linear image, the pyramid, blur buffers; created on demand */
+  const postTargets = /** @type {Map<string, ReturnType<typeof makeTarget>>} */ (new Map());
+  /** @param {string} key @param {number} w @param {number} h */
+  const postTarget = (key, w, h) => {
+    const k = `${key}:${w}x${h}`;
+    let t = postTargets.get(k);
+    if (!t) { t = makeTarget(w, h); postTargets.set(k, t); }
+    return t;
+  };
+  /** a post pass from texture `srcT` (size sw x sh) into `dst` (null: the canvas viewport set by the caller) */
+  const postPass = (/** @type {number} */ mode, /** @type {{tex: WebGLTexture, w: number, h: number}} */ srcT, /** @type {{fbo: WebGLFramebuffer, w: number, h: number}|null} */ dst, /** @type {Record<string, number[]>} */ u = {}) => {
+    gl.useProgram(post.prog);
+    gl.bindVertexArray(vao);
+    if (dst) { gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo); gl.viewport(0, 0, dst.w, dst.h); gl.disable(gl.SCISSOR_TEST); }
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, srcT.tex);
+    gl.uniform1i(post.loc('uSrc'), 0);
+    gl.uniform4i(post.loc('uP'), mode, srcT.w, srcT.h, (u.k ?? [0])[0]);
+    gl.uniform4f(post.loc('uBlur'), ...(/** @type {[number, number, number, number]} */ (u.blur ?? [1, 0, 1, 0])));
+    gl.uniform4f(post.loc('uTone'), ...(/** @type {[number, number, number, number]} */ (u.tone ?? [1, 0, 0, 0])));
+    gl.uniform4i(post.loc('uOrigin'), ...(/** @type {[number, number, number, number]} */ (u.origin ?? [0, 0, 0, 0])));
+    gl.uniform4i(post.loc('uFull'), ...(/** @type {[number, number, number, number]} */ (u.full ?? [srcT.w, srcT.h, 0, 0])));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  /** light-curve read-backs in flight (PBO + fence) and the finished ones */
+  const lcPending = /** @type {{pbo: WebGLBuffer, sync: WebGLSync, tag: any}[]} */ ([]);
+  const lcDone = /** @type {{tag: any, v: Float32Array}[]} */ ([]);
+  /** the last image the tone map read per view: the blurred one (2^k times smaller) or the linear one (B8 tests) */
+  const lastPost = /** @type {Map<string, {t: {fbo: WebGLFramebuffer, w: number, h: number}, k: number}>} */ (new Map());
+  const pollLc = () => {
+    while (lcPending.length) {
+      const e = lcPending[0];
+      const st = gl.clientWaitSync(e.sync, 0, 0);
+      if (st !== gl.ALREADY_SIGNALED && st !== gl.CONDITION_SATISFIED) break;
+      lcPending.shift();
+      gl.deleteSync(e.sync);
+      const v = new Float32Array(4);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, e.pbo);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, v);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      gl.deleteBuffer(e.pbo);
+      lcDone.push({ tag: e.tag, v });
+    }
+  };
   const vao = gl.createVertexArray();
 
   // B5 compaction, scatter pass: one point per listed ray copies its 8 compact record texels to its pixel in the level
@@ -478,6 +537,31 @@ void main() {
       for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST);
     },
 
+    pollLightCurve() { pollLc(); return lcDone.splice(0); },
+
+    async readLinear(side = 'A') {
+      // the last linear emission image of a view (B8 tests: light-curve reduction vs a CPU sum)
+      const t = [...postTargets.entries()].find(([k]) => k.startsWith(`lin${side}:`))?.[1];
+      if (!t) return null;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      const out = new Float32Array(4 * t.w * t.h);
+      gl.readPixels(0, 0, t.w, t.h, gl.RGBA, gl.FLOAT, out);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return { w: t.w, h: t.h, data: out };
+    },
+
+    async readPost(side = 'A') {
+      const e = lastPost.get(side);
+      if (!e) return null;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, e.t.fbo);
+      gl.readBuffer(gl.COLOR_ATTACHMENT0);
+      const out = new Float32Array(4 * e.t.w * e.t.h);
+      gl.readPixels(0, 0, e.t.w, e.t.h, gl.RGBA, gl.FLOAT, out);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return { w: e.t.w, h: e.t.h, k: e.k, data: out };
+    },
+
     canvasSize(w, h) { if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; } },
 
     clearCanvas() { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); gl.clearColor(0.08, 0.08, 0.1, 1); gl.clear(gl.COLOR_BUFFER_BIT); },
@@ -698,8 +782,15 @@ void main() {
       // and noise field
       const RW = src.handle ? src.handle.w : W, RH = src.handle ? src.handle.h : H;
       const vp = src.viewport ?? [0, 0, RW, RH];
-      gl.viewport(vp[0], vp[1], vp[2], vp[3]);
-      if (src.scissor) { gl.enable(gl.SCISSOR_TEST); gl.scissor(src.scissor[0], src.scissor[1], src.scissor[2], src.scissor[3]); }
+      // B8: the disc emission with post passes is first drawn linearly into a float image of the view's own size
+      const linear = !!view.post && view.mode === 8;
+      const side = src.side ?? 'A';
+      const lin = linear ? postTarget(`lin${side}`, RW, RH) : null;
+      if (lin) { gl.bindFramebuffer(gl.FRAMEBUFFER, lin.fbo); gl.viewport(0, 0, RW, RH); }
+      else {
+        gl.viewport(vp[0], vp[1], vp[2], vp[3]);
+        if (src.scissor) { gl.enable(gl.SCISSOR_TEST); gl.scissor(src.scissor[0], src.scissor[1], src.scissor[2], src.scissor[3]); }
+      }
       gl.useProgram(display.prog);
       gl.bindVertexArray(vao);
       // the six record attachments (4 + 2 tail) of the (at most 2) levels of the current trace, finest first: 12 units,
@@ -740,7 +831,8 @@ void main() {
       gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
       gl.uniform4f(display.loc('uCamAz'), view.azimuth ?? 0, 0, 0, 0);
       gl.uniform4i(display.loc('uView'), view.mode, RW, RH, view.storeH ? 1 : 0);
-      gl.uniform4i(display.loc('uOrigin'), vp[0], vp[1], 0, 0);
+      gl.uniform4i(display.loc('uOrigin'), lin ? 0 : vp[0], lin ? 0 : vp[1], 0, 0);
+      gl.uniform4i(display.loc('uOut'), lin ? 1 : 0, 0, 0, 0);
       const zm = view.zoom ?? { s: 1, ox: 0, oy: 0 };
       gl.uniform4f(display.loc('uZoom'), zm.s, zm.ox, zm.oy, 0);
       gl.uniform4f(display.loc('uRange'), view.lo, view.hi, view.maxSteps, view.rCam);
@@ -750,6 +842,51 @@ void main() {
       gl.uniform4i(display.loc('uEm3'), view.colorMap ?? 0, view.envelope === 'circumferential' ? 1 : 0, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.disable(gl.SCISSOR_TEST);
+      if (lin && view.post) {
+        // light curve: 2x2 sums down to one texel, read back asynchronously (finished values: pollLightCurve)
+        if (view.post.lightCurve) {
+          let cur = lin;
+          while (cur.w > 1 || cur.h > 1) {
+            const nx = Math.max(1, Math.ceil(cur.w / 2)), ny = Math.max(1, Math.ceil(cur.h / 2));
+            const nxt = postTarget(`sum${side}`, nx, ny);
+            postPass(1, cur, nxt);
+            cur = nxt;
+          }
+          const pbo = /** @type {WebGLBuffer} */ (gl.createBuffer());
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+          gl.bufferData(gl.PIXEL_PACK_BUFFER, 16, gl.STREAM_READ);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, cur.fbo);
+          gl.readBuffer(gl.COLOR_ATTACHMENT0);
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, 0);
+          gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+          lcPending.push({ pbo, sync: /** @type {WebGLSync} */ (gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)), tag: { side, tObs: view.time?.tObs ?? 0 } });
+          gl.flush();
+          if (lcPending.length > 8) { const e = /** @type {{pbo: WebGLBuffer, sync: WebGLSync}} */ (lcPending.shift()); gl.deleteSync(e.sync); gl.deleteBuffer(e.pbo); }
+        }
+        // telescope blur: a separable Gaussian, on a 2^k-times box-averaged copy when the beam is wide (sigma > 8 px)
+        const sg = view.post.blurSigmaPx ?? 0;
+        let img = lin, k = 0;
+        if (sg > 0.3) {
+          k = sg > 8 ? Math.ceil(Math.log2(sg / 8)) : 0;
+          for (let i = 0; i < k; i++) {
+            const nxt = postTarget(`pyr${side}${i}`, Math.max(1, Math.ceil(img.w / 2)), Math.max(1, Math.ceil(img.h / 2)));
+            postPass(0, img, nxt);
+            img = nxt;
+          }
+          const s = sg / 2 ** k, R = Math.min(64, Math.ceil(3 * s));
+          const ha = postTarget(`blurH${side}`, img.w, img.h), hb = postTarget(`blurV${side}`, img.w, img.h);
+          postPass(2, img, ha, { blur: [1, 0, s, R] });
+          postPass(2, ha, hb, { blur: [0, 1, s, R] });
+          img = hb;
+        }
+        lastPost.set(side, { t: img, k });
+        // tone map into the canvas viewport of the view
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(vp[0], vp[1], vp[2], vp[3]);
+        if (src.scissor) { gl.enable(gl.SCISSOR_TEST); gl.scissor(src.scissor[0], src.scissor[1], src.scissor[2], src.scissor[3]); }
+        postPass(3, img, null, { k: [k], tone: [view.exposure ?? 1, view.toneMap ?? 0, view.colorMap ?? 0, 0], origin: [vp[0], vp[1], 0, 0], full: [RW, RH, 0, 0] });
+        gl.disable(gl.SCISSOR_TEST);
+      }
       lastDisplayMs = performance.now() - t0;
     },
 

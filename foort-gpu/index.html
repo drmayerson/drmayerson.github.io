@@ -30,7 +30,10 @@
         <canvas id="view" width="512" height="512" aria-label="ray-traced image" tabindex="0"></canvas>
         <div id="divider" class="divider" hidden></div>
         <div id="sideLabels" class="sideLabels" hidden><span id="labelA">A</span><span id="labelB">B</span></div>
+        <div id="scaleBar" class="scaleBar"><div class="sbLine"></div><span></span></div>
+        <div id="marks" class="marks"></div>
       </div>
+      <canvas id="lc" class="lc" width="800" height="160" hidden aria-label="light curve"></canvas>
       <div id="progress" class="progress" hidden>
         <div class="bar"><div id="progressBar"></div></div>
         <span id="progressText"></span>
@@ -48,6 +51,15 @@
     </figure>
     <form id="controls" class="controls" autocomplete="off" onsubmit="return false"></form>
   </div>
+  <section id="inspector" hidden>
+    <h2>Pixel inspector <button type="button" id="inspClear" class="secondary">Clear</button></h2>
+    <p id="inspNote">Click a pixel of the image: the double-precision CPU reference traces its ray (up to 3 are kept).</p>
+    <div class="inspPlots">
+      <figure><canvas id="inspRZ" width="320" height="320"></canvas><figcaption>meridional plane (ρ, z), units of M</figcaption></figure>
+      <figure><canvas id="inspXY" width="320" height="320"></canvas><figcaption>equatorial plane (x, y), units of M</figcaption></figure>
+    </div>
+    <div class="scroll"><table id="inspTable"></table></div>
+  </section>
   <section id="perfBox">
     <h2>Performance</h2>
     <table id="perf"><tr><td>no trace yet</td></tr></table>

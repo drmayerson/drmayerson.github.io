@@ -13,7 +13,9 @@ import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
 import { decodeRecord, RECORD_FLOATS } from './gpu/traceConfig.js';
 import { discIntensity, EMISSION_PRESETS } from './fluid/emission.js';
 import { fluidTableRcirc } from './fluid/fluidTable.js';
-import { CONTROLS, VIEWS, SHARED_KEYS, buildControls, initialState, stateToQuery } from './ui/controls.js';
+import { CONTROLS, VIEWS, SHARED_KEYS, buildControls, initialState, stateToQuery, setPanelUnits } from './ui/controls.js';
+import { unitsOf, formatDuration, niceBelow, beamSigmaPx } from './units.js';
+import { drawLightCurve, drawInspector, inspectorTable } from './ui/readouts.js';
 import { attachInteraction } from './ui/interaction.js';
 import { loadNoiseField, autoNoiseField, noiseCover } from './noise/noiseField.js';
 
@@ -245,6 +247,32 @@ async function main() {
     drawQueued = true;
     requestAnimationFrame(() => { drawQueued = false; draw(); });
   };
+  /** B8 physical units of the state (null: dimensionless) */
+  const unitsNow = () => unitsOf(state.units, state.unitMass, state.unitDist);
+  setPanelUnits(unitsNow());
+  /** B8 scale bar: a round length near a quarter of the field of view, in M and (with units) in uas */
+  const scaleBar = () => {
+    const u = unitsNow(), L = niceBelow(state.screen / 4);
+    const frac = L / state.screen / (state.compare === 'side' ? 2 : 1);
+    const el = $('scaleBar');
+    /** @type {HTMLElement} */ (el.firstElementChild).style.width = `${(100 * frac).toFixed(2)}%`;
+    el.style.width = '100%';
+    /** @type {HTMLElement} */ (el.lastElementChild).textContent = `${L} M${u ? ` = ${(L * u.thetaUas).toPrecision(3)} µas` : ''}`;
+  };
+  /** B8 light curve: (observer time, total, n = 1, n = 2, n >= 3) of side A, from the GPU reduction of each frame */
+  let lcSeries = /** @type {number[][]} */ ([]);
+  const lcCanvas = /** @type {HTMLCanvasElement} */ ($('lc'));
+  const updateLightCurve = () => {
+    for (const r of backend.pollLightCurve()) {
+      if (r.tag.side !== 'A') continue;
+      let last = lcSeries[lcSeries.length - 1];
+      if (last && r.tag.tObs < last[0]) { lcSeries = []; last = undefined; }   // the clock went back (a new trace, a reset)
+      if (!last || r.tag.tObs > last[0]) lcSeries.push([r.tag.tObs, r.v[0], r.v[1], r.v[2], r.v[3]]);
+    }
+    if (lcSeries.length > 2000) lcSeries.splice(0, lcSeries.length - 2000);
+    lcCanvas.hidden = !state.lightcurve || state.view !== 'emission';
+    if (!lcCanvas.hidden) drawLightCurve(lcCanvas, lcSeries, { period: noise?.meta.T_over_M ?? 0, units: unitsNow(), orders: !!state.lcOrders });
+  };
   /** camera of the records on screen, for the instant digital zoom and pan while a re-trace runs (B7) */
   let shown = { screen: state.screen, cx: state.cx, cy: state.cy, N: state.N };
   /** display parameters of a state @param {Record<string, any>} s @param {{tail:any, M:number}|null} info */
@@ -257,12 +285,15 @@ async function main() {
     return { mode: v.mode, lo, hi, maxSteps: s.maxSteps, rCam: s.r * M, storeH: !!s.storeH,
       emission: emissionFromState(s), exposure: s.autoExposure ? autoExposure * s.brightness : s.exposure, toneMap: Number(s.toneMap), colorMap: Number(s.colorMap),
       time: timeFromState(s, tObs, M), tail: info?.tail ?? lastTail, envelope: s.envelope, azimuth: s.az * DEG,
-      zoom: { s: shown.screen / s.screen, ox: (s.cx - shown.cx) / pix, oy: (s.cy - shown.cy) / pix } };
+      zoom: { s: shown.screen / s.screen, ox: (s.cx - shown.cx) / pix, oy: (s.cy - shown.cy) / pix },
+      // B8: the linear emission for the telescope beam and the light curve
+      post: s.view === 'emission' && (s.blur || s.lightcurve)
+        ? { blurSigmaPx: s.blur ? beamSigmaPx(s.units === 'M' ? s.beamM : s.beamUas, unitsNow(), shown.screen, shown.N) : 0, lightCurve: !!s.lightcurve } : undefined };
   };
   const draw = () => {
     if (state.compare === 'off') {
       backend.canvasSize(state.N, state.N);
-      backend.display(displayView(state, null));
+      backend.display(displayView(state, null), { side: 'A' });
       return;
     }
     const N = state.N;
@@ -274,7 +305,7 @@ async function main() {
       const info = sides[sd];
       const handle = info && liveSide !== sd ? pipeline.cache.get(info.key)?.handle : undefined;
       if (liveSide !== sd && !handle) return;
-      backend.display(displayView(sideState(sd), info), { handle, viewport, scissor, fluid: info?.fluid, fluidKey: info?.fluidKey, noiseName: info?.noiseName });
+      backend.display(displayView(sideState(sd), info), { handle, viewport, scissor, fluid: info?.fluid, fluidKey: info?.fluidKey, noiseName: info?.noiseName, side: sd });
     };
     if (side) { one('A', [0, 0, N, N], undefined); one('B', [N, 0, N, N], undefined); }
     else if (state.compare === 'split') {
@@ -496,6 +527,8 @@ async function main() {
     if (!res) res = /** @type {any} */ (null);
     const st = res?.st ?? (pipeline.lastKey ? pipeline.cache.get(pipeline.lastKey)?.stats : undefined);
     shown = { screen: state.screen, cx: state.cx, cy: state.cy, N: state.N };
+    scaleBar();
+    if (final) { inspected.splice(0); drawInspected(); lcSeries = []; }
     if (final && state.pretrace && state.compare === 'off') schedulePretrace(id);
     if (st) lastStats = st;
     if (final) { legend(); $('clock').textContent = clockText(); }
@@ -577,6 +610,10 @@ async function main() {
       layoutCompare(); refreshNoise(); requestDraw(); return;
     }
     if (key === 'blinkHz' || key === 'cmpDiv') { requestDraw(); return; }
+    if (['units', 'unitMass', 'unitDist'].includes(key)) { setPanelUnits(unitsNow()); controls.refresh(); scaleBar(); $('clock').textContent = clockText(); }
+    if (key === 'screen' || key === 'compare') scaleBar();
+    if (key === 'lightcurve' || key === 'view') lcSeries = [];
+    if (key === 'inspect') { $('inspector').hidden = !state.inspect; drawInspected(); }
     if (key === 'preset' && state.preset !== 'custom') {
       const p = /** @type {any} */ (EMISSION_PRESETS)[state.preset];
       controls.set('metric', p.metric);
@@ -637,6 +674,46 @@ async function main() {
   $('warnLower').addEventListener('click', () => { $('warnBox').hidden = true; controls.set('N', Math.max(128, state.N / 2)); run(true); });
   $('warnTier').addEventListener('click', () => { $('warnBox').hidden = true; controls.set('quality', 'normal'); run(true, false, true); });
 
+  // B8 pixel inspector: the CPU reference (double precision, in a worker) traces the clicked pixel's ray
+  /** @type {Worker|null} */
+  let inspWorker = null;
+  let inspSeq = 0;
+  const inspected = /** @type {{i:number, j:number, xf:number, yf:number, cpu:any, gpu:any, color:string}[]} */ ([]);
+  const INSP_COLORS = ['#58c4ff', '#ffb347', '#b4ff6b'];
+  const drawInspected = () => {
+    const marks = $('marks');
+    marks.innerHTML = state.inspect ? inspected.map((r) => `<span style="left:${100 * r.xf}%;top:${100 * r.yf}%;border-color:${r.color}"></span>`).join('') : '';
+    if (!state.inspect) return;
+    drawInspector(/** @type {HTMLCanvasElement} */ ($('inspRZ')), /** @type {HTMLCanvasElement} */ ($('inspXY')), inspected);
+    $('inspTable').innerHTML = inspectorTable(inspected);
+  };
+  /** @param {number} xf @param {number} yf fractions of the image from its top-left corner */
+  const inspect = async (xf, yf) => {
+    if (!state.inspect) return;
+    if (state.compare !== 'off') { $('inspNote').textContent = 'The inspector works with compare off.'; return; }
+    const N = state.N, i = Math.min(N - 1, Math.floor(xf * N)), j = Math.min(N - 1, Math.floor((1 - yf) * N));
+    const view = viewFromState(state, false, autoTiers[metricEntry(metricIdFromState(state)).mode] ?? 'high');
+    // the GPU record of the pixel, from the displayed records
+    const rec = await backend.readRecords(1);
+    const gpu = decodeRecord(rec, j * N + i, lastTail ?? undefined);
+    if (!inspWorker) inspWorker = new Worker(new URL('./ref/inspectWorker.js', import.meta.url), { type: 'module' });
+    const id = ++inspSeq;
+    $('inspNote').textContent = `tracing pixel (${i}, ${j}) on the CPU…`;
+    const cpu = await new Promise((res) => {
+      const w = /** @type {Worker} */ (inspWorker);
+      const on = (/** @type {MessageEvent} */ e) => { if (e.data.id === id) { w.removeEventListener('message', on); res(e.data.result ?? { error: e.data.error }); } };
+      w.addEventListener('message', on);
+      w.postMessage({ id, view: { ...view, refine: null, bs3: null }, i, j });
+    });
+    inspected.unshift({ i, j, xf, yf, cpu, gpu, color: '' });
+    inspected.splice(3);
+    inspected.forEach((r, k) => { r.color = INSP_COLORS[k]; });
+    $('inspNote').textContent = cpu.error ? `CPU trace failed: ${cpu.error}` : `pixel (${i}, ${j}): ${cpu.steps} steps on the CPU in ${cpu.ms.toFixed(0)} ms. The CPU traces with RK4 at the view's ε (the GPU record may come from an error-controlled tier: compare at Reference or High).`;
+    drawInspected();
+  };
+  $('inspClear').addEventListener('click', () => { inspected.splice(0); drawInspected(); });
+  $('inspector').hidden = !state.inspect;
+
   // interaction on the image (B7)
   let previewQueued = false;
   const preview = () => {
@@ -659,6 +736,7 @@ async function main() {
       if (final) run(true); else requestDraw();
     },
     divider: () => (state.compare === 'split' ? state.cmpDiv : null),
+    click: (xf, yf) => { inspect(xf, yf); },
     setDivider: (f) => { state.cmpDiv = f; /** @type {HTMLElement} */ ($('divider')).style.left = `${100 * f}%`; requestDraw(); saveUrlSoon(); },
     keys: {
       ' ': () => { controls.set('play', !state.play); $('clock').textContent = clockText(); },
@@ -679,17 +757,21 @@ async function main() {
   const animate = (/** @type {number} */ now) => {
     const dts = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    const noisy = state.play && noise && state.sigmaN > 0 && !state.timeAvg && state.view === 'emission' || state.play && state.view === 'noise';
+    const noisy = state.play && noise && state.sigmaN > 0 && !state.timeAvg && state.view === 'emission' || state.play && state.view === 'noise'
+      || state.play && state.lightcurve && state.view === 'emission';
     if (noisy) {
-      tObs += state.speed * dts;
+      // B8: with physical units, "real time" runs the clock at 1 s per s, i.e. 1 / (GM/c^3) M per s
+      const u = unitsNow();
+      tObs += (state.realTime && u ? 1 / u.tS : state.speed) * dts;
       if (now - lastLegend > 250) { lastLegend = now; $('clock').textContent = clockText(); }
     }
     // no animation frames while a trace runs: redrawing the canvas at 60 fps competes with the trace tiles for the
     // GPU (up to 3x slower traces on integrated graphics, M9); the progress callback still draws each finished tile
     if ((noisy || (state.compare === 'blink' && !blinkManual)) && !pipeline.busy) draw();
+    updateLightCurve();
     requestAnimationFrame(animate);
   };
-  const clockText = () => `t = ${tObs.toFixed(1)} M${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light${state.timeAvg ? ', time-averaged' : ''}`;
+  const clockText = () => `t = ${tObs.toFixed(1)} M${unitsNow() ? ` = ${formatDuration(tObs * /** @type {any} */ (unitsNow()).tS)}` : ''}${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light${state.timeAvg ? ', time-averaged' : ''}`;
   $('clock').textContent = clockText();
   requestAnimationFrame(animate);
 
@@ -706,6 +788,10 @@ async function main() {
     tier: () => tierNow,
     /** the state of a compare side (B7) */
     side: (/** @type {'A'|'B'} */ sd) => ({ ...sideState(sd) }),
+    /** B8: the light-curve samples (t, total, n = 1, n = 2, n >= 3) and the last inspected rays */
+    lightCurve: () => lcSeries.map((x) => [...x]),
+    inspected: () => inspected.map((r) => ({ i: r.i, j: r.j, cpu: r.cpu, gpu: r.gpu })),
+    inspect: (/** @type {number} */ xf, /** @type {number} */ yf) => inspect(xf, yf),
     /** the run counter (B7 tests: a display-only change starts no run) */
     runs: () => runId,
     noise: () => noise,

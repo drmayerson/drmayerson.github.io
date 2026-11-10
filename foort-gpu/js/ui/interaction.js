@@ -16,6 +16,7 @@
  * @property {(dxFrac:number, dyFrac:number, final:boolean) => void} pan  move the screen centre by fractions of the field
  * @property {() => number|null} divider                         split-screen divider position (0..1) or null
  * @property {(f:number) => void} setDivider
+ * @property {(xFrac:number, yFrac:number) => void} [click]      B8: a click or tap without movement (fractions from the top left)
  * @property {Record<string, () => void>} keys                   single-key actions (' ', 'f', 'h', 's', 'r', 'e', 'c', 'b', '?', 'Escape')
  */
 
@@ -28,6 +29,7 @@ export function attachInteraction(canvas, api) {
   /** @type {'none'|'rotate'|'pan'|'divider'|'pinch'} */
   let mode = 'none';
   let incMoved = false, panMoved = false, zoomMoved = false;
+  let down = { x: 0, y: 0, t: 0, moved: 0 };
   let pinchD = 0, pinchMid = { x: 0, y: 0 };
   const rect = () => canvas.getBoundingClientRect();
   const DEG_PER_PX_AZ = 0.5, DEG_PER_PX_INC = 0.3;
@@ -49,6 +51,7 @@ export function attachInteraction(canvas, api) {
     if (div !== null && Math.abs(e.clientX - (r.left + div * r.width)) < 14) mode = 'divider';
     else mode = e.shiftKey ? 'pan' : 'rotate';
     incMoved = panMoved = zoomMoved = false;
+    down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: 0 };
   });
 
   canvas.addEventListener('pointermove', (e) => {
@@ -56,6 +59,9 @@ export function attachInteraction(canvas, api) {
     if (!p) return;
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
+    down.moved = Math.max(down.moved, Math.hypot(e.clientX - down.x, e.clientY - down.y));
+    // a click (or a tap) does not rotate until the pointer has moved a few pixels
+    if (mode === 'rotate' && down.moved < 4) return;
     const r = rect();
     if (mode === 'pinch' && pts.size === 2) {
       const m = midDist();
@@ -76,6 +82,11 @@ export function attachInteraction(canvas, api) {
     if (!pts.has(e.pointerId)) return;
     pts.delete(e.pointerId);
     if (pts.size > 0) return;
+    // a click: no movement, short (B8 pixel inspector)
+    if (mode === 'rotate' && down.moved < 4 && performance.now() - down.t < 600 && api.click) {
+      const r = rect();
+      api.click((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    }
     // one full trace for the whole gesture
     if (incMoved) api.inclination(0, true);
     else if (zoomMoved) api.zoom(1, true);

@@ -42,6 +42,21 @@ A new trace runs whenever the spacetime, camera, fluid or tracing settings chang
   - In the expert panel, "the panel edits" switches between A and B, so B can differ in anything.
   - Both stay in the record cache.
 
+### Units and readouts (Stage 1B B8)
+
+- **Physical units:**
+  - **Presets:** Sgr A* (4.297 × 10⁶ M☉ at 8.277 kpc; GRAVITY 2022), M87* (6.5 × 10⁹ M☉ at 16.8 Mpc; EHT 2019), a 10 M☉ black hole at 1 kpc, or a custom mass and distance.
+  - **What they set:** the clock, the field of view (µas), the camera distance, the scale bar and the telescope beam. "Real time" runs the clock at one second per second: 1/21 M per s for Sgr A*.
+- **Telescope resolution:** a Gaussian beam (FWHM in µas, or in M when dimensionless), applied to the linear intensity before the tone map.
+- **Light curve:** the total flux of every frame, summed on the GPU, as a strip chart against observer time, optionally split into the n = 1, n = 2 and later images. The noise period is marked.
+- **Time-averaged:** the disc without its turbulence (σₙ = 0 is exactly the time average).
+- **Pixel inspector:** click a pixel and the double-precision CPU reference traces its ray in a worker. The panel shows:
+  - the path in the meridional and equatorial planes, with the horizon or the fuzzball's singularities;
+  - the disc crossings;
+  - the GPU record next to the CPU values.
+
+  Up to 3 rays are kept.
+
 ### Controls
 
 | group | what it does |
@@ -152,7 +167,7 @@ Validation scripts (reports in `dev/reports/m<N>/`), by milestone:
 | M6 | `m6TableError.mjs`, `m6Level2.mjs`, `m6GpuVsFoort.mjs`, `m6Level3.mjs`, `m6Continuity.mjs`, `m6Passes.mjs`, `m6Steps.mjs`: fuzzball tables, GPU vs CPU and FOORT, λ = 0 shadow, λ → 0, crossings, steps |
 | M7–M8 | `m7Delays.mjs`, `m7Frames.mjs`; `tools/noise/inspect_field.py`: light delays, animations, noise fields |
 | M9 | `m9Perf.mjs`: acceptance timings |
-| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; `b6Summary.mjs` (the Normal candidates against the budgets; `qualityGate.mjs --out b6`), `b5Exact.mjs` (any exact speedup against the plain tracer, with the float32 noise floor), `b5Referee.mjs` (disagreeing pixels against the CPU), `b5Compile.mjs`, `b5CompactEstimate.mjs`, `b5Probe.mjs`; the device probe page `probe.html` |
+| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; `b7Shots.mjs`, `b8Shots.mjs` (checkpoint screenshots), `b6Summary.mjs` (the Normal candidates against the budgets; `qualityGate.mjs --out b6`), `b5Exact.mjs` (any exact speedup against the plain tracer, with the float32 noise floor), `b5Referee.mjs` (disagreeing pixels against the CPU), `b5Compile.mjs`, `b5CompactEstimate.mjs`, `b5Probe.mjs`; the device probe page `probe.html` |
 
 ### Local server
 

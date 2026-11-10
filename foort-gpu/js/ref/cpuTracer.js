@@ -93,7 +93,7 @@ export function makeFunctions(metric, r0, fd) {
  * Trace one ray. State y = [x, theta, phi, t, px, pth].
  * @param {ReturnType<typeof makeFunctions>} F
  * @param {number[]} y0 @param {number} pt @param {number} pphi @param {number} r0
- * @param {Required<Omit<TraceOptions, 'camera'|'N'|'mesh'|'radial'>> & {metric:any}} o
+ * @param {Required<Omit<TraceOptions, 'camera'|'N'|'mesh'|'radial'>> & {metric:any, path?:number[]}} o
  * @returns {RayResult}
  */
 export function traceRay(F, y0, pt, pphi, r0, o) {
@@ -166,6 +166,8 @@ export function traceRay(F, y0, pt, pphi, r0, o) {
     yPrev.set(y);
     for (let i = 0; i < 6; i++) y[i] += h / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
     steps++;
+    // Stage 1B B8 pixel inspector: the path (r, theta, phi) after every step
+    if (o.path) o.path.push(rOf(y[0]), y[1], y[2]);
 
     if (o.axis === 'reflect') {
       if (y[1] < 0) { y[1] = -y[1]; y[2] += PI; y[5] = -y[5]; }
@@ -225,10 +227,11 @@ export function prepareImage(metric, opts) {
   const cam = TetradCamera.fromStaticObserver(toMat4(metric.g_dd(r, theta)), toMat4(inverseMetric(metric)(r, theta)), [0, r, theta, o.camera.phi ?? 0]);
   const rayOpts = { ...o, metric };
   /**
-   * Trace pixel (i, j): i runs along alpha (FOORT "row"), j along beta.
-   * @param {number} i @param {number} j
+   * Trace pixel (i, j): i runs along alpha (FOORT "row"), j along beta; recordPath: also the path (B8 inspector),
+   * flat (r, theta, phi) triples from the camera on.
+   * @param {number} i @param {number} j @param {boolean} [recordPath]
    */
-  const tracePixel = (i, j) => {
+  const tracePixel = (i, j, recordPath = false) => {
     const N = o.N;
     const ux = o.mesh === 'foort' ? i / (N - 1) : (i + 0.5) / N;
     const uy = o.mesh === 'foort' ? j / (N - 1) : (j + 0.5) / N;
@@ -236,7 +239,11 @@ export function prepareImage(metric, opts) {
     const beta = (o.camera.cy ?? 0) + o.camera.screen * (uy - 0.5);
     const { down } = cam.initialMomentum(alpha, beta);
     const y0 = [Math.log(r - r0), theta, o.camera.phi ?? 0, 0, down[1] * (r - r0), down[2]];
-    return traceRay(F, y0, down[0], down[3], r0, /** @type {any} */ (rayOpts));
+    if (!recordPath) return traceRay(F, y0, down[0], down[3], r0, /** @type {any} */ (rayOpts));
+    /** @type {number[]} */
+    const path = [r, theta, o.camera.phi ?? 0];
+    const res = traceRay(F, y0, down[0], down[3], r0, /** @type {any} */ ({ ...rayOpts, path }));
+    return { ...res, path };
   };
   return { tracePixel, camera: cam, r0, options: o };
 }

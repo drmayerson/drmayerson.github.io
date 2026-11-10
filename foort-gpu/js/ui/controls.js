@@ -1,5 +1,6 @@
 // @ts-check
 import { METRICS } from '../metrics/registry.js';
+import { UNIT_PRESETS, unitsOf, formatLength } from '../units.js';
 // Viewer controls: a declarative list of parameters -> form widgets, URL-synced state.
 // Sliders report 'input' while dragging (coarse preview) and 'change' on release (full trace).
 
@@ -42,6 +43,12 @@ export const VIEWS = {
 
 const fmt = (/** @type {number} */ d) => (v) => Number(v).toFixed(d);
 const sig = (v) => (Math.abs(v) >= 100 ? Number(v).toFixed(0) : Number(v).toPrecision(3));
+/** B8: lengths in the panel show the physical unit too (the units of the current state, set by the viewer) */
+let unitsNow = /** @type {ReturnType<typeof unitsOf>} */ (null);
+/** @param {ReturnType<typeof unitsOf>} u */
+export const setPanelUnits = (u) => { unitsNow = u; };
+const lenM = (v) => sig(v) + (unitsNow ? ` (${formatLength(v * unitsNow.lKm)})` : '');
+const angM = (v) => sig(v) + (unitsNow ? ` (${(v * unitsNow.thetaUas).toPrecision(3)} µas)` : '');
 
 /**
  * Sliders of the metric parameters, from the registry (js/metrics/registry.js): one per parameter name (shared by the
@@ -88,9 +95,9 @@ export const CONTROLS = [
     optionLabels: { auto: 'auto (closed form where float32-safe, else tables)', tabulated: 'tabulated metric (baked in double)',
       closed: 'generated closed-form shader (Kerr, Johannsen, RN, Manko–Novikov)', analytic: 'hand-written closed-form Kerr shader' }, default: 'auto' },
   ...metricParamControls(),
-  { key: 'r', label: 'camera distance r (M)', type: 'range', group: 'Camera', min: 2, max: 100000, scale: 'log', default: 1000, format: sig },
+  { key: 'r', label: 'camera distance r (M)', type: 'range', group: 'Camera', min: 2, max: 100000, scale: 'log', default: 1000, format: lenM },
   { key: 'inc', label: 'inclination (deg)', normalLabel: 'viewing angle from the spin axis (deg)', type: 'range', group: 'Camera', min: 0.01, max: 179.99, step: 0.01, default: 17, format: fmt(2), level: 'both' },
-  { key: 'screen', label: 'screen size (M)', normalLabel: 'field of view (M; smaller = zoom in)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: sig, level: 'both' },
+  { key: 'screen', label: 'screen size (M)', normalLabel: 'field of view (M; smaller = zoom in)', type: 'range', group: 'Camera', min: 0.05, max: 500, scale: 'log', default: 15, format: angM, level: 'both' },
   // Stage 1B B5: rotating the camera about the symmetry axis adds a constant to every phi: display only, no re-trace
   { key: 'az', label: 'camera azimuth (deg; display only)', normalLabel: 'azimuth (deg)', type: 'range', group: 'Camera', min: 0, max: 360, step: 0.5, default: 0, format: fmt(1), retrace: false, level: 'both' },
   { key: 'cx', label: 'screen centre α (M)', type: 'number', group: 'Camera', step: 0.1, default: 0 },
@@ -118,6 +125,25 @@ export const CONTROLS = [
   { key: 'brightness', label: 'brightness', type: 'range', group: 'Disc emission', min: 0.1, max: 10, scale: 'log', default: 1, format: sig, retrace: false, level: 'both',
     visible: (s) => s.autoExposure },
   { key: 'timeAvg', label: 'time-averaged (no flicker)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false, level: 'both' },
+  // B8: the telescope beam (Gaussian, FWHM in uas through the units, or in M when dimensionless), the light curve
+  { key: 'blur', label: 'telescope resolution (Gaussian beam)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false, level: 'both' },
+  { key: 'beamUas', label: 'beam FWHM (µas)', type: 'range', group: 'Disc emission', min: 1, max: 200, scale: 'log', default: 20, format: sig, retrace: false, level: 'both',
+    visible: (s) => s.blur && s.units !== 'M' },
+  { key: 'beamM', label: 'beam FWHM (M)', type: 'range', group: 'Disc emission', min: 0.05, max: 20, scale: 'log', default: 2, format: sig, retrace: false, level: 'both',
+    visible: (s) => s.blur && s.units === 'M' },
+  { key: 'lightcurve', label: 'light curve (total flux against time)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false, level: 'both' },
+  { key: 'lcOrders', label: 'light curve by image order (n = 1, 2, ≥ 3)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false,
+    visible: (s) => s.lightcurve },
+  { key: 'inspect', label: 'pixel inspector (click the image: the ray in double precision)', type: 'checkbox', group: 'View', default: false, retrace: false, level: 'both' },
+  // B8 physical units (plan 5.4, E6)
+  { key: 'units', label: 'units', type: 'select', group: 'Units', options: Object.keys(UNIT_PRESETS),
+    optionLabels: Object.fromEntries(Object.entries(UNIT_PRESETS).map(([k, p]) => [k, p ? p.label : 'dimensionless (M)'])), default: 'M', retrace: false, level: 'both' },
+  { key: 'unitMass', label: 'mass (M☉)', type: 'range', group: 'Units', min: 1, max: 1e11, scale: 'log', default: 1e6, format: (v) => Number(v).toPrecision(3), retrace: false, level: 'both',
+    visible: (s) => s.units === 'custom' },
+  { key: 'unitDist', label: 'distance (kpc)', type: 'range', group: 'Units', min: 1e-3, max: 1e5, scale: 'log', default: 10, format: (v) => Number(v).toPrecision(3), retrace: false, level: 'both',
+    visible: (s) => s.units === 'custom' },
+  { key: 'realTime', label: 'real time (1 s of clock = 1 s)', type: 'checkbox', group: 'Units', default: false, retrace: false, level: 'both',
+    visible: (s) => s.units !== 'M' },
   { key: 'exposure', label: 'exposure', type: 'range', group: 'Disc emission', min: 0.01, max: 1000, scale: 'log', default: 1, format: sig, retrace: false,
     visible: (s) => !s.autoExposure },
   { key: 'toneMap', label: 'tone map', type: 'select', group: 'Disc emission', options: [0, 1, 2, 3],
@@ -182,7 +208,7 @@ export const CONTROLS = [
 ];
 
 /** keys A and B share in compare mode (camera, observer time, display) */
-export const SHARED_KEYS = ['ui', 'inc', 'screen', 'az', 'cx', 'cy', 'r', 'N', 'play', 'speed', 'slowLight', 'view', 'lo', 'hi', 'toneMap', 'colorMap',
+export const SHARED_KEYS = ['units', 'unitMass', 'unitDist', 'realTime', 'blur', 'beamUas', 'beamM', 'lightcurve', 'lcOrders', 'inspect', 'ui', 'inc', 'screen', 'az', 'cx', 'cy', 'r', 'N', 'play', 'speed', 'slowLight', 'view', 'lo', 'hi', 'toneMap', 'colorMap',
   'autoExposure', 'exposure', 'brightness', 'timeAvg', 'compare', 'cmpEdit', 'blinkHz', 'cmpDiv', 'quality', 'pretrace', 'cacheMB', 'family'];
 
 const SLIDER_STEPS = 1000;
@@ -254,7 +280,7 @@ export function buildControls(form, state, onChange) {
   /** @type {{c:Control, row:HTMLElement, input:HTMLInputElement|HTMLSelectElement, out?:HTMLOutputElement}[]} */
   const widgets = [];
   // groups in a fixed order (the first appearance in CONTROLS would put Tracing before Camera)
-  const ORDER = ['Spacetime', 'Camera', 'Disc emission', 'Time', 'View', 'Compare', 'Tracing'];
+  const ORDER = ['Spacetime', 'Camera', 'Disc emission', 'Time', 'Units', 'View', 'Compare', 'Tracing'];
   const ordered = [...CONTROLS].sort((a, b) => (ORDER.indexOf(a.group) + 1 || 99) - (ORDER.indexOf(b.group) + 1 || 99));
   for (const c of ordered) {
     if (c.level === 'hidden') continue;

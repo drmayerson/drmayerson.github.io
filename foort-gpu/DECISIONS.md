@@ -383,3 +383,22 @@ non-trivial implementation choice.
 - 2026-11-10 — **B7 phone-safe defaults:** with quality auto, when no tier fits E1 at the default resolution and the link did not set N, the resolution is halved (not below 256). Phones also get the 64 MB cache and no idle pre-tracing (B5).
 - 2026-11-10 — **Tests:** Playwright now runs at most 4 workers. With more, this laptop's iGPU occasionally returned a wrong frame or timed out under 33 GPU-heavy tests; at 4 the suite is also faster (1.2 vs 1.8 min).
 - 2026-11-10 — **B7 merged to main** for the user's laptop and phone trial (user: "Merge to main").
+- 2026-11-10 — **B8 started before the user's B7 checks** (user: "continue with B8 for now without my checks on B7 yet").
+- 2026-11-10 — **E6 unit presets, checked against the literature:**
+  - **Sgr A\*:** M = 4.297 × 10⁶ M☉, D = 8.277 kpc (GRAVITY Collaboration 2022, A&A 657, L12, https://www.aanda.org/articles/aa/abs/2022/01/aa42465-21/aa42465-21.html), so θ_g = 5.12 µas. The plan's rounded 4.3 × 10⁶ M☉ at 8.28 kpc agrees.
+  - **M87\*:** M = 6.5 × 10⁹ M☉, D = 16.8 Mpc (EHT Collaboration 2019, ApJL 875, L6, Paper VI, https://arxiv.org/abs/1906.11243), so θ_g = 3.8 µas.
+  - **Stellar:** 10 M☉ at 1 kpc, illustrative.
+  - **Constants:** GM☉/c³ = 4.925490947 µs, GM☉/c² = 1.476625038 km (IAU nominal GM☉).
+  - **Code:** `js/units.js`; unit tests check θ_g, GM/c³ = 21.2 s for Sgr A* (real time = 0.047 M/s) and 8.9 h for M87*.
+- 2026-11-10 — **B8 display:** with the telescope beam or the light curve on, the emission view is drawn linearly into a float image per view (display.glsl `uOut`: total, n = 1, n = 2, n ≥ 3 + tail). `post.glsl` then runs:
+  - the light-curve reduction (2 × 2 sums down to 1 × 1, an asynchronous PBO read-back every frame);
+  - the telescope blur (a separable Gaussian, zero outside the image; for σ > 8 px on a 2^k box-averaged copy, k = ⌈log₂(σ/8)⌉);
+  - the tone map (bilinear from the smaller copy, no float-filtering extension).
+
+  Without either, the direct path of Stage 1 is used. In compare mode each side has its own images.
+- 2026-11-10 — **E5 beam:** default FWHM 20 µas (the plan's default); in dimensionless units the FWHM is given in M (default 2 M). The beam is zero-padded outside the image, as a telescope's would be. With a disc that fills the field (Sgr A*, 15 M field), a 20–40 µas beam spreads 14–31% of the light off the image.
+- 2026-11-10 — **B8 light curve:** side A's flux per frame (observer time, total, n = 1, n = 2, n ≥ 3). The chart shows the last noise period (at least 50 M), with flux / mean, the period marked, and time in M and in physical units. The series restarts when the clock goes back or a new trace finishes.
+- 2026-11-10 — **B8 pixel inspector:**
+  - **How:** a click (no movement, < 0.6 s) with the inspector on. The CPU reference (`cpuTracer.js`, now with optional path recording) traces the pixel in a module worker (`js/ref/inspectWorker.js`), with the view's own parameters (the B6 integrator and refinement off: RK4 at the view's ε). The GPU record is read from the displayed records.
+  - **Display:** the meridional plane of the camera and the equatorial plane, scaled to 4 × the closest approach (so the fuzzball's cap is visible), with the horizon or the point and ring singularities; up to 3 rays.
+  - **Limitations:** compare mode off only; no tap-and-hold on touch yet (a tap works).

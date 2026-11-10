@@ -1494,3 +1494,40 @@ Predicted full trace at 512², High → Normal (these rows run one after another
 1. **Merge** foort-gpu-1b to main, so the new viewer is live for the phone.
 2. **Try** the normal and expert panels, drag, pinch, compare and the long-trace warning, on the laptop and the phone; report anything awkward.
 3. **The normal panel's contents:** anything to add or drop? Units, telescope blur and video export come in B8–B9.
+
+## CHECKPOINT B8 — science readouts and physical units (2026-11-10)
+
+(Started before the user's B7 trial, at their request.)
+
+### Done
+
+- **Units (E6, checked and cited):** dimensionless, Sgr A*, M87*, 10 M☉, custom.
+  - **Clock:** physical time next to M ("t = 100.0 M = 35.3 min" for Sgr A*); "real time" runs it at 1 s per s.
+  - **Panel lengths:** field of view in µas, camera distance in km, AU or pc.
+  - **Scale bar** on the image (M and µas).
+  - **Light-curve axis** in M and in physical time.
+- **Telescope resolution (E5):** a Gaussian beam of FWHM in µas (20 by default), or in M without units, on the linear image before the tone map. Wide beams run on a box-averaged copy.
+- **Light curve:** GPU sums per frame, read back asynchronously; a strip chart of flux / mean over the last noise period, by image order on request.
+- **Time-averaged image:** the B7 toggle (σₙ = 0).
+- **Pixel inspector:** the CPU ray of a clicked pixel, with path plots, crossings, the GPU record next to the CPU values, up to 3 rays.
+
+### Tests
+
+- **Unit** (`b8.test.js`): GM/c³, GM/c², θ_g of Sgr A* (5.12 µas) and M87* (3.8 µas), real time, custom units, durations, scale-bar numbers, beam σ in pixels.
+- **e2e** (`b8.spec.js`):
+  - **Light curve:** the GPU sum equals the double-precision CPU sum of the same linear frame to 1e-5, for all four channels. The orders add up to the total. The mean over one period (32 frames) equals the σₙ = 0 flux within 3 standard errors; it was 7.6% at 60° in one run, sampling noise from the correlated, lognormal factor.
+  - **Beam width:** measured on a compact source (a 200 M field) from the variance it adds, for FWHM 10, 20 and 40 M. It is within 3% of the requested σ, allowing (4^k − 1)/12 px² for the box averaging; the flux is kept to 1%.
+  - **Inspector:** CPU against GPU on Kerr (a = 0.94, 60°) and the fuzzball (λ = 0.05), 6 pixels each. At least 5 of 6 agree on the termination class, and the first crossing radius agrees to 2e-3. In the screenshots the steps agree exactly (660/660, 641/641, 665/665) and the crossings to the printed digits.
+  - **Units:** the clock, the scale bar, the panel.
+- **Full suites:** Vitest 156, Playwright 37 (two clean runs), tsc clean.
+
+### Screenshots (git-ignored, `dev/reports/img/b8/`, `dev/scripts/b8Shots.mjs`)
+
+- `sgra_beam20.png`: Sgr A*, 20 µas beam, time-averaged.
+- `lightcurve.png`: the strip chart by order.
+- `inspector_kerr.png`, `inspector_fuzzball.png`: three inspected rays each.
+
+### Needs the user
+
+1. **The B7 trial**, still open, and B8's readouts in it: units, beam, light curve, inspector. That needs a merge to main.
+2. **E5 beam default:** 20 µas, Gaussian, zero outside the image. Should a 15 M Sgr A* field lose light at the edge, or should the default field grow when the beam is on?

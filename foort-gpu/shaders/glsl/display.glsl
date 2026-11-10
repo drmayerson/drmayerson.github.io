@@ -26,6 +26,8 @@ uniform vec4 uRange;    // view range lo, hi; max steps; r_cam
 uniform vec4 uEm;       // Johnson-SU mu, gamma, sigma; redshift power
 uniform vec4 uEm2;      // fudge factor, max passes (0: no bound), exposure, tone map (0 linear, 1 sqrt, 2 log, 3 asinh)
 uniform ivec4 uEm3;     // colour map (0 afmhot, 1 inferno, 2 grey), envelope radius (0 coordinate r, 1 circumferential, B3), 0, 0
+uniform ivec4 uOut;     // Stage 1B B8: x = 1 writes the disc emission linearly (before exposure) for the post passes (telescope
+                        // blur, light curve, tone map in post.glsl): (total, image n = 1, n = 2, n >= 3 + tail)
 out vec4 color;
 
 const float PI = 3.14159265358979;
@@ -161,7 +163,8 @@ void main() {
   // record pixel of this canvas pixel: the view's origin, then the digital zoom about the image centre
   vec2 c0 = 0.5 * vec2(uView.yz);
   vec2 pf = (gl_FragCoord.xy - vec2(uOrigin.xy) - c0) / max(uZoom.x, 1e-6) + c0 + uZoom.yz;
-  if (pf.x < 0.0 || pf.y < 0.0 || pf.x >= float(uView.y) || pf.y >= float(uView.z)) { color = vec4(0.08, 0.08, 0.1, 1.0); return; }
+  vec4 bg = uOut.x == 1 ? vec4(0.0) : vec4(0.08, 0.08, 0.1, 1.0);
+  if (pf.x < 0.0 || pf.y < 0.0 || pf.x >= float(uView.y) || pf.y >= float(uView.z)) { color = bg; return; }
   ivec2 p = ivec2(pf);
   int lv = -1;
   ivec2 q;
@@ -172,7 +175,7 @@ void main() {
     r0 = rec0(l, q);
     if (r0.y > 0.0) { lv = l; break; }
   }
-  if (lv < 0) { color = vec4(0.08, 0.08, 0.1, 1.0); return; }
+  if (lv < 0) { color = bg; return; }
   int packed = int(r0.x + 0.5);
   int code = packed % 16, passes = packed / 16;
   float th = r0.z, ph = mod(r0.w + uCamAz.x, 2.0 * PI);
@@ -206,7 +209,10 @@ void main() {
       c = mix(quadrantColor(th, ph) * (0.55 + 0.45 * chk), vec3(1.0), 0.8 * line);
     }
   } else if (mode == V_EMISSION) {
-    float I = passEmission(rec1(lv, q), 0) + passEmission(rec2(lv, q), 1) + (uView.w == 1 ? 0.0 : passEmission(rec3(lv, q), 2)) + tailEmission(lv, q);
+    float I1 = passEmission(rec1(lv, q), 0), I2 = passEmission(rec2(lv, q), 1);
+    float I3 = (uView.w == 1 ? 0.0 : passEmission(rec3(lv, q), 2)) + tailEmission(lv, q);
+    float I = I1 + I2 + I3;
+    if (uOut.x == 1) { color = vec4(I, I1, I2, I3); return; }
     float v = max(I * uEm2.z, 0.0);
     int tm = int(uEm2.w + 0.5);
     if (tm == 1) v = sqrt(v);

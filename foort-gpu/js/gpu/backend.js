@@ -9,10 +9,12 @@
  * @typedef {{mode:number, lo:number, hi:number, maxSteps:number, rCam:number, storeH:boolean,
  *   emission?: import('../fluid/emission.js').EmissionParams, exposure?: number, toneMap?: number, colorMap?: number,
  *   time?: DisplayTime, tail?: TailGeometry|null, envelope?: 'coordinate'|'circumferential', azimuth?: number,
- *   zoom?: {s:number, ox:number, oy:number}}} DisplayView
+ *   zoom?: {s:number, ox:number, oy:number}, post?: {blurSigmaPx?: number, lightCurve?: boolean}}} DisplayView
+ *   post (B8): draw the disc emission linearly, then the light-curve sum, the telescope blur (sigma in full-resolution
+ *   pixels) and the tone map
  *   azimuth: camera azimuth in rad, display-only (Stage 1B B5); zoom: instant digital zoom while re-tracing (B7)
  * @typedef {{handle?: CacheHandle, viewport?: number[], scissor?: number[], fluid?: import('../fluid/fluidTable.js').FluidTable,
- *   fluidKey?: string, noiseName?: string}} DisplaySource  B7: a cached record set drawn into part of the canvas (compare mode)
+ *   fluidKey?: string, noiseName?: string, side?: string}} DisplaySource  B7: a cached record set drawn into part of the canvas (compare mode)
  * @typedef {import('./traceConfig.js').TailGeometry} TailGeometry
  * @typedef {{tObs:number, slow:boolean, M:number, advect:number, sigma:number}} DisplayTime
  *   observer time t_obs / M, slow light, M_ADM, procedural-advection duration D / M (0: off), noise amplitude sigma_n
@@ -48,6 +50,11 @@
  * @property {(view:DisplayView, src?:DisplaySource) => void} display
  * @property {(w:number, h:number) => void} canvasSize               canvas size (compare side by side: two records wide)
  * @property {() => void} clearCanvas
+ * @property {() => {tag: {side: string, tObs: number}, v: Float32Array}[]} pollLightCurve  B8: finished light-curve sums
+ *   (total, n = 1, n = 2, n >= 3 + tail), tagged with the view's observer time
+ * @property {(side?: string) => Promise<{w:number, h:number, data:Float32Array}|null>} readLinear  B8: the last linear emission image
+ * @property {(side?: string) => Promise<{w:number, h:number, k:number, data:Float32Array}|null>} readPost  B8: the last image the
+ *   tone map read (blurred, 2^k times smaller; or the linear one)
  * @property {(stride?:number, currentSet?:boolean) => Promise<Float32Array>} readRecords  one level (default full resolution) of the
  *   displayed records (or of the set being traced), 24 floats per pixel (RECORD_FLOATS), row 0 = bottom
  * @property {() => Promise<number>} readSteps                        total RK4 steps of the image
