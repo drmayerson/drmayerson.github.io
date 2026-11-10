@@ -420,3 +420,4 @@ non-trivial implementation choice.
   - **Normal:**
     - **Black holes:** passes every budget on all 8 scenes (sky p99 ≤ 0.10 px, emission L1 ≤ 1.8e-3), 1.0–2.3× faster than Reference.
     - **Fuzzball:** = High.
+- 2026-11-10 — **B9 merged to main** (user: "Merge to main"), which also redeploys B8: the GitHub Pages deploy of the B8 merge (ce49645) had failed in its deploy step (build succeeded).
