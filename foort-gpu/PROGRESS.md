@@ -1435,3 +1435,21 @@ An idle pre-trace that started between a trace and the read-back of its records 
 2. **Device round for B6:** the probe's new "B6" rows on the laptop and phone (after a merge to main).
 3. **Merge** foort-gpu-1b to main.
 
+
+### B6 device round (2026-11-10)
+
+The user ran the B6 probe on their laptop (Firefox, "AMD Radeon R9 200 Series, or similar") and phone (Samsung Xclipse 920). Reports: `dev/reports/b6/probe_user_laptop_firefox.json`, `probe_user_phone_xclipse920.json`.
+
+Predicted full trace at 512², High → Normal (these rows run one after another, not interleaved):
+
+| case | user's laptop | phone | this machine |
+|---|---|---|---|
+| Kerr closed form | 0.15 → 0.21 s (0.7×) | 0.22 → 0.15 s (1.4×) | 0.15 → 0.08 s (1.9×) |
+| Manko–Novikov tabulated | 0.90 → 0.53 s (1.7×) | 1.25 → 0.62 s (2.0×) | 1.12 → 0.40 s (2.8×) |
+
+- **Normal (BS3) roughly halves the tabulated black-hole traces** on all three GPUs.
+- **Closed-form Kerr on the user's laptop is the exception:** there an RK4 step is cheap enough that BS3's extra arithmetic and divergence cost more than its 2× fewer steps save. In absolute terms it is 0.15 vs 0.21 s, far inside E1. Auto picks Reference for it on every device (0.17–0.37 s predicted), so Normal is not used there.
+- **Fuzzball:**
+  - **At High:** 6.8 s (laptop) and 6.1 s (phone) predicted at 512², within the 10 s target. These probe rows run without texel reuse, which the viewer adds (another 1.9–3×).
+  - **At Reference:** 10.4 s and 10.8 s, just outside the target.
+- **B5 pairs repeated:** G3 = G4 1.16–1.31×; texel reuse 1.29–3.0×; generated Johannsen 3.6–4.2×; ray compaction 0.95× (laptop), 1.16× (phone), so it stays off.

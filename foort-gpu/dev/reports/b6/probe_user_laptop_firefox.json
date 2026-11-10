@@ -1,0 +1,27 @@
+{
+ "page": "FOORT-GPU tier probe (Stage 1B B0, B5, B6 cases)",
+ "date": "2026-11-10T09:46:51.764Z",
+ "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0",
+ "renderer": "ANGLE (AMD, Radeon R9 200 Series Direct3D11 vs_5_0 ps_5_0), or similar",
+ "vendor": "Google Inc. (AMD)",
+ "limits": { "MAX_DRAW_BUFFERS": 8, "MAX_TEXTURE_IMAGE_UNITS": 16 },
+ "timerQueries": false, "devicePixelRatio": 1, "screen": "1920x1080", "hardwareConcurrency": 16,
+ "results": [
+  { "case": "Kerr a=0.94 closed-form, Reference", "mode": "BH", "N": 256, "wallMs": 41, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 1212.5, "predicted512s": 0.17, "predicted1024s": 0.7, "withinE1At512": true },
+  { "case": "Kerr a=0.94 tabulated, Reference", "mode": "BH", "N": 256, "wallMs": 261, "gpuMs": null, "stepsPerRay": 759, "msteps_per_s": 190.5, "predicted512s": 1.11, "predicted1024s": 4.43, "withinE1At512": true },
+  { "case": "Kerr a=0.94 tabulated, High", "mode": "BH", "N": 256, "wallMs": 285, "gpuMs": null, "stepsPerRay": 589, "msteps_per_s": 135.5, "predicted512s": 1.21, "predicted1024s": 4.83, "withinE1At512": true },
+  { "case": "ST3Cr λ=1e-3, Reference", "mode": "fuzzball", "N": 128, "wallMs": 610, "gpuMs": null, "stepsPerRay": 1554, "msteps_per_s": 41.7, "predicted512s": 10.35, "predicted1024s": 41.38, "withinE1At512": false },
+  { "case": "ST3Cr λ=1e-3, High", "mode": "fuzzball", "N": 128, "wallMs": 402, "gpuMs": null, "stepsPerRay": 1102, "msteps_per_s": 44.9, "predicted512s": 6.82, "predicted1024s": 27.27, "withinE1At512": true },
+  { "case": "B6 Kerr a=0.94 closed-form, High", "mode": "BH", "N": 256, "wallMs": 36, "gpuMs": null, "stepsPerRay": 589, "msteps_per_s": 1072.5, "predicted512s": 0.15, "predicted1024s": 0.61, "withinE1At512": true },
+  { "case": "B6 Kerr a=0.94 closed-form, Normal", "mode": "BH", "N": 256, "wallMs": 50, "gpuMs": null, "stepsPerRay": 286, "msteps_per_s": 374.9, "predicted512s": 0.21, "predicted1024s": 0.85, "withinE1At512": true },
+  { "case": "B6 Manko-Novikov a=0.94 tabulated, High", "mode": "BH", "N": 256, "wallMs": 212, "gpuMs": null, "stepsPerRay": 523, "msteps_per_s": 161.8, "predicted512s": 0.9, "predicted1024s": 3.6, "withinE1At512": true },
+  { "case": "B6 Manko-Novikov a=0.94 tabulated, Normal", "mode": "BH", "N": 256, "wallMs": 125, "gpuMs": null, "stepsPerRay": 270, "msteps_per_s": 141.6, "predicted512s": 0.53, "predicted1024s": 2.12, "withinE1At512": true }
+ ],
+ "b5pairs": [
+  { "case": "G3 = G4 (ST3Cr λ=1e-3, High)", "N": 256, "msA": 2179, "msB": 1663, "speedup": 1.31 },
+  { "case": "texel reuse (Kerr a=0.94 tabulated, High)", "N": 256, "msA": 434, "msB": 248, "speedup": 1.75 },
+  { "case": "texel reuse (ST3Cr λ=1e-3, High)", "N": 256, "msA": 1702, "msB": 568, "speedup": 3 },
+  { "case": "ray compaction (ST3Cr λ=1e-3, High)", "N": 256, "msA": 1555, "msB": 1631, "speedup": 0.95 },
+  { "case": "generated closed form (Johannsen a=0.94, High)", "N": 256, "msA": 380, "msB": 91, "speedup": 4.18 }
+ ]
+}
