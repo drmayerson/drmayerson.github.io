@@ -382,3 +382,4 @@ non-trivial implementation choice.
   - **Drawing:** both sides are drawn every frame from the record cache (pinned, never evicted), each with its own fluid table and noise field (the backend keeps both by name and key). Both use side A's auto exposure, so brightness compares directly.
 - 2026-11-10 — **B7 phone-safe defaults:** with quality auto, when no tier fits E1 at the default resolution and the link did not set N, the resolution is halved (not below 256). Phones also get the 64 MB cache and no idle pre-tracing (B5).
 - 2026-11-10 — **Tests:** Playwright now runs at most 4 workers. With more, this laptop's iGPU occasionally returned a wrong frame or timed out under 33 GPU-heavy tests; at 4 the suite is also faster (1.2 vs 1.8 min).
+- 2026-11-10 — **B7 merged to main** for the user's laptop and phone trial (user: "Merge to main").
