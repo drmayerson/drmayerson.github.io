@@ -1,0 +1,58 @@
+{
+ "label": "laptop",
+ "date": "2026-11-10T12:19:28.509Z",
+ "cases": {
+  "kerr1024": {
+   "ms": 722,
+   "runs": [
+    2163.9000000953674,
+    722,
+    749.1000001430511
+   ],
+   "tier": "high",
+   "target": "<= 1000 ms"
+  },
+  "fuzzball512_FBdetail": {
+   "ms": 3205.2000000476837,
+   "runs": [
+    3205.2000000476837,
+    5265.100000143051,
+    3290
+   ],
+   "tier": "reference",
+   "target": "<= 4000 ms"
+  },
+  "fuzzball512_far": {
+   "ms": 1818.7000000476837,
+   "runs": [
+    4213.600000143051,
+    1818.7000000476837,
+    1891
+   ],
+   "tier": "reference",
+   "target": "<= 4000 ms (the viewer default camera)"
+  },
+  "display512_lightcurve_beam": {
+   "passMs": 1.4914999997615814,
+   "passFps": 670.465973959002,
+   "rafFps": 59.96202404952916,
+   "lcSamples": 186,
+   "target": ">= 50 fps"
+  },
+  "display1024_lightcurve_beam": {
+   "passMs": 5.868500000238418,
+   "passFps": 170.40129504291951,
+   "rafFps": 60.118909227577234,
+   "lcSamples": 187,
+   "target": ">= 50 fps"
+  },
+  "azimuthDrag": {
+   "fps": 60.5759682224429,
+   "moves": 120,
+   "runsStarted": 0,
+   "azimuth": 30.9068603515625,
+   "target": "60 fps, no re-trace"
+  }
+ },
+ "renderer": "ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001900) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+}

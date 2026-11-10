@@ -135,6 +135,11 @@ export const CONTROLS = [
   { key: 'lcOrders', label: 'light curve by image order (n = 1, 2, ≥ 3)', type: 'checkbox', group: 'Disc emission', default: false, retrace: false,
     visible: (s) => s.lightcurve },
   { key: 'inspect', label: 'pixel inspector (click the image: the ray in double precision)', type: 'checkbox', group: 'View', default: false, retrace: false, level: 'both' },
+  // B9 export (plan 5.5): snapshot overlays; video length, rate, and the seamless noise-period loop
+  { key: 'snapBurn', label: 'snapshot: burn in the scale bar and the clock', type: 'checkbox', group: 'Export', default: false, retrace: false, level: 'both' },
+  { key: 'vidSeconds', label: 'video length (s)', type: 'range', group: 'Export', min: 1, max: 60, step: 1, default: 8, format: (v) => `${v} s`, retrace: false, level: 'both' },
+  { key: 'vidFps', label: 'video frames per second', type: 'select', group: 'Export', options: [24, 30, 60], default: 30, retrace: false, level: 'both' },
+  { key: 'vidLoop', label: 'one noise period (a seamless loop; not with procedural advection)', type: 'checkbox', group: 'Export', default: true, retrace: false, level: 'both' },
   // B8 physical units (plan 5.4, E6)
   { key: 'units', label: 'units', type: 'select', group: 'Units', options: Object.keys(UNIT_PRESETS),
     optionLabels: Object.fromEntries(Object.entries(UNIT_PRESETS).map(([k, p]) => [k, p ? p.label : 'dimensionless (M)'])), default: 'M', retrace: false, level: 'both' },
@@ -208,7 +213,7 @@ export const CONTROLS = [
 ];
 
 /** keys A and B share in compare mode (camera, observer time, display) */
-export const SHARED_KEYS = ['units', 'unitMass', 'unitDist', 'realTime', 'blur', 'beamUas', 'beamM', 'lightcurve', 'lcOrders', 'inspect', 'ui', 'inc', 'screen', 'az', 'cx', 'cy', 'r', 'N', 'play', 'speed', 'slowLight', 'view', 'lo', 'hi', 'toneMap', 'colorMap',
+export const SHARED_KEYS = ['snapBurn', 'vidSeconds', 'vidFps', 'vidLoop', 'units', 'unitMass', 'unitDist', 'realTime', 'blur', 'beamUas', 'beamM', 'lightcurve', 'lcOrders', 'inspect', 'ui', 'inc', 'screen', 'az', 'cx', 'cy', 'r', 'N', 'play', 'speed', 'slowLight', 'view', 'lo', 'hi', 'toneMap', 'colorMap',
   'autoExposure', 'exposure', 'brightness', 'timeAvg', 'compare', 'cmpEdit', 'blinkHz', 'cmpDiv', 'quality', 'pretrace', 'cacheMB', 'family'];
 
 const SLIDER_STEPS = 1000;
@@ -280,7 +285,7 @@ export function buildControls(form, state, onChange) {
   /** @type {{c:Control, row:HTMLElement, input:HTMLInputElement|HTMLSelectElement, out?:HTMLOutputElement}[]} */
   const widgets = [];
   // groups in a fixed order (the first appearance in CONTROLS would put Tracing before Camera)
-  const ORDER = ['Spacetime', 'Camera', 'Disc emission', 'Time', 'Units', 'View', 'Compare', 'Tracing'];
+  const ORDER = ['Spacetime', 'Camera', 'Disc emission', 'Time', 'Units', 'View', 'Compare', 'Export', 'Tracing'];
   const ordered = [...CONTROLS].sort((a, b) => (ORDER.indexOf(a.group) + 1 || 99) - (ORDER.indexOf(b.group) + 1 || 99));
   for (const c of ordered) {
     if (c.level === 'hidden') continue;

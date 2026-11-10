@@ -1531,3 +1531,58 @@ Predicted full trace at 512², High → Normal (these rows run one after another
 
 1. **The B7 trial**, still open, and B8's readouts in it: units, beam, light curve, inspector. That needs a merge to main.
 2. **E5 beam default:** 20 µas, Gaussian, zero outside the image. Should a 15 M Sgr A* field lose light at the edge, or should the default field grow when the beam is on?
+
+## CHECKPOINT B9 — export, documentation, acceptance: Stage 1B done (2026-11-10)
+
+(Built before the user's trials of B7–B8, at their request; their checks of B7–B9 are open.)
+
+### Done
+
+- **Export:**
+  - **PNG snapshot:** at trace resolution, optionally with the scale bar and the clock burned in. The view's link is embedded (PNG text chunk `foort-gpu-url`).
+  - **Video:** WebM VP9/VP8 or MP4, at a fixed observer-time step, with a length and frame rate and an exact one-noise-period seamless loop; progress and cancel.
+- **README:**
+  - **User guide:** both panels, the interaction and shortcuts, units and readouts, export.
+  - **Developer guide:** codegen, tiers, the quality gate, the exactness checks, compaction and refinement, the cache, compare, the post passes; the layout updated.
+- **DECISIONS.md:** complete through B9.
+
+### Acceptance (this machine: AMD Radeon integrated graphics, Chrome; `dev/scripts/b9Acceptance.mjs`)
+
+| case | target | result |
+|---|---|---|
+| 1024² Kerr (auto: High) | ≤ 1 s | **0.72 s** |
+| 512² fuzzball λ = 1e-3, Test_FBdetail camera (auto: Reference) | ≤ 4 s | **3.2 s** (the default camera: 1.8 s) |
+| display with light curve and beam, 512² / 1024² | ≥ 50 fps | **60 / 60 fps** in the page (the pass: 670 / 170 fps) |
+| azimuth drag | 60 fps, no re-trace | **60.6 fps**, 0 traces |
+
+### Speed per tier across devices (predicted 512² full trace, probe page)
+
+| case | this machine (B6 probe) | user's laptop (Firefox, B6) | phone (Xclipse 920, B6) |
+|---|---|---|---|
+| Kerr closed form, Reference / High / Normal | 0.14 / 0.15 / 0.08 s | 0.17 / 0.15 / 0.21 s | 0.37 / 0.22 / 0.15 s |
+| Kerr tabulated, Reference / High | 2.26 / 2.11 s (no texel reuse) | 1.11 / 1.21 s | 1.84 / 1.81 s |
+| Manko–Novikov tabulated, High / Normal | 1.12 / 0.40 s | 0.90 / 0.53 s | 1.25 / 0.62 s |
+| ST3Cr λ = 1e-3, Reference / High (no texel reuse) | 15.5 / 11.0 s (a slow-clock run) | 10.4 / 6.8 s | 10.8 / 6.1 s |
+| texel reuse on the fuzzball (adopted) | 1.9–2.6× | 3.0× | 1.9–2.2× |
+
+The B9 acceptance run, with texel reuse and the viewer's camera, puts the fuzzball at 1.8–3.2 s at Reference on this machine.
+
+### Quality gate per tier (512², against Reference)
+
+| tier | black holes (8 scenes) | fuzzball (5 scenes) |
+|---|---|---|
+| Reference (ε vs ε/2) | 0–0.02% of pixels change | 2.1–3.3% (λ = 0: 0.07%) |
+| High | all budgets pass | class agreement 97.5–98.7% and chaotic fractions miss the budget, from the 5000-step limit (accepted in Stage 1); images identical on non-chaotic pixels |
+| Normal | **all budgets pass**: sky p99 ≤ 0.10 px, emission L1 ≤ 1.8e-3, 1.0–2.3× faster than Reference | = High |
+
+### Tests
+
+- **Unit** (`b9.test.js`): the PNG CRC-32 and the tEXt chunk round trip.
+- **e2e** (`b9.spec.js`): the snapshot carries the URL and the trace resolution, and downloads; a 24-frame one-period video downloads (WebM in Chrome), the clock returns, a long recording cancels.
+- **Full suites:** Vitest 158, Playwright 39, tsc clean.
+
+### Stage 1B: open for the user
+
+1. **Try B7–B9** on the laptop and the phone: both panels, drag, pinch, compare, the long-trace warning; units, beam, light curve, inspector; snapshot and video.
+2. **E5:** should the field of view grow when the beam is on (a 15 M Sgr A* field loses 14–31% of the light to a 20–40 µas beam)?
+3. **Merge** foort-gpu-1b to main (B9).

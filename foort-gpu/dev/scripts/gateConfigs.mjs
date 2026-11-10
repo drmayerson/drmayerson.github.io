@@ -53,6 +53,11 @@ export const GATE_CONFIGS = {
     description: 'High: Reference + the Stage 1 trades (larger steps beyond 20 M up to 4x; fuzzball max steps 5000) = the viewer since M9.',
     apply: high,
   },
+  // Stage 1B B9: the Normal tier as confirmed at B6 (black holes: High + BS3 at tol 0.1; the fuzzball: High)
+  normal: {
+    description: 'Normal (confirmed at B6): black holes High + Bogacki-Shampine 3(2) at tol 0.1; the fuzzball = High.',
+    apply: (s) => ({ ...high(s), ...(s.fuzzball ? {} : { bs3: { tol: 0.1, cap: 4 } }) }),
+  },
   // Stage 1B B6, plan 4.2-1: an embedded error-controlled integrator (Bogacki-Shampine 3(2), FSAL), tolerance = tol x the
   // pixel's angle at the camera, steps capped at FOORT's rule x 4
   ...Object.fromEntries([0.1, 0.3, 1].map((tol) => [`bs3_tol${tol}`, {

@@ -403,3 +403,20 @@ non-trivial implementation choice.
   - **Display:** the meridional plane of the camera and the equatorial plane, scaled to 4 × the closest approach (so the fuzzball's cap is visible), with the horizon or the point and ring singularities; up to 3 rays.
   - **Limitations:** compare mode off only; no tap-and-hold on touch yet (a tap works).
 - 2026-11-10 — **B8 merged to main** for the user's trial of B7 and B8 together (user: "Merge to main").
+- 2026-11-10 — **B9 started before the user's B7/B8 checks** (user: "continue with B9 without me checking yet, will check at end").
+- 2026-11-10 — **B9 export** (`js/export.js`):
+  - **PNG:** the canvas at trace resolution; the scale bar and the clock burned in when "snapshot: burn in" is on. The view's URL goes in a `tEXt` chunk (keyword `foort-gpu-url`) inserted after IHDR, CRC-32 computed in JS.
+  - **Video:** `captureStream(0)` + `requestFrame()` + MediaRecorder, with the first supported of WebM VP9, VP8, WebM, then MP4.
+    - **Frames:** drawn at a fixed observer-time step from the records (no re-trace) and paced at the chosen rate. The step is the speed per frame, or T / frames for "one noise period" (frame k at t₀ + kT / frames, so the loop closes exactly). With procedural advection the loop is not seamless and the status says so.
+    - **Options:** length (s) and rate (24, 30, 60). The resolution is the trace's, since a different one needs a re-trace. Progress in the bar, cancel with the bar's button or the record button. The clock returns to its start afterwards.
+- 2026-11-10 — **B9 acceptance on this machine** (AMD Radeon integrated graphics, D3D11, Chrome; `dev/reports/b9/acceptance_laptop.json`), at the auto-selected tier. All plan targets are met:
+  - 1024² Kerr: 0.72 s (High);
+  - 512² fuzzball at λ = 1e-3: 3.2 s with the Test_FBdetail camera, 1.8 s with the default camera (Reference: the auto tier picks it, since it fits 10 s);
+  - display with light curve and beam: the page runs at 60 fps at 512² and 1024² (the pass alone: 670 and 170 fps);
+  - azimuth drag: 60.6 fps, no trace started.
+- 2026-11-10 — **Final quality gate per tier** (`dev/reports/b9/gate_normal.*`, `gate_reference.*`; High in `dev/reports/b6/gate_high.*`):
+  - **Reference:** its own consistency (ε against ε/2) changes 0–0.02% of the black-hole pixels and 2.1–3.3% of the fuzzball pixels (λ = 0: 0.07%).
+  - **High:** passes every budget except, on the fuzzball, class agreement and the chaotic class fractions, from its 5000-step limit (accepted in Stage 1).
+  - **Normal:**
+    - **Black holes:** passes every budget on all 8 scenes (sky p99 ≤ 0.10 px, emission L1 ≤ 1.8e-3), 1.0–2.3× faster than Reference.
+    - **Fuzzball:** = High.

@@ -75,6 +75,15 @@ The legend under the image explains the colours of each debug view. The performa
 - the fluid's ISCO, and the circular-orbit bands for horizonless metrics;
 - the trace time and the steps per ray.
 
+### Export (Stage 1B B9)
+
+- **Snapshot** (button or `s`): a PNG of the image at trace resolution. Optionally the scale bar and the clock are burned in (Export panel).
+  - The view's link is stored inside the file, in a PNG text chunk named `foort-gpu-url`. Image viewers show it under the file's properties; opening that link traces the same view.
+- **Video** (button or `r`): frames at a fixed observer-time step, drawn from the traced records, so the video plays smoothly whatever the GPU's speed.
+  - Options: length, frame rate, and "one noise period", a seamless loop of exactly T. It is not seamless with procedural advection on; the viewer says so.
+  - Format: WebM (VP9 or VP8) where the browser offers it, MP4 on Safari.
+  - A progress bar and Cancel.
+
 ### Sharing a view
 
 The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&inc=60&view=fourColor`, so a link reproduces the view. In compare mode the URL holds side A.
@@ -102,10 +111,11 @@ The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&
 | `js/fluid/` | FOORT's fluid model (port), its GPU table, Johnson-SU and the disc emission |
 | `js/noise/` | noise-field contract, loader and sampler |
 | `js/ref/` | the double-precision CPU reference tracer (tests and validation) |
-| `js/ui/` | controls (built from `CONTROLS` and the metric registry), URL state |
-| `shaders/glsl/` | `common.glsl` (tracer core), `trace.glsl` (tabulated metric), `trace_kerr_analytic.glsl` (closed-form Kerr, validation), `display.glsl` (emission and debug views) |
+| `js/ui/` | controls (built from `CONTROLS` and the metric registry, normal and expert levels), URL state, interaction on the image, readouts (light curve, inspector) |
+| `js/units.js`, `js/export.js` | physical units and presets; PNG and video export |
+| `shaders/glsl/` | `common.glsl` (tracer core: RK4 or BS3, crossings, tail, compaction), `trace.glsl` (tabulated metric, or a closed form), `closed/` (generated closed-form metrics), `trace_kerr_analytic.glsl` (hand-written closed-form Kerr), `display.glsl` (emission and debug views), `post.glsl` (beam, light curve, tone map) |
 | `noise/` | noise fields in the contract format |
-| `tools/` | offline tools, not loaded by the app: the FOORT parity harness (`foort_parity/`), noise generation (`noise/`: placeholder FFT field; inoisy build, model and converter, see `tools/noise/build_inoisy.md`) |
+| `tools/` | offline tools, not loaded by the app: the closed-form generator (`codegen/`), the FOORT parity harness (`foort_parity/`), noise generation (`noise/`: placeholder FFT field; inoisy build, model and converter, see `tools/noise/build_inoisy.md`) |
 | `dev/` | tests and validation scripts (Node.js ≥ 18) |
 | `bench/` | the M0 WebGL2-vs-WebGPU benchmark |
 
@@ -117,9 +127,34 @@ The complete state is in the URL query, for example `?metric=st3cr&lambda=0.001&
 - **Quality tiers (Stage 1B B6):** Reference is the Stage 1 integrator without accuracy trades (for validation); High adds the trades accepted in Stage 1 (larger steps far out, 5000 max steps); Normal adds the speedups that pass the quality gate against Reference: for black holes the error-controlled Bogacki–Shampine 3(2) integrator (about 1.2× faster than High, with smaller sky errors), for the fuzzball nothing yet (Normal = High). With quality "auto" the viewer measures this device once per metric mode with small test traces and picks the highest tier that fits the time target; the status line names it. Previews while dragging are the Draft tier (the coarse level).
 - **Record cache (B5):** the records of recent views stay on the GPU (256 MB, 64 MB on phones), so returning to a view is instant; after a trace, the previews of neighbouring views (λ one notch up and down, inclination ± 5°) are traced in the background.
 - **Tracer:** the GPU integrates Hamilton's equations with RK4 and FOORT's adaptive step, in float32, reading the tables by bicubic Hermite interpolation (`shaders/glsl/`). Nothing on the GPU is metric-specific.
-- **Record:** each pixel's ray writes a 16-float record: termination, steps, escape direction, and up to 3 equatorial crossings (r, φ, delay, redshift).
+- **Record:** each pixel's ray writes a 24-float record: termination, steps, escape direction, up to 3 equatorial crossings (r, φ, delay, redshift), and 8 log-r bins for every later crossing (Stage 1B B2).
 - **Display:** a cheap fragment pass turns the record into the disc emission every frame, with noise and slow light, or into a debug view.
 - **Design and validation:** the plan's design is in `FOORT_GPU_STAGE1_PLAN.md`; every implementation choice, with its reason, is in `DECISIONS.md`.
+
+### Speed and accuracy machinery (Stage 1B)
+
+- **Closed-form shaders** (`tools/codegen/gen_metrics.py`, SymPy; `python tools/codegen/gen_metrics.py [ids]` from `foort-gpu/`):
+  - **Output:** a metric's G0–G4 and their x- and δ-derivatives as GLSL (`shaders/glsl/closed/<id>.glsl`), with the same interface as the table lookup, and JS mirrors for the unit tests (`dev/tests/unit/closed/`).
+  - **Float32 safety:** expressions in e = r − r₊ with Δ factorised; the angle as sin δ and hemi · cos δ; integer powers as products.
+  - **Registration:** a new metric needs its uniforms in `js/metrics/closedForm.js`, and it should pass `b5Exact.mjs --feature closed` and `b5Referee.mjs` before it gets `auto: true`.
+- **Quality tiers** (`js/gpu/tiers.js`):
+  - **Settings:** `tierSettings(tier, mode)` gives ε, far steps, max steps, the integrator and refinement. `NORMAL` holds what passed the gate.
+  - **Selection:** the viewer's "auto" probes the current view at 64² per tier (`probeTier` in `main.js`) and takes the highest tier within `TIER_TARGET_S`.
+- **Quality gate** (`dev/scripts/qualityGate.mjs --config <name> [--out dir] [--refhash hash]`):
+  - **What it does:** traces the 13-scene set at 512² with a configuration from `gateConfigs.mjs`, against Reference.
+  - **Measures:** chaos mask, emission time-averaged and with noise, flux, delays, light curve, sky error in pixels, class agreement, timing.
+  - **Budgets:** checks the Normal budgets of plan 1.2.
+  - **Caching:** Reference records are cached per code hash (`--refhash` reuses an earlier one when the change cannot touch Reference).
+  - **Summary:** `b6Summary.mjs` tabulates the runs of a folder.
+- **Exactness checks:** `b5Exact.mjs --feature <f>` traces a feature off and on and compares the records on the non-chaotic pixels against the float32 noise floor (`--feature floor`: ε × (1 + 1e-6)).
+- **Ray compaction and refinement** (off by default):
+  - **Compaction:** the `COMPACT` shader define with continuation state in record attachments 6–7. The pipeline lists unfinished rays asynchronously (`compactList`), traces them as a dense image and scatters them back. Exact (identical step counts); not faster on the GPUs measured.
+  - **Refinement:** `js/gpu/refine.js` marks cells from the coarse level (second differences), `interpolateLevel` fills the rest, and the marked pixels are traced as a list (mode 3).
+- **Record cache, pre-tracing, compare** (`js/gpu/pipeline.js`, `backendWebGL2.js`):
+  - **Cache:** an LRU of GPU texture copies, keyed by the trace setup. Pinned entries are the compare sides.
+  - **Pre-traces:** run in a separate record set and never cancel a foreground trace.
+  - **Compare drawing:** the display pass draws a cached record set into a viewport, with its own fluid table and noise field.
+- **Post passes** (`shaders/glsl/post.glsl`): the linear emission image feeds the light-curve reduction (2 × 2 sums, asynchronous read-back), the telescope blur (separable Gaussian, box pyramid for wide beams) and the tone map.
 
 ### Adding a metric
 
@@ -167,7 +202,7 @@ Validation scripts (reports in `dev/reports/m<N>/`), by milestone:
 | M6 | `m6TableError.mjs`, `m6Level2.mjs`, `m6GpuVsFoort.mjs`, `m6Level3.mjs`, `m6Continuity.mjs`, `m6Passes.mjs`, `m6Steps.mjs`: fuzzball tables, GPU vs CPU and FOORT, λ = 0 shadow, λ → 0, crossings, steps |
 | M7–M8 | `m7Delays.mjs`, `m7Frames.mjs`; `tools/noise/inspect_field.py`: light delays, animations, noise fields |
 | M9 | `m9Perf.mjs`: acceptance timings |
-| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; `b7Shots.mjs`, `b8Shots.mjs` (checkpoint screenshots), `b6Summary.mjs` (the Normal candidates against the budgets; `qualityGate.mjs --out b6`), `b5Exact.mjs` (any exact speedup against the plain tracer, with the float32 noise floor), `b5Referee.mjs` (disagreeing pixels against the CPU), `b5Compile.mjs`, `b5CompactEstimate.mjs`, `b5Probe.mjs`; the device probe page `probe.html` |
+| Stage 1B | `qualityGate.mjs` (+ `gateConfigs.mjs`): any configuration vs Reference on the scene set; `b1Compare.mjs`; `b2Tail.mjs`, `b2BH.mjs`, `b2Images.mjs`; `b3Images.mjs`; `b4OmegaTables.mjs`, `b4Coverage.mjs`, `m7Frames.mjs --b4`; `b7Shots.mjs`, `b8Shots.mjs` (checkpoint screenshots), `b9Acceptance.mjs` (the Stage 1B acceptance timings), `b6Summary.mjs` (the Normal candidates against the budgets; `qualityGate.mjs --out b6`), `b5Exact.mjs` (any exact speedup against the plain tracer, with the float32 noise floor), `b5Referee.mjs` (disagreeing pixels against the CPU), `b5Compile.mjs`, `b5CompactEstimate.mjs`, `b5Probe.mjs`; the device probe page `probe.html` |
 
 ### Local server
 

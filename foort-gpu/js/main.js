@@ -16,6 +16,7 @@ import { fluidTableRcirc } from './fluid/fluidTable.js';
 import { CONTROLS, VIEWS, SHARED_KEYS, buildControls, initialState, stateToQuery, setPanelUnits } from './ui/controls.js';
 import { unitsOf, formatDuration, niceBelow, beamSigmaPx } from './units.js';
 import { drawLightCurve, drawInspector, inspectorTable } from './ui/readouts.js';
+import { snapshotPng, recordVideo, download, videoFormat } from './export.js';
 import { attachInteraction } from './ui/interaction.js';
 import { loadNoiseField, autoNoiseField, noiseCover } from './noise/noiseField.js';
 
@@ -643,26 +644,67 @@ async function main() {
   const togglePanelMode = () => { controls.set('ui', state.ui === 'normal' ? 'expert' : 'normal'); controls.refresh(); applyPanel(); layoutCompare(); saveUrlSoon(); requestDraw(); };
   const toggleHide = () => { const l = $('layout'); l.classList.toggle('nopanel'); $('hidePanel').textContent = l.classList.contains('nopanel') ? 'Show panel' : 'Hide panel'; };
   const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else $('stage').requestFullscreen?.().catch(() => {}); };
-  const snapshot = () => {
+  // B9 export: a PNG at trace resolution with the view's link inside (tEXt "foort-gpu-url"), optionally with the scale
+  // bar and the clock burned in
+  const fileBase = () => `foort-gpu-${metricIdFromState(state)}${state.compare !== 'off' ? '-compare' : ''}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
+  const snapshotBytes = async () => {
     draw();
-    canvas.toBlob((b) => {
-      if (!b) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(b);
-      a.download = `foort-gpu-${metricIdFromState(state)}-${Date.now()}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, 'image/png');
+    const u = unitsNow(), L = niceBelow(state.screen / 4);
+    return snapshotPng(canvas, {
+      url: location.href,
+      overlay: state.snapBurn ? { lines: [$('clock').textContent ?? ''], bar: { frac: L / state.screen / (state.compare === 'side' ? 2 : 1), label: `${L} M${u ? ` = ${(L * u.thetaUas).toPrecision(3)} µas` : ''}` } } : undefined,
+    });
+  };
+  const snapshot = async () => {
+    try { download(new Blob([/** @type {Uint8Array<ArrayBuffer>} */ (await snapshotBytes())], { type: "image/png" }), `${fileBase()}.png`); }
+    catch (e) { $('status').textContent = `snapshot failed: ${String(/** @type {Error} */ (e).message)}`; }
+  };
+  // B9 video: frames at a fixed observer-time step (the speed, or exactly one noise period for a seamless loop), drawn
+  // from the records (no re-trace), paced at the chosen rate
+  let recording = false, recCancel = false;
+  const record = async () => {
+    if (recording) { recCancel = true; return; }
+    const fmt = videoFormat();
+    if (!fmt) { $('status').textContent = 'this browser cannot record video (no MediaRecorder for WebM or MP4)'; return; }
+    const fps = Number(state.vidFps), frames = Math.max(2, Math.round(state.vidSeconds * fps));
+    const T = noise?.meta.T_over_M ?? 0;
+    const loop = state.vidLoop && T > 0;
+    const u = unitsNow();
+    const speed = state.realTime && u ? 1 / u.tS : state.speed;
+    const dt = loop ? T / frames : speed / fps;
+    const t0 = tObs;
+    recording = true; recCancel = false;
+    $('record').textContent = 'Stop recording';
+    $('progress').hidden = false;
+    const note = loop && state.advect ? ' (procedural advection is on: the loop is not seamless)' : '';
+    try {
+      const res = await recordVideo(canvas, {
+        frames, fps, cancelled: () => recCancel,
+        drawFrame: (k) => { tObs = t0 + k * dt; draw(); },
+        onProgress: (k) => {
+          /** @type {HTMLElement} */ ($('progressBar')).style.width = `${(100 * k / frames).toFixed(1)}%`;
+          $('progressText').textContent = `recording ${k}/${frames} frames (${fps} fps, ${(frames * dt).toFixed(1)} M${loop ? ': one noise period' : ''})${note}`;
+        },
+      });
+      if (res) { download(res.blob, `${fileBase()}.${res.ext}`); $('status').textContent = `video saved: ${frames} frames, ${fmt.mime}${note}`; }
+      else $('status').textContent = 'recording cancelled';
+    } catch (e) { $('status').textContent = `recording failed: ${String(/** @type {Error} */ (e).message)}`; }
+    recording = false;
+    $('record').textContent = 'Record video';
+    $('progress').hidden = true;
+    tObs = t0; draw(); $('clock').textContent = clockText();
   };
   const toggleHelp = (/** @type {boolean|undefined} */ force = undefined) => { $('helpOverlay').hidden = force === undefined ? !$('helpOverlay').hidden : !force; };
   $('uiToggle').addEventListener('click', togglePanelMode);
   $('hidePanel').addEventListener('click', toggleHide);
   $('fullscreen').addEventListener('click', toggleFullscreen);
   $('snapshot').addEventListener('click', snapshot);
+  $('record').addEventListener('click', record);
   $('help').addEventListener('click', () => toggleHelp());
   $('helpClose').addEventListener('click', () => { $('helpOverlay').hidden = true; });
   $('resetView').addEventListener('click', () => { store.clear(); location.href = location.pathname; });
   $('cancel').addEventListener('click', () => {
+    if (recording) { recCancel = true; return; }
     cancelled = true;
     runId++;
     pipeline.cancel();
@@ -741,7 +783,7 @@ async function main() {
     keys: {
       ' ': () => { controls.set('play', !state.play); $('clock').textContent = clockText(); },
       f: toggleFullscreen, h: toggleHide, s: snapshot, e: togglePanelMode,
-      r: () => { $('status').textContent = 'video recording comes with export (Stage 1B B9)'; },
+      r: record,
       c: () => { controls.set('compare', state.compare === 'off' ? 'split' : 'off'); if (state.compare !== 'off' && !stash) stash = Object.fromEntries(SIDE_KEYS.map((k) => [k, otherFamily(state)[k]])); layoutCompare(); run(true); },
       b: () => {
         if (state.compare === 'off') return;
@@ -757,7 +799,7 @@ async function main() {
   const animate = (/** @type {number} */ now) => {
     const dts = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    const noisy = state.play && noise && state.sigmaN > 0 && !state.timeAvg && state.view === 'emission' || state.play && state.view === 'noise'
+    const noisy = !recording && state.play && noise && state.sigmaN > 0 && !state.timeAvg && state.view === 'emission' || state.play && state.view === 'noise'
       || state.play && state.lightcurve && state.view === 'emission';
     if (noisy) {
       // B8: with physical units, "real time" runs the clock at 1 s per s, i.e. 1 / (GM/c^3) M per s
@@ -767,7 +809,7 @@ async function main() {
     }
     // no animation frames while a trace runs: redrawing the canvas at 60 fps competes with the trace tiles for the
     // GPU (up to 3x slower traces on integrated graphics, M9); the progress callback still draws each finished tile
-    if ((noisy || (state.compare === 'blink' && !blinkManual)) && !pipeline.busy) draw();
+    if ((noisy || (state.compare === 'blink' && !blinkManual)) && !pipeline.busy && !recording) draw();
     updateLightCurve();
     requestAnimationFrame(animate);
   };
@@ -788,6 +830,8 @@ async function main() {
     tier: () => tierNow,
     /** the state of a compare side (B7) */
     side: (/** @type {'A'|'B'} */ sd) => ({ ...sideState(sd) }),
+    /** B9: the snapshot PNG bytes (tests) */
+    snapshotBytes: () => snapshotBytes(),
     /** B8: the light-curve samples (t, total, n = 1, n = 2, n >= 3) and the last inspected rays */
     lightCurve: () => lcSeries.map((x) => [...x]),
     inspected: () => inspected.map((r) => ({ i: r.i, j: r.j, cpu: r.cpu, gpu: r.gpu })),
