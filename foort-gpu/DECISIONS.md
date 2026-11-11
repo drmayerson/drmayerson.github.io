@@ -442,3 +442,4 @@ non-trivial implementation choice.
   - **Attachments:** 6-7 are allocated only for programs with compaction or refinement.
   - **Levels:** made on first use; a trace frees the strides it does not use.
   - **Cache:** it takes the textures of a finished trace instead of copying them, and a restored view shows the cached textures directly. A freed entry that is still on screen is deleted when its level goes. Entries larger than half the budget are not cached, except compare sides.
+- 2026-11-11 — **Review packages 1-3 merged to main** (user: "Merge to main").
