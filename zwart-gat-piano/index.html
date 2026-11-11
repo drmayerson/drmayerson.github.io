@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Zwart-gat-piano</title>
+<meta name="description" content="Speel piano op een reuzezwart gat: een sterrenpaar vlak bij de lichtring laat het zwarte gat meezingen op zijn eigen tonen. Vind de verborgen tonen en ontdek massa en draaiing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* One-screen exhibit, dark stage look shared with chirp-karaoke. Gold = your object, violet = black hole, cyan = ET / reference. */
+:root{
+  --ink:#090c14; --panel:#111626; --panel-2:#171d31; --line:#26304a;
+  --fg:#e9edf6; --muted:#8e98b3; --bell:#ffb547; --bh:#a98cff; --ref:#62d6ff;
+  --good:#7ee2a8; --warn:#ffcf6b; --bad:#ff8a7a;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:14px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) 28px max(16px,env(safe-area-inset-left,0px))}
+[hidden]{display:none!important}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,4vw,46px);letter-spacing:-.02em;margin:0;line-height:1}
+h1 .hl{color:var(--bell)}
+.tag{color:var(--muted);margin:0;max-width:64ch;text-wrap:pretty}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;font:500 13px var(--f-body);color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+:focus-visible{outline:2px solid var(--ref);outline-offset:2px}
+.home{color:var(--muted);font-size:13px;text-decoration:none}
+.home:hover{color:var(--fg)}
+.expl{margin:0;color:var(--muted);font-size:14px;max-width:115ch;text-wrap:pretty}
+.expl b{color:var(--fg);font-weight:600}
+main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+.stage,.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.stage{overflow:hidden}
+.cbox{position:relative;width:100%;height:clamp(240px,40vh,440px)}
+.cbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.badge{position:absolute;left:12px;top:10px;font:500 12px var(--f-mono);color:var(--muted);background:color-mix(in srgb,var(--ink) 70%,transparent);padding:3px 8px;border-radius:6px;pointer-events:none}
+.deck{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.big{all:unset;cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;gap:12px;background:var(--bell);color:#1a1205;border-radius:999px;padding:14px 26px 14px 16px;font:700 19px var(--f-display)}
+.big .dot{width:30px;height:30px;border-radius:50%;background:#1a1205;display:grid;place-items:center}
+.big .dot::after{content:"";width:12px;height:12px;border-radius:50%;background:var(--bell)}
+.big.on{background:#ff6b5a}
+.big.on .dot::after{background:#ff6b5a}
+@media (prefers-reduced-motion:no-preference){.big.on{animation:pulse 1s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 10px color-mix(in srgb,#ff6b5a 25%,transparent)}}
+.big small{display:block;font:500 12px var(--f-body);opacity:.75}
+.btn{all:unset;cursor:pointer;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font:500 14px var(--f-body);color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.exs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.exs .lbl{color:var(--muted);font-size:13px;margin-right:2px}
+.level{width:110px;height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden}
+.level span{display:block;height:100%;width:0;background:var(--good)}
+.msg{flex-basis:100%;margin:0;color:var(--warn);font-size:14px}
+.msg:empty{display:none}
+.note{margin:0;padding:10px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.card{padding:18px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font:500 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.headline{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,2.3vw,30px);line-height:1.12;margin:4px 0 0;text-wrap:balance}
+.headline .n{color:var(--bh)}
+.headline.bad .n{color:var(--bad)}
+.sub{margin:6px 0 0;color:var(--muted);font-size:14px;text-wrap:pretty}
+.sub b{color:var(--fg);font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.num{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.num .k{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.num .v{font:500 24px/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.num .v.bell{color:var(--bell)} .num .v.bh{color:var(--bh)}
+.num .h{font-size:12.5px;color:var(--muted)}
+.block{display:flex;flex-direction:column;gap:6px}
+.block h3{margin:0;font:600 15px var(--f-body)}
+.plays{display:flex;flex-wrap:wrap;gap:8px}
+.sim{font:500 10.5px var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:6px;text-transform:uppercase;letter-spacing:.05em;vertical-align:middle}
+svg text{font-family:var(--f-mono)}
+.hair{padding:12px 14px;border-radius:12px;border:1px dashed var(--line);font-size:14px;color:var(--muted)}
+.hair b{color:var(--fg)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:0 18px}
+summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
+.phys{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;padding-bottom:18px}
+.phys h4{margin:0 0 6px;font:600 14px var(--f-body)}
+.phys p,.phys li{color:var(--muted);font-size:13.5px;max-width:72ch}
+.phys ul{margin:0;padding-left:18px}
+.phys a{color:var(--ref)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font:400 13px var(--f-mono);font-variant-numeric:tabular-nums;margin:0}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+/* piano */
+.sliders{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;padding:14px 16px;border-top:1px solid var(--line)}
+@media (max-width:640px){.sliders{grid-template-columns:1fr}}
+.sl label{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;color:var(--muted)}
+.sl label b{color:var(--fg);font:500 13.5px var(--f-mono)}
+.sl input{width:100%;accent-color:var(--bh)}
+.scene{width:100%;aspect-ratio:16/10;display:block;border-radius:12px;background:#05070d}
+.paper{font-size:13.5px;color:var(--muted)}
+.paper a{color:var(--ref)}
+.gamebar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+.found{font:500 13px var(--f-mono);color:var(--muted)}
+.found b{color:var(--bh)}
+.btn.primary{background:var(--bh);color:#140d2a;border-color:var(--bh);font-weight:600}
+.btn[disabled]{opacity:.4;cursor:default}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1 id="t-title"></h1>
+      <p class="tag" id="t-tag"></p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Modus" id="modeSeg">
+        <button data-m="piano" aria-pressed="true" id="m-piano"></button>
+        <button data-m="ring" aria-pressed="false" id="m-ring"></button>
+      </div>
+      <div class="seg" role="group" aria-label="Taal" id="langSeg">
+        <button data-l="nl" aria-pressed="true">NL</button>
+        <button data-l="en" aria-pressed="false">EN</button>
+      </div>
+      <a class="home" href="../" id="t-home"></a>
+    </div>
+  </header>
+  <p class="expl" id="expl"></p>
+
+  <!-- ================= RING MODE ================= -->
+  <main id="ringView" hidden>
+    <section class="stage" aria-label="Opname">
+      <div class="cbox"><canvas id="cv"></canvas><div class="badge" id="badge"></div></div>
+      <div class="deck">
+        <button class="big" id="listen" type="button"><span class="dot"></span><span><span id="t-listen"></span><small id="t-listen2"></small></span></button>
+        <div class="level" aria-hidden="true"><span id="lvl"></span></div>
+        <div class="exs"><span class="lbl" id="t-ex"></span>
+          <button class="btn sm" data-ex="glass"></button>
+          <button class="btn sm" data-ex="bell"></button>
+          <button class="btn sm" data-ex="wood"></button>
+          <button class="btn sm" data-ex="box"></button>
+          <button class="btn sm" data-ex="gw150914"></button>
+        </div>
+        <p class="msg" id="msg" role="status"></p>
+      </div>
+      <p class="note" id="note"></p>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <div>
+        <p class="eyebrow" id="r-lead"></p>
+        <p class="headline" id="r-head"></p>
+        <p class="sub" id="r-sub"></p>
+      </div>
+      <div class="two">
+        <div class="num"><div class="k" id="k-f"></div><div class="v bell" id="v-f">–</div><div class="h" id="h-f"></div></div>
+        <div class="num"><div class="k" id="k-n"></div><div class="v bell" id="v-n">–</div><div class="h" id="h-n"></div></div>
+        <div class="num"><div class="k" id="k-m"></div><div class="v bh" id="v-m">–</div><div class="h" id="h-m"></div></div>
+        <div class="num"><div class="k" id="k-s"></div><div class="v bh" id="v-s">–</div><div class="h" id="h-s"></div></div>
+      </div>
+      <div class="block">
+        <p class="eyebrow" id="t-ladder"></p>
+        <svg id="ladder" viewBox="0 0 600 120" width="100%" role="img" aria-label="ring ladder"></svg>
+        <div class="plays"><button class="btn sm" id="clearHist" type="button"></button></div>
+      </div>
+      <div class="hair" id="hair" hidden></div>
+      <div class="block">
+        <div class="plays">
+          <button class="btn" id="p-you" type="button"></button>
+          <button class="btn" id="p-bh" type="button"></button>
+          <button class="btn" id="p-real" type="button"></button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= PIANO MODE ================= -->
+  <main id="pianoView">
+    <section class="stage" aria-label="Zwart-gat-piano">
+      <div class="gamebar">
+        <div class="seg" role="group" aria-label="Spel" id="gameSeg">
+          <button data-g="myst" aria-pressed="true" id="g-myst"></button>
+          <button data-g="free" aria-pressed="false" id="g-free"></button>
+        </div>
+        <span class="found" id="found"></span>
+      </div>
+      <div class="cbox" style="height:clamp(300px,50vh,540px)"><canvas id="pc" style="touch-action:none"></canvas><div class="badge" id="pbadge"></div></div>
+      <div class="sliders" id="freeCtl" hidden>
+        <div class="sl"><label for="sM"><span id="t-mass"></span><b id="vM"></b></label><input id="sM" type="range" min="6.4" max="6.9" step="0.005" value="6.633"></div>
+        <div class="sl"><label for="sJ"><span id="t-spin"></span><b id="vJ"></b></label><input id="sJ" type="range" min="0" max="0.95" step="0.01" value="0.5"></div>
+      </div>
+      <div class="deck">
+        <button class="btn" id="newBH" type="button"></button>
+        <button class="btn" id="reveal" type="button"></button>
+        <button class="btn" id="curveBtn" type="button"></button>
+        <button class="btn" id="sweep" type="button"></button>
+        <p class="msg" id="pmsg" role="status"></p>
+      </div>
+      <p class="note" id="pnote"></p>
+    </section>
+    <section class="card" aria-live="polite">
+      <canvas class="scene" id="scene" aria-hidden="true"></canvas>
+      <div>
+        <p class="eyebrow" id="pr-lead"></p>
+        <p class="headline" id="pr-head"></p>
+        <p class="sub" id="pr-sub"></p>
+      </div>
+      <div class="two">
+        <div class="num"><div class="k" id="pk-f"></div><div class="v bh" id="pv-f">–</div><div class="h" id="ph-f"></div></div>
+        <div class="num"><div class="k" id="pk-p"></div><div class="v bh" id="pv-p">–</div><div class="h" id="ph-p"></div></div>
+      </div>
+      <p class="paper" id="paper"></p>
+    </section>
+  </main>
+
+  <details id="phys">
+    <summary id="t-phys"></summary>
+    <div class="phys">
+      <div><h4 id="t-this"></h4><dl class="kv" id="kv"></dl></div>
+      <div>
+        <h4>Method ("tap an object" mode)</h4>
+        <ul>
+          <li><b>Strike and tone:</b> the recording is cut at the loudest moment. The tone f is the strongest spectral peak (60–6000 Hz) of the decay, with parabolic interpolation.</li>
+          <li><b>Decay:</b> two independent estimates of the amplitude e-folding time τ. (1) Time domain: complex demodulation at f, zero-phase low-pass, straight-line fit of ln|envelope| from the peak down to −45 dB or 4× the noise floor. (2) Frequency domain: half-power width Δf of the peak in the unwindowed, zero-padded spectrum (Lorentzian: Q = f/Δf). We use (1) for Q ≥ 25, otherwise (2). Q ≡ π f τ, the same definition as for quasinormal modes (Q = ω<sub>R</sub>/2ω<sub>I</sub>).</li>
+          <li><b>Ring count:</b> n = Q·ln(1000)/π ≈ 2.2 Q oscillations until the amplitude has dropped by 60 dB.</li>
+          <li><b>Black hole:</b> the fundamental l = m = 2 quasinormal mode, Berti, Cardoso &amp; Will (2006) fits: Mω<sub>R</sub> = 1.5251 − 1.1568(1−χ)<sup>0.1292</sup>, Q = 0.7000 + 1.4187(1−χ)<sup>−0.4990</sup>. Q fixes the spin χ (Q is dimensionless, so it does not care about speed); then f fixes the mass M = Mω<sub>R</sub>/(2π f) in units GM<sub>☉</sub>/c³ = 4.925 µs. Real speed, no time scaling: audio tones are where stellar-mass black holes ring.</li>
+          <li><b>Second tone ("hair" check):</b> strongest other peak above 1.15 f, compared with the l = m = 3 mode of the same black hole (same fits, coefficients 1.8956, −1.3043, 0.1818).</li>
+          <li><b>Mass is in the detector frame</b> (no redshift correction), which is why the GW150914 example comes out near 68 M☉ instead of the source-frame 63 M☉.</li>
+        </ul>
+        <h4 style="margin-top:12px">Method (piano mode)</h4>
+        <ul>
+          <li><b>Notes:</b> the l = m = 2, 3, 4 fundamental (n = 0) Kerr QNMs from the Berti–Cardoso–Will fits (coefficients l = 3: 1.8956, −1.3043, 0.1818 / 0.9000, 2.3430, −0.4810; l = 4: 2.3000, −1.5056, 0.2244 / 1.1929, 3.1191, −0.4825). Mystery black holes: M log-uniform in 2.5–7.9 × 10⁶ M☉, χ uniform in 0–0.90. Free play: χ ≤ 0.95.</li>
+          <li><b>Response (toy, not the paper's calculation):</b> each mode is a driven, damped oscillator with the complex QNM frequency, |χ<sub>l</sub>(ω)| = Ω<sub>l</sub>²/|Ω<sub>l</sub>² − ω² − 2iωω<sub>I,l</sub>|, Ω² = ω<sub>R</sub>² + ω<sub>I</sub>². Modes add in quadrature with weights 1, 0.6, 0.4 (arbitrary; the paper finds l = m modes dominate when the binary's spin points along the equatorial light ring). Peak height ≈ Q, so faster spin = sharper, louder notes.</li>
+          <li><b>Offset:</b> in this toy the loudest key is at √(ω<sub>R</sub>² − ω<sub>I</sub>²), a few % below Re ω. Santos et al. find the flux-at-infinity peak close to but not at Re ω<sub>QNM</sub> for a binary at the light ring, moving to lower frequencies as the binary moves out (their Fig. 7), and losing any clear link to the QNMs by r₀ ≈ 10M (Fig. 8). The toy reproduces only "close to but not at"; the binary is always at the light ring here.</li>
+          <li><b>Not modelled:</b> the m-dependence and denser spectrum of Kerr modes (the paper notes Kerr resonances are sharper but harder to assign), overtones, horizon flux, the binary's orientation, and the geometric (non-resonant) flux peaks.</li>
+          <li><b>Game:</b> a key counts as "found" for mode l when that mode dominates the response and |χ<sub>l</sub>| ≥ 70 % of its peak. Two of three notes unlock the reveal.</li>
+          <li><b>Speed-up</b> ×100 000 in time and frequency (vacuum GR scales exactly with mass, so this is the same as a black hole 10⁵ times lighter). Keyboard A2–C7 (110–2093 Hz) = 1.1–21 mHz real. Orbit of the pair: P = 2/f<sub>GW</sub>, Kepler for 10 + 10 M☉.</li>
+          <li><b>Sound:</b> while a key is held, a soft triangle wave (the pair) plus a sine at the same pitch whose loudness follows the response. On release, a ringdown at the dominant mode's note with its own damping time τ = Q/(π f).</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Please sign off</h4>
+        <ul>
+          <li>The central message: a black hole is the worst bell in the universe. It rings at most ~70 oscillations (Q ≈ 32 at χ = 0.998, the Thorne limit) and only ~5 when it does not spin. Everyday objects that "count" as black holes are dull ones (wood, cardboard, a damped glass).</li>
+          <li>Spins above 0.998 are reported as "not allowed by nature" (Thorne limit); spins between 0.998 and 1 are not ruled out by GR itself. Wording?</li>
+          <li>Accuracy of the BCW fits (few % for χ ≲ 0.99; less near extremality), and the l = 3, 4 coefficients used here.</li>
+          <li>Example sounds are computer-made: glass 660 Hz, τ = 1.5 s; small bell with five partials; wood block 900 Hz, Q ≈ 11; cardboard box 250 Hz, Q ≈ 4; GW150914 ringdown 251 Hz, τ = 4 ms (detector frame, from the LVK tests-of-GR paper).</li>
+          <li>Piano: using a driven-oscillator toy instead of the paper's Teukolsky fluxes; weights 1 / 0.6 / 0.4; only l = m = 2–4; binary fixed at the light ring; ×100 000 speed-up; 10 + 10 M☉ pair for the orbit size.</li><li>Wording of the paper summary in the card (piano = light ring, strings = QNMs, binary = tuning fork; strongest at the light ring; offset grows with distance; Kerr notes sharper). Is the "light ring as keyboard" visual (one arc per l) acceptable shorthand? In the paper the keys around the photon ring are the different m/l at large l.</li><li>Reveal text: LISA for supermassive black holes, ET for stellar-mass ringdowns.</li>
+        </ul>
+        <h4 style="margin-top:12px">Sources</h4>
+        <ul>
+          <li>E. Berti, V. Cardoso, C. M. Will, <a href="https://arxiv.org/abs/gr-qc/0512160">Phys. Rev. D 73, 064030 (2006)</a>, QNM fitting formulae.</li>
+          <li>J. S. Santos, V. Cardoso, A. Lupsasca, J. Natário, M. van de Meent, <a href="https://arxiv.org/abs/2601.02468">Resonances in b-EMRIs: playing the black hole piano, arXiv:2601.02468</a>, Phys. Rev. D 113, 064025 (2026).</li>
+          <li>LIGO/Virgo, <a href="https://arxiv.org/abs/1602.03841">Tests of general relativity with GW150914</a> (2016), ringdown.</li>
+          <li>K. S. Thorne, Astrophys. J. 191, 507 (1974), spin limit χ ≈ 0.998.</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+"use strict";
+/* ============================== i18n ============================== */
+const I18N = {
+nl:{
+ title:'Zwart-gat-<span class="hl">piano</span>',
+ tagRing:"Tik op een glas, een bel of een blokje hout. De microfoon meet twee getallen, hoe hoog het klinkt en hoe lang het naklinkt, en zoekt het zwarte gat dat net zo zou klinken.",
+ home:"← alle projecten", mRing:"Tik op een voorwerp", mPiano:"Zwart-gat-piano",
+ explRing:"<b>Een zwart gat is een bel.</b> Als twee zwarte gaten botsen, trilt het nieuwe zwarte gat na, zoals een bel na een klap. Uit de <b>toonhoogte</b> volgt de massa, uit <b>hoe lang het naklinkt</b> de draaiing. Meer heeft een zwart gat niet: twee getallen beschrijven het helemaal. Kun jij iets vinden dat klinkt als een zwart gat?",
+ listen:"Luister", listen2:"en tik dan op je voorwerp", listening:"Ik luister… tik maar!", ex:"Of probeer:",
+ exGlass:"Wijnglas", exBell:"Belletje", exWood:"Blokje hout", exBox:"Kartonnen doos", exGW:"GW150914",
+ badgeMic:"JOUW KLAP", badgeEx:"VOORBEELD · door de computer gemaakt", badgeNone:"NOG NIETS GEHOORD",
+ noteRing:"Goud: jouw geluid en hoe snel het uitsterft. Paars: een zwart gat met dezelfde toon. Het paarse gebied toont alle zwarte gaten, van niet draaiend (sterft het snelst uit) tot zo snel draaiend als de natuur toelaat.",
+ lead:"Als dit een zwart gat was…", leadNone:"Klaar om te luisteren",
+ headNone:"Tik op iets en ontdek welk zwart gat zo klinkt",
+ subNone:"Tip: laat het voorwerp vrij trillen en houd het dicht bij de microfoon.",
+ headOk:'Dit klinkt als een zwart gat van <span class="n">{M}</span> zonnen',
+ subOk:"Een toon van <b>{f}</b> die na <b>{n} trillingen</b> stil is. Zo klinkt een zwart gat dat {M} keer zo zwaar is als de zon en draait op <b>{pct}%</b> van het maximum.",
+ headLong:'Geen enkel zwart gat <span class="n">zingt zo lang na</span>',
+ subLong:"Jouw geluid trilde nog <b>{n} keer</b> na. Een zwart gat stopt na hooguit zo'n <b>{nmax}</b> trillingen, zelfs als het zo snel draait als de natuur toelaat. Zwarte gaten zijn de slechtste bellen van het heelal! Probeer het te dempen: leg een vinger op het glas, of tik op iets doffers.",
+ headShort:'Te dof voor <span class="n">een zwart gat</span>',
+ subShort:"Het geluid was al na <b>{n} trillingen</b> weg. Zelfs een zwart gat dat helemaal niet draait, trilt nog zo'n <b>{nmin}</b> keer na. Probeer iets dat net iets langer klinkt.",
+ headNoTone:"Ik hoorde geen duidelijke toon", subNoTone:"Probeer een korte, heldere tik dicht bij de microfoon.",
+ kf:"Toonhoogte", hf:"hoe hoog", kn:"Naklinken", hn:"trillingen tot stil",
+ km:"Massa", hm:"× de zon", ks:"Draaiing", hs:"van 0 (stil) tot 1 (maximum)",
+ hmLong:"als het zo snel draaide als mag", hsLong:"nodig: meer dan de natuur toelaat",
+ hsShort:"zelfs bij 0 te dof",
+ ladder:"Hoe lang klinkt het na? (trillingen tot stil)", zone:"zwarte gaten", today:"vandaag geprobeerd",
+ clear:"Wis vandaag", pYou:"▶ Jouw geluid", pBH:"▶ Als zwart gat", pReal:"▶ Echt zwart gat (GW150914)",
+ hairOk:"<b>Tweede toon.</b> Jouw voorwerp heeft een tweede toon op <b>×{r}</b> van de grondtoon. Een zwart gat met deze draaiing zou die op <b>×{rbh}</b> hebben. Dat klopt toevallig bijna!",
+ hairNo:"<b>Tweede toon.</b> Jouw voorwerp heeft een tweede toon op <b>×{r}</b> van de grondtoon. Een zwart gat met deze draaiing zou die op <b>×{rbh}</b> hebben. Dat klopt niet: jouw voorwerp heeft “haar”. Precies zo zal de Einstein Telescope testen of zwarte gaten echt zo kaal zijn als Einstein voorspelt.",
+ mic:"De microfoon is hier niet beschikbaar. Geef je browser toegang tot de microfoon, of probeer een voorbeeld.",
+ noHit:"Geen tik gehoord. Probeer opnieuw, wat luider of dichterbij.",
+ fmtHz:"{x} Hz", sim:"nagebootst",
+ /* piano */
+ tagPiano:"Speel piano op een reuzezwart gat. Een sterrenpaar vlak bij de lichtring speelt de toetsen; raak je een eigen toon van het zwarte gat, dan zingt het luid mee.",
+ explPiano:"<b>Een zwart gat is een piano.</b> Rond een zwart gat kan licht in een cirkel blijven draaien: de lichtring. Daar zitten de eigen tonen van het zwarte gat, zijn snaren. Een klein sterrenpaar vlak bij die ring is de vinger die speelt: elke toets laat het paar een zwaartekrachtgolf met een andere toonhoogte uitzenden. Raak je een eigen toon, dan zingt het zwarte gat luid mee. Alles 100 000 keer versneld, zodat je het kunt horen.",
+ gMyst:"Raad het zwarte gat", gFree:"Vrij spelen",
+ newBH:"🎲 Nieuw geheim zwart gat", reveal:"Wie ben ik?", showCurve:"Spiek: toon de curve", hideCurve:"Verberg de curve", sweep:"▶ Glij over alle toetsen",
+ mass:"Massa", spin:"Draaiing (0 = stil, 1 = maximum)", million:"miljoen", sgr:"zoals Sgr A* in de Melkweg",
+ pbadge:"VERSNELD ×100 000 · vereenvoudigd model",
+ pnoteMyst:"Dit zwarte gat heeft drie verborgen tonen. Speel toetsen: hoe hoger het paarse staafje, hoe harder het zwarte gat meezingt. Vind er minstens twee en ontdek wie het is.",
+ pnoteFree:"De paarse curve toont hoe hard het zwarte gat meezingt bij elke toon. De blauwe streepjes zijn zijn eigen tonen (l = 2, 3, 4). Laat het sneller draaien: de tonen worden scherper en luider, en schuiven omhoog.",
+ found:"Gevonden: <b>{n}</b> van 3 tonen · {k} tikken",
+ prLead:"Het sterrenpaar speelt", prHeadIdle:"Speel een toets",
+ prSubIdleMyst:"Zoek de toetsen waarop het zwarte gat het luidst terugzingt. Na het loslaten hoor je het kort natrillen op zijn eigen toon.",
+ prSubIdleFree:"Speel een toets of glij over het klavier. Kijk waar de curve piekt.",
+ prHead:'Het zwarte gat zingt <span class="n">{x}× zo luid</span> mee',
+ prSubNew:"Raak! Dit is een eigen toon van het zwarte gat (l = {l}). Hij licht nu op in de lichtring.",
+ prSubOld:"Die toon (l = {l}) had je al. Zoek er nog een.",
+ prSubWarm:"Warm! Het zwarte gat zingt al wat mee. Probeer een toets ernaast.",
+ prSubCold:"Koud. Hier zingt het zwarte gat nauwelijks mee.",
+ prSubRes:"Dit is bijna een eigen toon van het zwarte gat (l = {l}). Let op: de luidste toets zit vlak naast het streepje, niet er precies op. Dat zien Santos en collega's ook in hun volledige berekening.",
+ prSubOff:"Hier zingt het zwarte gat nauwelijks mee. Zoek een toon dichter bij een streepje.",
+ needTwo:"Vind eerst minstens twee tonen.",
+ revLead:"Ontmaskerd!", revHead:'Ik ben een zwart gat van <span class="n">{M} miljoen zonnen</span>',
+ revSub:"Ik draai op <b>{pct}%</b> van het maximum. Je vond {n} van mijn tonen in {k} tikken. De hoogte van de tonen verraadt mijn massa, hoe scherp ze zijn mijn draaiing: met twee getallen ken je een zwart gat helemaal. Zo wil de ruimtedetector LISA de reuzezwarte gaten leren kennen, en de Einstein Telescope de kleinere zwarte gaten uit botsingen.",
+ pkf:"Echte golffrequentie", phf:"versneld: {x} Hz", pkp:"Omloop van het sterrenpaar", php:"twee sterren van 10 zonnen, {a} km uit elkaar",
+ paper:'Gebaseerd op <a href="https://arxiv.org/abs/2601.02468">Santos, Cardoso, Lupsasca, Natário &amp; van de Meent (2026)</a>. Zij beschrijven een reuzezwart gat als een piano: zijn eigen tonen horen bij licht dat rond de lichtring cirkelt (de snaren), en de lichtring op foto’s van zwarte gaten is eigenlijk het klavier. Een klein sterrenpaar is de stemvork die speelt. Het zwarte gat zingt het hardst mee als het paar op de lichtring zit, bij een frequentie dicht bij maar niet precies op een eigen toon; hoe verder het paar weg zit, hoe groter dat verschil. Een draaiend zwart gat heeft scherpere tonen. Reuzezwarte gaten zingen in tonen van een paar millihertz: het domein van de toekomstige ruimtedetector LISA. Dit scherm gebruikt een sterk vereenvoudigd model.',
+ phys:"Voor fysici: wat wordt er berekend, en wat moet je goedkeuren", thisOne:"Deze meting",
+ min:"min", h:"u"
+},
+en:{
+ title:'Black hole <span class="hl">piano</span>',
+ tagRing:"Tap a glass, a bell or a block of wood. The microphone measures two numbers, how high it sounds and how long it rings, and finds the black hole that would sound the same.",
+ home:"← all projects", mRing:"Tap an object", mPiano:"Black hole piano",
+ explRing:"<b>A black hole is a bell.</b> When two black holes collide, the new black hole rings like a bell after a strike. The <b>pitch</b> gives its mass, <b>how long it rings</b> gives its spin. That's all a black hole has: two numbers describe it completely. Can you find something that sounds like a black hole?",
+ listen:"Listen", listen2:"then tap your object", listening:"Listening… tap now!", ex:"Or try:",
+ exGlass:"Wine glass", exBell:"Small bell", exWood:"Wood block", exBox:"Cardboard box", exGW:"GW150914",
+ badgeMic:"YOUR STRIKE", badgeEx:"EXAMPLE · made by the computer", badgeNone:"NOTHING HEARD YET",
+ noteRing:"Gold: your sound and how fast it dies away. Violet: a black hole with the same pitch. The violet zone covers all black holes, from not spinning (dies fastest) to spinning as fast as nature allows.",
+ lead:"If this were a black hole…", leadNone:"Ready to listen",
+ headNone:"Tap something and find out which black hole sounds like it",
+ subNone:"Tip: let the object ring freely and hold it close to the microphone.",
+ headOk:'This sounds like a black hole of <span class="n">{M}</span> suns',
+ subOk:"A tone of <b>{f}</b> that is silent after <b>{n} oscillations</b>. That is how a black hole {M} times heavier than the Sun sounds, spinning at <b>{pct}%</b> of the maximum.",
+ headLong:'No black hole <span class="n">rings that long</span>',
+ subLong:"Your sound kept ringing for <b>{n} oscillations</b>. A black hole stops after at most about <b>{nmax}</b>, even spinning as fast as nature allows. Black holes are the worst bells in the universe! Try damping it: put a finger on the glass, or tap something duller.",
+ headShort:'Too dull for <span class="n">a black hole</span>',
+ subShort:"The sound was gone after <b>{n} oscillations</b>. Even a black hole that doesn't spin at all rings about <b>{nmin}</b> times. Try something that rings a little longer.",
+ headNoTone:"I didn't hear a clear tone", subNoTone:"Try a short, clear tap close to the microphone.",
+ kf:"Pitch", hf:"how high", kn:"Ringing", hn:"oscillations until silent",
+ km:"Mass", hm:"× the Sun", ks:"Spin", hs:"from 0 (still) to 1 (maximum)",
+ hmLong:"if it spun as fast as allowed", hsLong:"needed: more than nature allows",
+ hsShort:"too dull even at 0",
+ ladder:"How long does it ring? (oscillations until silent)", zone:"black holes", today:"tried today",
+ clear:"Clear today", pYou:"▶ Your sound", pBH:"▶ As a black hole", pReal:"▶ Real black hole (GW150914)",
+ hairOk:"<b>Second tone.</b> Your object has a second tone at <b>×{r}</b> the fundamental. A black hole with this spin would have it at <b>×{rbh}</b>. That happens to almost match!",
+ hairNo:"<b>Second tone.</b> Your object has a second tone at <b>×{r}</b> the fundamental. A black hole with this spin would have it at <b>×{rbh}</b>. No match: your object has “hair”. This is exactly how the Einstein Telescope will test whether black holes are as bald as Einstein predicts.",
+ mic:"The microphone isn't available here. Allow microphone access in your browser, or try an example.",
+ noHit:"No tap heard. Try again, a bit louder or closer.",
+ fmtHz:"{x} Hz", sim:"simulated",
+ /* piano */
+ tagPiano:"Play piano on a giant black hole. A star pair close to the light ring plays the keys; hit one of the black hole's own notes and it sings along loudly.",
+ explPiano:"<b>A black hole is a piano.</b> Around a black hole, light can keep circling: the light ring. That is where the black hole's own notes live, its strings. A small pair of stars close to that ring is the finger that plays: each key makes the pair send out a gravitational wave of a different pitch. Hit one of the black hole's own notes and it sings along loudly. Everything is sped up 100 000 times so you can hear it.",
+ gMyst:"Guess the black hole", gFree:"Free play",
+ newBH:"🎲 New mystery black hole", reveal:"Who am I?", showCurve:"Peek: show the curve", hideCurve:"Hide the curve", sweep:"▶ Glide over all keys",
+ mass:"Mass", spin:"Spin (0 = still, 1 = maximum)", million:"million", sgr:"like Sgr A* in the Milky Way",
+ pbadge:"SPED UP ×100 000 · simplified model",
+ pnoteMyst:"This black hole has three hidden notes. Play keys: the taller the violet bar, the louder the black hole sings along. Find at least two and discover who it is.",
+ pnoteFree:"The violet curve shows how loudly the black hole sings along for each note. The blue ticks are its own notes (l = 2, 3, 4). Spin it faster: the notes get sharper and louder, and move up.",
+ found:"Found: <b>{n}</b> of 3 notes · {k} taps",
+ prLead:"The star pair plays", prHeadIdle:"Play a key",
+ prSubIdleMyst:"Find the keys where the black hole sings back the loudest. When you let go you hear it ring briefly on its own note.",
+ prSubIdleFree:"Play a key or glide over the keyboard. Watch where the curve peaks.",
+ prHead:'The black hole sings along <span class="n">{x}× louder</span>',
+ prSubNew:"Hit! This is one of the black hole's own notes (l = {l}). It now lights up on the light ring.",
+ prSubOld:"You already found that note (l = {l}). Look for another one.",
+ prSubWarm:"Warm! The black hole is starting to sing along. Try a neighbouring key.",
+ prSubCold:"Cold. Here the black hole hardly sings along.",
+ prSubRes:"This is close to one of the black hole's own notes (l = {l}). Notice: the loudest key sits just next to the tick, not exactly on it. Santos and colleagues see this in their full calculation too.",
+ prSubOff:"Here the black hole hardly sings along. Look for a note closer to a tick.",
+ needTwo:"Find at least two notes first.",
+ revLead:"Unmasked!", revHead:'I am a black hole of <span class="n">{M} million suns</span>',
+ revSub:"I spin at <b>{pct}%</b> of the maximum. You found {n} of my notes in {k} taps. The pitch of the notes gives away my mass, how sharp they are gives away my spin: with two numbers you know a black hole completely. That is how the space detector LISA aims to get to know giant black holes, and the Einstein Telescope the smaller black holes from collisions.",
+ pkf:"Real wave frequency", phf:"sped up: {x} Hz", pkp:"Orbit of the star pair", php:"two 10-solar-mass stars, {a} km apart",
+ paper:'Based on <a href="https://arxiv.org/abs/2601.02468">Santos, Cardoso, Lupsasca, Natário &amp; van de Meent (2026)</a>. They describe a supermassive black hole as a piano: its own notes belong to light circling the light ring (the strings), and the light ring in black-hole images is really the keyboard. A small star pair is the tuning fork that plays. The black hole sings along most strongly when the pair sits at the light ring, at a frequency close to but not exactly at one of its notes; the farther away the pair, the bigger that difference. A spinning black hole has sharper notes. Giant black holes sing at a few millihertz: the realm of the future space detector LISA. This screen uses a strongly simplified model.',
+ phys:"For physicists: what is computed, and what to sign off", thisOne:"This measurement",
+ min:"min", h:"h"
+}};
+const S = { lang:"nl", mode:"piano", ctx:null, res:null, audio:null, source:null, msgKey:null, hist:[], piano:{f:null, l:null, R:null, src:null} };
+const $ = id => document.getElementById(id);
+const T = (k, v) => { let s = I18N[S.lang][k] ?? I18N.en[k] ?? k; if (v) for (const [a,b] of Object.entries(v)) s = s.split("{"+a+"}").join(b); return s; };
+const loc = () => S.lang==="nl" ? "nl-BE" : "en-US";
+const nf = (x, d=0) => Number(x).toLocaleString(loc(), {minimumFractionDigits:d, maximumFractionDigits:d});
+const sig = (x, n=2) => { if (!isFinite(x)) return "–"; const d = Math.max(0, n-1-Math.floor(Math.log10(Math.abs(x)||1))); return nf(Number(x.toPrecision(n)), Math.min(d,6)); };
+const LS = "zwart-gat-bel-";
+const lsGet = (k, d) => { try { const v = localStorage.getItem(LS+k); return v==null ? d : JSON.parse(v); } catch(e){ return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(LS+k, JSON.stringify(v)); } catch(e){} };
+
+/* ============================== black-hole physics ============================== */
+const TSUN = 4.925490947e-6; // G M_sun / c^3 in s
+// Berti, Cardoso & Will 2006, fundamental (n=0) l=m modes: M*omega_R = f1+f2(1-j)^f3 ; Q = q1+q2(1-j)^q3
+const QNM = { 2:{f:[1.5251,-1.1568,0.1292], q:[0.7000,1.4187,-0.4990]},
+              3:{f:[1.8956,-1.3043,0.1818], q:[0.9000,2.3430,-0.4810]},
+              4:{f:[2.3000,-1.5056,0.2244], q:[1.1929,3.1191,-0.4825]} };
+const MwR = (l,j) => { const c=QNM[l].f; return c[0]+c[1]*Math.pow(1-j,c[2]); };
+const Qof = (l,j) => { const c=QNM[l].q; return c[0]+c[1]*Math.pow(1-j,c[2]); };
+const fQNM = (l,j,M) => MwR(l,j)/(2*Math.PI*M*TSUN);
+const J_MAX = 0.998;                 // Thorne limit
+const Q_MIN = Qof(2,0), Q_MAX = Qof(2,J_MAX);
+const N60 = Q => Q*Math.log(1000)/Math.PI;   // oscillations to -60 dB
+function spinFromQ(Q){ const c=QNM[2].q; if (Q<=c[0]+c[1]) return 0; return 1 - Math.pow((Q-c[0])/c[1], 1/c[2]); }
+function bhFromRing(f, Q){
+  const jRaw = spinFromQ(Q);
+  const kind = Q < Q_MIN*0.97 ? "short" : Q > Q_MAX*1.03 ? "long" : "ok";
+  const j = Math.min(Math.max(jRaw,0), J_MAX);
+  const M = MwR(2,j)/(2*Math.PI*f*TSUN);
+  return { kind, jRaw, j, M, ratio33: MwR(3,j)/MwR(2,j) };
+}
+
+/* ============================== DSP ============================== */
+function fft(re, im){
+  const n=re.length;
+  for (let i=1,j=0;i<n;i++){ let bit=n>>1; for(;j&bit;bit>>=1) j^=bit; j^=bit; if(i<j){ let t=re[i];re[i]=re[j];re[j]=t; t=im[i];im[i]=im[j];im[j]=t; } }
+  for (let len=2; len<=n; len<<=1){ const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang);
+    for (let i=0;i<n;i+=len){ let cr=1, ci=0;
+      for (let k=0;k<len/2;k++){ const a=i+k, b=a+len/2; const tr=re[b]*cr-im[b]*ci, ti=re[b]*ci+im[b]*cr;
+        re[b]=re[a]-tr; im[b]=im[a]-ti; re[a]+=tr; im[a]+=ti; const nr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=nr; } } }
+}
+const nextPow2 = n => 1<<Math.ceil(Math.log2(Math.max(2,n)));
+function lowpassZP(arr, a){ // two one-pole passes forward + backward (zero phase)
+  for (let pass=0; pass<2; pass++){
+    let y=arr[0]; for (let i=0;i<arr.length;i++){ y=(1-a)*arr[i]+a*y; arr[i]=y; }
+    y=arr[arr.length-1]; for (let i=arr.length-1;i>=0;i--){ y=(1-a)*arr[i]+a*y; arr[i]=y; }
+  }
+}
+function median(a){ const b=Float64Array.from(a).sort(); return b.length? b[b.length>>1] : 0; }
+
+// envelope at frequency f by complex demodulation
+function demodEnvelope(x, sr, f, fc){
+  const n=x.length, re=new Float64Array(n), im=new Float64Array(n), w=2*Math.PI*f/sr;
+  for (let i=0;i<n;i++){ re[i]=x[i]*Math.cos(w*i); im[i]=-x[i]*Math.sin(w*i); }
+  const a=Math.exp(-2*Math.PI*fc/sr); lowpassZP(re,a); lowpassZP(im,a);
+  const env=new Float64Array(n); for (let i=0;i<n;i++) env[i]=2*Math.hypot(re[i],im[i]);
+  return env;
+}
+function fitDecay(env, sr, p, noise){
+  const peak=env[p]; let i0=p; while(i0<env.length-1 && env[i0]>peak*0.891) i0++; // -1 dB
+  const floor=Math.max(4*noise, peak*Math.pow(10,-45/20));
+  let i1=i0; while(i1<env.length-1 && env[i1]>floor) i1++;
+  const span=i1-i0; if (span<8) return null;
+  const step=Math.max(1, Math.floor(span/2000));
+  let sx=0,sy=0,sxx=0,sxy=0,m=0;
+  for (let i=i0;i<=i1;i+=step){ const t=(i-p)/sr, y=Math.log(env[i]); sx+=t; sy+=y; sxx+=t*t; sxy+=t*y; m++; }
+  const slope=(m*sxy-sx*sy)/(m*sxx-sx*sx), icpt=(sy-slope*sx)/m;
+  if (!(slope<0)) return null;
+  return { tau:-1/slope, icpt, i0, i1, dB:20*Math.log10(peak/floor) };
+}
+function analyzeRing(x, sr){
+  // 1. loudest moment (10 ms energy)
+  const hop=Math.max(1,Math.round(sr*0.005)), win=hop*2; let best=0, bi=0;
+  const E=[]; for (let i=0;i+win<x.length;i+=hop){ let e=0; for(let k=0;k<win;k++) e+=x[i+k]*x[i+k]; E.push(e); if(e>best){best=e;bi=i;} }
+  if (best<=0) return null;
+  // refine to sample of max |x| within that window
+  let s0=bi, mx=0; for (let k=0;k<win;k++){ const v=Math.abs(x[bi+k]); if(v>mx){mx=v;s0=bi+k;} }
+  const pre=x.subarray(0, Math.max(0,s0-Math.round(sr*0.02)));
+  const seg=x.subarray(s0);
+  // 2. spectrum (rectangular, zero padded) of the decay
+  const L=Math.min(seg.length, 1<<17), N=Math.min(1<<18, nextPow2(L*2));
+  const re=new Float64Array(N), im=new Float64Array(N); for (let i=0;i<L;i++) re[i]=seg[i];
+  fft(re,im); const df=sr/N; const P=new Float64Array(N/2); for (let k=0;k<N/2;k++) P[k]=re[k]*re[k]+im[k]*im[k];
+  const kLo=Math.ceil(60/df), kHi=Math.min(N/2-2, Math.floor(6000/df));
+  let kp=kLo, pm=0; for (let k=kLo;k<=kHi;k++) if (P[k]>pm){pm=P[k];kp=k;}
+  const lp=Math.log(P[kp-1]+1e-30), l0=Math.log(P[kp]+1e-30), ln=Math.log(P[kp+1]+1e-30);
+  const dk=0.5*(lp-ln)/(lp-2*l0+ln||1e-12);
+  const f=(kp+(isFinite(dk)?Math.max(-.5,Math.min(.5,dk)):0))*df;
+  // tonal check: peak must stand out from the median power in band
+  const bandMed=median(P.subarray(kLo,kHi)); const prom=10*Math.log10(pm/(bandMed||1e-30));
+  if (!(prom>18)) return { f, tonal:false, prom };
+  // spectral half-power width
+  let kl=kp; while(kl>kLo && P[kl]>pm/2) kl--; let kr=kp; while(kr<kHi && P[kr]>pm/2) kr++;
+  const interp=(ka,kb)=>{ const pa=P[ka], pb=P[kb]; return ka+(pm/2-pa)/((pb-pa)||1e-30)*(kb-ka); };
+  const fwhm=(interp(kr,kr-1)-interp(kl,kl+1))*df;
+  const Qspec = fwhm>0 ? f/fwhm : NaN;
+  // 3. time-domain decay
+  const QsGuess = isFinite(Qspec)? Qspec : 50;
+  let fc=f/4; if (QsGuess>40){ const tauG=QsGuess/(Math.PI*f); fc=Math.min(f/4, Math.max(4, 6/(2*Math.PI*tauG))); }
+  const startI=Math.max(0, s0-Math.round(sr*0.02));
+  const xs=x.subarray(startI); const env=demodEnvelope(xs, sr, f, fc);
+  const p0=s0-startI; let p=p0; const pEnd=Math.min(env.length-1, p0+Math.round(sr*0.06)); for (let i=p0;i<=pEnd;i++) if (env[i]>env[p]) p=i;
+  let noise; if (pre.length>sr*0.05){ const envPre=demodEnvelope(pre, sr, f, fc); noise=median(envPre.subarray(Math.floor(envPre.length*0.2))); }
+  else noise=median(env.subarray(Math.floor(env.length*0.9)));
+  const fit=fitDecay(env, sr, p, noise);
+  const Qtime = fit ? Math.PI*f*fit.tau : NaN;
+  let Q, method;
+  if (isFinite(Qtime) && (Qtime>=25 || !isFinite(Qspec))){ Q=Qtime; method="time"; } else { Q=Qspec; method="spectral"; }
+  if (!isFinite(Q)) return { f, tonal:false, prom };
+  // 4. second tone
+  let f2=null; { const kmin=Math.ceil(f*1.15/df), kmax=Math.min(kHi, Math.floor(f*4.5/df)); let b2=0, k2=-1;
+    const sm=Math.max(1,Math.round(3/df));
+    for (let k=kmin+sm;k<kmax-sm;k++){ if (P[k]>b2){ let isMax=true; for(let d=1;d<=sm;d++) if(P[k-d]>P[k]||P[k+d]>P[k]){isMax=false;break;} if(isMax){b2=P[k];k2=k;} } }
+    const hw=isFinite(Qspec)&&Qspec>0? f/Qspec/2 : df; const tail=k=>pm/(1+Math.pow((k*df-f)/hw,2)); // Lorentzian tail of the main peak
+    if (k2>0 && 10*Math.log10(pm/b2)<30 && 10*Math.log10(b2/(bandMed||1e-30))>20 && b2>6*tail(k2) && Q>=5) f2=k2*df; }
+  const trimEnd = Math.min(xs.length, (fit? fit.i1 : p) + Math.round(sr*0.15) + Math.round(Math.max(0.05, 3*Q/(Math.PI*f))*sr));
+  return { f, Q, tau:Q/(Math.PI*f), Qspec, Qtime, method, prom, tonal:true, f2, fit, env, envStart:startI, p, noise, sr,
+           view:{ x:xs, sr, p, end:Math.min(xs.length, trimEnd) } };
+}
+
+/* ============================== synthesis ============================== */
+let seedV=1; const rnd=()=>{ seedV=(seedV*16807)%2147483647; return seedV/2147483647; };
+const gauss=()=>{ let u=0,v=0; while(u===0)u=rnd(); v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+function synthStrike({sr=48000, dur=2.5, pre=0.25, partials, click=0.25, noise=0.002, seed=3}){
+  seedV=seed; const n=Math.round(sr*(dur+pre)), x=new Float32Array(n), i0=Math.round(pre*sr);
+  for (let i=0;i<n;i++) x[i]=noise*gauss();
+  for (const p of partials){ const tau=p.Q/(Math.PI*p.f), w=2*Math.PI*p.f/sr, ph=rnd()*6.28;
+    for (let i=i0;i<n;i++){ const t=(i-i0)/sr; const att=Math.min(1,t/0.0008); x[i]+=p.a*att*Math.exp(-t/tau)*Math.sin(w*(i-i0)+ph); } }
+  for (let i=i0;i<Math.min(n,i0+Math.round(sr*0.004));i++) x[i]+=click*gauss()*Math.exp(-(i-i0)/(sr*0.0008));
+  return {x, sr};
+}
+const EXAMPLES = {
+  glass:  () => synthStrike({dur:3, partials:[{f:660,Q:Math.PI*660*1.5,a:0.5},{f:660*2.32,Q:Math.PI*660*2.32*0.6,a:0.12}]}),
+  bell:   () => synthStrike({dur:3, partials:[{f:1760*0.5,Q:Math.PI*880*1.6,a:0.18},{f:1760,Q:Math.PI*1760*1.2,a:0.45},{f:1760*1.19,Q:Math.PI*2094*0.7,a:0.2},{f:1760*1.5,Q:Math.PI*2640*0.5,a:0.12},{f:1760*2.01,Q:Math.PI*3538*0.35,a:0.1}]}),
+  wood:   () => synthStrike({dur:1, partials:[{f:900,Q:11,a:0.6},{f:900*2.76,Q:14,a:0.15}], click:0.35}),
+  box:    () => synthStrike({dur:1, partials:[{f:250,Q:4,a:0.7},{f:250*1.9,Q:5,a:0.25}], click:0.3}),
+  gw150914:() => synthStrike({dur:1, partials:[{f:251,Q:Math.PI*251*0.004,a:0.7}], click:0.02, noise:0.001})
+};
+function synthRing(f, Q, sr=48000, a=0.6){ const tau=Q/(Math.PI*f), dur=Math.min(4, 0.05+8*tau), n=Math.round(sr*dur), x=new Float32Array(n);
+  for (let i=0;i<n;i++){ const t=i/sr; x[i]=a*Math.min(1,t/0.0008)*Math.exp(-t/tau)*Math.sin(2*Math.PI*f*t); } return {x, sr}; }
+
+/* ============================== audio I/O ============================== */
+function ctx(){ if(!S.ctx) S.ctx=new (window.AudioContext||window.webkitAudioContext)(); if (S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
+let playing=null;
+function play(x, sr){ const c=ctx(); if (playing) try{playing.stop()}catch(e){} const b=c.createBuffer(1,x.length,sr); b.copyToChannel(x,0); const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(); playing=s; }
+let stream=null;
+async function getStream(){ if (stream) return stream; if (!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error("nomic");
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); return stream; }
+
+/* ============================== ring mode: listening ============================== */
+let L = null; // listening state
+async function startListen(){
+  if (L) { stopListen(false); return; }
+  const c=ctx(); try { await getStream(); } catch(e){ S.msgKey="mic"; renderRing(); return; }
+  const src=c.createMediaStreamSource(stream), proc=c.createScriptProcessor(2048,1,1), mute=c.createGain(); mute.gain.value=0;
+  src.connect(proc); proc.connect(mute).connect(c.destination);
+  L = { src, proc, chunks:[], noise:null, hitAt:-1, n:0, sr:c.sampleRate, t0:performance.now() };
+  $("listen").classList.add("on"); $("t-listen").textContent=T("listening"); S.msgKey=null; $("msg").textContent="";
+  proc.onaudioprocess = ev => {
+    const d=new Float32Array(ev.inputBuffer.getChannelData(0)); L.chunks.push(d); L.n+=d.length;
+    let e=0; for (const v of d) e+=v*v; const rms=Math.sqrt(e/d.length);
+    $("lvl").style.width = Math.min(100, 400*rms)+"%";
+    if (L.hitAt<0){
+      L.noise = L.noise==null ? rms : 0.9*L.noise+0.1*Math.min(rms, L.noise*3);
+      const preKeep=Math.ceil(0.4*L.sr/2048)+1; while (L.chunks.length>preKeep){ L.n-=L.chunks[0].length; L.chunks.shift(); }
+      if (rms > Math.max(0.015, 6*L.noise) && performance.now()-L.t0>250) L.hitAt=L.n;
+      if (performance.now()-L.t0>12000){ stopListen(false); S.msgKey="noHit"; renderRing(); }
+    } else if (L.n - L.hitAt > 3.0*L.sr) stopListen(true);
+  };
+}
+function stopListen(analyze){
+  if (!L) return; const st=L; L=null;
+  st.proc.onaudioprocess=null; try{ st.src.disconnect(); st.proc.disconnect(); }catch(e){}
+  $("listen").classList.remove("on"); $("t-listen").textContent=T("listen"); $("lvl").style.width="0";
+  if (!analyze) return;
+  const x=new Float32Array(st.n); let o=0; for (const c of st.chunks){ x.set(c,o); o+=c.length; }
+  setAudio(x, st.sr, "mic");
+}
+function setAudio(x, sr, source, label){
+  S.audio={x, sr}; S.source=source; S.res=analyzeRing(x, sr); S.msgKey=null;
+  const r=S.res; if (r && r.tonal){ S.hist.push({f:r.f, Q:r.Q, src:source, lab:label||null}); if (S.hist.length>200) S.hist.shift(); lsSet("hist", S.hist); }
+  renderRing();
+}
+
+/* ============================== ring mode: drawing ============================== */
+const C = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function geom(cv){ const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight; if (cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);} return {dpr,w,h}; }
+function drawRing(){
+  const cv=$("cv"), {dpr,w,h}=geom(cv), g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const r=S.res; const padL=54, padR=16, padT=36, padB=34;
+  const pw=w-padL-padR, ph=h-padT-padB;
+  g.font="12px "+C("--f-mono");
+  if (!r || !r.tonal || !r.view){ g.fillStyle=C("--muted"); g.textAlign="center"; g.fillText("· · ·", w/2, h/2); return; }
+  // dB-vs-oscillation-count plot (log x): dimensionless, so a black hole and a wine glass fit on one axis
+  const nMax=Math.max(200, N60(r.Q)*1.6), nMin=0.3;
+  const X = n => padL + Math.log(n/nMin)/Math.log(nMax/nMin)*pw;
+  const Y = dB => padT + (-dB/70)*ph;
+  // grid
+  g.strokeStyle=C("--line"); g.lineWidth=1; g.fillStyle=C("--muted"); g.textAlign="center";
+  for (const n of [1,10,100,1000,1e4,1e5]){ if (n>nMax) break; const xx=X(n); g.beginPath(); g.moveTo(xx,padT); g.lineTo(xx,padT+ph); g.stroke(); g.fillText(nf(n), xx, padT+ph+16); }
+  g.textAlign="right"; for (const d of [0,-20,-40,-60]){ const yy=Y(d); g.beginPath(); g.moveTo(padL,yy); g.lineTo(padL+pw,yy); g.stroke(); g.fillText(d+" dB", padL-6, yy+4); }
+  g.textAlign="center"; g.fillText(S.lang==="nl"?"aantal trillingen na de klap":"oscillations after the strike", padL+pw/2, h-4);
+  // black-hole zone: from Q_MIN to Q_MAX
+  const curve=(Q)=>{ const pts=[]; for (let i=0;i<=200;i++){ const n=nMin*Math.pow(nMax/nMin,i/200); const dB=-20*Math.log10(Math.E)*Math.PI*n/Q; pts.push([X(n),Y(Math.max(-70,dB))]); if (dB<-70) break; } return pts; };
+  const a=curve(Q_MIN), b=curve(Q_MAX);
+  g.beginPath(); a.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); for (let i=b.length-1;i>=0;i--) g.lineTo(b[i][0],b[i][1]); g.closePath();
+  g.fillStyle=color(C("--bh"),0.18); g.fill();
+  g.strokeStyle=C("--bh"); g.lineWidth=1.5; g.setLineDash([4,4]); for (const c of [a,b]){ g.beginPath(); c.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); g.stroke(); } g.setLineDash([]);
+  g.fillStyle=C("--bh"); g.textAlign="left"; g.fillText(T("zone"), X(1.2), Y(-8));
+  // measured envelope (dB) vs oscillation count
+  const env=r.env, sr=r.sr, p=r.p, pk=env[p];
+  g.strokeStyle=color(C("--bell"),0.85); g.lineWidth=2; g.beginPath(); let started=false;
+  const step=Math.max(1, Math.floor(sr/(r.f*8)));
+  for (let i=p;i<env.length;i+=step){ const n=(i-p)/sr*r.f; if (n<nMin) continue; if (n>nMax) break; const dB=20*Math.log10(env[i]/pk); if (dB<-70) break; const xx=X(n), yy=Y(dB); started? g.lineTo(xx,yy) : (g.moveTo(xx,yy), started=true); }
+  g.stroke();
+  // fitted decay line
+  g.strokeStyle=C("--bell"); g.lineWidth=1.2; g.setLineDash([2,3]); const fc=curve(r.Q); g.beginPath(); fc.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y)); g.stroke(); g.setLineDash([]);
+  // label at -60 dB crossing
+  const n60=N60(r.Q); if (n60<nMax){ g.fillStyle=C("--bell"); g.beginPath(); g.arc(X(n60),Y(-60),4,0,7); g.fill(); g.textAlign="left"; g.fillText((S.lang==="nl"?"stil na ":"silent after ")+sig(n60,2), Math.min(X(n60)+8, w-140), Y(-60)-8); }
+  // waveform inset (first few periods), top right
+  const iw=Math.min(240, pw*0.42), ih=58, ix=padL+pw-iw, iy=6;
+  g.fillStyle=color(C("--ink"),0.75); g.fillRect(ix,iy,iw,ih);
+  const v=r.view, nShow=Math.min(v.end-v.p, Math.round(sr*Math.min(10/r.f, 0.05)));
+  let m=0; for (let i=0;i<nShow;i++) m=Math.max(m,Math.abs(v.x[v.p+i])); m=m||1;
+  g.strokeStyle=C("--bell"); g.lineWidth=1.2; g.beginPath();
+  for (let i=0;i<nShow;i++){ const xx=ix+i/nShow*iw, yy=iy+ih/2-v.x[v.p+i]/m*ih*0.45; i?g.lineTo(xx,yy):g.moveTo(xx,yy); } g.stroke();
+}
+function color(hex, a){ const h=hex.replace("#",""); const n=parseInt(h.length===3? h.split("").map(c=>c+c).join(""):h,16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; }
+function drawLadder(){
+  const svg=$("ladder"), W=600, H=120, x0=24, x1=566; const nLo=1, nHi=1e5;
+  const X=n=>x0+Math.log10(Math.max(nLo,Math.min(nHi,n))/nLo)/Math.log10(nHi/nLo)*(x1-x0);
+  let s=`<line x1="${x0}" y1="60" x2="${x1}" y2="60" stroke="${C("--line")}" stroke-width="2"/>`;
+  s+=`<rect x="${X(N60(Q_MIN))}" y="44" width="${X(N60(Q_MAX))-X(N60(Q_MIN))}" height="32" rx="6" fill="${color(C("--bh"),0.25)}" stroke="${C("--bh")}"/>`;
+  s+=`<text x="${(X(N60(Q_MIN))+X(N60(Q_MAX)))/2}" y="38" fill="${C("--bh")}" font-size="12" text-anchor="middle">${T("zone")}</text>`;
+  for (const n of [1,10,100,1000,1e4,1e5]) s+=`<text x="${X(n)}" y="98" fill="${C("--muted")}" font-size="11" text-anchor="middle">${nf(n)}</text><line x1="${X(n)}" y1="56" x2="${X(n)}" y2="64" stroke="${C("--muted")}"/>`;
+  for (const hpt of S.hist.slice(-60, S.res&&S.res.tonal? -1: undefined)) s+=`<circle cx="${X(N60(hpt.Q))}" cy="60" r="4" fill="${color(C("--bell"),0.35)}"/>`;
+  if (S.res && S.res.tonal){ const xx=X(N60(S.res.Q)); s+=`<circle cx="${xx}" cy="60" r="8" fill="${C("--bell")}" stroke="${C("--ink")}" stroke-width="2"/>`; }
+  s+=`<text x="${x1}" y="116" fill="${C("--muted")}" font-size="11" text-anchor="end">● ${T("today")}: ${S.hist.length}</text>`;
+  svg.innerHTML=s;
+}
+function renderRing(){
+  const r=S.res;
+  $("badge").textContent = !r? T("badgeNone") : S.source==="mic"? T("badgeMic") : T("badgeEx");
+  $("msg").textContent = S.msgKey? T(S.msgKey) : "";
+  $("note").textContent=T("noteRing");
+  const set=(id,html)=>{ $(id).innerHTML=html; };
+  const head=$("r-head"); head.classList.remove("bad");
+  ["v-f","v-n","v-m","v-s"].forEach(i=>$(i).textContent="–");
+  $("h-f").textContent=T("hf"); $("h-n").textContent=T("hn"); $("h-m").textContent=T("hm"); $("h-s").textContent=T("hs");
+  $("hair").hidden=true;
+  if (!r){ set("r-lead",T("leadNone")); set("r-head",T("headNone")); set("r-sub",T("subNone")); }
+  else if (!r.tonal){ set("r-lead",T("lead")); set("r-head",T("headNoTone")); set("r-sub",T("subNoTone")); }
+  else {
+    const bh=bhFromRing(r.f, r.Q); r.bh=bh; const n=N60(r.Q);
+    $("v-f").textContent=T("fmtHz",{x:sig(r.f,3)}); $("v-n").textContent=sig(n,2);
+    $("v-m").textContent=sig(bh.M,2);
+    set("r-lead",T("lead"));
+    if (bh.kind==="ok"){
+      $("v-s").textContent=nf(bh.j,2);
+      set("r-head",T("headOk",{M:sig(bh.M,2)}));
+      set("r-sub",T("subOk",{f:T("fmtHz",{x:sig(r.f,3)}), n:sig(n,2), M:sig(bh.M,2), pct:nf(100*bh.j/J_MAX,0)}));
+    } else if (bh.kind==="long"){
+      head.classList.add("bad");
+      const nines=Math.min(12, Math.floor(-Math.log10(Math.max(1e-15,1-bh.jRaw))));
+      $("v-s").textContent = nines>=3 ? "0,"+"9".repeat(nines)+"…" : nf(bh.jRaw,4);
+      if (S.lang==="en") $("v-s").textContent=$("v-s").textContent.replace(",",".");
+      $("h-m").textContent=T("hmLong"); $("h-s").textContent=T("hsLong");
+      set("r-head",T("headLong")); set("r-sub",T("subLong",{n:sig(n,2), nmax:nf(Math.round(N60(Q_MAX)))}));
+    } else {
+      head.classList.add("bad"); $("v-s").textContent="0"; $("h-s").textContent=T("hsShort");
+      set("r-head",T("headShort")); set("r-sub",T("subShort",{n:sig(n,2), nmin:nf(Math.round(N60(Q_MIN)))}));
+    }
+    if (r.f2){ const ratio=r.f2/r.f, rbh=bh.ratio33, ok=Math.abs(ratio/rbh-1)<0.05;
+      $("hair").innerHTML=T(ok?"hairOk":"hairNo",{r:nf(ratio,2), rbh:nf(rbh,2)}); $("hair").hidden=false; }
+  }
+  drawRing(); drawLadder(); renderKV();
+}
+function renderKV(){
+  if (S.mode==="piano"){ const B=pianoBH(); const rows=[["M",sig(B.M,3)+" M☉"],["χ",nf(B.j,2)]];
+    for (const m of B.modes) rows.push(["l = m = "+m.l, sig(m.fr*1000,3)+" mHz → "+sig(m.fa,3)+" Hz · Q = "+sig(m.Q,3)+" · loudest key "+sig(m.fpk,4)+" Hz ("+nf(100*(m.fpk/m.fa-1),1)+" %)"]);
+    if (PZ.game==="myst" && !PZ.revealed) rows.splice(0,2,["M, χ","hidden (mystery)"]);
+    $("kv").innerHTML=rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join(""); return; }
+  const r=S.res, kv=$("kv"); if (!r||!r.tonal){ kv.innerHTML="<dt>–</dt><dd></dd>"; return; }
+  const bh=r.bh||bhFromRing(r.f,r.Q);
+  const rows=[["f",sig(r.f,4)+" Hz"],["τ (amplitude)",(r.tau<0.1? sig(r.tau*1000,3)+" ms" : sig(r.tau,3)+" s")],["Q = π f τ",sig(r.Q,3)],["method",r.method],
+    ["Q (spectral)",isFinite(r.Qspec)?sig(r.Qspec,3):"–"],["Q (time fit)",isFinite(r.Qtime)?sig(r.Qtime,3):"–"],["fit range",r.fit? sig(r.fit.dB,2)+" dB":"–"],
+    ["peak prominence",sig(r.prom,2)+" dB"],["n₆₀ = 2.2 Q",sig(N60(r.Q),3)],["χ (from Q, raw)",bh.jRaw>0.999999? "1 − "+(1-bh.jRaw).toExponential(1) : sig(bh.jRaw,4)],
+    ["χ used",nf(bh.j,3)],["M (detector frame)",sig(bh.M,3)+" M☉"],["BH Q range",sig(Q_MIN,3)+" – "+sig(Q_MAX,3)],["2nd tone",r.f2? sig(r.f2,4)+" Hz (×"+nf(r.f2/r.f,3)+")":"–"],["BH f₃₃/f₂₂",nf(bh.ratio33,3)]];
+  kv.innerHTML=rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("");
+}
+
+/* ============================== piano mode ============================== */
+const SPEED=1e5, MB=10;                 // speed-up factor; mass of each star in the pair (Msun)
+const W_L={2:1, 3:0.6, 4:0.4};          // toy coupling weights per mode
+const KB_LO=110, KB_HI=2093;            // keyboard A2 .. C7 (sped-up Hz)
+const PZ = { game:"myst", myst:null, played:new Map(), found:new Set(), taps:0, showCurve:false, revealed:false, f:null, key:null, R:null, fb:null };
+function newMystery(){ const r1=Math.random(), r2=Math.random();
+  PZ.myst={ M:Math.pow(10, 6.4+0.5*r1), j:Math.round(90*r2)/100 };
+  PZ.played=new Map(); PZ.found=new Set(); PZ.taps=0; PZ.revealed=false; PZ.showCurve=false; PZ.f=null; PZ.key=null; PZ.fb=null; }
+function curBH(){ return PZ.game==="myst" ? PZ.myst : { M:Math.pow(10,+$("sM").value), j:+$("sJ").value }; }
+function pianoBH(){ const {M,j}=curBH();
+  const modes=[2,3,4].map(l=>{ const fr=fQNM(l,j,M), Q=Qof(l,j), fi=fr/(2*Q); const fa=fr*SPEED, fia=fi*SPEED;
+    const fpk=Math.sqrt(Math.max(fa*fa-fia*fia, 1e-6)); return {l, fr, Q, fi, fa, fia, fpk, chiPk:chi(fpk, fa, fia)}; });
+  return {M, j, modes}; }
+function chi(f, fa, fia){ const O2=fa*fa+fia*fia; return O2/Math.hypot(O2-f*f, 2*f*fia); }
+const NORM=Math.hypot(W_L[2],W_L[3],W_L[4]);
+function response(f, B){ let E=0, best=null, bv=-1; const per={};
+  for (const m of B.modes){ const c=chi(f,m.fa,m.fia); per[m.l]=c; const wc=W_L[m.l]*c; E+=wc*wc; if (wc>bv){bv=wc;best=m;} }
+  return { R:Math.sqrt(E)/NORM, mode:best, per }; }
+const fToSemi = f => 12*Math.log2(f/440);
+let keys=[], pgeo=null;
+function curveMax(B){ let m=0; for (let i=0;i<=300;i++){ const f=KB_LO*Math.pow(KB_HI/KB_LO,i/300); m=Math.max(m,response(f,B).R); } return m; }
+function drawPiano(){
+  const cv=$("pc"), {dpr,w,h}=geom(cv), g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const B=pianoBH(), fLo=KB_LO/Math.pow(2,1/24), fHi=KB_HI*Math.pow(2,1/24);
+  const padL=44, padR=12, padT=30, kbH=Math.min(110, h*0.28), padB=kbH+30;
+  const pw=w-padL-padR, ph=h-padT-padB;
+  const X=f=>padL+Math.log(f/fLo)/Math.log(fHi/fLo)*pw;
+  const rMax=curveMax(B); const yTop=Math.max(5, rMax*1.2), yBot=0.25;
+  const Y=R=>padT+(1-Math.log(Math.max(R,yBot)/yBot)/Math.log(yTop/yBot))*ph;
+  pgeo={X, Y, fLo, fHi, padT, ph};
+  g.font="12px "+C("--f-mono");
+  g.strokeStyle=C("--line"); g.fillStyle=C("--muted"); g.textAlign="right"; g.lineWidth=1;
+  for (const R of [0.3,1,3,10,30]){ if (R>yTop) break; const yy=Y(R); g.beginPath(); g.moveTo(padL,yy); g.lineTo(padL+pw,yy); g.stroke(); g.fillText(nf(R,R<1?1:0)+"×", padL-6, yy+4); }
+  const open = PZ.game==="free" || PZ.showCurve || PZ.revealed;
+  // mode ticks: all in free/revealed mode, only found ones while guessing
+  for (const m of B.modes){ if (!open && !PZ.found.has(m.l)) continue; const xx=X(m.fa); if (xx<padL||xx>padL+pw) continue;
+    g.strokeStyle=C("--ref"); g.setLineDash([3,4]); g.beginPath(); g.moveTo(xx,padT); g.lineTo(xx,padT+ph); g.stroke(); g.setLineDash([]);
+    g.fillStyle=C("--ref"); g.textAlign="center"; g.fillText("l = "+m.l, xx, padT-10); }
+  if (open){
+    g.beginPath(); for (let i=0;i<=500;i++){ const f=fLo*Math.pow(fHi/fLo,i/500), xx=X(f), yy=Y(response(f,B).R); i?g.lineTo(xx,yy):g.moveTo(xx,yy); }
+    g.strokeStyle=C("--bh"); g.lineWidth=2.5; g.stroke(); g.lineTo(X(fHi),padT+ph); g.lineTo(X(fLo),padT+ph); g.closePath(); g.fillStyle=color(C("--bh"),0.12); g.fill(); g.lineWidth=1;
+  }
+  // bars for keys played (guess mode)
+  if (PZ.game==="myst"){ const bw=Math.max(4, pw/ (12*Math.log2(fHi/fLo)) * 0.7);
+    for (const [n,R] of PZ.played){ const f=440*Math.pow(2,n/12), xx=X(f); const last=PZ.key===n;
+      g.fillStyle= last? C("--bell") : color(C("--bh"),0.75); g.fillRect(xx-bw/2, Y(R), bw, padT+ph-Y(R)); } }
+  // current marker
+  if (PZ.f && open){ const R=response(PZ.f,B).R, xx=X(PZ.f), yy=Y(R); g.strokeStyle=C("--bell"); g.beginPath(); g.moveTo(xx,padT+ph); g.lineTo(xx,yy); g.stroke(); g.fillStyle=C("--bell"); g.beginPath(); g.arc(xx,yy,6,0,7); g.fill(); }
+  g.strokeStyle=C("--line"); g.beginPath(); g.moveTo(padL,padT+ph); g.lineTo(padL+pw,padT+ph); g.stroke();
+  // keyboard aligned to the log-frequency axis (one semitone = constant width)
+  const ky=h-kbH-6; keys=[];
+  const n0=Math.round(fToSemi(KB_LO)), n1=Math.round(fToSemi(KB_HI));
+  const isBlack=n=>[1,4,6,9,11].includes(((n%12)+12)%12); // n=0 is A
+  const kx=n=>X(440*Math.pow(2,n/12)), sw=kx(n0+1)-kx(n0);
+  const whites=[]; for (let n=n0;n<=n1;n++) if(!isBlack(n)) whites.push(n);
+  whites.forEach((n,i)=>{ const xl= i? (kx(whites[i-1])+kx(n))/2 : kx(n)-sw; const xr= i<whites.length-1? (kx(n)+kx(whites[i+1]))/2 : kx(n)+sw;
+    keys.push({n, f:440*Math.pow(2,n/12), x0:xl, x1:xr, y0:ky, y1:ky+kbH, black:false}); });
+  for (let n=n0;n<=n1;n++) if (isBlack(n)) keys.push({n, f:440*Math.pow(2,n/12), x0:kx(n)-sw*0.42, x1:kx(n)+sw*0.42, y0:ky, y1:ky+kbH*0.6, black:true});
+  const tint=k=>{ if (PZ.game==="myst" && !PZ.revealed){ const R=PZ.played.get(k.n); return R==null? 0 : Math.min(1,R/rMax); } return Math.min(1,response(k.f,B).R/rMax); };
+  for (const k of keys.filter(k=>!k.black)){ const lit=PZ.key===k.n;
+    g.fillStyle= lit? C("--bell") : "#e6e8f0"; g.fillRect(k.x0+0.5,k.y0,k.x1-k.x0-1,k.y1-k.y0);
+    const t=tint(k); if (t>0){ g.fillStyle=color(C("--bh"),0.25+0.65*t); g.fillRect(k.x0+0.5,k.y1-12,k.x1-k.x0-1,12); } }
+  for (const k of keys.filter(k=>k.black)){ const lit=PZ.key===k.n; g.fillStyle= lit? C("--bell") : "#151822"; g.fillRect(k.x0,k.y0,k.x1-k.x0,k.y1-k.y0);
+    const t=tint(k); if (t>0){ g.fillStyle=color(C("--bh"),0.3+0.7*t); g.fillRect(k.x0+1,k.y1-8,k.x1-k.x0-2,7); } }
+  g.fillStyle=C("--muted"); g.textAlign="center"; g.fillText(S.lang==="nl"?"↓ toetsen: toonhoogte van het sterrenpaar":"↓ keys: pitch of the star pair", padL+pw/2, ky-9);
+  g.textAlign="left"; g.fillText(S.lang==="nl"?"hoe hard het zwarte gat meezingt":"how loudly the black hole sings along", padL+4, padT+12);
+}
+// scene: black hole with the light ring as keyboard, star pair at the ring
+let sceneT=0, glow=0;
+function drawScene(){
+  const cv=$("scene"); const {dpr,w,h}=geom(cv), g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  g.fillStyle="#05070d"; g.fillRect(0,0,w,h);
+  const B=pianoBH(); const cx=w/2, cy=h/2, rb=Math.min(w,h)*0.17, rr=rb*1.35;
+  const target = PZ.key!=null && PZ.R ? Math.min(1, Math.log(1+PZ.R)/Math.log(1+12)) : 0; glow += (target-glow)*0.15;
+  for (let i=0;i<6;i++){ const ph=((sceneT*0.5+i/6)%1); const r=rr+ph*Math.min(w,h)*0.5; g.strokeStyle=color(C("--bh"),(0.04+0.55*glow)*(1-ph)); g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); }
+  const grd=g.createRadialGradient(cx,cy,rr*0.8,cx,cy,rr*1.6); grd.addColorStop(0,color(C("--bh"),0.18+0.55*glow)); grd.addColorStop(1,"rgba(0,0,0,0)");
+  g.fillStyle=grd; g.beginPath(); g.arc(cx,cy,rr*1.6,0,7); g.fill();
+  g.fillStyle="#000"; g.beginPath(); g.arc(cx,cy,rb,0,7); g.fill();
+  // light ring = keyboard: three arcs, one per note l = 2,3,4
+  const showAll = PZ.game==="free" || PZ.revealed;
+  B.modes.forEach((m,i)=>{ const a0=-Math.PI/2+i*2*Math.PI/3+0.12, a1=a0+2*Math.PI/3-0.24; const on=showAll||PZ.found.has(m.l);
+    const active = PZ.fb && PZ.fb.l===m.l && PZ.key!=null;
+    g.strokeStyle= on? (active? C("--bell") : C("--bh")) : color(C("--muted"),0.25); g.lineWidth= on? 7:4; g.lineCap="round";
+    g.beginPath(); g.arc(cx,cy,rr,a0,a1); g.stroke();
+    if (on){ const am=(a0+a1)/2; g.fillStyle=C("--fg"); g.font="12px "+C("--f-mono"); g.textAlign="center"; g.fillText("l = "+m.l, cx+(rr+22)*Math.cos(am), cy+(rr+22)*Math.sin(am)+4); } });
+  // the star pair sits at the light ring and orbits each other
+  const ang=sceneT*0.25, bx=cx+rr*Math.cos(ang), by=cy+rr*Math.sin(ang), sp=(PZ.key!=null? 9:3)*sceneT, d=rb*0.13;
+  for (const sgn of [1,-1]){ g.fillStyle=C("--bell"); g.beginPath(); g.arc(bx+sgn*d*Math.cos(sp), by+sgn*d*Math.sin(sp), 4.5, 0, 7); g.fill(); }
+}
+function renderPiano(){
+  const B=pianoBH(), myst=PZ.game==="myst";
+  document.querySelectorAll("#gameSeg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.g===PZ.game));
+  $("g-myst").textContent=T("gMyst"); $("g-free").textContent=T("gFree");
+  $("freeCtl").hidden=myst; $("newBH").hidden=!myst; $("reveal").hidden=!myst; $("curveBtn").hidden=!myst||PZ.revealed; $("sweep").hidden=myst;
+  $("newBH").textContent=T("newBH"); $("reveal").textContent=T("reveal"); $("sweep").textContent=T("sweep");
+  $("curveBtn").textContent=PZ.showCurve? T("hideCurve") : T("showCurve");
+  $("reveal").disabled = PZ.revealed || PZ.found.size<2; $("reveal").classList.toggle("primary", !PZ.revealed && PZ.found.size>=2);
+  $("found").innerHTML = myst? T("found",{n:PZ.found.size, k:PZ.taps}) : "";
+  $("t-mass").textContent=T("mass"); $("t-spin").textContent=T("spin");
+  if (!myst){ $("vM").textContent=sig(B.M/1e6,2)+" "+T("million")+" M☉"+(Math.abs(B.M-4.3e6)<1.5e5? " · "+T("sgr"):""); $("vJ").textContent=nf(B.j,2); }
+  $("pbadge").textContent=T("pbadge"); $("pnote").textContent= myst? T("pnoteMyst") : T("pnoteFree");
+  $("paper").innerHTML=T("paper");
+  const set=(id,h)=>$(id).innerHTML=h;
+  if (myst && PZ.revealed){
+    set("pr-lead",T("revLead")); set("pr-head",T("revHead",{M:sig(B.M/1e6,2)}));
+    set("pr-sub",T("revSub",{pct:nf(100*B.j/J_MAX,0), n:PZ.found.size, k:PZ.taps}));
+  } else if (PZ.f==null){
+    set("pr-lead",T("prLead")); set("pr-head",T("prHeadIdle")); set("pr-sub", myst? T("prSubIdleMyst") : T("prSubIdleFree"));
+  } else {
+    const {R, mode}=response(PZ.f,B); PZ.R=R;
+    set("pr-lead",T("prLead")); set("pr-head",T("prHead",{x:nf(R, R<10?1:0)}));
+    if (myst){ const fb=PZ.fb||{}; set("pr-sub", fb.kind==="new"? T("prSubNew",{l:fb.l}) : fb.kind==="old"? T("prSubOld",{l:fb.l}) : fb.kind==="warm"? T("prSubWarm") : T("prSubCold")); }
+    else set("pr-sub", R>1.4 ? T("prSubRes",{l:mode.l}) : T("prSubOff"));
+  }
+  if (PZ.f!=null){ const fReal=PZ.f/SPEED; $("pv-f").textContent=sig(fReal*1000,2)+" mHz"; $("ph-f").textContent=T("phf",{x:sig(PZ.f,3)});
+    const Porb=2/fReal; $("pv-p").textContent= Porb<3600? sig(Porb/60,2)+" "+T("min") : sig(Porb/3600,2)+" "+T("h");
+    const GM=6.674e-11*1.989e30*2*MB, a=Math.cbrt(GM*Porb*Porb/(4*Math.PI*Math.PI)); $("ph-p").textContent=T("php",{a:nf(Math.round(a/1e6)*1000)}); }
+  else { $("pv-f").textContent="–"; $("pv-p").textContent="–"; $("ph-f").textContent=""; $("ph-p").textContent=""; }
+  $("pk-f").textContent=T("pkf"); $("pk-p").textContent=T("pkp");
+  drawPiano(); renderKV();
+}
+// judging a key in guess mode: "found" when this mode dominates and is at >= 70% of its own peak response
+function judgeKey(f, B){ const {R, mode, per}=response(f,B); const m=mode;
+  const isNote = per[m.l] >= 0.7*m.chiPk && R>1.15;
+  if (isNote){ const kind = PZ.found.has(m.l)? "old" : "new"; PZ.found.add(m.l); return {kind, l:m.l}; }
+  return { kind: R>1.25? "warm":"cold", l:m.l };
+}
+// audio
+let voice=null;
+function noteOn(f, keyN){
+  const c=ctx(); noteOff(true); const B=pianoBH(); const {R, mode}=response(f,B); const rMax=curveMax(B);
+  const o=c.createOscillator(), o2=c.createOscillator(), gn=c.createGain(), g2=c.createGain();
+  o.type="sine"; o.frequency.value=f; o2.type="triangle"; o2.frequency.value=f; // pair (soft triangle) + black hole (sine, loud near resonance)
+  o.connect(gn).connect(c.destination); o2.connect(g2).connect(c.destination);
+  const lvl=0.32*Math.min(1, Math.pow(R/rMax,1.3)), t=c.currentTime;
+  gn.gain.setValueAtTime(0,t); gn.gain.linearRampToValueAtTime(lvl, t+0.03); g2.gain.setValueAtTime(0,t); g2.gain.linearRampToValueAtTime(0.035, t+0.02);
+  o.start(); o2.start(); voice={o, o2, gn, g2, f, R, mode, lvl};
+  PZ.f=f; PZ.key=keyN;
+  if (PZ.game==="myst" && !PZ.revealed){ PZ.taps++; PZ.played.set(keyN, R); PZ.fb=judgeKey(f,B); } else PZ.fb={l:mode.l};
+  renderPiano();
+}
+function noteOff(silent){
+  if (!voice) return; const c=ctx(), v=voice; voice=null; const t=c.currentTime;
+  for (const [o,gn] of [[v.o,v.gn],[v.o2,v.g2]]){ gn.gain.cancelScheduledValues(t); gn.gain.setValueAtTime(gn.gain.value,t); gn.gain.linearRampToValueAtTime(0,t+0.03); o.stop(t+0.05); }
+  if (!silent && v.R>1){ // the black hole rings down on its own note, with its own (sped-up) damping
+    const m=v.mode, tau=m.Q/(Math.PI*m.fa); const o=c.createOscillator(), gn=c.createGain(); o.frequency.value=m.fa; o.connect(gn).connect(c.destination);
+    gn.gain.setValueAtTime(0,t+0.02); gn.gain.linearRampToValueAtTime(Math.min(0.35, v.lvl), t+0.025); gn.gain.setTargetAtTime(0, t+0.025, tau); o.start(t+0.02); o.stop(t+0.06+10*tau); }
+  PZ.key=null; if (S.mode==="piano") renderPiano();
+}
+function keyAt(px,py){ for (const k of keys) if (k.black && px>=k.x0&&px<=k.x1&&py>=k.y0&&py<=k.y1) return k; for (const k of keys) if (!k.black && px>=k.x0&&px<=k.x1&&py>=k.y0&&py<=k.y1) return k; return null; }
+const pc=$("pc"); let down=false;
+pc.addEventListener("pointerdown",e=>{ const r=pc.getBoundingClientRect(); const k=keyAt(e.clientX-r.left,e.clientY-r.top); if(!k) return; e.preventDefault(); down=true; try{pc.setPointerCapture(e.pointerId);}catch(_){} noteOn(k.f,k.n); });
+pc.addEventListener("pointermove",e=>{ if(!down) return; const r=pc.getBoundingClientRect(); const k=keyAt(e.clientX-r.left,e.clientY-r.top); if(k && k.n!==PZ.key) noteOn(k.f,k.n); });
+for (const ev of ["pointerup","pointercancel"]) pc.addEventListener(ev,()=>{ if(down){ down=false; noteOff(false); } });
+let sweepTimer=0;
+$("sweep").onclick=()=>{ clearTimeout(sweepTimer); const ks=keys.slice().sort((a,b)=>a.f-b.f); let i=0; const step=()=>{ if(i>=ks.length){ noteOff(false); return; } noteOn(ks[i].f, ks[i].n); i++; sweepTimer=setTimeout(step, 120); }; step(); };
+document.querySelectorAll("#gameSeg button").forEach(b=>b.onclick=()=>{ PZ.game=b.dataset.g; noteOff(true); PZ.f=null; PZ.fb=null; renderPiano(); });
+$("newBH").onclick=()=>{ noteOff(true); newMystery(); renderPiano(); };
+$("reveal").onclick=()=>{ if (PZ.found.size<2){ $("pmsg").textContent=T("needTwo"); return; } $("pmsg").textContent=""; PZ.revealed=true; PZ.key=null; renderPiano(); };
+$("curveBtn").onclick=()=>{ PZ.showCurve=!PZ.showCurve; renderPiano(); };
+$("sM").oninput=renderPiano; $("sJ").oninput=renderPiano;
+// keyboard play with computer keys (row a s d f …) for testing on a laptop
+function animate(){ sceneT+=1/60; if (S.mode==="piano") drawScene(); requestAnimationFrame(animate); }
+newMystery();
+
+/* ============================== static text & wiring ============================== */
+function renderStatic(){
+  document.documentElement.lang=S.lang;
+  $("t-title").innerHTML=T("title"); $("t-tag").textContent= S.mode==="ring"? T("tagRing") : T("tagPiano"); $("t-home").textContent=T("home");
+  $("m-ring").textContent=T("mRing"); $("m-piano").textContent=T("mPiano");
+  $("expl").innerHTML= S.mode==="ring"? T("explRing") : T("explPiano");
+  $("t-listen").textContent= L? T("listening") : T("listen"); $("t-listen2").textContent=T("listen2"); $("t-ex").textContent=T("ex");
+  const exL={glass:"exGlass",bell:"exBell",wood:"exWood",box:"exBox",gw150914:"exGW"};
+  document.querySelectorAll("[data-ex]").forEach(b=>b.innerHTML=T(exL[b.dataset.ex])+`<span class="sim">${T("sim")}</span>`);
+  $("k-f").textContent=T("kf"); $("k-n").textContent=T("kn"); $("k-m").textContent=T("km"); $("k-s").textContent=T("ks");
+  $("t-ladder").textContent=T("ladder"); $("clearHist").textContent=T("clear");
+  $("p-you").textContent=T("pYou"); $("p-bh").textContent=T("pBH"); $("p-real").innerHTML=T("pReal")+`<span class="sim">${T("sim")}</span>`;
+  $("t-phys").textContent=T("phys"); $("t-this").textContent=T("thisOne");
+  document.querySelectorAll("#langSeg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.l===S.lang));
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.m===S.mode));
+  $("ringView").hidden = S.mode!=="ring"; $("pianoView").hidden = S.mode!=="piano";
+}
+function renderAll(){ renderStatic(); if (S.mode==="ring") renderRing(); else renderPiano(); }
+document.querySelectorAll("#langSeg button").forEach(b=>b.onclick=()=>{ S.lang=b.dataset.l; lsSet("lang",S.lang); renderAll(); });
+document.querySelectorAll("#modeSeg button").forEach(b=>b.onclick=()=>{ S.mode=b.dataset.m; if (L) stopListen(false); noteOff(true); clearTimeout(sweepTimer); renderAll(); });
+$("listen").onclick=()=>startListen();
+document.querySelectorAll("[data-ex]").forEach(b=>b.onclick=()=>{ const o=EXAMPLES[b.dataset.ex](); setAudio(o.x,o.sr,"example",b.dataset.ex); play(o.x,o.sr); });
+$("p-you").onclick=()=>{ if (S.audio) play(S.audio.x, S.audio.sr); };
+$("p-bh").onclick=()=>{ const r=S.res; if (!r||!r.tonal) return; const Q=Math.min(Math.max(r.Q,Q_MIN),Q_MAX); const o=synthRing(r.f,Q); play(o.x,o.sr); };
+$("p-real").onclick=()=>{ const o=synthRing(251, Math.PI*251*0.004); play(o.x,o.sr); };
+$("clearHist").onclick=()=>{ S.hist=[]; lsSet("hist",S.hist); renderRing(); };
+let rz=0; window.addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>{ if(S.mode==="ring") drawRing(); else drawPiano(); }); });
+
+S.lang = lsGet("lang","nl"); if (!I18N[S.lang]) S.lang="nl";
+S.hist = lsGet("hist",[]);
+const q=new URLSearchParams(location.search); if (q.get("mode")==="ring") S.mode="ring"; if (q.get("lang")&&I18N[q.get("lang")]) S.lang=q.get("lang");
+renderAll(); requestAnimationFrame(animate);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ if(S.mode==="ring") drawRing(); else drawPiano(); });
+window.__bell={analyzeRing, synthStrike, EXAMPLES, bhFromRing, spinFromQ, Qof, MwR, fQNM, response, pianoBH, N60, PZ, judgeKey, noteOn, noteOff, newMystery};
+</script>
+</body>
+</html>

@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Samen het heelal opmeten</title>
+<meta name="description" content="Elke bezoeker krijgt één botsing van neutronensterren: uit de luidheid volgt de afstand, uit het sterrenstelsel de roodverschuiving. Samen bouwen we een Hubble-diagram en meten we hoe snel het heelal uitdijt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* One-screen exhibit, dark stage look shared with the other GW apps.
+   Gold = this visitor, violet = the crowd, cyan = gravitational wave, coral/blue = the two rival H0 values. */
+:root{
+  --ink:#090c14; --panel:#111626; --panel-2:#171d31; --line:#26304a;
+  --fg:#e9edf6; --muted:#8e98b3; --me:#ffb547; --crowd:#a98cff; --gw:#62d6ff;
+  --planck:#6fa8ff; --shoes:#ff8a6b; --good:#7ee2a8; --warn:#ffcf6b;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:14px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) 28px max(16px,env(safe-area-inset-left,0px))}
+[hidden]{display:none!important}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,4vw,46px);letter-spacing:-.02em;margin:0;line-height:1}
+h1 .hl{color:var(--crowd)}
+.tag{color:var(--muted);margin:0;max-width:64ch;text-wrap:pretty}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;font:500 13px var(--f-body);color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+:focus-visible{outline:2px solid var(--gw);outline-offset:2px}
+.home{color:var(--muted);font-size:13px;text-decoration:none}
+.home:hover{color:var(--fg)}
+.expl{margin:0;color:var(--muted);font-size:14px;max-width:115ch;text-wrap:pretty}
+.expl b{color:var(--fg);font-weight:600}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:start}
+@media (max-width:960px){main{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-width:0;padding:16px;display:flex;flex-direction:column;gap:12px}
+.steps{display:flex;gap:6px;flex-wrap:wrap}
+.steps span{font:500 12px var(--f-mono);padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.steps span.on{background:var(--me);color:#1a1205;border-color:var(--me)}
+.steps span.done{color:var(--fg);border-color:var(--muted)}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(21px,2.2vw,28px);line-height:1.12;margin:0;text-wrap:balance}
+h2 .n{color:var(--me)}
+.txt{margin:0;color:var(--muted);font-size:14.5px;text-wrap:pretty}
+.txt b{color:var(--fg);font-weight:600}
+.cbox{position:relative;width:100%;height:clamp(230px,36vh,380px);border-radius:12px;overflow:hidden;background:#070a12}
+.cbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.badge{position:absolute;left:10px;top:8px;font:500 11.5px var(--f-mono);color:var(--muted);background:color-mix(in srgb,var(--ink) 70%,transparent);padding:2px 7px;border-radius:6px;pointer-events:none}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.row label{font-size:13.5px;color:var(--muted);min-width:7em}
+.row input[type=range]{flex:1;min-width:160px;accent-color:var(--gw);height:28px}
+.val{font:500 15px var(--f-mono);min-width:7.5em;text-align:right}
+.meter{flex:1;min-width:120px;height:10px;border-radius:5px;background:var(--panel-2);overflow:hidden}
+.meter span{display:block;height:100%;width:0;background:var(--good);transition:width .15s}
+.btn{all:unset;cursor:pointer;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);font:500 14px var(--f-body);color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.go{background:var(--me);color:#1a1205;border-color:var(--me);font:700 17px var(--f-display);padding:12px 22px;border-radius:999px}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn[disabled]{opacity:.4;cursor:default}
+.msg{margin:0;color:var(--warn);font-size:14px}
+.msg:empty{display:none}
+.sim{font:500 10.5px var(--f-mono);color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:6px;text-transform:uppercase;letter-spacing:.05em;vertical-align:middle}
+.dia{position:relative;width:100%;height:clamp(260px,40vh,430px)}
+.dia canvas,.mbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mbox{position:relative;width:100%;height:118px}
+.cbox2{position:relative;width:100%;height:92px}
+.cbox2 canvas{position:absolute;inset:0;width:100%;height:100%}
+.big{font:500 clamp(26px,3vw,38px)/1.1 var(--f-mono);color:var(--crowd);font-variant-numeric:tabular-nums}
+.big small{font-size:.5em;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 12px var(--f-mono);color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.legend i.dot{width:9px;height:9px;border-radius:50%}
+details{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:0 18px}
+summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
+.fac{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:16px}
+.fac p{flex-basis:100%;margin:0;color:var(--muted);font-size:13.5px}
+.phys{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;padding-bottom:18px}
+.phys h4{margin:0 0 6px;font:600 14px var(--f-body)}
+.phys li{color:var(--muted);font-size:13.5px;max-width:72ch}
+.phys ul{margin:0;padding-left:18px}
+.phys a{color:var(--gw)}
+.hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1 id="t-title"></h1><p class="tag" id="t-tag"></p></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Tijdperk" id="eraSeg">
+        <button data-e="ligo" aria-pressed="true" id="e-ligo"></button>
+        <button data-e="et" aria-pressed="false" id="e-et"></button>
+      </div>
+      <div class="seg" role="group" aria-label="Taal" id="langSeg">
+        <button data-l="nl" aria-pressed="true">NL</button>
+        <button data-l="en" aria-pressed="false">EN</button>
+      </div>
+      <a class="home" href="../" id="t-home"></a>
+    </div>
+  </header>
+  <p class="expl" id="expl"></p>
+
+  <main>
+    <section class="card" aria-label="Jouw meting">
+      <div class="steps" id="steps"></div>
+      <h2 id="stTitle"></h2>
+      <p class="txt" id="stText"></p>
+      <div class="cbox"><canvas id="mc"></canvas><div class="badge" id="mbadge"></div></div>
+      <div class="row" id="distRow"><label for="dist" id="t-dist"></label><input id="dist" type="range" min="0" max="1000" value="500"><span class="val" id="distV"></span></div>
+      <div class="row" id="zRow"><label for="zs" id="t-z"></label><input id="zs" type="range" min="0" max="1000" value="0"><span class="val" id="zV"></span></div>
+      <div class="row" id="meterRow"><span class="txt" id="t-match" style="min-width:7em"></span><div class="meter"><span id="meter"></span></div></div>
+      <div class="row">
+        <button class="btn go" id="start" type="button"></button>
+        <button class="btn" id="playChirp" type="button"></button>
+        <button class="btn go" id="lockDist" type="button"></button>
+        <button class="btn go" id="lockZ" type="button"></button>
+        <button class="btn go" id="next" type="button"></button>
+      </div>
+      <p class="msg" id="mmsg" role="status"></p>
+    </section>
+
+    <section class="card" aria-label="Samen" aria-live="polite">
+      <p class="txt" style="font:500 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase" id="t-together"></p>
+      <h2 id="sumHead"></h2>
+      <div class="dia"><canvas id="hd"></canvas></div>
+      <div class="legend" id="legend"></div>
+      <div class="mbox"><canvas id="hm"></canvas></div>
+      <p class="txt" id="sumText"></p>
+      <div class="cbox2"><canvas id="hc"></canvas></div>
+    </section>
+  </main>
+
+  <details id="facBox">
+    <summary id="t-fac"></summary>
+    <div class="fac">
+      <p id="t-facText"></p>
+      <button class="btn sm" id="sim10" type="button"></button>
+      <button class="btn sm" id="revealBtn" type="button"></button>
+      <button class="btn sm" id="resetBtn" type="button"></button>
+      <button class="btn sm" id="exportBtn" type="button"></button>
+      <label class="btn sm" for="importFile" id="t-import"></label><input class="hidden-input" type="file" id="importFile" accept="application/json,.json">
+      <span class="txt" id="truthTxt"></span>
+    </div>
+  </details>
+
+  <details>
+    <summary id="t-phys"></summary>
+    <div class="phys">
+      <div>
+        <h4>What is simulated</h4>
+        <ul>
+          <li><b>Simulated universe.</b> Each data set (one per era) has a secret H<sub>0</sub>, drawn uniformly in 64–76 km/s/Mpc when it is reset (the facilitator can reveal it). Flat ΛCDM with Ω<sub>m</sub> = 0.315 (Planck 2018) fixes the shape of d<sub>L</sub>(z); only H<sub>0</sub> is fitted.</li>
+          <li><b>LIGO–Virgo era:</b> binary neutron stars with a kilonova (bright sirens), uniform in volume between 15 and 160 Mpc. Fractional distance error σ = 0.15 + 0.10·(d/160 Mpc), log-normal (mostly the distance–inclination degeneracy; GW170817 had 43.8 +2.9/−6.9 Mpc).</li>
+          <li><b>Einstein Telescope era:</b> 65 % bright sirens at z ≤ 0.5 (kilonova reach), 35 % dark sirens (binary black holes, no counterpart) at z ≤ 1, both drawn ∝ dV<sub>c</sub>/dz/(1+z). σ = 0.08 + 0.12·z/0.5 (bright) or 0.10 + 0.10 z (dark), plus weak lensing σ<sub>lens</sub> = 0.066[(1−(1+z)<sup>−1/4</sup>)/0.25]<sup>1.8</sup> (Tamanini et al. 2016) in quadrature. Stylized: real ET errors depend on network, sky position, orientation.</li>
+          <li><b>Peculiar velocities:</b> 300 km/s Gaussian added to every galaxy redshift; included in the fit weights as (300 km/s)/(cz).</li>
+          <li><b>Dark sirens:</b> 7 candidate galaxies spread through the GW distance range; the true host is chosen ∝ brightness. A wrong pick gives a wrong redshift, as in reality. Their distance error is inflated ×1.5 in the fit to account for that. (Real dark-siren analyses weight all candidates statistically instead of picking one.)</li>
+        </ul>
+      </div>
+      <div>
+        <h4>What the visitor does, and the fit</h4>
+        <ul>
+          <li><b>Distance:</b> the visitor scales a template until its amplitude matches the (noisy) data. Amplitude ∝ 1/d<sub>L</sub>; the chirp's masses are taken as known. The visitor's distance is what they choose, so sloppy matching adds real scatter. Waveform display and audio are simplified (leading-order chirp).</li>
+          <li><b>Redshift:</b> the visitor drags laboratory lines (Hα, Hβ, [O III], [O II], Ca H&amp;K, Mg b, Na D, …) over the galaxy spectrum on a log-wavelength axis, where a redshift is a pure shift. On "done" the computer refines within ±0.006 in ln(1+z) by cross-correlation and requires a minimum match.</li>
+          <li><b>Fit:</b> weighted mean of ln H<sub>0,i</sub> = ln[c·D(z<sub>i</sub>)/d<sub>i</sub>], D the dimensionless luminosity distance, weights 1/(σ<sub>d,i</sub>² + σ<sub>v,i</sub>²). Error 1/√Σw. Shown with Planck 2018 (67.4 ± 0.5) and SH0ES (Riess et al. 2022, 73.04 ± 1.04).</li>
+          <li><b>Shared:</b> points are stored in this browser (localStorage), so one stand device collects the whole day. Several devices can be merged with export/import. A live multi-device version needs a small backend.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Please sign off</h4>
+        <ul>
+          <li>Random secret H<sub>0</sub> per data set (instead of a fixed 70), and showing it next to the real Planck and SH0ES values.</li>
+          <li>The error model per era (numbers above) and the LIGO-era assumption that every visitor gets a bright siren (in reality there has been one, GW170817).</li>
+          <li>Rates in the text: LIGO–Virgo–KAGRA so far one bright siren (2017); ET of order 10⁵ binary neutron stars per year, with of order 10²–10³ bright sirens per year depending on follow-up (ET Blue Book; ESO white paper Ricciardone et al. 2026).</li>
+          <li>The "events still needed" line: N so that σ(H<sub>0</sub>) ≈ (73.0 − 67.4)/3, scaling the current scatter as 1/√N.</li>
+          <li>Wording of the Hubble-tension sentence.</li>
+        </ul>
+        <h4 style="margin-top:12px">Sources</h4>
+        <ul>
+          <li>LIGO/Virgo et al., <a href="https://arxiv.org/abs/1710.05835">A gravitational-wave standard siren measurement of the Hubble constant</a>, Nature 551, 85 (2017): H<sub>0</sub> = 70 +12/−8.</li>
+          <li>Planck 2018 VI, <a href="https://arxiv.org/abs/1807.06209">A&amp;A 641, A6</a>; Riess et al. 2022, <a href="https://arxiv.org/abs/2112.04510">ApJL 934, L7</a>.</li>
+          <li>B. F. Schutz, Nature 323, 310 (1986), standard sirens.</li>
+          <li>Ricciardone et al., <a href="https://arxiv.org/abs/2601.06017">Probing cosmic expansion and early universe with Einstein Telescope</a> (2026); Abac et al., ET Science Case (Blue Book, 2025).</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+"use strict";
+/* ============================== i18n ============================== */
+const I18N = {
+nl:{
+ title:'Samen het heelal <span class="hl">opmeten</span>', home:"← alle projecten",
+ tag:"Elke bezoeker vangt één botsing in de ruimte. Samen meten we hoe snel het heelal uitdijt.",
+ eLigo:"LIGO–Virgo nu", eEt:"Einstein Telescope",
+ expl:"<b>Het heelal dijt uit:</b> hoe verder een sterrenstelsel, hoe sneller het van ons wegvlucht. Hoe snel precies? Dat getal (de Hubble-constante) is een van de grote raadsels van nu: twee soorten metingen geven 67 en 73. Zwaartekrachtgolven kunnen scheidsrechter spelen. Jij meet één botsing, het publiek samen de rest.",
+ steps:["1 Luister","2 Zoek","3 Meet","4 Jouw stip"],
+ s0T:"Klaar voor jouw botsing?", s0X:"Ergens in het heelal botsen twee neutronensterren. Hun zwaartekrachtgolf is onderweg naar de aarde. Vang hem op en meet hem!",
+ start:"Vang mijn botsing",
+ s1T:"Hoe luid komt de golf aan?", s1X:"Uit hoe snel de toon stijgt, weten we hoe zwaar de sterren zijn, en dus hoe luid de golf <b>echt</b> is. Schuif de afstand tot de blauwe lijn even groot is als het grijze signaal. Hoe stiller hij hier aankomt, hoe verder weg de botsing.",
+ dist:"Afstand", match:"Past het?", play:"▶ Luister naar de chirp", lockDist:"Dit is mijn afstand",
+ tooBig:"De blauwe lijn is nog te groot: de botsing is verder weg.", tooSmall:"De blauwe lijn is nog te klein: de botsing is dichterbij.",
+ s2T:"Uit welk sterrenstelsel?", s2Xb:"Telescopen zoeken het gebied af waar de golf vandaan kwam. Kijk goed: verschijnt er ergens een nieuw lichtpuntje? Dat is de kilonova, de gloed van de botsing. Tik op het sterrenstelsel waar hij in zit.",
+ s2Xd:"Dit was een botsing van twee zwarte gaten: geen lichtflits! Welk sterrenstelsel zou het zijn? Kies er een. Tip: grote sterrenstelsels hebben meer sterren, en dus meer kans. Een foute keuze maakt je stip minder juist, maar met veel bezoekers samen komt het toch goed.",
+ kilonova:"kilonova!", ellipse:"waar de golf vandaan kwam",
+ s3T:"Hoe snel vlucht het weg?", s3X:"Dit is het licht van jouw sterrenstelsel, uitgesmeerd in kleuren. De streepjes zijn kleuren die we in het lab kennen. Het heelal rekt het licht uit naar het rood: sleep de streepjes naar rechts tot ze op de pieken en dalen passen.",
+ zlab:"Roodverschuiving", lockZ:"Ze passen!", zFail:"Bijna! De streepjes passen nog niet goed. Schuif nog wat.",
+ s4T:'Jouw stip: <span class="n">H₀ ≈ {h}</span>', s4X:"Afstand <b>{d}</b>, wegvlucht-snelheid <b>{v}</b>. Uit jouw botsing alleen: H₀ = {h} ± {e} km/s per megaparsec. Eén meting is nog vaag. Kijk rechts hoe jouw stip het gezamenlijke antwoord scherper maakt!",
+ next:"Volgende bezoeker",
+ badge1:"ZWAARTEKRACHTGOLF · vereenvoudigd", badge2:"HEMEL · nagebootst", badge3:"SPECTRUM · nagebootst", badge4:"JOUW STIP",
+ together:"Wat het publiek samen meet", headN0:"Nog geen metingen. Jij bent de eerste!",
+ head:'Samen: <span class="n" style="color:var(--crowd)">H₀ = {h} ± {e}</span>',
+ sum:"{n} botsingen gemeten. Planck (het oerlicht) zegt 67,4, SH0ES (supernova's) zegt 73,0. Om die twee uit elkaar te houden heb je een foutmarge van ongeveer ±2 nodig.",
+ sumNeed:" Nog zo'n <b>{k}</b> botsingen nodig.", sumDone:" <b>Gelukt: scherp genoeg om te kiezen!</b>",
+ sumLigo:" LIGO en Virgo vonden tot nu toe maar <b>één</b> zo'n botsing met lichtflits (2017).",
+ sumEt:" De Einstein Telescope hoort er <b>honderdduizend per jaar</b>, waarvan tientallen tot honderden met lichtflits.",
+ xLigo:"afstand (miljoen lichtjaar)", xEtShort:"afstand (gigaparsec)", yLigo:"wegvlucht-snelheid (km/s)", xEt:"afstand uit de luidheid (gigaparsec; 1 Gpc ≈ 3,3 miljard lichtjaar)", yEt:"roodverschuiving z",
+ lgMe:"jouw stip", lgCrowd:"het publiek", lgFit:"beste lijn", lgPlanck:"Planck 67,4", lgShoes:"SH0ES 73,0", lgTruth:"geheim antwoord",
+ conv:"hoe de schatting scherper wordt, botsing na botsing",
+ fac:"Voor de begeleider", facText:"De metingen blijven op dit toestel bewaard (per tijdperk). Het nagebootste heelal heeft een geheime H₀; onthul die aan het eind van de dag.",
+ sim10:"+10 gesimuleerde bezoekers", reveal:"Onthul het geheim", hide:"Verberg het geheim", reset:"Nieuwe dag (wis alles)", exp:"Exporteer", imp:"Importeer en voeg samen",
+ truth:"Geheime H₀ van dit nagebootste heelal: {h}", confirmReset:"Alle metingen van dit tijdperk wissen en een nieuw geheim kiezen?",
+ phys:"Voor fysici: wat wordt er gesimuleerd, en wat moet je goedkeuren",
+ Mly:"{x} miljoen lichtjaar", Gpc:"{x} gigaparsec", kms:"{x} km/s", sim:"nagebootst"
+},
+en:{
+ title:'Measure the universe <span class="hl">together</span>', home:"← all projects",
+ tag:"Each visitor catches one collision in space. Together we measure how fast the universe expands.",
+ eLigo:"LIGO–Virgo today", eEt:"Einstein Telescope",
+ expl:"<b>The universe is expanding:</b> the farther a galaxy, the faster it moves away from us. How fast exactly? That number (the Hubble constant) is one of today's big puzzles: two kinds of measurement give 67 and 73. Gravitational waves can be the referee. You measure one collision, the crowd measures the rest.",
+ steps:["1 Listen","2 Find","3 Measure","4 Your point"],
+ s0T:"Ready for your collision?", s0X:"Somewhere in the universe two neutron stars collide. Their gravitational wave is on its way to Earth. Catch it and measure it!",
+ start:"Catch my collision",
+ s1T:"How loud does the wave arrive?", s1X:"How fast the tone rises tells us how heavy the stars are, and so how loud the wave <b>really</b> is. Slide the distance until the blue line is as big as the grey signal. The quieter it arrives, the farther away the collision.",
+ dist:"Distance", match:"Does it fit?", play:"▶ Listen to the chirp", lockDist:"This is my distance",
+ tooBig:"The blue line is still too big: the collision is farther away.", tooSmall:"The blue line is still too small: the collision is closer.",
+ s2T:"Which galaxy did it come from?", s2Xb:"Telescopes search the patch of sky the wave came from. Look carefully: does a new dot of light appear? That is the kilonova, the glow of the collision. Tap the galaxy it sits in.",
+ s2Xd:"This was a collision of two black holes: no flash of light! Which galaxy could it be? Pick one. Tip: big galaxies have more stars, so a better chance. A wrong pick makes your point less accurate, but with many visitors together it still works out.",
+ kilonova:"kilonova!", ellipse:"where the wave came from",
+ s3T:"How fast is it moving away?", s3X:"This is the light of your galaxy, spread out into colours. The ticks are colours we know from the lab. The expanding universe stretches light towards red: drag the ticks to the right until they line up with the peaks and dips.",
+ zlab:"Redshift", lockZ:"They fit!", zFail:"Almost! The ticks don't fit well yet. Slide a bit more.",
+ s4T:'Your point: <span class="n">H₀ ≈ {h}</span>', s4X:"Distance <b>{d}</b>, speed away from us <b>{v}</b>. From your collision alone: H₀ = {h} ± {e} km/s per megaparsec. One measurement is still fuzzy. See on the right how your point sharpens the crowd's answer!",
+ next:"Next visitor",
+ badge1:"GRAVITATIONAL WAVE · simplified", badge2:"SKY · simulated", badge3:"SPECTRUM · simulated", badge4:"YOUR POINT",
+ together:"What the crowd measures together", headN0:"No measurements yet. You are the first!",
+ head:'Together: <span class="n" style="color:var(--crowd)">H₀ = {h} ± {e}</span>',
+ sum:"{n} collisions measured. Planck (the oldest light) says 67.4, SH0ES (supernovae) says 73.0. To tell those apart you need an error of about ±2.",
+ sumNeed:" About <b>{k}</b> more collisions needed.", sumDone:" <b>Done: sharp enough to choose!</b>",
+ sumLigo:" So far LIGO and Virgo found only <b>one</b> such collision with a flash of light (2017).",
+ sumEt:" The Einstein Telescope will hear <b>a hundred thousand a year</b>, tens to hundreds of them with a flash of light.",
+ xLigo:"distance (million light years)", xEtShort:"distance (gigaparsec)", yLigo:"speed away from us (km/s)", xEt:"distance from the loudness (gigaparsec; 1 Gpc ≈ 3.3 billion light years)", yEt:"redshift z",
+ lgMe:"your point", lgCrowd:"the crowd", lgFit:"best line", lgPlanck:"Planck 67.4", lgShoes:"SH0ES 73.0", lgTruth:"secret answer",
+ conv:"how the estimate sharpens, collision after collision",
+ fac:"For the facilitator", facText:"Measurements are kept on this device (per era). The simulated universe has a secret H₀; reveal it at the end of the day.",
+ sim10:"+10 simulated visitors", reveal:"Reveal the secret", hide:"Hide the secret", reset:"New day (clear all)", exp:"Export", imp:"Import and merge",
+ truth:"Secret H₀ of this simulated universe: {h}", confirmReset:"Clear all measurements of this era and pick a new secret?",
+ phys:"For physicists: what is simulated, and what to sign off",
+ Mly:"{x} million light years", Gpc:"{x} gigaparsec", kms:"{x} km/s", sim:"simulated"
+}};
+const S={ lang:"nl", era:"ligo", step:0, ev:null, data:{}, reveal:false, ctx:null, dGuess:null, zGuess:0, pick:-1, t0:0, myIdx:-1 };
+const $=id=>document.getElementById(id);
+const T=(k,v)=>{ let s=I18N[S.lang][k] ?? I18N.en[k] ?? k; if (v && typeof s==="string") for (const [a,b] of Object.entries(v)) s=s.split("{"+a+"}").join(b); return s; };
+const nf=(x,d=0)=>Number(x).toLocaleString(S.lang==="nl"?"nl-BE":"en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const C=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function color(hex,a){ const h=hex.replace("#",""); const n=parseInt(h,16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; }
+const LS="heelal-samen-meten-";
+const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(LS+k); return v==null? d : JSON.parse(v);}catch(e){ return d; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(LS+k, JSON.stringify(v)); }catch(e){} };
+
+/* ============================== cosmology ============================== */
+const CKMS=299792.458, OM=0.315, MPC_LY=3.2616e6;
+const PLANCK={h:67.4, e:0.5}, SHOES={h:73.04, e:1.04};
+function Ez(z){ return Math.sqrt(OM*Math.pow(1+z,3)+1-OM); }
+function Dc(z){ if (z<=0) return 0; const n=200, h=z/n; let s=1/Ez(0)+1/Ez(z); for (let i=1;i<n;i++) s+=(i%2?4:2)/Ez(i*h); return s*h/3; } // dimensionless comoving distance × H0/c
+const DL1=z=>(1+z)*Dc(z);                     // d_L·H0/c
+const dL=(z,H0)=>CKMS/H0*DL1(z);              // Mpc
+function zOfDL(d,H0){ let lo=0, hi=5; for (let i=0;i<60;i++){ const m=(lo+hi)/2; if (dL(m,H0)<d) lo=m; else hi=m; } return (lo+hi)/2; }
+const sigLens=z=>0.066*Math.pow((1-Math.pow(1+z,-0.25))/0.25,1.8);
+
+/* ============================== random ============================== */
+const rnd=()=>Math.random();
+const gauss=()=>{ let u=0; while(u===0) u=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd()); };
+function sampleZ(zmax){ // ∝ dVc/dz /(1+z), rejection sampling
+  const w=z=>Dc(z)*Dc(z)/Ez(z)/(1+z); let wm=0; for (let i=1;i<=50;i++) wm=Math.max(wm,w(zmax*i/50));
+  for (let k=0;k<5000;k++){ const z=0.01+rnd()*(zmax-0.01); if (rnd()*wm<w(z)) return z; } return zmax/2; }
+
+/* ============================== data sets ============================== */
+function dataset(){ if (!S.data[S.era]){ S.data[S.era]=lsGet(S.era,null) || { h0:+(64+12*rnd()).toFixed(1), pts:[] }; lsSet(S.era,S.data[S.era]); } return S.data[S.era]; }
+function save(){ lsSet(S.era, S.data[S.era]); }
+
+/* ============================== event generation ============================== */
+function makeEvent(){
+  const D=dataset(), H0=D.h0; let ev;
+  if (S.era==="ligo"){
+    const d=Math.cbrt(Math.pow(15,3)+rnd()*(Math.pow(160,3)-Math.pow(15,3)));
+    const z=zOfDL(d,H0), sd=0.15+0.10*d/160; ev={kind:"bright", z, d, sd};
+  } else {
+    const bright=rnd()<0.65; const z=sampleZ(bright?0.5:1.0); const d=dL(z,H0);
+    const base= bright? 0.08+0.12*z/0.5 : 0.10+0.10*z; const sd=Math.hypot(base, sigLens(z)); ev={kind:bright?"bright":"dark", z, d, sd};
+  }
+  ev.dMeas = ev.d*Math.exp(ev.sd*gauss());                 // what the GW data says
+  ev.vpec = 300*gauss();
+  ev.zObs = (1+ev.z)*(1+ev.vpec/CKMS)-1;                    // the host's measured redshift
+  // candidate galaxies inside the localisation
+  const nGal = ev.kind==="bright"? 6 : 7; const gals=[];
+  for (let i=0;i<nGal;i++){ const a=rnd()*2*Math.PI, r=Math.sqrt(rnd())*0.85; gals.push({u:r*Math.cos(a), v:r*Math.sin(a), size:0.35+0.65*Math.pow(rnd(),1.5), type:rnd()<0.55?"spiral":"ell", rot:rnd()*Math.PI, hue:rnd()}); }
+  const wsum=gals.reduce((s,g)=>s+g.size*g.size,0); let pick=rnd()*wsum, host=0; for (let i=0;i<nGal;i++){ pick-=gals[i].size*gals[i].size; if (pick<=0){ host=i; break; } }
+  gals.forEach((g,i)=>{ if (i===host){ g.z=ev.zObs; } else { const dc=ev.dMeas*Math.exp(ev.sd*gauss()); const zc=zOfDL(dc,H0); g.z=(1+zc)*(1+300*gauss()/CKMS)-1; } });
+  ev.gals=gals; ev.host=host;
+  ev.knU = gals[host].u + 0.05*gals[host].size*(rnd()-0.5); ev.knV = gals[host].v + 0.05*gals[host].size*(rnd()-0.5);
+  return ev;
+}
+function distRange(){ return S.era==="ligo"? [8, 320] : [80, 12000]; }
+const sliderToD=v=>{ const [a,b]=distRange(); return a*Math.pow(b/a, v/1000); };
+const dToSlider=d=>{ const [a,b]=distRange(); return 1000*Math.log(d/a)/Math.log(b/a); };
+function zMaxEra(){ return S.era==="ligo"? 0.06 : 1.2; }
+const sliderToZ=v=>Math.exp(v/1000*Math.log(1+zMaxEra()))-1;
+const zToSlider=z=>1000*Math.log(1+z)/Math.log(1+zMaxEra());
+
+/* ============================== formatting ============================== */
+function fmtD(d){ if (S.era==="et") return T("Gpc",{x:nf(d/1000, d<1000?2:1)}); return T("Mly",{x:nf(d*MPC_LY/1e6,0)}); }
+function fmtV(z){ return S.era==="ligo"? T("kms",{x:nf(Math.round(CKMS*z/10)*10)}) : "z = "+nf(z,3); }
+
+/* ============================== spectra ============================== */
+const LINES=[ // nm, strength (+ emission, − absorption), which galaxy types show it
+ {l:372.7,s:1.0,t:"spiral",n:"[O II]"},{l:393.4,s:-0.8,t:"all",n:"K"},{l:396.8,s:-0.7,t:"all",n:"H"},{l:410.2,s:-0.3,t:"all",n:"Hδ"},
+ {l:486.1,s:0.6,t:"spiral",n:"Hβ"},{l:486.1,s:-0.35,t:"ell",n:"Hβ"},{l:500.7,s:0.8,t:"spiral",n:"[O III]"},{l:495.9,s:0.3,t:"spiral",n:""},
+ {l:517.5,s:-0.5,t:"ell",n:"Mg"},{l:517.5,s:-0.25,t:"spiral",n:"Mg"},{l:589.3,s:-0.55,t:"all",n:"Na"},
+ {l:656.3,s:1.6,t:"spiral",n:"Hα"},{l:658.4,s:0.5,t:"spiral",n:""},{l:671.7,s:0.35,t:"spiral",n:"[S II]"},{l:673.1,s:0.3,t:"spiral",n:""},{l:850.0,s:-0.3,t:"all",n:"Ca"},{l:866.2,s:-0.3,t:"all",n:""}];
+function lamRange(){ return S.era==="ligo"? [470,720] : [350,1150]; }
+function linesFor(type){ return LINES.filter(L=>L.t==="all"||L.t===type); }
+function specModel(lam, z, type, cont=true){ let y= cont? 1+0.25*Math.sin(lam/140)+(type==="ell"? (lam-500)/900 : -(lam-500)/1400) : 0;
+  const w=S.era==="ligo"? 0.9 : 1.6;
+  for (const L of linesFor(type)){ const lc=L.l*(1+z), sw=w*(1+z); y+=L.s*0.55*Math.exp(-0.5*Math.pow((lam-lc)/sw,2)); } return y; }
+function makeSpectrum(g){ const [a,b]=lamRange(), n=900, lam=new Float64Array(n), y=new Float64Array(n);
+  for (let i=0;i<n;i++){ lam[i]=a*Math.pow(b/a,i/(n-1)); y[i]=specModel(lam[i], g.z, g.type)+0.03*gauss(); } return {lam, y, type:g.type}; }
+function specScore(sp, z){ // normalised correlation between the observed line pattern and the template at z
+  const n=sp.lam.length; let num=0, ta=0, ob=0; const cont=i=>1+0.25*Math.sin(sp.lam[i]/140)+(sp.type==="ell"? (sp.lam[i]-500)/900 : -(sp.lam[i]-500)/1400);
+  for (let i=0;i<n;i++){ const t=specModel(sp.lam[i], z, sp.type, false), o=sp.y[i]-cont(i); num+=t*o; ta+=t*t; ob+=o*o; }
+  return ta>0&&ob>0? num/Math.sqrt(ta*ob) : 0; }
+
+/* ============================== audio ============================== */
+function ctx(){ if(!S.ctx) S.ctx=new (window.AudioContext||window.webkitAudioContext)(); if (S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
+function playChirp(){ const c=ctx(), sr=c.sampleRate; const bright=S.ev.kind==="bright";
+  const f0=bright?100:25, f1=bright?900:260, Tdur=bright?2.2:0.9; const n=Math.round(sr*(Tdur+0.3)), x=new Float32Array(n);
+  // leading-order chirp f(t) ∝ (tc−t)^(−3/8), amplitude ∝ f^(2/3)
+  const tc=Tdur*Math.pow(1-Math.pow(f0/f1,8/3),-1)*1.0; const A=f=>Math.pow(f/f1,2/3);
+  let ph=0; for (let i=0;i<n;i++){ const t=i/sr; let f=f0*Math.pow(1-t/tc,-3/8); if (t>=tc*0.999||f>f1){ const tt=t-Math.min(t,Tdur); f=f1; const env=Math.exp(-tt/0.01); ph+=2*Math.PI*f/sr; x[i]=0.4*env*Math.sin(ph); continue; }
+    ph+=2*Math.PI*f/sr; x[i]=0.4*A(f)*Math.sin(ph); }
+  const fade=Math.round(sr*0.02); for (let i=0;i<fade;i++) x[i]*=i/fade;
+  const b=c.createBuffer(1,n,sr); b.copyToChannel(x,0); const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(); }
+
+/* ============================== drawing helpers ============================== */
+function geom(cv){ const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight; if (cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);} const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); return {g,w,h}; }
+let wf=null; // fixed noise for the waveform display
+function drawWave(){
+  const {g,w,h}=geom($("mc")); g.clearRect(0,0,w,h);
+  const ev=S.ev, n=600, pad=14, mid=h/2;
+  const Aobs=1/ev.dMeas, Ag=1/S.dGuess; const scale=(h*0.38)/(1/ (ev.dMeas*0.45)); // so that a 0.45×closer guess fills the box
+  if (!wf){ wf=new Float64Array(n); for (let i=0;i<n;i++) wf[i]=gauss(); }
+  const sig=i=>{ const t=i/(n-1); const tau=1.02-t; const f=Math.pow(tau,-3/8); const ph=2*Math.PI*14*(1-Math.pow(tau,5/8))/(5/8)/1.6; const env=t<0.985? Math.pow(f,2/3)/Math.pow(1/0.035,0.25) : Math.exp(-(t-0.985)*300)*Math.pow(1/0.035,0.25);
+    return Math.min(1.25,env)*Math.sin(ph); };
+  g.strokeStyle=C("--line"); g.beginPath(); g.moveTo(pad,mid); g.lineTo(w-pad,mid); g.stroke();
+  g.strokeStyle=color("#c8cfe0",0.55); g.lineWidth=1.2; g.beginPath();
+  for (let i=0;i<n;i++){ const x=pad+i/(n-1)*(w-2*pad), y=mid-scale*Aobs*(sig(i)+0.22*wf[i]); i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke();
+  g.strokeStyle=C("--gw"); g.lineWidth=2.2; g.beginPath();
+  for (let i=0;i<n;i++){ const x=pad+i/(n-1)*(w-2*pad), y=mid-scale*Ag*sig(i); i?g.lineTo(x,Math.max(2,Math.min(h-2,y))):g.moveTo(x,y); } g.stroke(); g.lineWidth=1;
+  g.font="12px "+C("--f-mono"); g.fillStyle=C("--muted"); g.textAlign="right"; g.fillText(S.lang==="nl"?"tijd →":"time →", w-pad, h-8);
+}
+function galaxyPath(g, gx, gy, R, gal, alpha=1){
+  g.save(); g.translate(gx,gy); g.rotate(gal.rot);
+  const col= gal.type==="spiral"? [200,215,255] : [255,226,190];
+  const grd=g.createRadialGradient(0,0,0,0,0,R); grd.addColorStop(0,`rgba(${col},${0.95*alpha})`); grd.addColorStop(0.35,`rgba(${col},${0.45*alpha})`); grd.addColorStop(1,`rgba(${col},0)`);
+  g.scale(1, gal.type==="spiral"? 0.55 : 0.75); g.fillStyle=grd; g.beginPath(); g.arc(0,0,R,0,7); g.fill();
+  if (gal.type==="spiral"){ g.strokeStyle=`rgba(${col},${0.35*alpha})`; g.lineWidth=1.5; for (const s of [0,Math.PI]){ g.beginPath(); for (let t=0;t<3.2;t+=0.1){ const r=R*0.18+R*0.22*t; const a=s+t*1.1; const x=r*Math.cos(a), y=r*Math.sin(a); t?g.lineTo(x,y):g.moveTo(x,y);} g.stroke(); } }
+  g.restore();
+}
+let skyStars=null;
+function skyGeom(w,h){ return { cx:w/2, cy:h/2, ax:w*0.42, ay:h*0.36 }; }
+function drawSky(t){
+  const {g,w,h}=geom($("mc")); g.fillStyle="#04060c"; g.fillRect(0,0,w,h);
+  if (!skyStars){ skyStars=[...Array(160)].map(()=>[rnd(),rnd(),rnd()]); }
+  for (const [x,y,b] of skyStars){ g.fillStyle=`rgba(255,255,255,${0.15+0.5*b*b})`; g.fillRect(x*w,y*h,1.2,1.2); }
+  const k=skyGeom(w,h); const ev=S.ev;
+  g.strokeStyle=color(C("--gw"),0.7); g.setLineDash([6,5]); g.lineWidth=1.5; g.beginPath(); g.ellipse(k.cx,k.cy,k.ax,k.ay,-0.15,0,7); g.stroke(); g.setLineDash([]);
+  g.fillStyle=C("--gw"); g.font="12px "+C("--f-mono"); g.textAlign="left"; g.fillText(T("ellipse"), k.cx-k.ax+10, k.cy-k.ay-6 < 14 ? 30 : k.cy-k.ay-6);
+  const Rmax=Math.min(w,h)*0.11;
+  ev.gals.forEach((gal,i)=>{ const gx=k.cx+gal.u*k.ax*Math.cos(-0.15)-gal.v*k.ay*Math.sin(-0.15), gy=k.cy+gal.u*k.ax*Math.sin(-0.15)+gal.v*k.ay*Math.cos(-0.15);
+    gal.px=gx; gal.py=gy; gal.pr=Rmax*gal.size; galaxyPath(g,gx,gy,gal.pr,gal);
+    if (S.pick===i){ g.strokeStyle=C("--me"); g.lineWidth=2.5; g.beginPath(); g.arc(gx,gy,gal.pr*0.85+6,0,7); g.stroke(); g.lineWidth=1; } });
+  if (ev.kind==="bright"){ const el=(t-S.t0)/1000; if (el>1.2){ const host=ev.gals[ev.host];
+      const kx=k.cx+ev.knU*k.ax*Math.cos(-0.15)-ev.knV*k.ay*Math.sin(-0.15), ky=k.cy+ev.knU*k.ax*Math.sin(-0.15)+ev.knV*k.ay*Math.cos(-0.15);
+      const pulse=0.6+0.4*Math.sin(el*5); const r=3+3*pulse; const grd=g.createRadialGradient(kx,ky,0,kx,ky,r*4); grd.addColorStop(0,`rgba(255,120,80,${0.9})`); grd.addColorStop(1,"rgba(255,80,40,0)");
+      g.fillStyle=grd; g.beginPath(); g.arc(kx,ky,r*4,0,7); g.fill(); g.fillStyle="#fff2e0"; g.beginPath(); g.arc(kx,ky,2.2,0,7); g.fill();
+      if (el<6 || S.pick<0){ g.fillStyle="#ffb08a"; g.textAlign="left"; g.fillText(T("kilonova"), kx+12, ky-10); } } }
+}
+let spec=null;
+function drawSpec(){
+  const {g,w,h}=geom($("mc")); g.fillStyle="#04060c"; g.fillRect(0,0,w,h);
+  const [a,b]=lamRange(), padL=12, padR=12, padT=26, padB=34, pw=w-padL-padR, ph=h-padT-padB;
+  const X=l=>padL+Math.log(l/a)/Math.log(b/a)*pw;
+  // rainbow strip
+  for (let i=0;i<pw;i+=2){ const l=a*Math.pow(b/a,i/pw); g.fillStyle=lamColor(l,0.22); g.fillRect(padL+i,padT+ph+4,2,8); }
+  let ymin=1e9,ymax=-1e9; for (const v of spec.y){ ymin=Math.min(ymin,v); ymax=Math.max(ymax,v); }
+  const Y=v=>padT+(1-(v-ymin)/(ymax-ymin))*ph;
+  g.strokeStyle="#eef1f8"; g.lineWidth=1.3; g.beginPath(); for (let i=0;i<spec.lam.length;i++){ const x=X(spec.lam[i]), y=Y(spec.y[i]); i?g.lineTo(x,y):g.moveTo(x,y); } g.stroke(); g.lineWidth=1;
+  // lab ticks at the guessed redshift
+  g.font="11px "+C("--f-mono"); g.textAlign="center"; const seen=new Set();
+  for (const L of linesFor(spec.type)){ const lx=X(L.l*(1+S.zGuess)); if (lx<padL||lx>padL+pw) continue; const em=L.s>0;
+    g.strokeStyle= em? C("--me") : C("--gw"); g.lineWidth=2.5; g.beginPath(); g.moveTo(lx, em? padT : padT+ph-26); g.lineTo(lx, em? padT+24 : padT+ph); g.stroke(); g.lineWidth=1;
+    if (L.n && !seen.has(L.n)){ seen.add(L.n); g.fillStyle= em? C("--me") : C("--gw"); g.fillText(L.n, lx, em? padT-6 : padT+ph-30); } }
+  g.fillStyle=C("--muted"); g.textAlign="left"; g.fillText(nf(a)+" nm", padL, h-6); g.textAlign="right"; g.fillText(nf(b)+" nm", w-padR, h-6);
+  g.textAlign="center"; g.fillText(S.lang==="nl"?"← blauw · kleur van het licht · rood →":"← blue · colour of the light · red →", w/2, h-6);
+}
+function lamColor(l,a){ let r=0,g=0,b=0; if (l<440){ r=(440-l)/60; b=1; } else if (l<490){ g=(l-440)/50; b=1; } else if (l<510){ g=1; b=(510-l)/20; } else if (l<580){ r=(l-510)/70; g=1; } else if (l<645){ r=1; g=(645-l)/65; } else { r=1; }
+  if (l>700) r=Math.max(0.35,1-(l-700)/450); if (l<380) { r*=0.5; b*=0.5; } return `rgba(${Math.round(255*r)},${Math.round(255*g)},${Math.round(255*b)},${a})`; }
+function drawMine(){ // step 4: mini summary picture = the point itself on a tiny Hubble plot
+  const {g,w,h}=geom($("mc")); g.fillStyle="#04060c"; g.fillRect(0,0,w,h); drawDiagram(g,w,h,true); }
+
+/* ============================== shared diagram ============================== */
+function fit(pts){
+  if (!pts.length) return null; let sw=0, s=0; const hs=[];
+  for (const p of pts){ const H=CKMS*DL1(p.z)/p.d; const sv=300/(CKMS*Math.max(p.z,1e-3)); const w=1/(p.sd*p.sd+sv*sv); sw+=w; s+=w*Math.log(H); hs.push(H); }
+  const lh=s/sw; return { h:Math.exp(lh), e:Math.exp(lh)/Math.sqrt(sw), n:pts.length }; }
+function history(pts){ const out=[]; for (let k=1;k<=pts.length;k++){ const f=fit(pts.slice(0,k)); out.push(f); } return out; }
+function drawDiagram(g,w,h,mini){
+  const D=dataset(), pts=D.pts, F=fit(pts); const ligo=S.era==="ligo";
+  const padL= mini? 46:70, padR=14, padT=14, padB= mini? 34:42, pw=w-padL-padR, ph=h-padT-padB;
+  const dMax= ligo? 260 : 9000, yMax= ligo? 0.06 : 1.25;
+  const X=d=>padL+d/dMax*pw, Y=z=>padT+(1-z/yMax)*ph;
+  g.font="11.5px "+C("--f-mono"); g.strokeStyle=C("--line"); g.fillStyle=C("--muted"); g.lineWidth=1;
+  // grid: x in light years
+  const lyTicks= ligo? [0,200,400,600,800] : [0,2,4,6,8]; // million ly / Gpc
+  g.textAlign="center"; for (const t of lyTicks){ const d= ligo? t*1e6/MPC_LY : t*1000; if (d>dMax) continue; const x=X(d); g.beginPath(); g.moveTo(x,padT); g.lineTo(x,padT+ph); g.stroke(); g.fillText(nf(t), x, padT+ph+15); }
+  g.textAlign="right"; const yt= ligo? [0,3000,6000,9000,12000,15000] : [0,0.25,0.5,0.75,1,1.25];
+  for (const t of yt){ const z= ligo? t/CKMS : t; if (z>yMax) continue; const y=Y(z); g.beginPath(); g.moveTo(padL,y); g.lineTo(padL+pw,y); g.stroke(); g.fillText(ligo? nf(t) : nf(t,2), padL-5, y+4); }
+  if (!mini){ g.textAlign="center"; g.fillText(ligo? T("xLigo") : (w<560? T("xEtShort") : T("xEt")), padL+pw/2, h-6); g.save(); g.translate(12,padT+ph/2); g.rotate(-Math.PI/2); g.fillText(ligo? T("yLigo"):T("yEt"),0,0); g.restore(); }
+  // curves
+  const curve=(H0,col,dash,lw)=>{ g.strokeStyle=col; g.setLineDash(dash); g.lineWidth=lw; g.beginPath(); for (let i=0;i<=80;i++){ const z=yMax*i/80, d=dL(z,H0); const x=X(Math.min(d,dMax*1.05)), y=Y(z); i?g.lineTo(x,y):g.moveTo(x,y); if (d>dMax) break; } g.stroke(); g.setLineDash([]); g.lineWidth=1; };
+  curve(PLANCK.h, color(C("--planck"),0.8), [5,5], 1.4); curve(SHOES.h, color(C("--shoes"),0.8), [5,5], 1.4);
+  if (S.reveal) curve(D.h0, "#ffffff", [2,3], 1.6);
+  if (F) curve(F.h, C("--crowd"), [], 2.6);
+  // points
+  g.save(); g.beginPath(); g.rect(padL-8,padT-8,pw+16,ph+16); g.clip();
+  pts.forEach((p,i)=>{ const me=i===S.myIdx; const x=X(p.d), y=Y(p.z); if (x>padL+pw+20) return;
+    g.strokeStyle= me? C("--me") : color(C("--crowd"),0.6); g.beginPath(); g.moveTo(X(p.d*Math.exp(-p.sd)),y); g.lineTo(X(p.d*Math.exp(p.sd)),y); g.stroke();
+    g.fillStyle= me? C("--me") : (p.kind==="dark"? color(C("--crowd"),0.55) : C("--crowd")); g.beginPath(); g.arc(x,y, me? 7 : 4, 0, 7); g.fill();
+    if (me){ g.strokeStyle=C("--ink"); g.lineWidth=2; g.stroke(); g.lineWidth=1; } });
+  g.restore();
+}
+function drawMeter(){
+  const {g,w,h}=geom($("hm")); g.clearRect(0,0,w,h);
+  const D=dataset(), F=fit(D.pts); const lo=55, hi=85, padL=10, padR=10, X=v=>padL+(v-lo)/(hi-lo)*(w-padL-padR);
+  g.font="11.5px "+C("--f-mono");
+  const band=(m,e,col,y,lab,al)=>{ g.fillStyle=color(col,0.25); g.fillRect(X(m-e),18,X(m+e)-X(m-e),h-48); g.fillStyle=col; g.fillRect(X(m)-1,18,2,h-48); g.textAlign=al; g.fillText(lab, X(m)+(al==="right"?-5:5), y); };
+  band(PLANCK.h,PLANCK.e,C("--planck"),12,T("lgPlanck"),"right"); band(SHOES.h,SHOES.e,C("--shoes"),12,T("lgShoes"),"left");
+  g.strokeStyle=C("--line"); g.beginPath(); g.moveTo(padL,h-30); g.lineTo(w-padR,h-30); g.stroke();
+  g.fillStyle=C("--muted"); g.textAlign="center"; for (let v=55;v<=85;v+=5){ g.fillText(nf(v), X(v), h-14); g.fillRect(X(v)-0.5,h-34,1,8); }
+  if (S.era==="ligo"){ const y=h-46; g.strokeStyle=color("#c8cfe0",0.6); g.beginPath(); g.moveTo(X(62),y); g.lineTo(X(82),y); g.stroke(); g.fillStyle="#c8cfe0"; g.beginPath(); g.arc(X(70),y,3,0,7); g.fill(); g.textAlign="left"; g.fillText("GW170817", X(82)+5, y+4); }
+  if (S.reveal){ g.fillStyle="#fff"; g.fillRect(X(D.h0)-1,18,2,h-48); }
+  if (F){ const y=40; g.strokeStyle=C("--crowd"); g.lineWidth=3; g.beginPath(); g.moveTo(X(Math.max(lo,F.h-F.e)),y); g.lineTo(X(Math.min(hi,F.h+F.e)),y); g.stroke(); g.lineWidth=1;
+    g.fillStyle=C("--crowd"); g.beginPath(); g.arc(X(Math.max(lo,Math.min(hi,F.h))),y,7,0,7); g.fill(); }
+}
+function drawConv(){
+  const {g,w,h}=geom($("hc")); g.clearRect(0,0,w,h); const D=dataset(), Hs=history(D.pts);
+  g.font="11px "+C("--f-mono"); g.fillStyle=C("--muted"); g.textAlign="left"; g.fillText(T("conv"), 4, 11);
+  if (Hs.length<2) return; const lo=55, hi=85, padT=18, padB=8, Y=v=>padT+(1-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo))*(h-padT-padB);
+  const N=Hs.length, X=i=>8+i/(N-1)*(w-16);
+  for (const [m,col] of [[PLANCK.h,C("--planck")],[SHOES.h,C("--shoes")]]){ g.strokeStyle=color(col,0.6); g.setLineDash([4,4]); g.beginPath(); g.moveTo(8,Y(m)); g.lineTo(w-8,Y(m)); g.stroke(); g.setLineDash([]); }
+  g.fillStyle=color(C("--crowd"),0.22); g.beginPath(); Hs.forEach((f,i)=>{ const x=X(i), y=Y(f.h+f.e); i?g.lineTo(x,y):g.moveTo(x,y); }); for (let i=N-1;i>=0;i--) g.lineTo(X(i),Y(Hs[i].h-Hs[i].e)); g.closePath(); g.fill();
+  g.strokeStyle=C("--crowd"); g.lineWidth=2; g.beginPath(); Hs.forEach((f,i)=>{ const x=X(i), y=Y(f.h); i?g.lineTo(x,y):g.moveTo(x,y); }); g.stroke(); g.lineWidth=1;
+}
+function renderShared(){
+  const D=dataset(), F=fit(D.pts);
+  $("t-together").textContent=T("together");
+  if (!F){ $("sumHead").innerHTML=T("headN0"); $("sumText").innerHTML=(S.era==="ligo"?T("sumLigo"):T("sumEt")).trim(); }
+  else { $("sumHead").innerHTML=T("head",{h:nf(F.h,1), e:nf(F.e,1)});
+    const target=(SHOES.h-PLANCK.h)/3; let extra="";
+    if (F.n>=3){ if (F.e<=target) extra=T("sumDone"); else { const need=Math.ceil(F.n*Math.pow(F.e/target,2))-F.n; extra=T("sumNeed",{k:nf(need)}); } }
+    $("sumText").innerHTML=T("sum",{n:nf(F.n)})+extra+(S.era==="ligo"?T("sumLigo"):T("sumEt")); }
+  $("legend").innerHTML=`<span><i class="dot" style="background:var(--me)"></i>${T("lgMe")}</span><span><i class="dot" style="background:var(--crowd)"></i>${T("lgCrowd")}</span><span><i style="background:var(--crowd)"></i>${T("lgFit")}</span><span><i style="background:var(--planck)"></i>${T("lgPlanck")}</span><span><i style="background:var(--shoes)"></i>${T("lgShoes")}</span>`+(S.reveal?`<span><i style="background:#fff"></i>${T("lgTruth")}</span>`:"");
+  const {g,w,h}=geom($("hd")); g.clearRect(0,0,w,h); drawDiagram(g,w,h,false); drawMeter(); drawConv();
+  $("truthTxt").textContent= S.reveal? T("truth",{h:nf(D.h0,1)}) : "";
+  $("revealBtn").textContent= S.reveal? T("hide") : T("reveal");
+}
+
+/* ============================== steps ============================== */
+function show(id,on){ $(id).hidden=!on; }
+function renderStep(){
+  const st=S.step, ev=S.ev;
+  $("steps").innerHTML=T("steps").map((s,i)=>`<span class="${i+1===st?"on":i+1<st?"done":""}">${s}</span>`).join("");
+  show("distRow", st===1); show("zRow", st===3); show("meterRow", st===1||st===3);
+  show("start", st===0); show("playChirp", st===1); show("lockDist", st===1); show("lockZ", st===3); show("next", st===4);
+  $("start").textContent=T("start"); $("playChirp").textContent=T("play"); $("lockDist").textContent=T("lockDist"); $("lockZ").textContent=T("lockZ"); $("next").textContent=T("next");
+  $("t-dist").textContent=T("dist"); $("t-z").textContent=T("zlab"); $("t-match").textContent=T("match");
+  const badge=["",T("badge1"),T("badge2"),T("badge3"),T("badge4")][st]; $("mbadge").textContent=badge; $("mbadge").hidden=!badge;
+  if (st===0){ $("stTitle").innerHTML=T("s0T"); $("stText").innerHTML=T("s0X"); drawIdle(); }
+  if (st===1){ $("stTitle").innerHTML=T("s1T"); $("stText").innerHTML=T("s1X"); updDist(); }
+  if (st===2){ $("stTitle").innerHTML=T("s2T"); $("stText").innerHTML= ev.kind==="bright"? T("s2Xb") : T("s2Xd"); }
+  if (st===3){ $("stTitle").innerHTML=T("s3T"); $("stText").innerHTML=T("s3X"); updZ(); }
+  if (st===4){ const p=dataset().pts[S.myIdx]; const H=CKMS*DL1(p.z)/p.d; const e=H*Math.hypot(p.sd, 300/(CKMS*Math.max(p.z,1e-3)));
+    $("stTitle").innerHTML=T("s4T",{h:nf(H,0)}); $("stText").innerHTML=T("s4X",{d:fmtD(p.d), v:fmtV(p.z), h:nf(H,0), e:nf(e,0)}); drawMine(); }
+}
+function drawIdle(){ const {g,w,h}=geom($("mc")); g.fillStyle="#04060c"; g.fillRect(0,0,w,h);
+  if (!skyStars) skyStars=[...Array(160)].map(()=>[rnd(),rnd(),rnd()]); for (const [x,y,b] of skyStars){ g.fillStyle=`rgba(255,255,255,${0.15+0.5*b*b})`; g.fillRect(x*w,y*h,1.2,1.2); }
+  const t=performance.now()/1000, cx=w/2, cy=h/2; for (let i=0;i<5;i++){ const ph=(t*0.35+i/5)%1, r=20+ph*Math.max(w,h)*0.6; g.strokeStyle=color(C("--gw"),0.5*(1-ph)); g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); }
+  for (const s of [1,-1]){ g.fillStyle=C("--me"); g.beginPath(); g.arc(cx+s*10*Math.cos(t*6), cy+s*10*Math.sin(t*6), 5, 0, 7); g.fill(); } }
+function updDist(){ S.dGuess=sliderToD(+$("dist").value); $("distV").textContent=fmtD(S.dGuess);
+  const r=Math.log(S.dGuess/S.ev.dMeas); $("meter").style.width=Math.max(0,100*(1-Math.abs(r)/0.6))+"%"; $("meter").style.background= Math.abs(r)<0.1? C("--good") : Math.abs(r)<0.25? C("--warn") : "#ff8a7a"; drawWave(); }
+function updZ(){ S.zGuess=sliderToZ(+$("zs").value); $("zV").textContent= S.era==="ligo"? T("kms",{x:nf(Math.round(CKMS*S.zGuess/10)*10)}) : "z = "+nf(S.zGuess,3);
+  const sc=specScore(spec,S.zGuess); $("meter").style.width=Math.max(0,100*sc)+"%"; $("meter").style.background= sc>0.6? C("--good") : sc>0.35? C("--warn") : "#ff8a7a"; drawSpec(); }
+
+$("start").onclick=()=>{ ctx(); S.ev=makeEvent(); wf=null; S.pick=-1; S.step=1; S.myIdx=-1; $("dist").value=String(Math.round(dToSlider(S.ev.dMeas*Math.exp((rnd()<0.5?-1:1)*(0.6+0.4*rnd()))))); $("mmsg").textContent=""; renderStep(); playChirp(); };
+$("playChirp").onclick=()=>playChirp();
+$("dist").oninput=()=>{ $("mmsg").textContent=""; updDist(); };
+$("lockDist").onclick=()=>{ const r=Math.log(S.dGuess/S.ev.dMeas); if (Math.abs(r)>0.25){ $("mmsg").textContent= r<0? T("tooSmall") : T("tooBig"); return; }
+  $("mmsg").textContent=""; S.step=2; S.t0=performance.now(); renderStep(); };
+const mc=$("mc");
+mc.addEventListener("pointerdown",e=>{ const r=mc.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+  if (S.step===2){ let best=-1, bd=1e9; S.ev.gals.forEach((g,i)=>{ const d=Math.hypot(x-g.px,y-g.py); if (d<Math.max(26,g.pr)&&d<bd){bd=d;best=i;} });
+    if (best>=0){ S.pick=best; drawSky(performance.now()); setTimeout(()=>{ spec=makeSpectrum(S.ev.gals[S.pick]); $("zs").value="0"; S.step=3; renderStep(); }, 450); } }
+  if (S.step===3){ drag={x0:x, v0:+$("zs").value}; try{mc.setPointerCapture(e.pointerId);}catch(_){} } });
+let drag=null;
+mc.addEventListener("pointermove",e=>{ if (!drag||S.step!==3) return; const r=mc.getBoundingClientRect(), x=e.clientX-r.left; const [a,b]=lamRange();
+  const dln=(x-drag.x0)/(r.width-24)*Math.log(b/a); const v=drag.v0+dln/Math.log(1+zMaxEra())*1000; $("zs").value=String(Math.max(0,Math.min(1000,v))); updZ(); });
+for (const ev of ["pointerup","pointercancel"]) mc.addEventListener(ev,()=>{ drag=null; });
+$("zs").oninput=()=>{ $("mmsg").textContent=""; updZ(); };
+$("lockZ").onclick=()=>{ // refine around the visitor's alignment
+  let best=S.zGuess, bs=-1; const l0=Math.log(1+S.zGuess); for (let k=-60;k<=60;k++){ const z=Math.exp(l0+k*0.0001)-1; if (z<0) continue; const s=specScore(spec,z); if (s>bs){bs=s;best=z;} }
+  if (bs<0.5){ $("mmsg").textContent=T("zFail"); return; }
+  S.zGuess=best; $("zs").value=String(zToSlider(best)); $("mmsg").textContent="";
+  const D=dataset(); D.pts.push({ d:S.dGuess, sd:S.ev.kind==="dark"? 1.5*S.ev.sd : S.ev.sd, z:best, kind:S.ev.kind, t:Date.now() }); S.myIdx=D.pts.length-1; save();
+  S.step=4; renderStep(); renderShared(); };
+$("next").onclick=()=>{ S.step=0; S.ev=null; S.myIdx=-1; renderStep(); renderShared(); };
+
+/* ============================== facilitator ============================== */
+function simulateVisitors(k){ const D=dataset(); for (let i=0;i<k;i++){ const ev=makeEvent(); const dv=ev.dMeas*Math.exp(0.05*gauss());
+    let z; if (ev.kind==="bright") z=ev.zObs; else { const w=ev.gals.map(g=>g.size*g.size+0.15); const s=w.reduce((a,b)=>a+b,0); let r=rnd()*s, pick=0; for (let j=0;j<w.length;j++){ r-=w[j]; if (r<=0){ pick=j; break; } } z=ev.gals[pick].z; }
+    D.pts.push({ d:dv, sd:ev.kind==="dark"? 1.5*ev.sd : ev.sd, z:Math.max(1e-4,z), kind:ev.kind, t:Date.now(), sim:true }); } save(); renderShared(); }
+$("sim10").onclick=()=>simulateVisitors(10);
+$("revealBtn").onclick=()=>{ S.reveal=!S.reveal; renderShared(); };
+$("resetBtn").onclick=()=>{ if (!confirm(T("confirmReset"))) return; S.data[S.era]={ h0:+(64+12*rnd()).toFixed(1), pts:[] }; save(); S.reveal=false; S.myIdx=-1; S.step=0; renderStep(); renderShared(); };
+$("exportBtn").onclick=()=>{ const blob=new Blob([JSON.stringify({era:S.era, ...dataset()},null,1)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`heelal-samen-meten-${S.era}-${new Date().toISOString().slice(0,10)}.json`; a.click(); };
+$("importFile").onchange=async e=>{ const f=e.target.files[0]; if (!f) return; try{ const j=JSON.parse(await f.text()); if (j.era===S.era && Array.isArray(j.pts)){ const D=dataset(); const seen=new Set(D.pts.map(p=>p.t+":"+p.d)); for (const p of j.pts) if (!seen.has(p.t+":"+p.d) && isFinite(p.d)&&isFinite(p.z)&&isFinite(p.sd)) D.pts.push({d:+p.d, sd:+p.sd, z:+p.z, kind:p.kind==="dark"?"dark":"bright", t:+p.t||0, sim:!!p.sim}); save(); renderShared(); } }catch(err){} e.target.value=""; };
+
+/* ============================== static ============================== */
+function renderStatic(){
+  document.documentElement.lang=S.lang;
+  $("t-title").innerHTML=T("title"); $("t-tag").textContent=T("tag"); $("t-home").textContent=T("home"); $("expl").innerHTML=T("expl");
+  $("e-ligo").textContent=T("eLigo"); $("e-et").textContent=T("eEt");
+  $("t-fac").textContent=T("fac"); $("t-facText").textContent=T("facText"); $("sim10").textContent=T("sim10"); $("resetBtn").textContent=T("reset"); $("exportBtn").textContent=T("exp"); $("t-import").textContent=T("imp");
+  $("t-phys").textContent=T("phys");
+  document.querySelectorAll("#langSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===S.lang));
+  document.querySelectorAll("#eraSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.e===S.era));
+}
+function renderAll(){ renderStatic(); renderStep(); renderShared(); }
+document.querySelectorAll("#langSeg button").forEach(b=>b.onclick=()=>{ S.lang=b.dataset.l; lsSet("lang",S.lang); renderAll(); });
+document.querySelectorAll("#eraSeg button").forEach(b=>b.onclick=()=>{ S.era=b.dataset.e; lsSet("era",S.era); S.step=0; S.ev=null; S.myIdx=-1; S.reveal=false; renderAll(); });
+function tick(t){ if (S.step===2 && S.ev) drawSky(t); else if (S.step===0) drawIdle(); requestAnimationFrame(tick); }
+let rz=0; window.addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>{ renderShared(); if (S.step===1) drawWave(); if (S.step===3) drawSpec(); if (S.step===4) drawMine(); }); });
+
+S.lang=lsGet("lang","nl"); if (!I18N[S.lang]) S.lang="nl"; S.era=lsGet("era","ligo"); if (S.era!=="ligo"&&S.era!=="et") S.era="ligo";
+const q=new URLSearchParams(location.search); if (q.get("lang")&&I18N[q.get("lang")]) S.lang=q.get("lang"); if (q.get("era")==="et"||q.get("era")==="ligo") S.era=q.get("era");
+renderAll(); requestAnimationFrame(tick);
+if (document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>renderShared());
+window.__hub={makeEvent, fit, dL, zOfDL, DL1, dataset, simulateVisitors, specScore, makeSpectrum, S};
+</script>
+</body>
+</html>
