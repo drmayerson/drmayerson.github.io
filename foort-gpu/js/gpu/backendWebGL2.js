@@ -139,6 +139,19 @@ export async function createWebGL2Backend(canvas, opts = {}) {
     gl.uniform4i(post.loc('uFull'), ...(/** @type {[number, number, number, number]} */ (u.full ?? [srcT.w, srcT.h, 0, 0])));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
+  /** wait (without blocking the page) until the GPU has done everything queued so far */
+  const fenceDone = async () => {
+    const sync = /** @type {WebGLSync} */ (gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0));
+    gl.flush();
+    for (;;) {
+      const st = gl.clientWaitSync(sync, 0, 0);
+      if (st === gl.ALREADY_SIGNALED || st === gl.CONDITION_SATISFIED) break;
+      if (st === gl.WAIT_FAILED) throw new Error('clientWaitSync failed');
+      if (gl.isContextLost()) throw new Error('WebGL context lost (GPU watchdog?)');
+      await yieldNow();
+    }
+    gl.deleteSync(sync);
+  };
   /** light-curve read-backs in flight (PBO + fence) and the finished ones */
   const lcPending = /** @type {{pbo: WebGLBuffer, sync: WebGLSync, tag: any}[]} */ ([]);
   const lcDone = /** @type {{tag: any, v: Float32Array}[]} */ ([]);
@@ -894,29 +907,60 @@ void main() {
       // the displayed records unless the pipeline asks for the set it is tracing (B6 refinement): an idle pre-trace may
       // switch the current set between a trace and the read-back of its records
       const L = currentSet ? getLevel(stride) : /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
-      gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-      // 24 floats per pixel (js/gpu/traceConfig.js RECORD_FLOATS): the record, then the tail bins (zeros without a tail)
-      const out = new Float32Array(24 * L.w * L.h);
-      const one = new Float32Array(4 * L.w * L.h);
-      for (let k = 0; k < Math.min(NATT, 6); k++) {
+      // review P5: asynchronous (PBO + fence): the page stays responsive while the GPU finishes; the read-backs are queued
+      // in GL order, so later draws cannot change what they read
+      const n = L.w * L.h, na = Math.min(NATT, 6);
+      const pbos = Array.from({ length: na }, (_, k) => {
+        const pbo = /** @type {WebGLBuffer} */ (gl.createBuffer());
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+        gl.bufferData(gl.PIXEL_PACK_BUFFER, 16 * n, gl.STREAM_READ);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
         gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
-        gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, one);
-        for (let p = 0; p < L.w * L.h; p++) for (let c = 0; c < 4; c++) out[24 * p + 4 * k + c] = one[4 * p + c];
-      }
+        gl.readPixels(0, 0, L.w, L.h, gl.RGBA, gl.FLOAT, 0);
+        return pbo;
+      });
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      await fenceDone();
+      // 24 floats per pixel (js/gpu/traceConfig.js RECORD_FLOATS): the record, then the tail bins (zeros without a tail)
+      const out = new Float32Array(24 * n);
+      const one = new Float32Array(4 * n);
+      pbos.forEach((pbo, k) => {
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, one);
+        gl.deleteBuffer(pbo);
+        for (let p = 0; p < n; p++) for (let c = 0; c < 4; c++) out[24 * p + 4 * k + c] = one[4 * p + c];
+      });
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
       return out;
     },
 
     async readSteps() {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, /** @type {{fbo: WebGLFramebuffer}} */ (levels.get(1)).fbo);
+      // review P5: the steps (rec0.y) summed on the GPU (2 x 2 sums down to one texel) and read back asynchronously,
+      // instead of reading N^2 RGBA32F texels (64 MB at 2048^2) and summing them in JS
+      const L = /** @type {{tex: WebGLTexture[], w: number, h: number}} */ (levels.get(1));
+      let cur = { tex: L.tex[0], w: L.w, h: L.h };
+      while (cur.w > 1 || cur.h > 1) {
+        const nxt = postTarget('steps', Math.max(1, Math.ceil(cur.w / 2)), Math.max(1, Math.ceil(cur.h / 2)));
+        postPass(1, cur, nxt);
+        cur = nxt;
+      }
+      const pbo = /** @type {WebGLBuffer} */ (gl.createBuffer());
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, 16, gl.STREAM_READ);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, /** @type {any} */ (cur).fbo);
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
-      const one = new Float32Array(4 * W * H);
-      gl.readPixels(0, 0, W, H, gl.RGBA, gl.FLOAT, one);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, 0);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      let s = 0;
-      for (let p = 1; p < one.length; p += 4) s += one[p];
-      return s;
+      await fenceDone();
+      const v = new Float32Array(4);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, v);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      gl.deleteBuffer(pbo);
+      return v[1];
     },
 
     pollTiming: pollQueries,

@@ -138,6 +138,10 @@ async function main() {
       + 'and try a lower resolution or fewer max steps.';
     $('status').textContent = 'GPU context lost';
   });
+  // review P1: the measured cost per ray of each kind of trace, remembered per GPU, so later visits skip the probe tiles
+  const RATE_KEY = () => `foort-gpu:rates:${backend.capabilities().renderer}`;
+  const saveRates = () => { try { localStorage.setItem(RATE_KEY(), JSON.stringify([...pipeline.rateMs.entries()].slice(-64))); } catch { /* not available */ } };
+  const loadRates = () => { try { for (const [k, v] of JSON.parse(localStorage.getItem(RATE_KEY()) ?? '[]')) if (v > 0) pipeline.rateMs.set(k, v); } catch { /* none */ } };
   const cacheBytesOf = () => (state.cacheMB === 'auto' ? (isPhone ? 64 : 256) : Number(state.cacheMB)) * 2 ** 20;
   let lastStats = /** @type {import('./gpu/pipeline.js').TraceStats|null} */ (null);
   let level = 0;
@@ -156,6 +160,7 @@ async function main() {
     },
   });
   /** @param {{level:number, done:number, total:number}} p */
+  loadRates();
   const showProgress = (p) => {
     if (!prog.on) return;
     const el = performance.now() - prog.t0;
@@ -488,8 +493,9 @@ async function main() {
       setup = gpuTraceSetup(view, tables, fb.tables);
       const levels = final ? finalLevels(s.N) : [Math.min(8, Math.max(1, s.N / 128))];
       prog.levels = levels; prog.t0 = performance.now(); prog.on = final;
-      const st = await pipeline.trace(setup, { levels, measureSteps: final });
+      const st = await pipeline.trace(setup, { levels, measureSteps: final && state.ui === 'expert', final });
       if (!st) return null;
+      if (final) saveRates();
       return { st, setup, fluid: fb.tables, fluidKey: fs.key, levels };
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return null; }
   };
