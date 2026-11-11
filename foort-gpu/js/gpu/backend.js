@@ -47,6 +47,7 @@
  * @property {(strides:number[]) => CacheHandle} cacheStore           copy the record levels of the current set (record cache)
  * @property {(h:CacheHandle) => void} cacheRestore                   copy cached levels into the displayed set and show them
  * @property {(h:CacheHandle) => void} cacheFree
+ * @property {() => {levelBytes:number}} memory                     review P6: bytes of the record textures the levels own
  * @property {(view:DisplayView, src?:DisplaySource) => void} display
  * @property {(w:number, h:number) => void} canvasSize               canvas size (compare side by side: two records wide)
  * @property {() => void} clearCanvas

@@ -40,7 +40,6 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   const TAIL_BINS = gl.getParameter(gl.MAX_DRAW_BUFFERS) >= 6 ? 8 : 0;
   // Stage 1B B5 ray compaction: 2 more attachments (continuation state, tail centroids) where 8 draw buffers exist
   const COMPACT_OK = TAIL_BINS > 0 && gl.getParameter(gl.MAX_DRAW_BUFFERS) >= 8;
-  const NATT = COMPACT_OK ? 8 : TAIL_BINS ? 6 : 4;
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
 
@@ -327,68 +326,71 @@ void main() {
   // a coarse level traced as a compact image keeps every SIMD lane busy (a strided pass over the
   // full image costs as much as a full trace, since a wave runs as long as its longest ray)
   const STRIDES = [1, 2, 4, 8];
-  /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */
+  /**
+   * A level: its framebuffer and attachments. `shared`: its first RECORD_ATT textures belong to a record-cache entry
+   * (review P6: the cache takes the textures of a finished trace instead of copying them).
+   * @typedef {{fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number, shared: boolean}} Level
+   */
+  /** @type {Map<number, Level>} */
   const levels = new Map();
   let W = 0, H = 0;
   /** attachments of the record proper (rec0-3, tail0-1), the part that is cached */
-  const RECORD_ATT = Math.min(NATT, 6);
-  /** @param {number} lw @param {number} lh */
-  const makeLevel = (lw, lh) => {
+  const RECORD_ATT = TAIL_BINS ? 6 : 4;
+  /** review P6: attachments the current program writes: 8 with compaction or refinement (their continuation state),
+   * else the record's own (attachments 6-7 cost 32 bytes per pixel: 134 MB at 2048^2) */
+  let wantAtt = RECORD_ATT;
+  /** @param {number} lw @param {number} lh @param {WebGLTexture[]} [own] textures to attach instead of new ones */
+  const makeLevel = (lw, lh, own) => {
     const fbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-    const tex = Array.from({ length: NATT }, (_, k) => {
-      const t = /** @type {WebGLTexture} */ (gl.createTexture());
-      gl.bindTexture(gl.TEXTURE_2D, t);
-      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, lw, lh);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    const n = own ? own.length : wantAtt;
+    const tex = Array.from({ length: n }, (_, k) => {
+      let t = own?.[k];
+      if (!t) {
+        t = /** @type {WebGLTexture} */ (gl.createTexture());
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, lw, lh);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      }
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + k, gl.TEXTURE_2D, t, 0);
       return t;
     });
-    gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+    gl.drawBuffers(Array.from({ length: n }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('RGBA32F MRT framebuffer incomplete');
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return { fbo, tex, w: lw, h: lh };
+    return /** @type {Level} */ ({ fbo, tex, w: lw, h: lh, shared: !!own });
   };
-  /** @param {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[]}>} set */
-  const freeLevels = (set) => { for (const L of set.values()) { for (const t of L.tex) gl.deleteTexture(t); gl.deleteFramebuffer(L.fbo); } set.clear(); };
+  /** textures of freed cache entries still shown by a level: deleted when that level goes */
+  const orphans = /** @type {Set<WebGLTexture>} */ (new Set());
+  /** drop a level: its own textures are deleted; cache-owned ones stay with the cache (or go, if orphaned) @param {Level} L */
+  const releaseLevel = (L) => {
+    gl.deleteFramebuffer(L.fbo);
+    L.tex.forEach((t, k) => {
+      if (L.shared && k < RECORD_ATT && !orphans.has(t)) return;
+      orphans.delete(t);
+      gl.deleteTexture(t);
+    });
+  };
+  /** @param {Map<number, Level>} set */
+  const freeLevels = (set) => { for (const L of set.values()) releaseLevel(L); set.clear(); };
   /** background record set (B5 idle pre-tracing) */
-  const bg = { W: 0, H: 0, levels: /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */ (new Map()) };
-  /** @type {Map<number, {fbo: WebGLFramebuffer, tex: WebGLTexture[], w: number, h: number}>} */
+  const bg = { W: 0, H: 0, levels: /** @type {Map<number, Level>} */ (new Map()) };
+  /** @type {Map<number, Level>} */
   let target = levels;
-  /** a level of the current record set (background levels are made on first use) @param {number} st */
-  const getLevel = (st) => {
-    let L = target.get(st);
-    if (!L && target === bg.levels && STRIDES.includes(st)) { L = makeLevel(Math.ceil(bg.W / st), Math.ceil(bg.H / st)); target.set(st, L); }
-    if (!L) throw new Error(`unsupported stride ${st} (${STRIDES.join(', ')})`);
-    return L;
-  };
-  const blitFbo = /** @type {WebGLFramebuffer} */ (gl.createFramebuffer());
+  /** is a texture shown by a level of either set? @param {WebGLTexture} t */
+  const inLevels = (t) => [...levels.values(), ...bg.levels.values()].some((L) => L.tex.includes(t));
   /**
-   * Float blit of one attachment: from attachment `ka` of fbo `src` (or texture `t` if src is null) to texture `t`
-   * (or attachment `kd` of fbo `dst`).
-   * @param {WebGLFramebuffer|null} src @param {number} ka @param {WebGLFramebuffer|null} dst @param {WebGLTexture} t
-   * @param {number} w @param {number} h @param {number} [kd]
+   * A level of the current record set, made on first use (review P6: only the strides a trace uses exist), with the
+   * attachments the current program needs. @param {number} st @param {boolean} [fresh] its own new textures (a trace)
    */
-  const blit = (src, ka, dst, t, w, h, kd = 0) => {
-    gl.disable(gl.SCISSOR_TEST);
-    if (src) {
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src);
-      gl.readBuffer(gl.COLOR_ATTACHMENT0 + ka);
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, blitFbo);
-      gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-      gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
-    } else {
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, blitFbo);
-      gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-      gl.readBuffer(gl.COLOR_ATTACHMENT0);
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
-      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k === kd ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
-    }
-    gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-    if (dst) gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  const getLevel = (st, fresh = false) => {
+    if (!STRIDES.includes(st)) throw new Error(`unsupported stride ${st} (${STRIDES.join(', ')})`);
+    let L = target.get(st);
+    const w = target === bg.levels ? bg.W : W, h = target === bg.levels ? bg.H : H;
+    if (L && (L.tex.length < wantAtt || (fresh && (L.shared || L.tex.length !== wantAtt)))) { releaseLevel(L); L = undefined; }
+    if (!L) { L = makeLevel(Math.ceil(w / st), Math.ceil(h / st)); target.set(st, L); }
+    return L;
   };
   /** @type {ReturnType<typeof build>|null} */
   let tracer = null;
@@ -441,6 +443,7 @@ void main() {
       const pre = closed ? '#define CLOSED_FORM 1\n' + await load(`closed/${closed}`) + '\n' : '';
       const FLAG_DEFINES = /** @type {Record<string, string>} */ ({ g34: 'G3_EQUALS_G4', reuse: 'TEXEL_REUSE', compact: 'COMPACT', bs3: 'BS3' });
       if (flags.includes('compact') && !COMPACT_OK) throw new Error('ray compaction needs 8 draw buffers');
+      wantAtt = flags.includes('compact') ? 8 : RECORD_ATT;
       // a '+#text' flag only adds a comment (a distinct source, e.g. for compile-time measurements past the driver's cache)
       const defs = flags.map((f) => { if (f.startsWith('#')) return `// ${f}\n`; if (!FLAG_DEFINES[f]) throw new Error(`unknown tracer flag ${f}`); return `#define ${FLAG_DEFINES[f]} 1\n`; }).join('');
       if (!tracePrograms.has(name)) tracePrograms.set(name, build(HEADER + `#define TAIL_BINS ${TAIL_BINS}\n` + (half ? '#define TABLE_HALF 1\n' : '') + defs + pre + await load(file) + '\n' + common, `${name}: ${closed ? `closed/${closed}.glsl + ` : ''}${file}.glsl + common.glsl`));
@@ -449,8 +452,7 @@ void main() {
 
     resize(w, h) {
       if (w === W && h === H) return;
-      freeLevels(levels);
-      for (const st of STRIDES) levels.set(st, makeLevel(Math.ceil(w / st), Math.ceil(h / st)));
+      freeLevels(levels);   // the levels are made again on first use (review P6)
       W = w; H = h;
       canvas.width = w; canvas.height = h;
     },
@@ -470,36 +472,42 @@ void main() {
     },
 
     cacheStore(strides) {
-      // copy the record attachments (0-5) of the given levels of the current set into new textures (float blits)
+      // review P6: the cache takes the record attachments (0-5) of the given levels of the current set; the levels keep
+      // showing them (shared) until the next trace into the set makes its own textures
       /** @type {Map<number, WebGLTexture[]>} */
       const tex = new Map();
       let bytes = 0;
       for (const st of strides) {
         const L = getLevel(st);
-        const copies = Array.from({ length: RECORD_ATT }, (_, k) => {
-          const t = /** @type {WebGLTexture} */ (gl.createTexture());
-          gl.bindTexture(gl.TEXTURE_2D, t);
-          gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, L.w, L.h);
-          for (const q of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, q, gl.NEAREST);
-          blit(L.fbo, k, null, t, L.w, L.h);
-          return t;
-        });
+        tex.set(st, L.tex.slice(0, RECORD_ATT));
+        L.shared = true;
         bytes += 16 * RECORD_ATT * L.w * L.h;
-        tex.set(st, copies);
       }
       return { tex, strides: [...strides], w: target === levels ? W : bg.W, h: target === levels ? H : bg.H, bytes };
     },
 
     cacheRestore(handle) {
-      // the cached levels back into the display set (its size must match: resize first), and display them
-      for (const [st, copies] of handle.tex) {
-        const L = /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(st));
-        copies.forEach((t, k) => blit(null, 0, L.fbo, t, L.w, L.h, k));
+      // the display set shows the cached textures directly (its size must match: resize first); no copy
+      for (const [st, t] of handle.tex) {
+        const old = levels.get(st);
+        if (old) releaseLevel(old);
+        levels.set(st, makeLevel(Math.ceil(W / st), Math.ceil(H / st), /** @type {WebGLTexture[]} */ (t)));
       }
       activeStrides = [...handle.strides].sort((a, b) => a - b).slice(0, 2);
     },
 
-    cacheFree(handle) { for (const copies of handle.tex.values()) for (const t of copies) gl.deleteTexture(t); handle.tex.clear(); },
+    cacheFree(handle) {
+      // textures still shown by a level are deleted when that level goes
+      for (const copies of handle.tex.values()) for (const t of copies) { if (inLevels(/** @type {WebGLTexture} */ (t))) orphans.add(/** @type {WebGLTexture} */ (t)); else gl.deleteTexture(/** @type {WebGLTexture} */ (t)); }
+      handle.tex.clear();
+    },
+
+    memory() {
+      // review P6: bytes of the record textures held by the levels (cache-owned ones excluded) and by the cache
+      let lv = 0;
+      for (const set of [levels, bg.levels]) for (const L of set.values()) L.tex.forEach((_, k) => { if (!(L.shared && k < RECORD_ATT)) lv += 16 * L.w * L.h; });
+      return { levelBytes: lv };
+    },
 
     uploadUniforms(u) { traceUniforms = u; },
 
@@ -604,12 +612,15 @@ void main() {
 
     clearRecords(strides) {
       if (strides && target === levels) activeStrides = [...strides].sort((a, b) => a - b).slice(0, 2);
+      const use = strides ?? STRIDES;
+      // review P6: the levels this trace does not use are freed; the ones it uses get their own textures
+      for (const [st, L] of [...target.entries()]) if (!use.includes(st)) { releaseLevel(L); target.delete(st); }
       const z = new Float32Array(4);
-      for (const st of strides ?? STRIDES) getLevel(st);
-      for (const L of target.values()) {
+      for (const st of use) {
+        const L = getLevel(st, true);
         gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-        gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
-        for (let k = 0; k < NATT; k++) gl.clearBufferfv(gl.COLOR, k, z);
+        gl.drawBuffers(Array.from({ length: L.tex.length }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+        for (let k = 0; k < L.tex.length; k++) gl.clearBufferfv(gl.COLOR, k, z);
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
@@ -622,7 +633,7 @@ void main() {
       gl.bindFramebuffer(gl.FRAMEBUFFER, C ? C.fbo : L.fbo);
       // a program without the compaction outputs leaves attachments 6-7 off (WebGL rejects draw buffers without outputs)
       const hasCont = !!tracer.loc('uCompact');
-      if (!C) gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k < 6 || hasCont ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
+      if (!C) gl.drawBuffers(Array.from({ length: L.tex.length }, (_, k) => (k < 6 || hasCont ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
       gl.viewport(0, 0, C ? C.w : L.w, C ? C.h : L.h);
       gl.enable(gl.SCISSOR_TEST);
       gl.scissor(rect.x, rect.y, rect.w, rect.h);
@@ -731,20 +742,20 @@ void main() {
       if (!interp) interp = buildPlain(INTERP_VS, INTERP_FS, 'interpolate');
       const C = getLevel(from), L = getLevel(1);
       gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => (k < 6 ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
+      gl.drawBuffers(Array.from({ length: L.tex.length }, (_, k) => (k < 6 ? gl.COLOR_ATTACHMENT0 + k : gl.NONE)));
       gl.viewport(0, 0, L.w, L.h);
       gl.disable(gl.SCISSOR_TEST);
       gl.useProgram(interp.prog);
       gl.bindVertexArray(vao);
       for (let k = 0; k < 6; k++) {
         gl.activeTexture(gl.TEXTURE4 + k);
-        gl.bindTexture(gl.TEXTURE_2D, C.tex[Math.min(k, NATT - 1)]);
+        gl.bindTexture(gl.TEXTURE_2D, C.tex[Math.min(k, C.tex.length - 1)]);
         gl.uniform1i(interp.loc(`uC${k}`), 4 + k);
       }
       gl.uniform4i(interp.loc('uIp'), from, C.w, C.h, TAIL_BINS ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       for (let k = 4; k < 10; k++) { gl.activeTexture(gl.TEXTURE0 + k); gl.bindTexture(gl.TEXTURE_2D, null); }
-      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+      gl.drawBuffers(Array.from({ length: L.tex.length }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
 
@@ -769,7 +780,7 @@ void main() {
       }
       const L = getLevel(compact.stride);
       gl.bindFramebuffer(gl.FRAMEBUFFER, L.fbo);
-      gl.drawBuffers(Array.from({ length: NATT }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
+      gl.drawBuffers(Array.from({ length: L.tex.length }, (_, k) => gl.COLOR_ATTACHMENT0 + k));
       gl.viewport(0, 0, L.w, L.h);
       gl.useProgram(scatter.prog);
       gl.bindVertexArray(vao);
@@ -906,10 +917,10 @@ void main() {
     async readRecords(stride = 1, currentSet = false) {
       // the displayed records unless the pipeline asks for the set it is tracing (B6 refinement): an idle pre-trace may
       // switch the current set between a trace and the read-back of its records
-      const L = currentSet ? getLevel(stride) : /** @type {{fbo: WebGLFramebuffer, w: number, h: number}} */ (levels.get(stride));
+      const L = currentSet ? getLevel(stride) : /** @type {Level} */ (levels.get(stride));
       // review P5: asynchronous (PBO + fence): the page stays responsive while the GPU finishes; the read-backs are queued
       // in GL order, so later draws cannot change what they read
-      const n = L.w * L.h, na = Math.min(NATT, 6);
+      const n = L.w * L.h, na = Math.min(L.tex.length, 6);
       const pbos = Array.from({ length: na }, (_, k) => {
         const pbo = /** @type {WebGLBuffer} */ (gl.createBuffer());
         gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);

@@ -249,8 +249,9 @@ export class TracePipeline {
    *   cached is restored instead of traced (stats.cached); background traces (opts.background: idle pre-tracing) run in
    *   the backend's background record set and only fill the cache.
    *   from traceConfig.gpuTraceSetup
-   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean, final?: boolean}} [opts]
+   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean, final?: boolean, keep?: boolean}} [opts]
    *   final: false for previews (30 ms tiles); otherwise final traces use larger tiles (review P1)
+   *   keep: cache the records even when they exceed half the budget (compare sides, review P6)
    * @returns {Promise<TraceStats|null>}  null if cancelled
    */
   async trace(setup, opts = {}) {
@@ -360,7 +361,10 @@ export class TracePipeline {
       if (Array.isArray(settled) && settled.every((x) => x !== null)) gpuMs = settled.reduce((a, b) => a + /** @type {number} */ (b), 0);
       const steps = opts.measureSteps && !opts.background ? await be.readSteps() : null;
       const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted, traced };
-      if (useCache) this.cachePut(key, be.cacheStore(levels), stats);
+      // review P6: an entry larger than half the budget is not cached (it would evict everything else), unless the
+      // caller keeps it (compare mode draws its sides from the cache)
+      const bytes = levels.reduce((a, st) => a + Math.ceil(setup.N / st) ** 2 * 96, 0);
+      if (useCache && (bytes <= this.cacheBytes / 2 || opts.keep)) this.cachePut(key, be.cacheStore(levels), stats);
       return stats;
     } finally {
       be.useRecordSet(0);

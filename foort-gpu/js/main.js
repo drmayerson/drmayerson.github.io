@@ -369,6 +369,7 @@ async function main() {
       perfRow('quality', `${/** @type {any} */ (TIER_LABELS)[tierNow] ?? tierNow}${state.quality === 'auto' ? ` (auto; predicted full trace here: ${Object.entries(autoPredicted[metricEntry(metricIdFromState(state)).mode] ?? {}).map(([t, x]) => `${t} ${x.toFixed(1)} s`).join(', ')})` : ''}`
         + (st.traced !== undefined && st.traced < 1 ? `; adaptive refinement traced ${(100 * st.traced).toFixed(0)}% of the pixels` : '')) +
       perfRow('record cache', `${pipeline.cache.size} views, ${(pipeline.cacheUsed() / 2 ** 20).toFixed(0)} of ${(pipeline.cacheBytes / 2 ** 20).toFixed(0)} MB${state.pretrace ? '; idle pre-tracing on' : ''}`) +
+      perfRow('GPU record memory', `${((backend.memory().levelBytes + pipeline.cacheUsed()) / 2 ** 20).toFixed(0)} MB (traced records ${(backend.memory().levelBytes / 2 ** 20).toFixed(0)} MB, cache ${(pipeline.cacheUsed() / 2 ** 20).toFixed(0)} MB; the displayed view shares its textures with its cache entry)`) +
       (st.steps !== null ? perfRow('RK4 steps', `${(st.steps / rays).toFixed(0)} per ray, ${(st.steps / ((st.gpuMs ?? st.wallMs) * 1e3)).toFixed(0)} M steps/s`) : '') +
       (warnings.length ? perfRow('warnings', warnings.join('; ')) : '');
   };
@@ -493,7 +494,7 @@ async function main() {
       setup = gpuTraceSetup(view, tables, fb.tables);
       const levels = final ? finalLevels(s.N) : [Math.min(8, Math.max(1, s.N / 128))];
       prog.levels = levels; prog.t0 = performance.now(); prog.on = final;
-      const st = await pipeline.trace(setup, { levels, measureSteps: final && state.ui === 'expert', final });
+      const st = await pipeline.trace(setup, { levels, measureSteps: final && state.ui === 'expert', final, keep: state.compare !== 'off' });
       if (!st) return null;
       if (final) saveRates();
       return { st, setup, fluid: fb.tables, fluidKey: fs.key, levels };
@@ -504,6 +505,8 @@ async function main() {
   let pendingWarn = null;
   /** review C2: a note for the status line when the camera had to be moved */
   let cameraNote = '';
+  /** finished final traces (tests wait for the next one) */
+  let finals = 0;
   /**
    * @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged
    * @param {boolean} [skipWarn] start a trace predicted above 15 s without asking (B7)
@@ -575,6 +578,7 @@ async function main() {
     $('status').textContent = (final
       ? nanShare > 0.5 ? `failed: ${(100 * nanShare).toFixed(0)}% of the rays ended in NaN (${st.N}², ${q})` : `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}${state.compare !== 'off' ? ', compare A | B' : ''}`
       : `preview (stride ${res?.levels?.[0] ?? '?'}, draft); release to refine`) + note;
+    if (final) finals++;
     if (final && res) showPerf(st, res.setup.warnings, res.setup.tables ? lastBake : res.setup.program.startsWith('trace_kerr_analytic') ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${res.setup.program.slice(7).split('+')[0]})`);
   };
 
@@ -873,6 +877,8 @@ async function main() {
     lightCurve: () => lcSeries.map((x) => [...x]),
     inspected: () => inspected.map((r) => ({ i: r.i, j: r.j, cpu: r.cpu, gpu: r.gpu })),
     inspect: (/** @type {number} */ xf, /** @type {number} */ yf) => inspect(xf, yf),
+    /** finished final traces (tests: wait for the trace a change started, not the previous "done") */
+    finals: () => finals,
     /** the run counter (B7 tests: a display-only change starts no run) */
     runs: () => runId,
     noise: () => noise,

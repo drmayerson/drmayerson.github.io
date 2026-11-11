@@ -84,10 +84,10 @@ test('B7: compare layouts share the camera; side by side doubles the canvas; bli
   expect(A.metric).toBe('kerr'); expect(B.metric).toBe('st3cr');
   expect(B.inc).toBe(A.inc);
   await expect(page.locator('#divider')).toBeVisible();
-  expect(await page.evaluate(() => document.getElementById('view').width)).toBe(128);
+  await expect.poll(() => page.evaluate(() => document.getElementById('view').width), { timeout: 60_000 }).toBe(128);
   await page.selectOption('select[name=compare]', 'side');
   await done(page);
-  expect(await page.evaluate(() => document.getElementById('view').width)).toBe(256);
+  await expect.poll(() => page.evaluate(() => document.getElementById('view').width), { timeout: 60_000 }).toBe(256);
   await page.selectOption('select[name=compare]', 'blink');
   await done(page);
   // b: show the other side by hand (blinking stops)
