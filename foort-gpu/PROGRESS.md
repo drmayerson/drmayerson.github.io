@@ -1586,3 +1586,46 @@ The B9 acceptance run, with texel reuse and the viewer's camera, puts the fuzzba
 1. **Try B7–B9** on the laptop and the phone: both panels, drag, pinch, compare, the long-trace warning; units, beam, light curve, inspector; snapshot and video.
 2. **E5:** should the field of view grow when the beam is on (a 15 M Sgr A* field loses 14–31% of the light to a 20–40 µas beam)?
 3. **Merge** foort-gpu-1b to main (B9).
+
+## External review, packages 1-3 (2026-11-11; branch `foort-gpu-review`)
+
+### Package 1: confirmed bugs (C1-C4, U10)
+
+| item | test (`dev/tests/e2e/review1.spec.js`) |
+|---|---|
+| C3, camera exactly at 90° | no crossing at r_cam (before: 8192 of 16384 pixels) |
+| C1, close camera (black holes) | crossings out to 60 M with the camera at 10 M; FOORT parity still stops at 10.1 M |
+| C2, camera at r = 2 M, 90° | moved out with a note in the status line; no NaN pixel |
+| C4, exposure at 2048² | within 5% of 512² |
+| U10, phone link | no `pretrace` in the URL |
+
+### Package 2: scheduler (P1) and read-backs (P5)
+
+The viewer's final traces of the default Kerr view, median of 5 (`dev/scripts/r2Sched.mjs`, `dev/reports/review/sched_*.json`):
+
+| case | before: wall / GPU, tiles | after: wall / GPU, tiles |
+|---|---|---|
+| Kerr 512² (17°) | 235 / 203 ms, 42 | 148 / 133 ms, 5 (wall/GPU 1.11) |
+| Kerr 512² (60°) | 226 / 179 ms, 55 | 133 / 114 ms, 5 |
+| Kerr 2048² | 4371 / 2941 ms, 852 | 1996 / 1818 ms, 37 |
+| fuzzball 512² | 2507 / 2296 ms, 70 | 1663 / 1591 ms, 29 |
+
+- **2048² call:** with the step read-back, it went from 4.6 to 2.0 s.
+- **GPU time:** it drops too, because fewer, larger tiles keep this iGPU busier.
+- **The review's target:** wall ≤ 1.3 × GPU, reached.
+- **Exactness:** records are bit-identical with rate-sized and fixed tiles, and the GPU step sum equals the CPU sum to 1e-5 (`review2.spec.js`).
+
+### Package 3: record memory (P6)
+
+- **2048² Kerr:** the performance table reports at most 450 MB of GPU records, against "390 of 256 MB" for the cache alone before. The cache stays within its budget.
+- **Restores:** after eviction, switching back to a view gives the same pixels (`review3.spec.js`).
+
+### Tests
+
+- Vitest 158 and Playwright 47, in two clean runs; tsc clean.
+- Two older tests had races exposed by the faster traces: they waited for a "done" that was already on screen. They now wait for the next finished trace (`window.__foort.finals()`) or poll for the canvas size.
+
+### Next, per the review
+
+- Packages 4 (interactivity) and 5 (kiosk time precision) need no decisions.
+- Packages 7-8 (lay panel, layout) and P2, U2 and E7 need the user.
