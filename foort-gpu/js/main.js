@@ -123,7 +123,9 @@ async function main() {
   const state = initialState(query);
   // phones (decision E9): a 64 MB record cache and no idle pre-tracing unless the URL asks for it
   const isPhone = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) < 820;
-  if (isPhone && !query.has('pretrace')) state.pretrace = false;
+  /** review U10: values this device chose for itself (not the user): they stay out of links and the remembered view */
+  const deviceDefaults = /** @type {Record<string, any>} */ ({});
+  if (isPhone && !query.has('pretrace')) { state.pretrace = false; deviceDefaults.pretrace = false; }
   const canvas = /** @type {HTMLCanvasElement} */ ($('view'));
   const stage = (/** @type {string} */ t) => { $('status').textContent = t; /** @type {any} */ (window).__foortStage = t; };
   const backend = await createBackend(canvas, { onStage: stage });
@@ -421,8 +423,10 @@ async function main() {
   let lastFluid = null;
   /** URL and remembered view @param {Record<string, any>} [s] */
   const saveUrl = (s = state) => {
-    // the URL carries the state of side A (the panel may be editing B)
-    const q = stateToQuery(s);
+    // the URL carries the state of side A (the panel may be editing B), without the device's own defaults (review U10)
+    const t = { ...s };
+    for (const [k, v] of Object.entries(deviceDefaults)) if (t[k] === v) t[k] = CONTROLS.find((c) => c.key === k)?.default;
+    const q = stateToQuery(t);
     history.replaceState(null, '', `?${q}`);
     store.set(q);
   };
@@ -448,11 +452,25 @@ async function main() {
           if (!query.has('N') && pk.predictedS[pk.tier] > TIER_TARGET_S[mode] && s.N > 256) {
             const n = Math.max(256, s.N / 2 ** Math.ceil(Math.log2(Math.sqrt(pk.predictedS[pk.tier] / TIER_TARGET_S[mode]))));
             controls.set('N', n);
+            deviceDefaults.N = n;
             if (s !== state) s.N = n;
           }
         }
       }
       tierNow = s.quality === 'auto' ? autoTiers[mode] ?? 'high' : s.quality;
+      // review C2: the camera is a static observer, which needs g_tt < 0; at or inside the static limit (Kerr at 90 deg:
+      // r <= 2 M) every ray was NaN. Move it out to where g_tt <= -0.05, and say so
+      {
+        const m = createMetric(metricIdFromState(s), metricParamsFromState(s).params), th = s.inc * DEG, M = m.massADM;
+        let r = s.r * M;
+        if (!(m.g_dd(r, th).gtt < 0)) {
+          while (!(m.g_dd(r, th).gtt <= -0.05) && r < 1e5 * M) r *= 1.01;
+          const rM = Number((r / M).toPrecision(4));
+          controls.set('r', rM);
+          if (s !== state) s.r = rM;
+          cameraNote = `camera moved out of the ergoregion to r = ${rM} M: a static camera needs g_tt < 0`;
+        }
+      }
       const view = viewFromState(s, metricDrag, autoTiers[mode] ?? 'high');
       const ts = tableSpec(view);
       let tables;
@@ -478,6 +496,8 @@ async function main() {
 
   /** @type {{final:boolean, metricDrag:boolean}|null} */
   let pendingWarn = null;
+  /** review C2: a note for the status line when the camera had to be moved */
+  let cameraNote = '';
   /**
    * @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged
    * @param {boolean} [skipWarn] start a trace predicted above 15 s without asking (B7)
@@ -485,6 +505,7 @@ async function main() {
   const run = async (final, metricDrag = false, skipWarn = false) => {
     const id = ++runId;
     cancelled = false;
+    cameraNote = '';
     $('warnBox').hidden = true;
     saveUrl(sideState('A'));
     // B7: warn before a trace predicted above 15 s on this device
@@ -518,7 +539,7 @@ async function main() {
       sides[sd] = { key: pipeline.lastKey, fluid: r.fluid, fluidKey: r.fluidKey, noiseName: wantedNoiseOf(s), tail: r.setup.tail, M, label: sd };
       if (sd === 'A' || state.compare === 'off') {
         lastFluid = r.fluid; lastTail = r.setup.tail; res = r;
-        if (final) { coarse = await backend.readRecords(s.N >= 512 ? 4 : 1); updateExposure(); }
+        if (final) { coarse = await backend.readRecords(r.levels[0] ?? 1); updateExposure(); }
       }
       if (sd === order[0] && state.compare === 'off') break;
     }
@@ -535,9 +556,19 @@ async function main() {
     if (final) { legend(); $('clock').textContent = clockText(); }
     requestDraw();
     if (!st) return;
-    const note = clamped.length ? ` (${clamped.join(', ')})` : '';
+    const notes = [...clamped, ...(cameraNote ? [cameraNote] : []), ...(res?.setup.warnings ?? [])];
+    const note = notes.length ? ` — ${notes.join('; ')}` : '';
     const q = `quality ${/** @type {any} */ (TIER_LABELS)[tierNow] ?? tierNow}${state.quality === 'auto' ? ' (auto)' : ''}`;
-    $('status').textContent = (final ? `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}${state.compare !== 'off' ? ', compare A | B' : ''}` : `preview (stride ${res?.levels?.[0] ?? '?'}, draft); release to refine`) + note;
+    let nanShare = 0;
+    if (final && coarse) {
+      let nNan = 0;
+      const n = coarse.length / RECORD_FLOATS;
+      for (let k = 0; k < n; k++) if ((Math.round(coarse[RECORD_FLOATS * k]) & 15) === 4) nNan++;
+      nanShare = nNan / n;
+    }
+    $('status').textContent = (final
+      ? nanShare > 0.5 ? `failed: ${(100 * nanShare).toFixed(0)}% of the rays ended in NaN (${st.N}², ${q})` : `done: ${st.N}², ${st.wallMs.toFixed(0)} ms, ${q}${state.compare !== 'off' ? ', compare A | B' : ''}`
+      : `preview (stride ${res?.levels?.[0] ?? '?'}, draft); release to refine`) + note;
     if (final && res) showPerf(st, res.setup.warnings, res.setup.tables ? lastBake : res.setup.program.startsWith('trace_kerr_analytic') ? 'none: hand-written closed-form Kerr shader' : `none: generated closed-form shader (${res.setup.program.slice(7).split('+')[0]})`);
   };
 

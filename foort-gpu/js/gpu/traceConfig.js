@@ -25,7 +25,8 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'
  * @property {number} [rInner]                     horizonless metrics: inner cut (default: the metric's terminationRadius())
  * @property {number} [singEps]                    Euclidean distance to the metric's singularities at which rays stop
  *                                                 (default: the metric's singularityEpsilon(); 0 = off)
- * @property {number} [rBoundary]                  escape radius (default 1.01 r_cam)
+ * @property {number} [rBoundary]                  escape radius (default: 1.01 r_cam; for black holes outside FOORT-parity
+ *                                                 mode at least R_OUT_M = 60 M, so that a close camera still sees the outer disc)
  * @property {'logShifted'|'log'} [radial]         x = log(r - r_+) (app) or log r (FOORT parity)
  * @property {'interpolate'|'foort'} [crossing]
  * @property {'centers'|'foort'} [mesh]            pixel centres (i + 0.5)/N, or FOORT SimpleSquareMesh i/(N - 1)
@@ -53,6 +54,10 @@ export const FLUID_DEFAULTS = { xi: 1, betaR: 1, betaPhi: 1, model: /** @type {'
  * @property {{nx:number, nth:number}} [grid]       table nodes in x and per hemisphere in theta
  * @property {{xi:number, betaR:number, betaPhi:number, model?:'foort'|'banded'}} [fluid]   GeneralCircularRadialFluid parameters (+ model, B3)
  */
+
+/** Review C1: the escape radius is at least this (units of M): the Johnson-SU profiles of every preset are below 1e-4 of
+ * their peak there */
+export const R_OUT_M = 60;
 
 /** Floats per pixel of a read-back record: 16 (rec0-3) + 8 tail bins (Stage 1B B2). */
 export const RECORD_FLOATS = 24;
@@ -83,7 +88,13 @@ export const VIEW_DEFAULTS = {
 
 /** @param {ViewParams} view */
 export function normalizeView(view) {
-  return /** @type {Required<ViewParams>} */ ({ ...VIEW_DEFAULTS, rBoundary: 1.01 * view.camera.r, ...view });
+  // review C1: with the boundary at 1.01 r_cam a camera at 10 M saw no disc beyond 10.1 M. Black holes only: their
+  // tables start at 1100 M anyway, while for the fuzzball (emission at r << M) a 60 M boundary would stretch the table
+  // from 46 M to 458 M over the same nodes, a coarser grid in its chaotic interior. FOORT-parity views (FOORT crossings
+  // or mesh) keep FOORT's 1.01 r_cam. Lengths are in units of M (every registry metric has M_ADM = 1)
+  const parity = view.crossing === 'foort' || view.mesh === 'foort';
+  const rB = parity || metricEntry(view.metric).mode !== 'BH' ? 1.01 * view.camera.r : Math.max(1.01 * view.camera.r, R_OUT_M);
+  return /** @type {Required<ViewParams>} */ ({ ...VIEW_DEFAULTS, rBoundary: rB, ...view });
 }
 
 /** Shader program for a view. @param {Required<ViewParams>} v */
