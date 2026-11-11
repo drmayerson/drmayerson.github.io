@@ -421,3 +421,25 @@ non-trivial implementation choice.
     - **Black holes:** passes every budget on all 8 scenes (sky p99 ≤ 0.10 px, emission L1 ≤ 1.8e-3), 1.0–2.3× faster than Reference.
     - **Fuzzball:** = High.
 - 2026-11-10 — **B9 merged to main** (user: "Merge to main"), which also redeploys B8: the GitHub Pages deploy of the B8 merge (ce49645) had failed in its deploy step (build succeeded).
+
+## External review (2026-11-10, `FOORT_GPU_REVIEW.md`), packages 1-3
+
+- 2026-11-11 — **Review packages 1-3 on branch `foort-gpu-review`** (user: "ok continue with those three packages first then"). The open decisions of the review stay with the user: P2 (tier policy), U2 (Dutch), E7 (physics options). So does the lay-panel redesign (packages 7-8).
+- 2026-11-11 — **C1, escape radius:**
+  - **Black holes:** at least R_out = 60 M outside FOORT-parity mode. A camera at 10 M now sees the disc to 60 M; before, it was cut at 10.1 M.
+  - **The fuzzball:** keeps 1.01 r_cam. A 60 M boundary would stretch its table from 46 M to 458 M over the same 512 nodes, a coarser grid in the chaotic interior. Test_FBdetail's total flux changed by 0.4-1.9× at the chaos noise floor, with nothing gained, since its emission lies at r < 1 M.
+  - **FOORT parity** (FOORT crossings or mesh) keeps FOORT's 1.01 r_cam.
+- 2026-11-11 — **C2:** a camera at or inside the static limit (g_tt ≥ 0) is moved out to where g_tt ≤ −0.05, with a note in the status line. Setup warnings now appear in the status line in both panels. A final trace with more than half its rays NaN reports "failed", not "done".
+- 2026-11-11 — **C3:** a camera exactly on the equator no longer records a crossing at itself: the interpolated branch skips the first step's flip when z₀ = 0, which agrees with the CPU reference. FOORT parity is unchanged.
+- 2026-11-11 — **C4:** the auto exposure reads the coarse level the trace used (stride 8 at 2048²).
+- 2026-11-11 — **U10:** values a device chooses for itself (no pre-tracing on phones, the phone-safe resolution) are kept out of links and the remembered view.
+- 2026-11-11 — **P1, scheduler:**
+  - **Rates:** the cost per ray of each kind of trace (program, max steps, step settings) is measured and remembered per GPU in localStorage. A trace with a known rate sizes its first tile from it, with no lone 32² probe and no re-tiling.
+  - **Tile size:** final traces use 90 ms tiles (previews 30 ms); the watchdog rule is unchanged.
+  - **Not done:** skipping the coarse level for traces predicted under 150 ms. It costs about 8% and feeds the auto exposure and the preview.
+- 2026-11-11 — **P5:** record read-backs go through PBO + fence (asynchronous). The step count is summed on the GPU (2 × 2 reduction) and read back asynchronously, and only in the expert panel.
+- 2026-11-11 — **P6, record memory:**
+  - **Attachments:** 6-7 are allocated only for programs with compaction or refinement.
+  - **Levels:** made on first use; a trace frees the strides it does not use.
+  - **Cache:** it takes the textures of a finished trace instead of copying them, and a restored view shows the cached textures directly. A freed entry that is still on screen is deleted when its level goes. Entries larger than half the budget are not cached, except compare sides.
+- 2026-11-11 — **Review packages 1-3 merged to main** (user: "Merge to main").

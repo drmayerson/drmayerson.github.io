@@ -323,8 +323,9 @@ void main() {
       } else {
         float z0 = prevHemi * (HALF_PI - prevPos.y);
         // the hemisphere flip is the crossing: a sign test on z misses rays whose flipped delta = pi - delta
-        // rounds to exactly pi/2 in float32 (z = 0)
-        if (hemi != prevHemi) {
+        // rounds to exactly pi/2 in float32 (z = 0). Review C3: a camera exactly on the equator starts at z0 = 0, and its
+        // first flip would interpolate to the camera itself: not a crossing (the CPU reference agrees: no sign change)
+        if (hemi != prevHemi && !(n == 0 && z0 == 0.0)) {
           // linear interpolation in lambda between the two step ends
           float az = abs(z0) + abs(z);
           float f = az > 0.0 ? abs(z0) / az : 1.0;

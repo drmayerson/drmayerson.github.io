@@ -89,17 +89,32 @@ export function traceKey(setup, levels) {
 
 import { refineList } from './refine.js';
 
+/**
+ * Review P1: what a trace's cost per ray depends on, besides the view: the program and its settings. The view (camera,
+ * metric parameters) changes the cost too, but tiles adapt from the first one on.
+ * @param {{program:string, maxSteps?:number, uniforms:import('./backend.js').Uniforms}} setup
+ */
+export function rateKey(setup) {
+  const u = setup.uniforms, f = (/** @type {string} */ k) => (u[k] ? Array.from(u[k][1]).slice(0, 2).join(',') : '');
+  return [setup.program, setup.maxSteps ?? 0, f('uStep'), f('uFar'), f('uBS')].join('|');
+}
+
 export class TracePipeline {
   /**
    * @param {import('./backend.js').Backend} backend
    * @param {{tileRays?: number, targetTileMs?: number, onProgress?: (info:{level:number, done:number, total:number}) => void,
-   *   onStage?: (stage: string) => void, cacheBytes?: number}} [opts]
+   *   onStage?: (stage: string) => void, cacheBytes?: number, finalTileMs?: number}} [opts]
    */
   constructor(backend, opts = {}) {
     this.backend = backend;
     /** rays per tile: adapted so that a tile takes about targetTileMs */
     this.tileRays = opts.tileRays ?? 256 * 256;
     this.targetTileMs = opts.targetTileMs ?? 30;
+    /** review P1: the tile target of final traces (fewer, larger tiles; the watchdog rule still splits slow ones) */
+    this.finalTileMs = opts.finalTileMs ?? 90;
+    /** review P1: measured cost (ms per ray) per rate key (program, max steps, tier settings), so a trace with a known
+     * rate skips the probe tile; persisted per GPU by the viewer (rates(), setRates()) */
+    this.rateMs = /** @type {Map<string, number>} */ (new Map());
     this.onProgress = opts.onProgress ?? (() => {});
     this.generation = 0;
     this.busy = false;
@@ -166,8 +181,18 @@ export class TracePipeline {
    * @param {number} st  level (progress reports) @param {boolean} adapt
    * @param {Promise<number|null>[]} gpu  GPU timer results (appended) @param {() => void} counted
    */
-  async runTiles(gen, w, h, submit, st, adapt, gpu, counted) {
-    let probe = adapt;
+  async runTiles(gen, w, h, submit, st, adapt, gpu, counted, rate = 0, tileMs = this.targetTileMs) {
+    // review P1: with a known cost per ray the first tile is sized from it (no lone probe tile, no re-tiling)
+    let probe = adapt && !(rate > 0);
+    if (adapt && rate > 0) this.tileRays = Math.round(Math.min(1024 * 1024, Math.max(MIN_TILE_RAYS, tileMs / rate)));
+    const saved = this.targetTileMs;
+    this.targetTileMs = tileMs;
+    try { return await this.runTilesInner(gen, w, h, submit, st, adapt, gpu, counted, probe); } finally { this.targetTileMs = saved; }
+  }
+
+  /** @param {number} gen @param {number} w @param {number} h @param {(t: import('./backend.js').Rect) => ReturnType<import('./backend.js').Backend['traceTile']>} submit
+   * @param {number} st @param {boolean} adapt @param {Promise<number|null>[]} gpu @param {() => void} counted @param {boolean} probe */
+  async runTilesInner(gen, w, h, submit, st, adapt, gpu, counted, probe) {
     let minRays = MIN_TILE_RAYS;
     let edge = probe ? PROBE_EDGE : this.tileEdge();
     let pending = tilesCentreOut(w, h, edge);
@@ -224,7 +249,9 @@ export class TracePipeline {
    *   cached is restored instead of traced (stats.cached); background traces (opts.background: idle pre-tracing) run in
    *   the backend's background record set and only fill the cache.
    *   from traceConfig.gpuTraceSetup
-   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean}} [opts]
+   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean, final?: boolean, keep?: boolean}} [opts]
+   *   final: false for previews (30 ms tiles); otherwise final traces use larger tiles (review P1)
+   *   keep: cache the records even when they exceed half the budget (compare sides, review P6)
    * @returns {Promise<TraceStats|null>}  null if cancelled
    */
   async trace(setup, opts = {}) {
@@ -269,6 +296,10 @@ export class TracePipeline {
       /** @type {Promise<number|null>[]} */
       const gpu = [];
       let nTiles = 0;
+      // review P1: the rate of this kind of trace, if measured before, and the tile target (final traces: larger tiles)
+      const rk = rateKey(setup);
+      const rate = this.rateMs.get(rk) ?? 0;
+      const tileMs = opts.final === false ? this.targetTileMs : this.finalTileMs;
       const compactRounds = setup.compact ? compactLimits(setup.compact.n1, setup.maxSteps ?? 0) : [];
       let compacted = 0;
       /** fraction of the full-resolution pixels traced (B6 adaptive refinement; 1 without it) */
@@ -285,7 +316,7 @@ export class TracePipeline {
           if (be.pixelList(1, r.list)) {
             be.setCompactPhase(0, 0);
             const cz = /** @type {{w:number, h:number}} */ (be.compactSize());
-            const ok = await this.runTiles(gen, cz.w, cz.h, (t) => be.traceTile(t, 1, true), 1, opts.adaptTiles !== false, gpu, () => nTiles++);
+            const ok = await this.runTiles(gen, cz.w, cz.h, (t) => be.traceTile(t, 1, true), 1, opts.adaptTiles !== false, gpu, () => nTiles++, rate, tileMs);
             if (!ok) return null;
             be.scatterCompact();
           }
@@ -296,7 +327,7 @@ export class TracePipeline {
         // Stage 1B B5 ray compaction: phase A stops rays at the first limit; each later round traces the unfinished rays
         // as a dense compact image (up to the next limit, the last one without a limit) and scatters them back
         be.setCompactPhase(compactRounds.length ? 1 : 0, compactRounds[0] ?? 0);
-        const ok = await this.runTiles(gen, w, h, (t) => be.traceTile(t, st), st, opts.adaptTiles !== false, gpu, () => nTiles++);
+        const ok = await this.runTiles(gen, w, h, (t) => be.traceTile(t, st), st, opts.adaptTiles !== false, gpu, () => nTiles++, rate, tileMs);
         if (!ok) return null;
         for (let k = 1; k < compactRounds.length + 1 && compactRounds.length; k++) {
           const M = await be.compactList(st);
@@ -313,6 +344,14 @@ export class TracePipeline {
         be.setCompactPhase(0, 0);
       }
       const wallMs = performance.now() - t0;
+      // review P1: the measured cost per ray of this kind of trace (wall time, all levels; refinement and compaction
+      // rounds included); a log-space average with the previous value
+      {
+        const rays = levels.reduce((a, st) => a + Math.ceil(setup.N / st) ** 2, 0);
+        const m = wallMs / Math.max(1, rays);
+        const old = this.rateMs.get(rk);
+        this.rateMs.set(rk, old ? Math.sqrt(old * m) : m);
+      }
       // GPU timer results arrive a little after the fences
       let gpuMs = /** @type {number|null} */ (null);
       const settled = await Promise.race([
@@ -322,7 +361,10 @@ export class TracePipeline {
       if (Array.isArray(settled) && settled.every((x) => x !== null)) gpuMs = settled.reduce((a, b) => a + /** @type {number} */ (b), 0);
       const steps = opts.measureSteps && !opts.background ? await be.readSteps() : null;
       const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted, traced };
-      if (useCache) this.cachePut(key, be.cacheStore(levels), stats);
+      // review P6: an entry larger than half the budget is not cached (it would evict everything else), unless the
+      // caller keeps it (compare mode draws its sides from the cache)
+      const bytes = levels.reduce((a, st) => a + Math.ceil(setup.N / st) ** 2 * 96, 0);
+      if (useCache && (bytes <= this.cacheBytes / 2 || opts.keep)) this.cachePut(key, be.cacheStore(levels), stats);
       return stats;
     } finally {
       be.useRecordSet(0);
