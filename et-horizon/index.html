@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ET-horizon</title>
 <meta name="description" content="Interactief heelal in lagen: wat zie je in licht, en wat hoor je met zwaartekrachtgolven – LIGO-Virgo-KAGRA vandaag en de Einstein Telescope straks.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;700&display=swap">
 <style>
 /* Layout: full-bleed WebGL sky; HUD as an instrument frame — brand top-left, zoom ladder on the right edge,
    wavelength bar along the bottom like a spectrometer axis, gravitational waves set apart as "no light". */
@@ -25,9 +22,10 @@
   --c-gw:#bfe6ff;
   --c-lvk:#ffb44d;
   --c-et:#3fd2c0;
-  --f-display:'Unbounded', 'Arial Black', system-ui, sans-serif;
-  --f-body:'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
-  --f-mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  /* system fonts only: no network request, same layout offline (X3) */
+  --f-display:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,Consolas,Menlo,monospace;
   color-scheme:dark;
 }
 [hidden]{display:none!important;}
@@ -49,27 +47,50 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
 .brand h1{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.02em;margin:0;line-height:1;}
 .brand h1 b{color:var(--c-et);font-weight:700;}
 .brand p{margin:6px 0 0;color:var(--ink-dim);font-size:14px;letter-spacing:.04em;}
+body.has-back .brand{padding-left:118px;} /* room for the shared "← Projecten" pill (X2) */
 .chips{display:flex;gap:8px;align-items:center;}
-.badge{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--c-lvk);border:1px solid color-mix(in srgb,var(--c-lvk) 50%,transparent);padding:6px 9px;border-radius:999px;background:var(--panel);}
-.chip-btn{min-width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:14px;padding:0 12px;}
+.badge{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--c-lvk);border:1px solid color-mix(in srgb,var(--c-lvk) 50%,transparent);padding:6px 9px;border-radius:999px;background:var(--panel);}
+.chip-btn{min-width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-weight:700;font-size:14px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;}
+.chip-btn svg{width:20px;height:20px;}
+.langs{display:flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden;height:44px;}
+.langs button{min-width:42px;padding:0 8px;font-weight:700;font-size:14px;color:var(--ink-dim);}
+.langs button.on{color:var(--bg);background:var(--ink);}
 
 .left{grid-column:1;grid-row:2;display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-height:0;pointer-events:none;}
 .left > *{pointer-events:auto;}
 #caption{max-width:430px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
-#caption h2{margin:0 0 6px;font-family:var(--f-display);font-weight:500;font-size:15px;letter-spacing:.03em;display:flex;align-items:center;gap:8px;text-wrap:balance;}
+#caption h2{margin:0 0 6px;font-family:var(--f-display);font-weight:650;font-size:16px;letter-spacing:.03em;display:flex;align-items:center;gap:8px;text-wrap:balance;}
 #caption h2 i{width:10px;height:10px;border-radius:50%;background:var(--cap-c,var(--c-opt));box-shadow:0 0 10px var(--cap-c,var(--c-opt));flex:none;}
 #caption p{margin:0;font-size:15.5px;line-height:1.45;color:#cdd5e4;}
+#caption p#cap-x{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--c-gw);}
+#mission{max-width:430px;background:var(--panel);border:1px solid color-mix(in srgb,var(--c-et) 55%,transparent);border-radius:14px;padding:14px 16px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+#mission .mh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 6px;}
+#mission h2{margin:0;font-family:var(--f-display);font-weight:650;font-size:17px;}
+#mission .skip{font-size:14px;color:var(--ink-dim);text-decoration:underline;min-height:36px;padding:0 4px;}
+#mission p{margin:0 0 10px;font-size:15.5px;line-height:1.45;color:#cdd5e4;}
+#mission p b{color:var(--ink);}
+#mission .go{width:100%;min-height:56px;border-radius:12px;background:var(--c-et);color:var(--bg);font-weight:800;font-size:17px;padding:6px 14px;line-height:1.2;}
+#mission .steps{display:flex;gap:6px;margin:0 0 10px;}
+#mission .steps i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.12);}
+#mission .steps i.done{background:var(--c-et);}
 
 #count{max-width:430px;display:flex;flex-direction:column;gap:6px;}
-#seen{font-size:18px;line-height:1.3;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;}
-#seen strong{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums;}
-#seen .of{color:var(--ink-dim);}
-#seen small{display:block;font-size:13px;color:var(--ink-dim);margin-top:4px;}
-.meter{height:6px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden;}
-.meter i{display:block;height:100%;width:0;background:var(--c-gw);transition:width .4s;}
+/* the counter is the hero (H4, H13): black holes and neutron stars apart, big numbers, filling bars */
+#seen{line-height:1.25;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px 10px;}
+#seen .sh{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:4px;}
+#seen .ct{display:grid;grid-template-columns:1fr auto;align-items:baseline;column-gap:10px;margin-top:6px;}
+#seen .ct span{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px;}
+#seen .ct span::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--dc);box-shadow:0 0 8px var(--dc);}
+#seen .ct strong{font-family:var(--f-mono);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;}
+#seen .ct em{font-style:normal;font-family:var(--f-mono);font-size:15px;color:var(--ink-dim);}
+#seen .ct .meter{grid-column:1 / -1;}
+#seen small{display:block;font-size:13px;color:var(--ink-dim);margin-top:6px;}
+.meter{height:8px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden;}
+.meter i{display:block;height:100%;width:0;background:var(--dc,var(--c-gw));transition:width .4s;}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-#speed{height:36px;border-radius:999px;border:1px solid var(--line);background:var(--panel);padding:0 12px;font-size:13px;font-family:var(--f-mono);}
-#real{font-size:13px;color:var(--ink-dim);line-height:1.35;}
+#speed{height:40px;border-radius:999px;border:1px solid var(--line);background:var(--panel);padding:0 12px;font-size:14px;font-family:var(--f-mono);}
+#catch{height:40px;border-radius:999px;border:1px solid var(--c-gw);color:var(--c-gw);background:var(--panel);padding:0 14px;font-size:15px;font-weight:700;}
+#real{font-size:14px;color:var(--ink-dim);line-height:1.35;}
 #real b{font-family:var(--f-mono);color:var(--ink);font-weight:600;}
 
 #ladder{grid-column:2;grid-row:2;align-self:center;display:flex;flex-direction:column;gap:4px;position:relative;padding-left:14px;}
@@ -78,19 +99,19 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
 #ladder button::before{content:"";position:absolute;left:-14px;width:9px;height:9px;border-radius:50%;border:1px solid rgba(190,205,235,.6);background:var(--bg);}
 #ladder button.on{color:var(--ink);background:var(--panel);}
 #ladder button.on::before{background:var(--c-gw);border-color:var(--c-gw);box-shadow:0 0 10px var(--c-gw);}
-#scale{font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);text-align:right;margin-top:8px;padding-right:6px;}
+#scale{font-family:var(--f-mono);font-size:13px;color:var(--ink-dim);text-align:right;margin-top:8px;padding-right:6px;}
 
 #bar{grid-column:1 / -1;grid-row:3;display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;}
-.spectrum{flex:1 1 520px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:4px;}
-.axis{display:flex;justify-content:space-between;padding:0 10px;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-dim);letter-spacing:.04em;}
+.spectrum{flex:1 1 400px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:4px;}
+.axis{display:flex;justify-content:space-between;padding:0 10px;font-family:var(--f-mono);font-size:12px;color:var(--ink-dim);letter-spacing:.02em;}
 .ticks{position:relative;min-height:14px;}
 .ticks b{position:absolute;transform:translateX(-50%);font-weight:400;top:0;}
 .ticks b::before{content:'';position:absolute;left:50%;top:13px;height:5px;border-left:1px solid var(--line);}
 .axis span:first-child::before{content:"← ";}
 .axis span:last-child::after{content:" →";}
-.bands{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
-.band{min-height:54px;border-radius:11px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 6px;font-size:14px;font-weight:700;position:relative;line-height:1.15;text-align:center;}
-.band small{font-weight:400;font-size:11px;color:var(--ink-dim);}
+.bands{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;}
+.band{min-height:54px;border-radius:11px;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 6px 11px;font-size:14px;font-weight:700;position:relative;line-height:1.15;text-align:center;}
+.band small{font-weight:400;font-size:12px;color:var(--ink-dim);}
 .band::after{content:"";position:absolute;left:10px;right:10px;bottom:5px;height:3px;border-radius:2px;background:var(--bc);opacity:.35;}
 .band.on{background:color-mix(in srgb,var(--bc) 22%,transparent);border-color:var(--bc);box-shadow:0 0 18px -6px var(--bc) inset;}
 .band.on::after{opacity:1;box-shadow:0 0 8px var(--bc);}
@@ -105,11 +126,11 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
 .seg button:first-child{border-left:0;}
 .seg button.on{color:var(--bg);background:var(--sc);}
 .seg button[disabled]{opacity:.42;cursor:default;}
-.seg button small{display:block;font-weight:400;font-size:11px;}
+.seg button small{display:block;font-weight:400;font-size:12px;}
 .seg.off{opacity:.45;}
 
 #event{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 150px);width:min(340px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:auto;}
-#event h3{margin:0 0 8px;font-family:var(--f-display);font-weight:500;font-size:16px;display:flex;justify-content:space-between;gap:8px;}
+#event h3{margin:0 0 8px;font-family:var(--f-display);font-weight:650;font-size:16px;display:flex;justify-content:space-between;gap:8px;}
 #event h3 button{width:32px;height:32px;margin:-6px -8px 0 0;font-size:20px;color:var(--ink-dim);}
 #event dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14.5px;}
 #event dt{color:var(--ink-dim);}
@@ -120,11 +141,13 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
 
 #attract{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 18px);transform:translateX(-50%);font-family:var(--f-display);font-size:14px;letter-spacing:.06em;padding:10px 18px;border-radius:999px;background:rgba(63,210,192,.14);border:1px solid var(--c-et);color:var(--ink);animation:pulse 2.4s ease-in-out infinite;pointer-events:none;white-space:nowrap;}
 @keyframes pulse{50%{opacity:.55}}
+@media (max-width:1180px){#attract{left:auto;right:max(16px,env(safe-area-inset-right,0px));transform:none;top:calc(env(safe-area-inset-top,0px) + 68px);font-size:13.5px;padding:9px 14px}} /* clear of the header chips and the caption */
 #about{position:fixed;inset:0;background:rgba(2,4,10,.82);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));pointer-events:auto;}
 #about .card{max-width:680px;max-height:84vh;overflow:auto;background:#0a0f1d;border:1px solid var(--line);border-radius:18px;padding:22px 24px;}
-#about h2{font-family:var(--f-display);font-weight:500;font-size:18px;margin:0 0 10px;}
+#about h2{font-family:var(--f-display);font-weight:650;font-size:18px;margin:0 0 10px;}
 #about ul{padding-left:18px;margin:8px 0;line-height:1.5;font-size:15px;color:#cdd5e4;}
 #about li{margin-bottom:6px;}
+#about .credit{font-size:13px;color:var(--ink-dim);margin:10px 0 0;}
 #about .close{margin-top:10px;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line);font-weight:700;}
 
 @media (max-width:820px){
@@ -135,8 +158,23 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
   .band{min-height:46px;font-size:12.5px}
   .band small{display:none}
   .seg button{min-height:46px;font-size:12px;padding:0 8px}
-  #seen{font-size:15px}
+  .band{font-size:14px;padding:4px 4px 11px}
+  .seg button{font-size:13.5px;padding:0 7px}
+  .spectrum{flex:1 1 300px}
+  #gw{min-width:0;max-width:118px;hyphens:auto;-webkit-hyphens:auto}
+  #seen .ct strong{font-size:22px}
+  #mission{padding:10px 12px}
+  #mission p{font-size:14.5px;margin-bottom:8px}
+  #mission .go{min-height:52px;font-size:16px}
   #event{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 70px)}
+}
+@media (max-height:640px){
+  .axis{display:none}
+  #real{display:none} /* the same message (about one a minute, known only roughly) is in the wave caption and the info panel */
+  #seen .ct strong{font-size:21px}
+  #seen small{margin-top:3px}
+  #caption p,#mission p{font-size:14.5px;line-height:1.38}
+  #seen .ct{margin-top:3px}
 }
 @media (max-width:560px){
   #ladder{display:none}
@@ -155,15 +193,24 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
     <div class="brand"><h1><b>ET</b>-horizon</h1><p id="t-sub"></p></div>
     <div class="chips">
       <span class="badge" id="t-sim"></span>
-      <button class="chip-btn" id="lang" type="button">EN</button>
+      <div class="langs" id="langs" role="group" aria-label="Taal / Language / Langue">
+        <button type="button" data-lang="nl" lang="nl">NL</button><button type="button" data-lang="en" lang="en">EN</button><button type="button" data-lang="fr" lang="fr">FR</button>
+      </div>
+      <button class="chip-btn" id="mute" type="button" aria-pressed="false"></button>
       <button class="chip-btn" id="about-btn" type="button" aria-label="Info">i</button>
     </div>
   </header>
   <div class="left">
-    <section id="caption" aria-live="polite"><h2><i></i><span id="cap-h"></span></h2><p id="cap-p"></p></section>
+    <section id="caption" aria-live="polite"><h2><i></i><span id="cap-h"></span></h2><p id="cap-p"></p><p id="cap-x" hidden></p></section>
+    <section id="mission" aria-live="polite" hidden>
+      <div class="mh"><h2 id="m-h"></h2><button type="button" class="skip" id="m-skip"></button></div>
+      <div class="steps"><i></i><i></i><i></i></div>
+      <p id="m-p"></p>
+      <button type="button" class="go" id="m-go"></button>
+    </section>
     <section id="count">
       <div id="seen"></div>
-      <div class="row"><button id="speed" type="button"></button></div>
+      <div class="row"><button id="catch" type="button"></button><button id="speed" type="button"></button></div>
       <div id="real"></div>
     </section>
   </div>
@@ -177,11 +224,11 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
   </nav>
   <footer id="bar">
     <div class="spectrum">
-      <div class="axis ticks"><span id="ax-long"></span><b style="left:20%">1 m</b><b style="left:40%">1 mm</b><b style="left:60%" id="ax-07">0,7 µm</b><b style="left:80%">10 nm</b><span id="ax-short"></span></div>
+      <div class="axis ticks"><span id="ax-long"></span><b style="left:25%">1 mm</b><b style="left:50%" id="ax-07">0,7 µm</b><b style="left:75%" id="ax-04">0,4 µm</b><span id="ax-short"></span></div>
       <div class="bands">
-        <button class="band" type="button" data-l="radio" style="--bc:var(--c-radio)" disabled></button>
+        <button class="band" type="button" data-l="radio" style="--bc:var(--c-radio)" disabled hidden></button>
         <button class="band" type="button" data-l="mw" style="--bc:var(--c-mw)"></button>
-        <button class="band" type="button" data-l="ir" style="--bc:var(--c-ir)" disabled></button>
+        <button class="band" type="button" data-l="ir" style="--bc:var(--c-ir)"></button>
         <button class="band" type="button" data-l="opt" style="--bc:var(--c-opt)"></button>
         <button class="band" type="button" data-l="xray" style="--bc:var(--c-xray)"></button>
       </div>
@@ -194,7 +241,7 @@ button:focus-visible{outline:2px solid var(--c-gw);outline-offset:2px;}
           <button type="button" data-d="all" style="--sc:var(--c-gw)"></button>
           <button type="button" data-d="lvk" style="--sc:var(--c-lvk)"></button>
           <button type="button" data-d="et" style="--sc:var(--c-et)"></button>
-          <button type="button" data-d="lisa" style="--sc:var(--c-radio)" disabled></button>
+          <button type="button" data-d="lisa" style="--sc:var(--c-radio)" disabled hidden></button>
         </div>
       </div>
     </div>
@@ -214,84 +261,9 @@ import * as THREE from './three.module.min.js';
 
 const PHYS = JSON.parse(document.getElementById('phys').textContent);
 
-/* ================= text ================= */
-const T = {
-nl:{
-  sub:'Het heelal in lagen', sim:'Simulatie', langBtn:'EN',
-  zoom:{mw:'Melkweg', lg:'Lokale Groep', vir:'Virgocluster', web:'Kosmisch web', uni:'Waarneembaar heelal'},
-  band:{radio:'Radio', mw:'Microgolf', ir:'Infrarood', opt:'Zichtbaar', xray:'Röntgen', gw:'Zwaartekrachtgolven'},
-  soon:'binnenkort', axLong:'lang', axShort:'kort', axGw:'geen licht · trillingen van de ruimte zelf',
-  det:{all:['Alles','wat er gebeurt'], lvk:['LIGO·Virgo','·KAGRA, nu'], et:['Einstein','Telescope'], lisa:['LISA','binnenkort']},
-  cap:{
-    none:['Alles uit','Alle lagen staan uit. Kies hieronder een manier om naar het heelal te kijken.'],
-    opt:['Zichtbaar licht','Sterren en sterrenstelsels. Hoe verder weg, hoe zwakker. Verder dan z ≈ 6 (12,8 miljard jaar terug) zie je in zichtbaar licht niets meer: dat licht is onderweg uitgerekt tot infrarood.'],
-    xray:['Röntgenstraling','Gas van miljoenen graden in clusters van sterrenstelsels, en zwarte gaten die materie opslokken. Zwarte gaten die niets opslokken, blijven onzichtbaar.'],
-    mw:['Microgolven','De nagloed van de oerknal, uitgezonden 380 000 jaar na het begin. Verder terug kan licht niet kijken: daarvoor was het heelal ondoorzichtig. (Het vlekkenpatroon hier is een illustratie.)'],
-    gw_all:['Zwaartekrachtgolven','Elke flits is een botsing van twee zwarte gaten (wit) of twee neutronensterren (goud), aan het gemeten tempo. Botsende zwarte gaten geven geen licht: met telescopen mis je ze allemaal.'],
-    gw_lvk:['LIGO · Virgo · KAGRA','De detectoren van vandaag horen vooral botsingen in onze kosmische buurt. Binnen de oranje cirkel horen ze de helft van de botsingen van zwarte gaten van 30 + 30 zonsmassa’s.'],
-    gw_et:['Einstein Telescope','ET hoort botsende zwarte gaten tot in de tijd van de allereerste sterren. Hoort ET iets uit de donkere middeleeuwen, vóór er sterren waren? Dan kan het niet van sterren komen: oer-zwarte gaten?'],
-  },
-  seen:(s,t)=>`Jij ziet <strong>${s}</strong> <span class="of">van de</span> <strong>${t}</strong> <span class="of">samensmeltingen</span>`,
-  seenSub:(n)=>`sinds je deze lagen koos${n>1?` · we tonen 1 op ${n} flitsen`:''}`,
-  speed:['1 s = 1 uur','1 s = 1 dag','1 s = 1 week'],
-  real:(n,s)=>`In het echt gebeurden er sinds je hier staat <b>${n}</b> samensmeltingen in het heelal: ongeveer één per ${s}.`,
-  attract:'Raak het scherm aan om zelf te verkennen',
-  width:(x)=>`beeld ≈ ${x} breed`,
-  ly:['lichtjaar','miljoen lichtjaar','miljard lichtjaar'],
-  you:'Zon · jij bent hier', mwLabel:'Melkweg',
-  ring:{z1:(t)=>`z = 1 · ${t} miljard jaar geleden`, z6:'z ≈ 6 · grens zichtbaar licht', dark:'donkere middeleeuwen · nog geen sterren', cmb:'nagloed oerknal · 13,8 miljard jaar', q:'? oer-zwarte gaten'},
-  bub:{lvk:'LIGO·Virgo·KAGRA', et:'Einstein Telescope', bbh:'zwarte gaten 30+30', bns:'neutronensterren'},
-  ev:{bbh:'Twee zwarte gaten', bns:'Twee neutronensterren', mass:'Massa’s', msun:'zonsmassa’s', when:'Wanneer', ago:(t)=>`${t} miljard jaar geleden`, heard:'Gehoord door', light:'In licht', noLight:'onzichtbaar: geen licht', kn:'kilonova zichtbaar', knNo:'kilonova te zwak', play:'Beluister de chirp', pitch:(k)=>`toonhoogte ×${k}`, real:'echte toonhoogte'},
-  aboutClose:'Sluiten',
-  about:`<h2>Over deze simulatie</h2>
-  <ul>
-  <li><b>Wat is echt?</b> Het tempo van de botsingen, hoe ver de detectoren reiken, en de afstanden en tijden in het heelal zijn berekend uit gepubliceerde metingen. Welke botsing waar en wanneer flitst, is gesimuleerd (toeval volgens die tempo’s).</li>
-  <li><b>Tempo:</b> LIGO-Virgo-KAGRA catalogus GWTC-4.0 (2025): zwarte gaten 14–26, neutronensterren 7,6–250 botsingen per Gpc³ per jaar. Vroeger in het heelal meer, zoals de stervorming (Madau &amp; Dickinson 2014).</li>
-  <li><b>Detectoren:</b> gevoeligheidscurves van LIGO (O4, ~150 Mpc), Virgo (~53 Mpc) en Einstein Telescope (driehoek, 10 km, ET-D). Een botsing telt als ‘gehoord’ bij een signaal-ruisverhouding ≥ 10.</li>
-  <li><b>Sterrenstelsels:</b> de Melkweg, de Lokale Groep en grote clusters staan ongeveer in de juiste richting. Het kosmische web daarbuiten is gesimuleerd. Afstanden zijn ‘meebewegend’ (zoals het heelal er nu uitziet).</li>
-  <li><b>Kosmologie:</b> Planck 2018.</li>
-  </ul>`,
-},
-en:{
-  sub:'The universe in layers', sim:'Simulation', langBtn:'NL',
-  zoom:{mw:'Milky Way', lg:'Local Group', vir:'Virgo Cluster', web:'Cosmic web', uni:'Observable universe'},
-  band:{radio:'Radio', mw:'Microwave', ir:'Infrared', opt:'Visible', xray:'X-ray', gw:'Gravitational waves'},
-  soon:'coming soon', axLong:'long', axShort:'short', axGw:'no light · vibrations of space itself',
-  det:{all:['Everything','that happens'], lvk:['LIGO·Virgo','·KAGRA, today'], et:['Einstein','Telescope'], lisa:['LISA','coming soon']},
-  cap:{
-    none:['All off','Every layer is switched off. Pick a way of looking at the universe below.'],
-    opt:['Visible light','Stars and galaxies. The farther away, the fainter. Beyond z ≈ 6 (12.8 billion years back) visible light shows nothing more: that light has been stretched into the infrared on its way here.'],
-    xray:['X-rays','Gas at millions of degrees in galaxy clusters, and black holes that are swallowing matter. Black holes that are not feeding stay invisible.'],
-    mw:['Microwaves','The afterglow of the Big Bang, released 380,000 years after the beginning. Light cannot see further back: before that the universe was opaque. (The spot pattern here is an illustration.)'],
-    gw_all:['Gravitational waves','Every flash is a collision of two black holes (white) or two neutron stars (gold), at the measured rate. Colliding black holes give off no light: telescopes miss every one of them.'],
-    gw_lvk:['LIGO · Virgo · KAGRA','Today’s detectors mostly hear collisions in our cosmic neighbourhood. Inside the orange circle they hear half of the collisions of 30 + 30 solar-mass black holes.'],
-    gw_et:['Einstein Telescope','ET hears colliding black holes all the way back to the time of the very first stars. If ET hears something from the dark ages, before there were stars, it cannot come from stars: primordial black holes?'],
-  },
-  seen:(s,t)=>`You see <strong>${s}</strong> <span class="of">of the</span> <strong>${t}</strong> <span class="of">mergers</span>`,
-  seenSub:(n)=>`since you chose these layers${n>1?` · showing 1 in ${n} flashes`:''}`,
-  speed:['1 s = 1 hour','1 s = 1 day','1 s = 1 week'],
-  real:(n,s)=>`In reality, <b>${n}</b> mergers have happened in the universe since you started looking: roughly one every ${s}.`,
-  attract:'Touch the screen to explore',
-  width:(x)=>`view ≈ ${x} across`,
-  ly:['light years','million light years','billion light years'],
-  you:'Sun · you are here', mwLabel:'Milky Way',
-  ring:{z1:(t)=>`z = 1 · ${t} billion years ago`, z6:'z ≈ 6 · limit of visible light', dark:'dark ages · no stars yet', cmb:'Big Bang afterglow · 13.8 billion years', q:'? primordial black holes'},
-  bub:{lvk:'LIGO·Virgo·KAGRA', et:'Einstein Telescope', bbh:'black holes 30+30', bns:'neutron stars'},
-  ev:{bbh:'Two black holes', bns:'Two neutron stars', mass:'Masses', msun:'solar masses', when:'When', ago:(t)=>`${t} billion years ago`, heard:'Heard by', light:'In light', noLight:'invisible: no light', kn:'kilonova visible', knNo:'kilonova too faint', play:'Listen to the chirp', pitch:(k)=>`pitch ×${k}`, real:'true pitch'},
-  aboutClose:'Close',
-  about:`<h2>About this simulation</h2>
-  <ul>
-  <li><b>What is real?</b> The collision rates, how far the detectors reach, and the distances and times in the universe are computed from published measurements. Which collision flashes where and when is simulated (random draws following those rates).</li>
-  <li><b>Rates:</b> LIGO-Virgo-KAGRA catalogue GWTC-4.0 (2025): black holes 14–26, neutron stars 7.6–250 mergers per Gpc³ per year. Higher earlier in cosmic history, following star formation (Madau &amp; Dickinson 2014).</li>
-  <li><b>Detectors:</b> sensitivity curves of LIGO (O4, ~150 Mpc), Virgo (~53 Mpc) and the Einstein Telescope (triangle, 10 km, ET-D). A merger counts as ‘heard’ at a signal-to-noise ratio ≥ 10.</li>
-  <li><b>Galaxies:</b> the Milky Way, Local Group and major clusters sit in roughly the right directions. The cosmic web beyond is simulated. Distances are comoving (the universe as it is now).</li>
-  <li><b>Cosmology:</b> Planck 2018.</li>
-  </ul>`,
-}};
-let LANG='nl';
-const L=()=>T[LANG];
-
-/* ================= physics helpers ================= */
+/* ================= MODEL-BEGIN =================
+   Pure model: depends only on PHYS (no DOM, no THREE). dev/check-numbers.mjs evaluates this block
+   and checks every number that the visitor text derives from it. */
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 function bsearch(xs,x){let lo=0,hi=xs.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(xs[m]>x)hi=m;else lo=m;}return lo;}
@@ -312,6 +284,7 @@ function zAtP(P,mc,p){ // largest z with pdet>=p
   const p0=pdet(P,mc,z0), p1=pdet(P,mc,z1); return p0===p1?z0:z0+(z1-z0)*(p0-p)/(p0-p1);
 }
 const MC3030=26.12, MCBNS=1.22;
+// Reach = distance where half of such pairs are still heard (X1: the shared public definition).
 const REACH={
   lvk:{bbh:DcOfZ(zAtP(PHYS.P_lvk,MC3030,.5)), bns:DcOfZ(zAtP(PHYS.P_lvk,MCBNS,.5)), zb:zAtP(PHYS.P_lvk,MC3030,.5)},
   et:{bbh:DcOfZ(zAtP(PHYS.P_et,MC3030,.5)), bns:DcOfZ(zAtP(PHYS.P_et,MCBNS,.5)), zb:zAtP(PHYS.P_et,MC3030,.5)},
@@ -321,14 +294,204 @@ function cdfOf(arr){const c=[0];for(let i=1;i<Zc.length;i++){const a=Zc[i]>20?0:
 const CDF={BBH:cdfOf(PHYS.dNdz_BBH),BNS:cdfOf(PHYS.dNdz_BNS)};
 const RATE={BBH:CDF.BBH.tot/YR,BNS:CDF.BNS.tot/YR}; // per second, whole universe
 const KN_DL=1000; // Mpc: AT2017gfo-like kilonova reachable by deep surveys (approx.)
+const Z_IR=14;    // infrared (JWST): galaxies seen out to about this redshift
+const MWEG=0.0116;// Milky-Way-equivalent galaxies per Mpc³ (Kopparapu et al. 2008)
+const BUMP=0.05;  // share of black holes in the ~34 solar-mass peak (measured: a few percent)
 
-/* ================= random ================= */
+/* random */
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-let R=mulberry(20261029);
 const gauss=(r=Math.random)=>{let u=0,v=0;while(u===0)u=r();v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
 function poisson(l){if(l<=0)return 0;if(l<30){const Lx=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random();}while(p>Lx);return k-1;}return Math.max(0,Math.round(l+Math.sqrt(l)*gauss()));}
 function randDir(r=Math.random){const u=2*r()-1,ph=2*Math.PI*r(),s=Math.sqrt(1-u*u);return[s*Math.cos(ph),u,s*Math.sin(ph)];}
 function plaw(lo,hi,a,r=Math.random){const b=a+1;return Math.pow(Math.pow(lo,b)+r()*(Math.pow(hi,b)-Math.pow(lo,b)),1/b);}
+
+/* mergers */
+function sampleZ(type,r=Math.random){const c=CDF[type].c;return interp(c,Zc,r());}
+function makeEvent(type,r=Math.random){
+  const z=sampleZ(type,r);let m1,m2;
+  if(type==='BBH'){m1=r()<BUMP?clamp(34+4*gauss(r),20,50):plaw(5,80,-3.4,r);m2=plaw(5,m1,1.1,r);if(m2>m1)[m1,m2]=[m2,m1];}
+  else{m1=clamp(1.33+.09*gauss(r),1.15,2);m2=clamp(1.33+.09*gauss(r),1.15,2);if(m2>m1)[m1,m2]=[m2,m1];}
+  const mc=Math.pow(m1*m2,.6)/Math.pow(m1+m2,.2);const Dc=DcOfZ(z);const v=randDir(r);
+  return{type,z,Dc,m1,m2,mc,pos:[v[0]*Dc,v[1]*Dc,v[2]*Dc],lvk:r()<pdet(PHYS.P_lvk,mc,z),et:r()<pdet(PHYS.P_et,mc,z),kn:type==='BNS'&&(1+z)*Dc<KN_DL};
+}
+/* expected share heard, with the same population the flashes are drawn from (seeded: same numbers every load) */
+function heardShare(n=60000,seed=20261111){
+  const r=mulberry(seed),out={lvk:{},et:{}};
+  for(const type of['BBH','BNS']){let a=0,b=0;
+    for(let i=0;i<n;i++){const e=makeEvent(type,r);
+      const z=e.z;a+=pdet(PHYS.P_lvk,e.mc,z);b+=pdet(PHYS.P_et,e.mc,z);}
+    out.lvk[type]=a/n;out.et[type]=b/n;}
+  return out;
+}
+const SHARE=heardShare();
+const NUM={
+  perMerger:1/(RATE.BBH+RATE.BNS),                 // seconds between two mergers somewhere in the universe
+  perYr:{BBH:RATE.BBH*YR,BNS:RATE.BNS*YR},
+  tl1:tlOfZ(1), tl6:tlOfZ(6), tlIR:tlOfZ(Z_IR), tlAll:TLB[TLB.length-1],
+  ageAtIR:Math.round((TLB[TLB.length-1]-tlOfZ(Z_IR))*10)*100,   // million years, to the nearest 100
+  cmbGly:Math.round(D_CMB*3.2616e-3),              // comoving distance to the CMB, billion light years
+  lvkReachTl:tlOfZ(REACH.lvk.zb),
+  lvkPer1000:Math.round(SHARE.lvk.BBH*1000),       // black-hole mergers heard today, per 1000
+  etPer10:Math.round(SHARE.et.BBH*10),             // ... and by ET, per 10
+  mwYears:(()=>{const y=1/(PHYS.meta.R0_BNS*1e-9/MWEG);const p=Math.pow(10,Math.floor(Math.log10(y)));return Math.round(y/p)*p;})(),
+};
+/* ================= MODEL-END ================= */
+
+/* ================= text ================= */
+const LOC={nl:'nl-BE',en:'en-GB',fr:'fr-BE'};
+const nf=(l,x,dp=1)=>x.toLocaleString(LOC[l],{minimumFractionDigits:dp,maximumFractionDigits:dp});
+const ni=(l,x)=>Math.round(x).toLocaleString(LOC[l]);
+const N1={}; for(const l in LOC) N1[l]={tl1:nf(l,NUM.tl1),tl6:nf(l,NUM.tl6),tlIR:nf(l,NUM.tlIR),tlAll:nf(l,NUM.tlAll),age:ni(l,NUM.ageAtIR),cmb:ni(l,NUM.cmbGly),
+  lvkTl:nf(l,NUM.lvkReachTl),lvk:ni(l,NUM.lvkPer1000),et:ni(l,NUM.etPer10),mw:ni(l,NUM.mwYears),bump:ni(l,BUMP*100)};
+const CREDIT={nl:'Leuven Gravity Institute, KU Leuven · voor de Einstein Telescope',en:'Leuven Gravity Institute, KU Leuven · for the Einstein Telescope',fr:'Leuven Gravity Institute, KU Leuven · pour l’Einstein Telescope'};
+const T={
+nl:(n=>({
+  sub:'Het heelal in lagen', sim:'Simulatie',
+  zoom:{mw:'Melkweg', lg:'Lokale Groep', vir:'Virgocluster', web:'Kosmisch web', uni:'Waarneembaar heelal'},
+  band:{radio:'Radio', mw:'Microgolf', ir:'Infrarood', opt:'Zichtbaar', xray:'Röntgen', gw:'Zwaartekrachtgolven'},
+  soon:'binnenkort', axLong:'lang', axShort:'kort', axGw:'geen licht · trillingen van de ruimte zelf',
+  det:{all:['Alles','wat er gebeurt'], lvk:['LIGO·Virgo','·KAGRA, nu'], et:['Einstein','Telescope'], lisa:['LISA','binnenkort']},
+  cap:{
+    none:['Alles uit','Alle lagen staan uit. Kies hieronder een manier om naar het heelal te kijken.'],
+    opt:['Zichtbaar licht',`Sterren en sterrenstelsels. Hoe verder weg, hoe zwakker. Van verder dan ${n.tl6} miljard jaar geleden zie je in zichtbaar licht niets meer: dat licht is onderweg uitgerekt tot infrarood. Infraroodtelescopen zoals JWST kijken verder.`],
+    ir:['Infrarood',`Infraroodtelescopen zoals JWST zien sterrenstelsels tot ongeveer ${n.tlIR} miljard jaar terug, toen het heelal pas zo’n ${n.age} miljoen jaar oud was. Nog verder zie je niets: daar waren nog (bijna) geen sterrenstelsels.`],
+    xray:['Röntgenstraling','Gas van miljoenen graden in clusters van sterrenstelsels, en zwarte gaten die materie opslokken. Zwarte gaten die niets opslokken, blijven onzichtbaar.'],
+    mw:['Microgolven','De nagloed van de oerknal, uitgezonden 380 000 jaar na het begin. Verder terug kan licht niet kijken: daarvoor was het heelal ondoorzichtig. (Het vlekkenpatroon hier is een illustratie.)'],
+    gw_all:['Zwaartekrachtgolven','Elke flits is een botsing van twee zwarte gaten (wit) of twee neutronensterren (goud). In het hele heelal is dat ongeveer één per minuut. Botsende zwarte gaten geven geen licht: met telescopen mis je ze allemaal.'],
+    gw_lvk:['LIGO · Virgo · KAGRA',`De detectoren van vandaag horen vooral onze kosmische buurt. Bij de oranje cirkel (zo’n ${n.lvkTl} miljard jaar terug) horen ze nog één op twee botsingen van zwarte gaten van 30 + 30 zonsmassa’s; dichterbij bijna allemaal, verder weg bijna geen. Stippellijn: hetzelfde voor neutronensterren.`],
+    gw_et:['Einstein Telescope',`Vandaag horen we ${n.lvk} op de 1000 botsingen van zwarte gaten. De Einstein Telescope zal er ${n.et} op de 10 horen, tot in de tijd van de allereerste sterren. Hoort ET iets van nog vroeger, vóór er sterren waren? Dan kan het niet van sterren komen: oer-zwarte gaten?`],
+  },
+  capX:{far:`Het licht van de rand was ${n.tlAll} miljard jaar onderweg. Intussen rekte de ruimte verder uit: de bron staat nu zo’n ${n.cmb} miljard lichtjaar ver.`,
+        mw:`In onze eigen Melkweg botsen twee neutronensterren maar ongeveer eens per ${n.mw} jaar. Zoom uit om er meer te zien.`},
+  seenHead:'Botsingen die jij opmerkt', kinds:{BBH:'Zwarte gaten',BNS:'Neutronensterren'}, of:'van',
+  seenSub:(k)=>`sinds je deze lagen koos${k>1?` · we tonen 1 op ${k} flitsen`:''}`,
+  speed:['1 s = 1 uur','1 s = 1 dag','1 s = 1 week'], catch:'Vang een flits',
+  real:(c)=>`In het echt gebeurden er sinds je hier staat <b>${c}</b> botsingen in het heelal: ongeveer één per minuut. Dat tempo kennen we maar ruwweg: het kan een paar keer meer of minder zijn.`,
+  attract:'Raak het scherm aan om zelf te verkennen',
+  width:(x)=>`beeld ≈ ${x} breed`,
+  ly:['lichtjaar','miljoen lichtjaar','miljard lichtjaar'],
+  you:'Zon · jij bent hier', mwLabel:'Melkweg',
+  ring:{z1:`${n.tl1} miljard jaar geleden`, z6:`${n.tl6} miljard jaar · grens zichtbaar licht`, ir:`${n.tlIR} miljard jaar · grens infrarood (JWST)`, dark:'donkere middeleeuwen · nog geen sterren', cmb:`nagloed oerknal · ${n.tlAll} miljard jaar`, q:'? oer-zwarte gaten'},
+  bub:{lvk:'LIGO·Virgo·KAGRA', et:'Einstein Telescope', bbh:'zwarte gaten 30 + 30 zonsmassa’s', bns:'neutronensterren'},
+  ev:{BBH:'Twee zwarte gaten', BNS:'Twee neutronensterren', mass:'Massa’s', msun:'zonsmassa’s', when:'Wanneer', ago:(t)=>`${t} miljard jaar geleden`, agoM:(t)=>`${t} miljoen jaar geleden`, heard:'Gehoord door', light:'In licht', noLight:'onzichtbaar: geen licht',
+      knFound:'kilonova gevonden, omdat de golf vertelde waar we moesten kijken', knMissed:'kilonova helder genoeg, maar niemand wist waar te kijken', knNo:'kilonova te zwak', play:'Beluister de chirp', pitch:(k)=>`toonhoogte ×${k}`, real:'echte toonhoogte'},
+  mission:[
+    {h:'Missie: vind de zwarte gaten', p:'Ergens in het heelal botsen ongeveer elke minuut twee zwarte gaten of twee neutronensterren. Kun jij de botsende zwarte gaten vinden?', go:'1 · Zoek met telescopen'},
+    {h:'1 · Met telescopen', p:'Zichtbaar licht, infrarood en röntgen staan aan. Kijk naar de teller: <b>nul</b> zwarte gaten. Botsende zwarte gaten geven geen licht.', go:'2 · Luister met de detectoren van vandaag'},
+    {h:'2 · De detectoren van vandaag', p:`Zwaartekrachtgolven! Maar LIGO, Virgo en KAGRA horen alleen onze kosmische buurt (de oranje cirkel): ongeveer <b>${n.lvk} op de 1000</b> botsingen van zwarte gaten.`, go:'3 · Luister met de Einstein Telescope'},
+    {h:'3 · Einstein Telescope', p:`De Einstein Telescope zal er <b>${n.et} op de 10</b> horen, tot bij de allereerste sterren (de turquoise cirkel). Tik op een flits, of op ‘Vang een flits’, om hem te horen.`, go:'Verken zelf verder'}],
+  skip:'zelf verkennen', mute:['Geluid uit','Geluid aan'],
+  aboutClose:'Sluiten',
+  about:`<h2>Over deze simulatie</h2>
+  <ul>
+  <li><b>Wat is echt?</b> Het tempo van de botsingen, hoe ver de detectoren reiken, en de afstanden en tijden in het heelal zijn berekend uit gepubliceerde metingen. Welke botsing waar en wanneer flitst, is gesimuleerd (toeval volgens die tempo’s).</li>
+  <li><b>Tempo:</b> deze simulatie gebruikt 20 (zwarte gaten) en 100 (neutronensterren) botsingen per Gpc³ per jaar in het huidige heelal. Gemeten (LIGO-Virgo-KAGRA, GWTC-4.0, 2025): zwarte gaten 14–26, neutronensterren 7,6–250. ‘Ongeveer één per minuut’ kan dus in werkelijkheid een paar keer meer of minder zijn. Vroeger in het heelal meer, zoals de stervorming (Madau &amp; Dickinson 2014), hier zonder vertraging tussen stervorming en botsing.</li>
+  <li><b>Massa’s:</b> zwarte gaten volgens een machtswet, met ${n.bump} % in een piek rond 34 zonsmassa’s; neutronensterren rond 1,3 zonsmassa. Botsingen van een neutronenster met een zwart gat zitten er niet in.</li>
+  <li><b>Detectoren:</b> gemeten gevoeligheid van LIGO (O4, ~150 Mpc) en Virgo (~53 Mpc); voor de Einstein Telescope de ontwerpgevoeligheid (driehoek, 10 km, ET-D). Het bereik van ET voor zware zwarte gaten hangt af van de gevoeligheid onder 5 Hz en is eerder optimistisch. Een botsing telt als ‘gehoord’ bij een signaal-ruisverhouding ≥ 10. De cirkels tonen tot waar nog de helft van zulke botsingen gehoord wordt.</li>
+  <li><b>Licht:</b> zichtbaar licht tot z ≈ 6, infrarood (JWST) tot z ≈ 14. Een kilonova (de gloed na een botsing van neutronensterren) telt alleen als ‘gezien’ als een detector de botsing ook hoort. Zo is de enige tot nu toe gevonden (2017): de golf vertelde waar we moesten kijken.</li>
+  <li><b>Sterrenstelsels:</b> de Melkweg, de Lokale Groep en grote clusters staan ongeveer in de juiste richting. Het kosmische web daarbuiten is gesimuleerd. Afstanden zijn ‘meebewegend’ (zoals het heelal er nu uitziet).</li>
+  <li><b>Kosmologie:</b> Planck 2018.</li>
+  </ul><p class="credit">${CREDIT.nl}</p>`,
+}))(N1.nl),
+en:(n=>({
+  sub:'The universe in layers', sim:'Simulation',
+  zoom:{mw:'Milky Way', lg:'Local Group', vir:'Virgo Cluster', web:'Cosmic web', uni:'Observable universe'},
+  band:{radio:'Radio', mw:'Microwave', ir:'Infrared', opt:'Visible', xray:'X-ray', gw:'Gravitational waves'},
+  soon:'coming soon', axLong:'long', axShort:'short', axGw:'no light · vibrations of space itself',
+  det:{all:['Everything','that happens'], lvk:['LIGO·Virgo','·KAGRA, today'], et:['Einstein','Telescope'], lisa:['LISA','coming soon']},
+  cap:{
+    none:['All off','Every layer is switched off. Pick a way of looking at the universe below.'],
+    opt:['Visible light',`Stars and galaxies. The farther away, the fainter. From further back than ${n.tl6} billion years ago, visible light shows nothing more: that light has been stretched into the infrared on its way here. Infrared telescopes such as JWST see further.`],
+    ir:['Infrared',`Infrared telescopes such as JWST see galaxies back to about ${n.tlIR} billion years ago, when the universe was only some ${n.age} million years old. Beyond that there is nothing to see: there were (almost) no galaxies yet.`],
+    xray:['X-rays','Gas at millions of degrees in galaxy clusters, and black holes that are swallowing matter. Black holes that are not feeding stay invisible.'],
+    mw:['Microwaves','The afterglow of the Big Bang, released 380,000 years after the beginning. Light cannot see further back: before that the universe was opaque. (The spot pattern here is an illustration.)'],
+    gw_all:['Gravitational waves','Every flash is a collision of two black holes (white) or two neutron stars (gold). In the whole universe that is about one a minute. Colliding black holes give off no light: telescopes miss every one of them.'],
+    gw_lvk:['LIGO · Virgo · KAGRA',`Today’s detectors mostly hear our cosmic neighbourhood. At the orange circle (about ${n.lvkTl} billion years back) they still hear one in two collisions of black holes of 30 + 30 solar masses; closer in, nearly all; further out, almost none. Dashed line: the same for neutron stars.`],
+    gw_et:['Einstein Telescope',`Today we hear ${n.lvk} in every 1,000 black-hole collisions. The Einstein Telescope will hear ${n.et} in every 10, all the way back to the time of the very first stars. If ET hears something from even earlier, before there were stars, it cannot come from stars: primordial black holes?`],
+  },
+  capX:{far:`Light from the edge travelled for ${n.tlAll} billion years. Meanwhile space kept stretching, so its source is now about ${n.cmb} billion light years away.`,
+        mw:`In our own Milky Way, two neutron stars merge only about once every ${n.mw} years. Zoom out to see more.`},
+  seenHead:'Collisions you detect', kinds:{BBH:'Black holes',BNS:'Neutron stars'}, of:'of',
+  seenSub:(k)=>`since you chose these layers${k>1?` · showing 1 in ${k} flashes`:''}`,
+  speed:['1 s = 1 hour','1 s = 1 day','1 s = 1 week'], catch:'Catch a flash',
+  real:(c)=>`In reality, <b>${c}</b> collisions have happened in the universe since you started looking: about one a minute. We know that rate only to within a factor of a few.`,
+  attract:'Touch the screen to explore',
+  width:(x)=>`view ≈ ${x} across`,
+  ly:['light years','million light years','billion light years'],
+  you:'Sun · you are here', mwLabel:'Milky Way',
+  ring:{z1:`${n.tl1} billion years ago`, z6:`${n.tl6} billion years · limit of visible light`, ir:`${n.tlIR} billion years · limit of infrared (JWST)`, dark:'dark ages · no stars yet', cmb:`Big Bang afterglow · ${n.tlAll} billion years`, q:'? primordial black holes'},
+  bub:{lvk:'LIGO·Virgo·KAGRA', et:'Einstein Telescope', bbh:'black holes 30 + 30 solar masses', bns:'neutron stars'},
+  ev:{BBH:'Two black holes', BNS:'Two neutron stars', mass:'Masses', msun:'solar masses', when:'When', ago:(t)=>`${t} billion years ago`, agoM:(t)=>`${t} million years ago`, heard:'Heard by', light:'In light', noLight:'invisible: no light',
+      knFound:'kilonova found, because the wave told us where to look', knMissed:'kilonova bright enough, but nobody knew where to look', knNo:'kilonova too faint', play:'Listen to the chirp', pitch:(k)=>`pitch ×${k}`, real:'true pitch'},
+  mission:[
+    {h:'Mission: find the black holes', p:'Somewhere in the universe, two black holes or two neutron stars collide about once a minute. Can you find the colliding black holes?', go:'1 · Search with telescopes'},
+    {h:'1 · With telescopes', p:'Visible light, infrared and X-rays are on. Look at the counter: <b>zero</b> black holes. Colliding black holes give off no light.', go:'2 · Listen with today’s detectors'},
+    {h:'2 · Today’s detectors', p:`Gravitational waves! But LIGO, Virgo and KAGRA only hear our cosmic neighbourhood (the orange circle): about <b>${n.lvk} in every 1,000</b> black-hole collisions.`, go:'3 · Listen with the Einstein Telescope'},
+    {h:'3 · Einstein Telescope', p:`The Einstein Telescope will hear <b>${n.et} in every 10</b>, all the way back to the very first stars (the teal circle). Tap a flash, or ‘Catch a flash’, to hear it.`, go:'Explore on your own'}],
+  skip:'explore freely', mute:['Sound off','Sound on'],
+  aboutClose:'Close',
+  about:`<h2>About this simulation</h2>
+  <ul>
+  <li><b>What is real?</b> The collision rates, how far the detectors reach, and the distances and times in the universe are computed from published measurements. Which collision flashes where and when is simulated (random draws following those rates).</li>
+  <li><b>Rates:</b> this simulation uses 20 (black holes) and 100 (neutron stars) mergers per Gpc³ per year in today’s universe. Measured (LIGO-Virgo-KAGRA, GWTC-4.0, 2025): black holes 14–26, neutron stars 7.6–250. So ‘about one a minute’ could in reality be a few times more or less. Higher earlier in cosmic history, following star formation (Madau &amp; Dickinson 2014), here with no delay between star formation and merger.</li>
+  <li><b>Masses:</b> black holes follow a power law, with ${n.bump}% in a peak near 34 solar masses; neutron stars near 1.3 solar masses. Neutron star + black hole pairs are not included.</li>
+  <li><b>Detectors:</b> measured sensitivity of LIGO (O4, ~150 Mpc) and Virgo (~53 Mpc); for the Einstein Telescope the design sensitivity (triangle, 10 km, ET-D). ET’s reach for heavy black holes depends on its sensitivity below 5 Hz and is on the optimistic side. A merger counts as ‘heard’ at a signal-to-noise ratio ≥ 10. The circles show where half of such mergers are still heard.</li>
+  <li><b>Light:</b> visible light to z ≈ 6, infrared (JWST) to z ≈ 14. A kilonova (the glow after a neutron-star merger) counts as ‘seen’ only when a detector also hears the merger. That is how the only one so far was found (2017): the wave told us where to look.</li>
+  <li><b>Galaxies:</b> the Milky Way, Local Group and major clusters sit in roughly the right directions. The cosmic web beyond is simulated. Distances are comoving (the universe as it is now).</li>
+  <li><b>Cosmology:</b> Planck 2018.</li>
+  </ul><p class="credit">${CREDIT.en}</p>`,
+}))(N1.en),
+fr:(n=>({
+  sub:'L’Univers en couches', sim:'Simulation',
+  zoom:{mw:'Voie lactée', lg:'Groupe local', vir:'Amas de la Vierge', web:'Toile cosmique', uni:'Univers observable'},
+  band:{radio:'Radio', mw:'Micro-ondes', ir:'Infrarouge', opt:'Visible', xray:'Rayons X', gw:'Ondes gravitationnelles'},
+  soon:'bientôt', axLong:'longue', axShort:'courte', axGw:'pas de lumière · vibrations de l’espace lui-même',
+  det:{all:['Tout','ce qui se passe'], lvk:['LIGO·Virgo','·KAGRA, aujourd’hui'], et:['Einstein','Telescope'], lisa:['LISA','bientôt']},
+  cap:{
+    none:['Tout éteint','Toutes les couches sont éteintes. Choisissez ci-dessous une façon de regarder l’Univers.'],
+    opt:['Lumière visible',`Étoiles et galaxies. Plus elles sont loin, plus elles sont pâles. Au-delà de ${n.tl6} milliards d’années dans le passé, la lumière visible ne montre plus rien : en chemin, cette lumière a été étirée jusqu’à l’infrarouge. Les télescopes infrarouges comme JWST voient plus loin.`],
+    ir:['Infrarouge',`Les télescopes infrarouges comme JWST voient des galaxies jusqu’à environ ${n.tlIR} milliards d’années dans le passé, quand l’Univers n’avait qu’environ ${n.age} millions d’années. Au-delà, plus rien à voir : il n’y avait encore (presque) pas de galaxies.`],
+    xray:['Rayons X','Du gaz à des millions de degrés dans les amas de galaxies, et des trous noirs en train d’avaler de la matière. Les trous noirs qui n’avalent rien restent invisibles.'],
+    mw:['Micro-ondes','Le rayonnement fossile du Big Bang, émis 380 000 ans après le début. La lumière ne peut pas remonter plus loin : avant, l’Univers était opaque. (Le motif de taches est une illustration.)'],
+    gw_all:['Ondes gravitationnelles','Chaque éclair est une collision de deux trous noirs (blanc) ou de deux étoiles à neutrons (or). Dans tout l’Univers, il y en a environ une par minute. Deux trous noirs qui se percutent n’émettent aucune lumière : les télescopes les ratent toutes.'],
+    gw_lvk:['LIGO · Virgo · KAGRA',`Les détecteurs actuels entendent surtout notre voisinage cosmique. Au cercle orange (il y a environ ${n.lvkTl} milliards d’années), ils entendent encore une collision sur deux de trous noirs de 30 + 30 masses solaires ; plus près, presque toutes ; plus loin, presque aucune. En pointillés : la même chose pour les étoiles à neutrons.`],
+    gw_et:['Einstein Telescope',`Aujourd’hui, on entend ${n.lvk} collision de trous noirs sur 1000. L’Einstein Telescope en entendra ${n.et} sur 10, jusqu’à l’époque des toutes premières étoiles. Et s’il entend quelque chose d’encore plus ancien, d’avant les étoiles ? Cela ne pourrait pas venir d’étoiles : des trous noirs primordiaux ?`],
+  },
+  capX:{far:`La lumière du bord a voyagé ${n.tlAll} milliards d’années. Pendant ce temps, l’espace a continué de s’étirer : sa source se trouve aujourd’hui à environ ${n.cmb} milliards d’années-lumière.`,
+        mw:`Dans notre propre Voie lactée, deux étoiles à neutrons ne fusionnent qu’environ une fois tous les ${n.mw} ans. Dézoomez pour en voir davantage.`},
+  seenHead:'Collisions que vous repérez', kinds:{BBH:'Trous noirs',BNS:'Étoiles à neutrons'}, of:'sur',
+  seenSub:(k)=>`depuis votre choix de couches${k>1?` · 1 éclair sur ${k} affiché`:''}`,
+  speed:['1 s = 1 heure','1 s = 1 jour','1 s = 1 semaine'], catch:'Attraper un éclair',
+  real:(c)=>`En réalité, <b>${c}</b> collisions se sont produites dans l’Univers depuis que vous êtes là : environ une par minute. On ne connaît ce rythme qu’à quelques fois près.`,
+  attract:'Touchez l’écran pour explorer',
+  width:(x)=>`vue ≈ ${x} de large`,
+  ly:['années-lumière','millions d’années-lumière','milliards d’années-lumière'],
+  you:'Soleil · vous êtes ici', mwLabel:'Voie lactée',
+  ring:{z1:`il y a ${n.tl1} milliards d’années`, z6:`${n.tl6} milliards d’années · limite de la lumière visible`, ir:`${n.tlIR} milliards d’années · limite de l’infrarouge (JWST)`, dark:'âges sombres · pas encore d’étoiles', cmb:`rayonnement fossile · ${n.tlAll} milliards d’années`, q:'? trous noirs primordiaux'},
+  bub:{lvk:'LIGO·Virgo·KAGRA', et:'Einstein Telescope', bbh:'trous noirs 30 + 30 masses solaires', bns:'étoiles à neutrons'},
+  ev:{BBH:'Deux trous noirs', BNS:'Deux étoiles à neutrons', mass:'Masses', msun:'masses solaires', when:'Quand', ago:(t)=>`il y a ${t} milliards d’années`, agoM:(t)=>`il y a ${t} millions d’années`, heard:'Entendue par', light:'En lumière', noLight:'invisible : aucune lumière',
+      knFound:'kilonova trouvée, parce que l’onde a dit où regarder', knMissed:'kilonova assez brillante, mais personne ne savait où regarder', knNo:'kilonova trop faible', play:'Écouter le chirp', pitch:(k)=>`son ×${k}`, real:'hauteur réelle'},
+  mission:[
+    {h:'Mission : trouver les trous noirs', p:'Quelque part dans l’Univers, deux trous noirs ou deux étoiles à neutrons se percutent environ une fois par minute. Saurez-vous trouver les trous noirs ?', go:'1 · Chercher avec des télescopes'},
+    {h:'1 · Avec des télescopes', p:'Lumière visible, infrarouge et rayons X sont allumés. Regardez le compteur : <b>zéro</b> trou noir. Deux trous noirs qui se percutent n’émettent aucune lumière.', go:'2 · Écouter avec les détecteurs actuels'},
+    {h:'2 · Les détecteurs actuels', p:`Des ondes gravitationnelles ! Mais LIGO, Virgo et KAGRA n’entendent que notre voisinage cosmique (le cercle orange) : environ <b>${n.lvk} collision de trous noirs sur 1000</b>.`, go:'3 · Écouter avec l’Einstein Telescope'},
+    {h:'3 · Einstein Telescope', p:`L’Einstein Telescope en entendra <b>${n.et} sur 10</b>, jusqu’aux toutes premières étoiles (le cercle turquoise). Touchez un éclair, ou « Attraper un éclair », pour l’écouter.`, go:'Explorer librement'}],
+  skip:'explorer librement', mute:['Couper le son','Activer le son'],
+  aboutClose:'Fermer',
+  about:`<h2>À propos de cette simulation</h2>
+  <ul>
+  <li><b>Qu’est-ce qui est réel ?</b> Le rythme des collisions, la portée des détecteurs, ainsi que les distances et les époques dans l’Univers sont calculés à partir de mesures publiées. Quelle collision brille où et quand est simulé (tirages au hasard selon ces rythmes).</li>
+  <li><b>Rythme :</b> cette simulation utilise 20 (trous noirs) et 100 (étoiles à neutrons) fusions par Gpc³ et par an dans l’Univers actuel. Mesures (LIGO-Virgo-KAGRA, GWTC-4.0, 2025) : trous noirs 14–26, étoiles à neutrons 7,6–250. « Environ une par minute » peut donc être en réalité quelques fois plus ou moins. Plus fréquent autrefois, comme la formation d’étoiles (Madau &amp; Dickinson 2014), ici sans délai entre formation des étoiles et fusion.</li>
+  <li><b>Masses :</b> trous noirs selon une loi de puissance, dont ${n.bump} % dans un pic vers 34 masses solaires ; étoiles à neutrons vers 1,3 masse solaire. Les couples étoile à neutrons + trou noir ne sont pas inclus.</li>
+  <li><b>Détecteurs :</b> sensibilité mesurée de LIGO (O4, ~150 Mpc) et de Virgo (~53 Mpc) ; pour l’Einstein Telescope, la sensibilité de conception (triangle, 10 km, ET-D). La portée d’ET pour les trous noirs lourds dépend de sa sensibilité sous 5 Hz et est plutôt optimiste. Une fusion compte comme « entendue » à partir d’un rapport signal/bruit de 10. Les cercles indiquent jusqu’où la moitié de ces fusions sont encore entendues.</li>
+  <li><b>Lumière :</b> visible jusqu’à z ≈ 6, infrarouge (JWST) jusqu’à z ≈ 14. Une kilonova (la lueur après la fusion de deux étoiles à neutrons) ne compte comme « vue » que si un détecteur entend aussi la fusion. C’est ainsi que la seule observée à ce jour a été trouvée (2017) : l’onde a dit où regarder.</li>
+  <li><b>Galaxies :</b> la Voie lactée, le Groupe local et les grands amas sont à peu près dans la bonne direction. La toile cosmique au-delà est simulée. Les distances sont « comobiles » (l’Univers tel qu’il est aujourd’hui).</li>
+  <li><b>Cosmologie :</b> Planck 2018.</li>
+  </ul><p class="credit">${CREDIT.fr}</p>`,
+}))(N1.fr)};
+let LANG='nl';
+const L=()=>T[LANG];
+
 
 /* simplex noise (Gustavson) */
 const grad3=[[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
@@ -358,7 +521,7 @@ const U={uScale:{value:600},uPR:{value:PR},uTime:{value:0}};
 
 const galVS=`
 attribute float aSize; attribute float aBright; attribute float aZn; attribute vec3 color;
-uniform float uScale,uPR,uOpacity,uMinPx,uZcut;
+uniform float uScale,uPR,uOpacity,uMinPx,uZcut,uZlo; uniform vec3 uTint;
 varying vec3 vCol; varying float vA;
 void main(){
   vec4 mv=modelViewMatrix*vec4(position,1.0);
@@ -366,15 +529,19 @@ void main(){
   float d=max(-mv.z,1e-7);
   float px=aSize*uScale/d;
   float a=aBright*uOpacity*clamp(pow(px/uMinPx,0.35),0.0,1.0);
-  a*=1.0-smoothstep(uZcut*0.72,uZcut,aZn);
-  vA=a; vCol=color;
+  a*=1.0-smoothstep(uZlo,uZcut,aZn);
+  vA=a; vCol=color*uTint;
   gl_PointSize=clamp(px,uMinPx,48.0)*uPR;
   if(a<0.004||mv.z>0.0){gl_PointSize=0.0;gl_Position=vec4(2.0,2.0,2.0,1.0);}
 }`;
 const galFS=`
 varying vec3 vCol; varying float vA;
 void main(){vec2 p=gl_PointCoord*2.0-1.0;float r2=dot(p,p);if(r2>1.0)discard;float g=exp(-r2*4.5);gl_FragColor=vec4(vCol*g*vA,1.0);}`;
-function makePoints(arr,minPx=1.4,zcut=99){
+// arr: a point buffer, or an existing Points object whose geometry is shared (infrared re-uses the optical galaxies)
+function makePoints(arr,minPx=1.4,zcut=99,zlo=zcut*.72,tint=[1,1,1]){
+  if(arr.isPoints){const m=arr.material.clone();m.uniforms.uScale=U.uScale;m.uniforms.uPR=U.uPR;m.uniforms.uOpacity={value:1};m.uniforms.uMinPx={value:minPx};
+    m.uniforms.uZcut={value:zcut};m.uniforms.uZlo={value:zlo};m.uniforms.uTint={value:new THREE.Vector3(...tint)};
+    const p=new THREE.Points(arr.geometry,m);p.frustumCulled=false;scene.add(p);return p;}
   const n=arr.pos.length/3;
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(arr.pos),3));
@@ -382,7 +549,7 @@ function makePoints(arr,minPx=1.4,zcut=99){
   g.setAttribute('aSize',new THREE.BufferAttribute(new Float32Array(arr.size),1));
   g.setAttribute('aBright',new THREE.BufferAttribute(new Float32Array(arr.br),1));
   g.setAttribute('aZn',new THREE.BufferAttribute(new Float32Array(arr.z),1));
-  const m=new THREE.ShaderMaterial({uniforms:{uScale:U.uScale,uPR:U.uPR,uOpacity:{value:1},uMinPx:{value:minPx},uZcut:{value:zcut}},vertexShader:galVS,fragmentShader:galFS,transparent:true,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending});
+  const m=new THREE.ShaderMaterial({uniforms:{uScale:U.uScale,uPR:U.uPR,uOpacity:{value:1},uMinPx:{value:minPx},uZcut:{value:zcut},uZlo:{value:zlo},uTint:{value:new THREE.Vector3(...tint)}},vertexShader:galVS,fragmentShader:galFS,transparent:true,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending});
   const p=new THREE.Points(g,m);p.frustumCulled=false;p.userData.n=n;scene.add(p);return p;
 }
 function buf(){return{pos:[],col:[],size:[],br:[],z:[]};}
@@ -473,9 +640,9 @@ const midOpt=buf(), midX=buf();
     else if(r()<.03*wb) push(midX,x,y,z,[.6,.5,1],7,.6,zz/2);    // hot cluster gas
   }
 }
-/* ---------- deep universe (1.2 Gpc … z≈12) ---------- */
+/* ---------- deep universe (1.2 Gpc … z≈14.5; visible light fades out by z≈6.5, infrared by z≈14) ---------- */
 const farOpt=buf(), farX=buf();
-const D12=DcOfZ(12);
+const D12=DcOfZ(Z_IR+.5);
 {
   const r=mulberry(51); let n=0;
   while(n<90000){const v=randDir(r),rad=Math.cbrt(r())*D12; if(rad<1200) continue; const x=v[0]*rad,y=v[1]*rad,z=v[2]*rad;
@@ -486,6 +653,7 @@ const D12=DcOfZ(12);
     else if(r()<.012 && zz<2.2) push(farX,x,y,z,[.6,.5,1],16,.55,zz/2);
   }
 }
+const IR_TINT=[1,.5,.46];
 const SH={ // optical uses uZcut = 6 (redshift); X-ray data stores z/zmax so uZcut = 1
   mwO:makePoints(mwOpt,1.5), mwX:makePoints(mwX,2.2,1),
   lgO:makePoints(lgOpt,1.2), lgX:makePoints(lgX,2,1),
@@ -493,6 +661,9 @@ const SH={ // optical uses uZcut = 6 (redshift); X-ray data stores z/zmax so uZc
   midO:makePoints(midOpt,2.2,6.5), midX:makePoints(midX,2.5,1),
   farO:makePoints(farOpt,1.3,6.5), farX:makePoints(farX,2,1),
 };
+// infrared (H1): the same galaxies, reddened, and seen out to z≈14 (JWST); nothing beyond
+Object.assign(SH,{mwI:makePoints(SH.mwO,1.5,99,98,IR_TINT), lgI:makePoints(SH.lgO,1.2,99,98,IR_TINT),
+  locI:makePoints(SH.locO,1.3,99,98,IR_TINT), midI:makePoints(SH.midO,2.2,99,98,IR_TINT), farI:makePoints(SH.farO,1.3,Z_IR+.3,Z_IR-1.2,IR_TINT)});
 LABELS.push({p:[0,0,0],key:'mw',dmin:.12,dmax:14},{p:gal(121.2,-21.6,.765),key:'Andromeda',dmin:.25,dmax:14},
   {p:gal(280.5,-32.9,.05),key:'LMC',dmin:.08,dmax:1.4},{p:SUN,key:'you',dmin:0,dmax:.25});
 
@@ -547,11 +718,13 @@ const flashes=new THREE.Points(fg,flashMat);flashes.frustumCulled=false;flashes.
 let poolI=0;const live=[];
 
 /* ================= state ================= */
-const S={opt:true,xray:false,mw:false,gw:false,det:'all',speedI:1,last:'opt'};
+const S={opt:true,ir:false,xray:false,mw:false,gw:false,det:'all',speedI:1,last:'opt'};
 const SPEEDS=[3600,86400,604800];
-const LO={opt:0,xray:0,mw:0,gw:0,lvk:0,et:0};          // smoothed layer opacities
+const LO={opt:0,ir:0,xray:0,mw:0,gw:0,lvk:0,et:0};          // smoothed layer opacities
 const reach={lvk:0,et:0};                             // animated bubble sweep 0..1
-let cnt={tot:0,seen:0}, shownRatio=1, realCount=0, sel=null;
+const newCnt=()=>({BBH:{tot:0,seen:0},BNS:{tot:0,seen:0}});
+let cnt=newCnt(), shownRatio=1, realCount=0, sel=null;
+const QS=new URLSearchParams(location.search);
 
 /* ================= camera control ================= */
 const STOPS={mw:{d:.055,phi:.95},lg:{d:2.6,phi:1.05},vir:{d:75,phi:1.1},web:{d:700,phi:1.25},uni:{d:56000,phi:1.2}};
@@ -582,27 +755,24 @@ canvas.addEventListener('pointerup',endPtr);canvas.addEventListener('pointercanc
 canvas.addEventListener('wheel',e=>{e.preventDefault();tween=null;cam.logD+=e.deltaY*.0016;userInput();},{passive:false});
 
 /* ================= events (mergers) ================= */
-function sampleZ(type){const c=CDF[type].c;return interp(c,Zc,Math.random());}
-function makeEvent(type){
-  const z=sampleZ(type);let m1,m2;
-  if(type==='BBH'){m1=Math.random()<.15?clamp(34+4*gauss(),20,50):plaw(5,80,-3.4);m2=plaw(5,m1,1.1);if(m2>m1)[m1,m2]=[m2,m1];}
-  else{m1=clamp(1.33+.09*gauss(),1.15,2);m2=clamp(1.33+.09*gauss(),1.15,2);if(m2>m1)[m1,m2]=[m2,m1];}
-  const mc=Math.pow(m1*m2,.6)/Math.pow(m1+m2,.2);const Dc=DcOfZ(z);const v=randDir();
-  return{type,z,Dc,m1,m2,mc,pos:[v[0]*Dc,v[1]*Dc,v[2]*Dc],lvk:Math.random()<pdet(PHYS.P_lvk,mc,z),et:Math.random()<pdet(PHYS.P_et,mc,z),kn:type==='BNS'&&(1+z)*Dc<KN_DL};
-}
+// makeEvent / sampleZ live in the MODEL block above
 function seenAs(e){
-  const gwS=S.gw&&(S.det==='all'||(S.det==='lvk'&&e.lvk)||(S.det==='et'&&e.et));
-  const optS=S.opt&&e.kn;
+  const heard=(S.det==='lvk'&&e.lvk)||(S.det==='et'&&e.et);
+  const gwS=S.gw&&(S.det==='all'||heard);
+  // H5: a kilonova is only found when a detector hears the merger and tells telescopes where to look
+  const optS=(S.opt||S.ir)&&e.kn&&S.gw&&heard;
   if(gwS&&optS)return 3;if(gwS)return e.type==='BBH'?0:1;if(optS)return 2;return -1;
 }
 const CAP=55; // flashes per second the tablet has to draw at most
-let capAcc=0;
 function simulate(dtReal,now){
   const dts=dtReal*SPEEDS[S.speedI];
   const evs=[];
   for(const type of['BBH','BNS']){const n=poisson(RATE[type]*dts);for(let i=0;i<n;i++)evs.push(makeEvent(type));}
   const vis=[];
-  for(const e of evs){cnt.tot++;const k=seenAs(e);if(k>=0){cnt.seen++;vis.push([e,k]);}}
+  let nHeard=0,mHeard=0;
+  for(const e of evs){const c=cnt[e.type];c.tot++;const k=seenAs(e);if(k>=0){c.seen++;vis.push([e,k]);
+    if(S.det!=='all'&&S.gw&&k!==2){nHeard++;mHeard=Math.max(mHeard,e.m1+e.m2);}}}
+  if(nHeard)ticks(nHeard,dtReal,mHeard);
   realCount+=poisson((RATE.BBH+RATE.BNS)*dtReal);
   const budget=CAP*dtReal;const p=vis.length>budget?budget/vis.length:1;
   if(vis.length)shownRatio=shownRatio*.9+.1*(1/p);
@@ -610,40 +780,66 @@ function simulate(dtReal,now){
     fPos[i*3]=e.pos[0];fPos[i*3+1]=e.pos[1];fPos[i*3+2]=e.pos[2];fBirth[i]=now+Math.random()*dtReal;fKind[i]=k;fMag[i]=clamp(Math.log10(e.mc)/1.6,0,1);
     live.push({e,k,birth:fBirth[i]});}
   if(vis.length){for(const n of['position','aBirth','aKind','aMag'])fg.attributes[n].needsUpdate=true;}
-  while(live.length&&now-live[0].birth>3)live.shift();
+  while(live.length&&now-live[0].birth>CATCH_LIFE+.5)live.shift();
 }
-function resetCount(){cnt={tot:0,seen:0};shownRatio=1;}
+function resetCount(){cnt=newCnt();shownRatio=1;}
 
 /* ================= picking + event card ================= */
 const vtmp=new THREE.Vector3();
 function toScreen(p){vtmp.set(p[0],p[1],p[2]).project(camera);if(vtmp.z>1)return null;return[(vtmp.x*.5+.5)*innerWidth,(-vtmp.y*.5+.5)*innerHeight];}
+const CATCH_LIFE=6; // s: a flash stays tappable this long (H14), well after its glow has faded
 function pick(x,y){
-  let best=null,bd=42;const now=U.uTime.value;
-  for(const l of live){if(now-l.birth>2.6||now<l.birth)continue;const s=toScreen(l.e.pos);if(!s)continue;const d=Math.hypot(s[0]-x,s[1]-y);if(d<bd){bd=d;best=l;}}
-  if(best){sel=best;showEvent();}
+  let best=null,bd=48;const now=U.uTime.value;
+  for(const l of live){if(now-l.birth>CATCH_LIFE||now<l.birth)continue;const s=toScreen(l.e.pos);if(!s)continue;const d=Math.hypot(s[0]-x,s[1]-y);if(d<bd){bd=d;best=l;}}
+  if(best){sel=best;showEvent();autoChirp();}
 }
-const fmt=(x,dp=1)=>x.toLocaleString(LANG==='nl'?'nl-BE':'en-GB',{minimumFractionDigits:dp,maximumFractionDigits:dp});
-const fmtI=x=>Math.round(x).toLocaleString(LANG==='nl'?'nl-BE':'en-GB');
+// "Catch a flash": freeze the newest flash that is on screen (prefer black holes, they sound best) and open its card
+function catchOne(){
+  const now=U.uTime.value;let best=null,bs=-1;
+  for(let i=live.length-1;i>=0;i--){const l=live[i];if(now<l.birth||now-l.birth>CATCH_LIFE)continue;const s=toScreen(l.e.pos);
+    if(!s||s[0]<20||s[1]<20||s[0]>innerWidth-20||s[1]>innerHeight-20)continue;
+    const sc=(l.e.type==='BBH'?2:1)-(now-l.birth)/CATCH_LIFE;if(sc>bs){bs=sc;best=l;}}
+  if(best){sel=best;showEvent();autoChirp();}
+}
+const fmt=(x,dp=1)=>nf(LANG,x,dp);
+const fmtI=x=>ni(LANG,x);
 function showEvent(){
   if(!sel)return;const e=sel.e,t=L().ev;const box=document.getElementById('event');box.hidden=false;
-  document.getElementById('ev-h').textContent=e.type==='BBH'?t.bbh:t.bns;
+  document.getElementById('ev-h').textContent=t[e.type];
   const yes=(b)=>b?'<span class="yes">✓</span>':'<span class="no">✗</span>';
-  const light=e.type==='BBH'?t.noLight:(e.kn?t.kn:t.knNo);
+  const light=e.type==='BBH'?t.noLight:(!e.kn?t.knNo:(e.lvk||e.et)?t.knFound:t.knMissed);
+  const tl=tlOfZ(e.z);
   document.getElementById('ev-dl').innerHTML=
    `<dt>${t.mass}</dt><dd>${fmt(e.m1,e.type==='BBH'?0:2)} + ${fmt(e.m2,e.type==='BBH'?0:2)} ${t.msun}</dd>`+
-   `<dt>${t.when}</dt><dd>${t.ago(fmt(tlOfZ(e.z),1))} · z = ${fmt(e.z,e.z<1?2:1)}</dd>`+
-   `<dt>${t.heard}</dt><dd>LVK ${yes(e.lvk)} &nbsp; ET ${yes(e.et)}</dd>`+
+   `<dt>${t.when}</dt><dd>${tl<1?t.agoM(fmtI(Math.round(tl*100)*10)):t.ago(fmt(tl,1))}</dd>`+
+   `<dt>${t.heard}</dt><dd>LIGO·Virgo ${yes(e.lvk)} &nbsp; Einstein Telescope ${yes(e.et)}</dd>`+
    `<dt>${t.light}</dt><dd>${light}</dd>`;
   const k=chirpShift(e);document.getElementById('play').innerHTML=`▶ ${t.play} <small>${k>1.05?t.pitch(fmtI(k)):t.real}</small>`;
 }
 document.getElementById('ev-x').onclick=()=>{sel=null;document.getElementById('event').hidden=true;};
 
 /* ---------- chirp audio: leading-order inspiral + simple ringdown; pitch raised into hearing range if needed ---------- */
-let actx=null;
+let actx=null,master=null,muted=QS.get('mute')==='1';
+function ensureAudio(){ // only ever called from a user gesture
+  try{if(!actx){actx=new(window.AudioContext||window.webkitAudioContext)();master=actx.createGain();master.connect(actx.destination);}
+    if(actx.state==='suspended')actx.resume();}catch(err){actx=null;}
+  return actx;
+}
+function autoChirp(){if(!muted&&sel)playChirp(sel.e);}
+// H15 sound layer: a soft tick for each collision the selected detector hears (at most ~7 per second)
+let tickBudget=0;
+function ticks(n,dt,mtot){
+  if(muted||attract.on||!actx||actx.state!=='running')return;
+  tickBudget=Math.min(2,tickBudget+7*dt);const k=Math.min(n,Math.floor(tickBudget));if(k<1)return;tickBudget-=k;
+  const f=clamp(2600/Math.sqrt(mtot),300,1400); // heavier pairs tick lower
+  for(let i=0;i<k;i++){const t0=actx.currentTime+.02+Math.random()*Math.max(dt,.05);const o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine';o.frequency.setValueAtTime(f*(.92+.16*Math.random()),t0);o.frequency.exponentialRampToValueAtTime(f*1.6,t0+.05);
+    g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.09,t0+.004);g.gain.exponentialRampToValueAtTime(.0005,t0+.07);
+    o.connect(g);g.connect(master);o.start(t0);o.stop(t0+.08);}
+}
 function chirpShift(e){const fI=4400/((e.m1+e.m2)*(1+e.z));return fI<260?260/fI:1;}
 function playChirp(e){
-  try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();}catch(err){return;}
-  if(actx.state==='suspended')actx.resume();
+  if(!ensureAudio())return;
   const sr=actx.sampleRate,Md=(e.m1+e.m2)*(1+e.z),k=chirpShift(e);
   const mcs=e.mc*(1+e.z)*4.925491e-6/k,fI=4400/Md*k,fR=(e.type==='BBH'?18000/Md:4400/Md)*k;
   const tauOf=f=>5/256*Math.pow(mcs,-5/3)*Math.pow(Math.PI*f,-8/3),fOf=tau=>Math.pow(256/5*tau*Math.pow(mcs,5/3),-3/8)/Math.PI;
@@ -653,29 +849,36 @@ function playChirp(e){
     if(tau>tEnd){f=fOf(tau);a=Math.pow(f/fI,2/3);}
     else{const tt=tEnd-tau;if(e.type==='BBH'){f=fI+(fR-fI)*Math.min(1,tt*fI/1.5);a=Math.exp(-Math.max(0,tt-1.5/fI)*Math.PI*fR/3);}else{f=fI;a=Math.exp(-tt*300);}}
     ph+=2*Math.PI*f/sr;d[n]=.45*a*Math.sin(ph)*Math.min(1,n/(sr*.05));}
-  const src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start();
+  const src=actx.createBufferSource();src.buffer=b;src.connect(master);src.start();
 }
-document.getElementById('play').onclick=()=>{if(sel)playChirp(sel.e);};
+document.getElementById('play').onclick=()=>{userInput();if(sel)playChirp(sel.e);}; // explicit request: plays even when ticks are muted
 
 /* ================= HUD ================= */
 const $=id=>document.getElementById(id);
+const SPK_ON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+const SPK_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
 function renderText(){
   const t=L();document.documentElement.lang=LANG;
-  $('t-sub').textContent=t.sub;$('t-sim').textContent=t.sim;$('lang').textContent=t.langBtn;
+  $('t-sub').textContent=t.sub;$('t-sim').textContent=t.sim;
+  document.querySelectorAll('#langs button').forEach(b=>{b.classList.toggle('on',b.dataset.lang===LANG);b.setAttribute('aria-pressed',b.dataset.lang===LANG);});
   document.querySelectorAll('#ladder button').forEach(b=>b.textContent=t.zoom[b.dataset.z]);
   document.querySelectorAll('.band[data-l]').forEach(b=>{b.innerHTML=t.band[b.dataset.l]+(b.disabled?`<small>${t.soon}</small>`:'');});
-  $('gw').innerHTML=t.band.gw;$('ax-long').textContent=t.axLong;$('ax-short').textContent=t.axShort;$('ax-gw').textContent=t.axGw;$('ax-07').textContent=LANG==='nl'?'0,7 µm':'0.7 µm';
+  $('gw').innerHTML=t.band.gw;$('ax-long').textContent=t.axLong;$('ax-short').textContent=t.axShort;$('ax-gw').textContent=t.axGw;
+  $('ax-07').textContent=fmt(.7,1)+' µm';$('ax-04').textContent=fmt(.4,1)+' µm';
   document.querySelectorAll('#det button').forEach(b=>{const v=t.det[b.dataset.d];b.innerHTML=`${v[0]}<small>${v[1]}</small>`;});
-  $('speed').textContent='⏱ '+t.speed[S.speedI];$('attract').textContent=t.attract;
+  $('speed').textContent='⏱ '+t.speed[S.speedI];$('catch').textContent='◎ '+t.catch;$('attract').textContent=t.attract;
   $('about-body').innerHTML=t.about;$('about-x').textContent=t.aboutClose;
-  renderCaption();showEvent();
+  renderMute();renderCaption();renderMission();showEvent();
+  if(window.OutreachKit)window.OutreachKit.setLang(LANG);
 }
+function renderMute(){const t=L(),b=$('mute');b.innerHTML=muted?SPK_OFF:SPK_ON;b.setAttribute('aria-pressed',muted);b.setAttribute('aria-label',muted?t.mute[1]:t.mute[0]);b.title=muted?t.mute[1]:t.mute[0];}
+function setLang(l){LANG=T[l]?l:'nl';renderText();}
 function renderCaption(){
   const t=L().cap;let key=S.last;
   if(key==='gw')key=S.gw?'gw_'+S.det:null;
-  if(!key||(key!=='none'&&!key.startsWith('gw')&&!S[key])){key=S.gw?'gw_'+S.det:S.opt?'opt':S.xray?'xray':S.mw?'mw':'none';}
+  if(!key||(key!=='none'&&!key.startsWith('gw')&&!S[key])){key=S.gw?'gw_'+S.det:S.ir?'ir':S.opt?'opt':S.xray?'xray':S.mw?'mw':'none';}
   const c=t[key]||t.none;$('cap-h').textContent=c[0];$('cap-p').textContent=c[1];
-  const col={opt:'--c-opt',xray:'--c-xray',mw:'--c-mw',gw_all:'--c-gw',gw_lvk:'--c-lvk',gw_et:'--c-et',none:'--ink-dim'}[key];
+  const col={opt:'--c-opt',ir:'--c-ir',xray:'--c-xray',mw:'--c-mw',gw_all:'--c-gw',gw_lvk:'--c-lvk',gw_et:'--c-et',none:'--ink-dim'}[key];
   $('caption').style.setProperty('--cap-c',`var(${col})`);
 }
 function renderToggles(){
@@ -684,30 +887,60 @@ function renderToggles(){
   document.querySelectorAll('#det button').forEach(b=>b.classList.toggle('on',S.gw&&b.dataset.d===S.det));
 }
 function setLayer(k,v){S[k]=v;S.last=k;resetCount();renderToggles();renderCaption();}
+
+/* ---------- guided mission (H12): three big steps after the first touch; free exploration afterwards ---------- */
+const mission={on:false,step:0,done:false};
+const MSTEP=[
+  null,
+  ()=>{Object.assign(S,{opt:true,ir:true,xray:true,mw:false,gw:false,det:'all',last:'ir',speedI:2});flyTo('uni',3);}, // 1 s = 1 week: today's detectors then hear a handful
+  ()=>{Object.assign(S,{gw:true,det:'lvk',last:'gw'});},
+  ()=>{Object.assign(S,{gw:true,det:'et',last:'gw'});},
+];
+function renderMission(){
+  $('mission').hidden=!mission.on;$('caption').hidden=mission.on;if(!mission.on)return;
+  const m=L().mission[mission.step];$('m-h').textContent=m.h;$('m-p').innerHTML=m.p;$('m-go').textContent=m.go;$('m-skip').textContent=L().skip;
+  $('m-skip').hidden=mission.step===3;
+  document.querySelectorAll('#mission .steps i').forEach((el,i)=>el.classList.toggle('done',i<mission.step));
+}
+function startMission(){if(mission.done)return;mission.on=true;mission.step=0;renderMission();}
+function endMission(){mission.on=false;mission.done=true;renderMission();renderCaption();}
+$('m-go').onclick=()=>{userInput();if(mission.step>=3){endMission();return;}mission.step++;MSTEP[mission.step]();resetCount();renderToggles();renderText();};
+$('m-skip').onclick=()=>{userInput();endMission();};
+
 document.querySelectorAll('.band[data-l]').forEach(b=>b.onclick=()=>{if(b.disabled)return;userInput();setLayer(b.dataset.l,!S[b.dataset.l]);});
 $('gw').onclick=()=>{userInput();setLayer('gw',!S.gw);};
 document.querySelectorAll('#det button').forEach(b=>b.onclick=()=>{if(b.disabled)return;userInput();S.det=b.dataset.d;S.gw=true;S.last='gw';resetCount();renderToggles();renderCaption();});
 document.querySelectorAll('#ladder button').forEach(b=>b.onclick=()=>{userInput();flyTo(b.dataset.z,2.6);});
 $('speed').onclick=()=>{userInput();S.speedI=(S.speedI+1)%3;resetCount();renderText();};
-$('lang').onclick=()=>{userInput();LANG=LANG==='nl'?'en':'nl';renderText();};
+$('catch').onclick=()=>{userInput();catchOne();};
+document.querySelectorAll('#langs button').forEach(b=>b.onclick=()=>{userInput();setLang(b.dataset.lang);});
+$('mute').onclick=()=>{userInput();muted=!muted;renderMute();};
 $('about-btn').onclick=()=>{userInput();$('about').hidden=false;};
 $('about-x').onclick=()=>{$('about').hidden=true;};
+$('about').onclick=e=>{if(e.target===$('about'))$('about').hidden=true;};
 
 function lyText(mpc){const ly=mpc*3.2616e6;const t=L().ly;
   if(ly<1e6)return `${fmtI(Math.round(ly/1000)*1000)} ${t[0]}`;if(ly<1e9)return `${fmt(ly/1e6,ly<1e7?1:0)} ${t[1]}`;return `${fmt(ly/1e9,ly<1e10?1:0)} ${t[2]}`;}
 let hudT=0;
 function updateHUD(d){
   const t=L();
-  $('seen').innerHTML=t.seen(fmtI(cnt.seen),fmtI(cnt.tot))+`<small>${t.seenSub(Math.round(shownRatio))}</small><div class="meter"><i style="width:${cnt.tot?(100*cnt.seen/cnt.tot).toFixed(1):0}%"></i></div>`;
-  const per=1/(RATE.BBH+RATE.BNS);$('real').innerHTML=t.real(fmtI(realCount),per<90?`${fmtI(per)} s`:`${fmt(per/60,1)} min`);
+  const row=k=>{const c=cnt[k],pc=c.tot?100*c.seen/c.tot:0;
+    return `<div class="ct" style="--dc:var(${k==='BBH'?'--c-gw':'--c-opt'})"><span>${t.kinds[k]}</span><div><strong>${fmtI(c.seen)}</strong> <em>${t.of} ${fmtI(c.tot)}</em></div>`+
+      `<div class="meter"><i style="width:${pc.toFixed(1)}%;min-width:${c.seen?'3px':'0'}"></i></div></div>`;};
+  $('seen').innerHTML=`<div class="sh">${t.seenHead}</div>`+row('BBH')+row('BNS')+`<small>${t.seenSub(Math.round(shownRatio))}</small>`;
+  $('real').innerHTML=t.real(fmtI(realCount));
   $('scale').textContent=t.width(lyText(2*d*Math.tan(camera.fov*Math.PI/360)*camera.aspect));
   let bestK=null,bd=1e9;for(const k in STOPS){const v=Math.abs(Math.log(STOPS[k].d)-Math.log(d));if(v<bd){bd=v;bestK=k;}}
   document.querySelectorAll('#ladder button').forEach(b=>b.classList.toggle('on',b.dataset.z===bestK));
+  // H6 at the widest zoom; H16 at Milky Way zoom with gravitational waves on
+  const x=d>9000?t.capX.far:(d<1.5&&S.gw)?t.capX.mw:'';
+  if($('cap-x').textContent!==x)$('cap-x').textContent=x;$('cap-x').hidden=!x;
 }
 
 /* ================= overlay (rings, bubbles, labels) ================= */
 const ov=$('ov'),ctx=ov.getContext('2d');
 const TAU=Math.PI*2;
+const F_MONO='600 12.5px ui-monospace, Consolas, Menlo, monospace', F_SANS='600 13.5px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', F_BIG='700 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
   U.uScale.value=h/(2*Math.tan(camera.fov*Math.PI/360));ov.width=w*PR;ov.height=h*PR;}
 addEventListener('resize',resize);resize();
@@ -715,7 +948,7 @@ function sphereR(R,d){if(R>=d)return null;return U.uScale.value*Math.tan(Math.as
 function overlay(d){
   const w=innerWidth,h=innerHeight;ctx.setTransform(PR,0,0,PR,0,0);ctx.clearRect(0,0,w,h);
   const o=toScreen([0,0,0]);if(!o)return;const t=L();
-  ctx.font='600 12px "JetBrains Mono", monospace';ctx.textBaseline='middle';
+  ctx.font=F_MONO;ctx.textBaseline='middle';
   const uni=smooth(4000,12000,d);
   // dark ages band + rings
   if(uni>0){
@@ -723,12 +956,15 @@ function overlay(d){
     if(r30&&rc){const g=ctx.createRadialGradient(o[0],o[1],r30,o[0],o[1],rc);const q=S.gw&&S.det==='et'?.32:.14;
       g.addColorStop(0,`rgba(90,70,160,${q*uni})`);g.addColorStop(1,`rgba(40,30,80,${q*.3*uni})`);
       ctx.fillStyle=g;ctx.beginPath();ctx.arc(o[0],o[1],rc,0,TAU);ctx.moveTo(o[0]+r30,o[1]);ctx.arc(o[0],o[1],r30,TAU,0,true);ctx.fill();}
-    const rings=[[1,t.ring.z1(fmt(tlOfZ(1),1)),.35],[6,t.ring.z6,.35],[30,t.ring.dark,.5]];
+    const rings=[[1,t.ring.z1,.35],[6,t.ring.z6,.35],[30,t.ring.dark,.5]];
     for(const[z,label,a]of rings){const r=sphereR(DcOfZ(z),d);if(!r)continue;ctx.strokeStyle=`rgba(170,185,220,${a*uni})`;ctx.setLineDash([3,5]);ctx.lineWidth=1;ctx.beginPath();ctx.arc(o[0],o[1],r,0,TAU);ctx.stroke();
       ctx.setLineDash([]);ctx.fillStyle=`rgba(200,210,235,${.85*uni})`;ctx.fillText(label,o[0]-ctx.measureText(label).width/2,o[1]-r-8);}
+    // infrared limit (H1): label below the centre so it does not collide with the labels above
+    if(LO.ir>.01){const r=sphereR(DcOfZ(Z_IR),d);if(r){const a=LO.ir*uni;ctx.strokeStyle=`rgba(255,110,120,${.55*a})`;ctx.setLineDash([3,5]);ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(o[0],o[1],r,0,TAU);ctx.stroke();
+      ctx.setLineDash([]);ctx.fillStyle=`rgba(255,150,155,${.95*a})`;ctx.fillText(t.ring.ir,o[0]-ctx.measureText(t.ring.ir).width/2,o[1]+r+12);}}
     const rc2=sphereR(D_CMB,d);if(rc2){ctx.strokeStyle=`rgba(255,150,90,${.55*uni})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(o[0],o[1],rc2,0,TAU);ctx.stroke();
       ctx.fillStyle=`rgba(255,180,130,${.95*uni})`;ctx.fillText(t.ring.cmb,o[0]-ctx.measureText(t.ring.cmb).width/2,o[1]+rc2+12);}
-    if(S.gw&&S.det==='et'){const rm=sphereR((DcOfZ(30)+D_CMB)/2,d);if(rm){ctx.font='700 15px "Atkinson Hyperlegible", sans-serif';ctx.fillStyle=`rgba(210,190,255,${uni})`;ctx.fillText(t.ring.q,o[0]-ctx.measureText(t.ring.q).width/2,o[1]+rm);ctx.font='600 12px "JetBrains Mono", monospace';}}
+    if(S.gw&&S.det==='et'){const rm=sphereR((DcOfZ(30)+D_CMB)/2,d);if(rm){ctx.font=F_BIG;ctx.fillStyle=`rgba(210,190,255,${uni})`;ctx.fillText(t.ring.q,o[0]-ctx.measureText(t.ring.q).width/2,o[1]-rm);ctx.font=F_MONO;}}
   }
   // detector reach bubbles
   for(const k of['lvk','et']){const a=LO[k];if(a<.01)continue;const col=k==='lvk'?[255,180,77]:[63,210,192];
@@ -743,7 +979,7 @@ function overlay(d){
         const lx=o[0]+r*Math.cos(ang),ly=o[1]+r*Math.sin(ang);ctx.fillText(lab,Math.max(8,lx-ctx.measureText(lab).width-6),ly);}
     }}
   // object labels
-  ctx.font='600 13px "Atkinson Hyperlegible", sans-serif';
+  ctx.font=F_SANS;
   for(const lb of LABELS){const a=smooth(lb.dmin*.6,lb.dmin,d)*(1-smooth(lb.dmax*.6,lb.dmax,d));if(lb.dmin===0)Object.assign(lb,{});const aa=lb.dmin===0?1-smooth(lb.dmax*.6,lb.dmax,d):a;
     if(aa<.02)continue;const s=toScreen(lb.p);if(!s)continue;const txt=lb.key==='you'?t.you:lb.key==='mw'?t.mwLabel:lb.key;
     ctx.fillStyle=`rgba(232,237,246,${.9*aa})`;ctx.beginPath();ctx.arc(s[0],s[1],2.5,0,TAU);ctx.fill();
@@ -756,28 +992,33 @@ function overlay(d){
 /* ================= attract loop ================= */
 const attract={on:false,t:0,i:0};
 const SCRIPT=[
- [0,()=>{Object.assign(S,{opt:true,xray:false,mw:false,gw:false,det:'all',last:'opt'});cam.logD=Math.log(.055);cam.phi=.95;tween=null;}],
+ [0,()=>{Object.assign(S,{opt:true,ir:false,xray:false,mw:false,gw:false,det:'all',last:'opt'});cam.logD=Math.log(.055);cam.phi=.95;tween=null;}],
  [3,()=>flyTo('lg',3.5)],[7.5,()=>flyTo('vir',3.5)],[12,()=>flyTo('web',4)],[17,()=>flyTo('uni',4)],
- [23,()=>{S.xray=true;S.opt=false;S.last='xray';}],
- [29,()=>{S.mw=true;S.xray=false;S.last='mw';}],
- [35,()=>{S.mw=false;S.last='none';}],
- [37,()=>{S.gw=true;S.det='all';S.last='gw';}],
- [44,()=>{S.det='lvk';}],
- [52,()=>{S.det='et';}],
- [64,()=>{flyTo('mw',4);}],
- [69,null]];
+ [22,()=>{S.ir=true;S.opt=false;S.last='ir';}],
+ [28,()=>{S.xray=true;S.ir=false;S.last='xray';}],
+ [33,()=>{S.mw=true;S.xray=false;S.last='mw';}],
+ [39,()=>{S.mw=false;S.last='none';}],
+ [41,()=>{S.gw=true;S.det='all';S.last='gw';}],
+ [48,()=>{S.det='lvk';}],
+ [56,()=>{S.det='et';}],
+ [68,()=>{flyTo('mw',4);}],
+ [73,null]];
 function runAttract(dt){
   if(!attract.on)return;attract.t+=dt;
   while(attract.i<SCRIPT.length&&attract.t>=SCRIPT[attract.i][0]){const f=SCRIPT[attract.i][1];
     if(!f){attract.t=0;attract.i=0;continue;}f();attract.i++;resetCount();renderToggles();renderCaption();}
 }
-function startAttract(){attract.on=true;attract.t=0;attract.i=0;$('attract').hidden=false;sel=null;$('event').hidden=true;$('about').hidden=true;}
-function userInput(){idle=0;if(attract.on){attract.on=false;$('attract').hidden=true;}}
+// idle reset: back to the tour, in Dutch, with the mission offered again to the next visitor
+function startAttract(){attract.on=true;attract.t=0;attract.i=0;$('attract').hidden=false;sel=null;$('event').hidden=true;$('about').hidden=true;
+  mission.on=false;mission.done=false;S.speedI=1;if(LANG!=='nl')setLang('nl');else renderMission();}
+function userInput(){idle=0;ensureAudio();if(attract.on){attract.on=false;$('attract').hidden=true;startMission();}}
 
 /* ================= main loop ================= */
 let last=performance.now(),tNow=0;
+if(QS.get('kiosk')==='1')document.body.classList.add('ok-kiosk');      // hides the shared back link on a stand
+if(document.querySelector('.ok-back')&&!document.body.classList.contains('ok-kiosk'))document.body.classList.add('has-back');
 renderText();renderToggles();
-startAttract();
+startAttract();updateHUD(Math.exp(cam.logD));
 function frame(ts){
   const dt=Math.min(.1,(ts-last)/1000);last=ts;tNow+=dt;U.uTime.value=tNow;idle+=dt;
   if(!attract.on&&idle>75)startAttract();
@@ -785,7 +1026,7 @@ function frame(ts){
   const d=updateCam(dt);
   // smoothed layer opacities
   const k=1-Math.pow(.02,dt);
-  LO.opt+=((S.opt?1:0)-LO.opt)*k;LO.xray+=((S.xray?1:0)-LO.xray)*k;LO.mw+=((S.mw?1:0)-LO.mw)*k;
+  LO.opt+=((S.opt?1:0)-LO.opt)*k;LO.ir+=((S.ir?1:0)-LO.ir)*k;LO.xray+=((S.xray?1:0)-LO.xray)*k;LO.mw+=((S.mw?1:0)-LO.mw)*k;
   LO.lvk+=((S.gw&&S.det==='lvk'?1:0)-LO.lvk)*k;LO.et+=((S.gw&&S.det==='et'?1:0)-LO.et)*k;
   for(const q of['lvk','et']){const on=S.gw&&S.det===q;reach[q]=on?Math.min(1,reach[q]+dt/2.6):0;}
   // shell visibility by camera distance
@@ -795,6 +1036,8 @@ function frame(ts){
   set(SH.mwO,fMW*LO.opt);set(SH.mwX,fMW*LO.xray);set(SH.lgO,fLG*LO.opt);set(SH.lgX,fLG*LO.xray);
   set(SH.locO,fLoc*LO.opt*.9);set(SH.locX,fLoc*LO.xray);set(SH.midO,fMid*LO.opt);set(SH.midX,fMid*LO.xray);
   set(SH.farO,fFar*LO.opt*.75);set(SH.farX,fFar*LO.xray);
+  const ir=LO.ir*(1-.45*LO.opt); // infrared on top of visible light should not just double the brightness
+  set(SH.mwI,fMW*ir);set(SH.lgI,fLG*ir);set(SH.locI,fLoc*ir*.9);set(SH.midI,fMid*ir);set(SH.farI,fFar*LO.ir*.8);
   cmbMat.uniforms.uOpacity.value=LO.mw;cmb.visible=LO.mw>.003;
   simulate(dt,tNow);
   renderer.render(scene,camera);
@@ -803,8 +1046,8 @@ function frame(ts){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-const __dbg={pick,live,toScreen,resetCount,cnt:()=>cnt,S,renderer,SH,LO,camera,U,cam,flyTo,REACH,RATE,startAttract,userInput,setLayer,pdet,PHYS};
+if(QS.get('debug')==='1')window.__dbg={pick,catchOne,live,toScreen,resetCount,cnt:()=>cnt,S,renderer,SH,LO,camera,U,cam,flyTo,REACH,RATE,NUM,SHARE,startAttract,userInput,setLayer,setLang,mission,pdet,PHYS};
 </script>
-
+<script src="../shared/outreach-kit.js" data-header="top-left" data-credit="none" data-kiosk="never"></script>
 </body>
 </html>
