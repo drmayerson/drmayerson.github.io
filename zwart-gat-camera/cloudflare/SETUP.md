@@ -68,7 +68,11 @@ On the booth computer, open the camera page, then in **Instellingen → Foto's**
 3. **Standsleutel**: the `BOOTH_KEY` from step 4.
 4. Click **Verbinding testen**. It should say "Verbinding in orde".
 
-The browser on that computer remembers these settings. Optionally also keep
+The browser on that computer remembers these settings (**Instellingen → Onthouden**,
+on by default), also after a reload or a restart of the computer: the page then starts
+as you left it, camera included, so a booth computer can be prepared before the expo.
+For the camera to start by itself, let the browser always allow the camera for this
+site. **Alles terugzetten** forgets everything again. Optionally also keep
 **Opslaan op deze computer** ticked, to keep your own copy of every photo.
 
 At the booth:

@@ -253,6 +253,16 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     </div>
   </fieldset>
 
+  <fieldset>
+    <legend>Onthouden</legend>
+    <label class="check">
+      <input type="checkbox" id="remember" checked>
+      <span>Instellingen op deze computer onthouden, ook na herladen of herstarten</span>
+    </label>
+    <p class="hint" id="rememberNote"></p>
+    <div class="btns"><button id="resetAll">Alles terugzetten</button></div>
+  </fieldset>
+
   <details>
     <summary>Wat zie je?</summary>
     <p>De zwarte vlek is de <b>schaduw</b> van het zwarte gat: licht dat daar vandaan zou moeten komen, is in het zwarte gat verdwenen.</p>
@@ -998,8 +1008,13 @@ const spinDock = el('spinDock'), keepSpin = el('keepSpin');
 const bgMode = el('bgMode'), keyTol = el('keyTol'), plateSens = el('plateSens');
 const shadows = el('shadows'), lockCam = el('lockCam'), showMask = el('showMask');
 let keyRGB = [0, 177, 64];               // typical chroma-key green until one is picked
+// Settings are kept in this browser (localStorage; the own background picture and the
+// photo folder in IndexedDB), unless "Onthouden" is switched off.
+let remembered = null;
 try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-  if (s) {
+  if (s && s.remember === false) el('remember').checked = false;
+  else if (s) {
+    remembered = s;
     spin.value = s.spin; incl.value = s.incl; mass.value = s.mass;
     if (s.keepSpin != null) keepSpin.checked = !!s.keepSpin;
     if (s.bgMode && bgMode.querySelector('option[value="' + s.bgMode + '"]')) bgMode.value = s.bgMode;
@@ -1017,7 +1032,10 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
-  try { localStorage.setItem(KEY, JSON.stringify({spin: spin.value, incl: incl.value, mass: mass.value,
+  try {
+    if (!el('remember').checked) { localStorage.setItem(KEY, JSON.stringify({remember: false})); return; }
+    localStorage.setItem(KEY, JSON.stringify({remember: true, camOn: camWanted, panelHidden: panel.classList.contains('hidden'),
+    spin: spin.value, incl: incl.value, mass: mass.value,
     keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
     shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
     backdrop: el('bdChoice').value, shotsOn: el('shotsOn').checked,
@@ -1118,22 +1136,28 @@ function bindTextures(){
 const video = document.createElement('video');
 video.muted = true; video.setAttribute('playsinline', ''); video.setAttribute('autoplay', '');
 let useVideo = false, lastVideoTime = -1;
-el('camBtn').addEventListener('click', async () => {
+// camWanted: the camera should be on; remembered, so it restarts by itself after a
+// reload (the browser must have been allowed to use the camera on this site)
+let camWanted = !!(remembered && remembered.camOn);
+async function startCamera(auto){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('camNote').textContent = 'Deze browser geeft geen toegang tot een camera. Je ziet het voorbeeldbeeld.'; return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
     video.srcObject = stream; await video.play();
-    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false;
+    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false; camWanted = true;
     el('camBtn').textContent = 'Camera staat aan'; el('camBtn').disabled = true;
     plateValid = false; learnStartAt = 0;
     bgChanged();
   } catch (e) {
-    el('camNote').textContent = 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
+    el('camNote').textContent = auto
+      ? 'De camera kon niet vanzelf gestart worden (geen toestemming of geen camera). Klik op "Camera aan".'
+      : 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
   }
-});
+}
+el('camBtn').addEventListener('click', () => startCamera(false));
 el('demoBtn').addEventListener('click', () => {
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true;
+  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true; camWanted = false;
   el('camBtn').textContent = 'Camera aan'; el('camBtn').disabled = false;
   camLocked = false; cancelCapture(); bgChanged();
 });
@@ -1158,14 +1182,14 @@ async function lockCamera(on){
 // ---------- panel and docked spin slider ----------
 const panel = el('panel');
 function updateDock(){ el('spinDockBox').hidden = !(keepSpin.checked && panel.classList.contains('hidden')); }
-el('toggle').addEventListener('click', () => {
-  const hide = !panel.classList.contains('hidden');
+function setPanelHidden(hide){
   panel.classList.toggle('hidden', hide);
   el('toggle').textContent = hide ? 'Tonen' : 'Verbergen';
   el('toggle').setAttribute('aria-expanded', String(!hide));
   updateDock();
-});
-updateDock();
+}
+el('toggle').addEventListener('click', () => { setPanelHidden(!panel.classList.contains('hidden')); save(); });
+setPanelHidden(!!(remembered && remembered.panelHidden));
 
 // ---------- banner (instructions / countdown) ----------
 const banner = el('banner');
@@ -1657,7 +1681,7 @@ async function backdropChanged(){
   if (c === 'sterren') { bdNote('Waar je achtergrond was, kijk je door naar de sterrenhemel rond het zwarte gat.'); save(); return; }
   try {
     if (c === 'eigen') {
-      const blob = await idbGet('ownBackdrop').catch(() => null);
+      const blob = ownBlob || await idbGet('ownBackdrop').catch(() => null);
       if (!blob) { bdNote('Kies een afbeelding op je computer. Ze blijft op je toestel.'); save(); return; }
       const url = URL.createObjectURL(blob);
       try { const im = await loadImage(url); if (id === bdLoadId) setBackdrop(im); } finally { URL.revokeObjectURL(url); }
@@ -1671,7 +1695,8 @@ async function backdropChanged(){
   } catch (e) { console.error(e); if (id === bdLoadId) bdNote('De afbeelding kon niet geladen worden.'); }
   save();
 }
-bdChoice.addEventListener('change', () => { backdropChanged(); if (bdChoice.value === 'eigen') idbGet('ownBackdrop').then(b => { if (!b) el('bdFile').click(); }).catch(() => el('bdFile').click()); });
+let ownBlob = null;                      // own picture of this session (also kept when not remembering)
+bdChoice.addEventListener('change', () => { backdropChanged(); if (bdChoice.value === 'eigen' && !ownBlob) idbGet('ownBackdrop').then(b => { if (!b) el('bdFile').click(); }).catch(() => el('bdFile').click()); });
 el('bdFileBtn').addEventListener('click', () => el('bdFile').click());
 el('bdFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
@@ -1684,7 +1709,8 @@ el('bdFile').addEventListener('change', async e => {
     c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
-    await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
+    ownBlob = blob;
+    if (el('remember').checked) await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
     bdChoice.value = 'eigen'; setBackdrop(c); bdLoadId++;
     el('bdOwnRow').hidden = false;
     bdNote('Je eigen afbeelding. De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.');
@@ -1729,7 +1755,7 @@ function qrConfigured(){ return /^https?:\/\/\S+$/.test(qrBase.value.trim()) && 
 el('shotDirBtn').addEventListener('click', async () => {
   try {
     shotDir = await window.showDirectoryPicker({id: 'zwart-gat-fotos', mode: 'readwrite', startIn: 'downloads'});
-    await idbSet('shotDir', shotDir).catch(e => console.warn('could not remember the folder', e));
+    if (el('remember').checked) await idbSet('shotDir', shotDir).catch(e => console.warn('could not remember the folder', e));
   } catch (e) { if (e && e.name !== 'AbortError') console.warn(e); }
   updateShotUI();
 });
@@ -1965,7 +1991,33 @@ window.zgcStats = () => {
   return {maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, ready: workerReady, error: workerError,
     shownAsPerson: pct(pbin, v => v), networkPerson: pct(aiMask, v => v > 0.5), backgroundUnknown: pct(bCount, v => v < 3)};
 };
+// ---------- remember settings ----------
+function updateRememberNote(){
+  el('rememberNote').textContent = el('remember').checked
+    ? 'Na herladen of herstarten begint de pagina zoals je hem achterliet: ook de camera start vanzelf (als de browser de camera voor deze site blijvend mag gebruiken) en verborgen instellingen blijven verborgen. Een vastgelegde lege achtergrond moet je opnieuw vastleggen; de stand-modus leert vanzelf opnieuw.'
+    : 'Er wordt niets bewaard: na herladen begint de pagina met de standaardinstellingen.';
+}
+el('remember').addEventListener('change', () => {
+  if (el('remember').checked) {                 // keep what is set now
+    save();
+    if (ownBlob) idbSet('ownBackdrop', ownBlob).catch(() => {});
+    if (shotDir) idbSet('shotDir', shotDir).catch(() => {});
+  } else {                                      // forget what was stored (this session keeps working)
+    save();
+    idbSet('ownBackdrop', null).catch(() => {}); idbSet('shotDir', null).catch(() => {});
+  }
+  updateRememberNote();
+});
+el('resetAll').addEventListener('click', async () => {
+  if (!confirm('Alle instellingen terugzetten naar de standaard? Ook het adres van de fotodienst, de standsleutel, de gekozen map en je eigen achtergrond worden vergeten.')) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  await idbSet('ownBackdrop', null).catch(() => {}); await idbSet('shotDir', null).catch(() => {});
+  location.reload();
+});
+updateRememberNote();
+
 bgChanged(); backdropChanged(); updateShotUI();
+if (camWanted) startCamera(true);               // camera was on last time
 requestAnimationFrame(frame);
 })();
 </script>
