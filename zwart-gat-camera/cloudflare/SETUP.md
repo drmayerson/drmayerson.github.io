@@ -68,13 +68,20 @@ On the booth computer, open the camera page, then in **Instellingen → Foto's**
 3. **Standsleutel**: the `BOOTH_KEY` from step 4.
 4. Click **Verbinding testen**. It should say "Verbinding in orde".
 
-The browser on that computer remembers these settings. Optionally also keep
+The browser on that computer remembers these settings (**Instellingen → Onthouden**,
+on by default), also after a reload or a restart of the computer: the page then starts
+as you left it, camera included, so a booth computer can be prepared before the expo.
+For the camera to start by itself, let the browser always allow the camera for this
+site. **Alles terugzetten** forgets everything again. Optionally also keep
 **Opslaan op deze computer** ticked, to keep your own copy of every photo.
 
 At the booth:
 
-- **Click or arrow key**: take a photo. The QR code shows until the next photo, or for
-  30 seconds at most.
+- **Aftellen voor de foto** (optional, in Instellingen → Foto's): a big 3, 2, 1… klik!
+  on screen before the photo is taken; Esc cancels it.
+- **Click or arrow key**: take a photo. The QR code shows until the next photo, or at
+  most as long as set with the slider **QR-code blijft zichtbaar** (default 30 s; all
+  the way right: no time limit).
 - **Q key or the small "QR" button (bottom right)**: show the most recent QR code again.
   Press again to go further back, for someone who missed theirs. A thumbnail shows
   which photo it is.

@@ -32,6 +32,14 @@ body.picking canvas{cursor:crosshair}
 body.picking .panel,body.picking .dock{display:none}
 body.shots canvas{cursor:copy}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+.count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;
+  font-family:var(--display);font-weight:700;font-size:min(42vh,42vw);line-height:1;color:#fff;
+  text-shadow:0 0 .12em rgba(0,0,0,.65),0 .04em .3em rgba(0,0,0,.5)}
+.count[hidden]{display:none}
+.count span{animation:countPop 1s ease-out both}
+.count span.snap{font-size:.45em}
+@keyframes countPop{0%{transform:scale(1.6);opacity:0}15%{transform:scale(1);opacity:1}80%{opacity:1}100%{transform:scale(.85);opacity:0}}
+@media (prefers-reduced-motion:reduce){.count span{animation:none}}
 .flash.go{animation:flash .45s ease-out}
 @keyframes flash{from{opacity:.75}to{opacity:0}}
 @media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}}
@@ -218,6 +226,10 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     </label>
     <div class="sub" id="shotSub" hidden>
       <label class="check">
+        <input type="checkbox" id="shotCount">
+        <span>Aftellen voor de foto (3, 2, 1… klik!)</span>
+      </label>
+      <label class="check">
         <input type="checkbox" id="shotLocal" checked>
         <span>Opslaan op deze computer</span>
       </label>
@@ -242,10 +254,25 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
           <span>Standsleutel</span>
           <input type="password" id="qrKey" autocomplete="off">
         </label>
+        <label>
+          <span class="lab"><span>QR-code blijft zichtbaar</span><span id="qrSecVal"></span></span>
+          <input type="range" id="qrSec" min="5" max="125" step="5" value="30" aria-describedby="qrSecHint">
+        </label>
+        <p class="hint" id="qrSecHint">Tot de volgende foto, of hooguit zo lang. Helemaal rechts: blijft staan tot de volgende foto.</p>
         <div class="btns"><button id="qrTest">Verbinding testen</button></div>
         <p class="hint" id="qrNote"></p>
       </div>
     </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Onthouden</legend>
+    <label class="check">
+      <input type="checkbox" id="remember" checked>
+      <span>Instellingen op deze computer onthouden, ook na herladen of herstarten</span>
+    </label>
+    <p class="hint" id="rememberNote"></p>
+    <div class="btns"><button id="resetAll">Alles terugzetten</button></div>
   </fieldset>
 
   <details>
@@ -258,6 +285,7 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
 </div>
 
 <div class="flash" id="flash"></div>
+<div class="count" id="count" aria-live="assertive" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="qr" id="qrBox" role="dialog" aria-label="QR-code om je foto te downloaden" hidden>
   <div class="qr-card" id="qrCard">
@@ -993,8 +1021,13 @@ const spinDock = el('spinDock'), keepSpin = el('keepSpin');
 const bgMode = el('bgMode'), keyTol = el('keyTol'), plateSens = el('plateSens');
 const shadows = el('shadows'), lockCam = el('lockCam'), showMask = el('showMask');
 let keyRGB = [0, 177, 64];               // typical chroma-key green until one is picked
+// Settings are kept in this browser (localStorage; the own background picture and the
+// photo folder in IndexedDB), unless "Onthouden" is switched off.
+let remembered = null;
 try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-  if (s) {
+  if (s && s.remember === false) el('remember').checked = false;
+  else if (s) {
+    remembered = s;
     spin.value = s.spin; incl.value = s.incl; mass.value = s.mass;
     if (s.keepSpin != null) keepSpin.checked = !!s.keepSpin;
     if (s.bgMode && bgMode.querySelector('option[value="' + s.bgMode + '"]')) bgMode.value = s.bgMode;
@@ -1008,14 +1041,20 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s.shotQR != null) el('shotQR').checked = !!s.shotQR;
     if (typeof s.qrBase === 'string') el('qrBase').value = s.qrBase;
     if (typeof s.qrKey === 'string') el('qrKey').value = s.qrKey;
+    if (s.qrSec != null) el('qrSec').value = s.qrSec;
+    if (s.shotCount != null) el('shotCount').checked = !!s.shotCount;
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
-  try { localStorage.setItem(KEY, JSON.stringify({spin: spin.value, incl: incl.value, mass: mass.value,
+  try {
+    if (!el('remember').checked) { localStorage.setItem(KEY, JSON.stringify({remember: false})); return; }
+    localStorage.setItem(KEY, JSON.stringify({remember: true, camOn: camWanted, panelHidden: panel.classList.contains('hidden'),
+    spin: spin.value, incl: incl.value, mass: mass.value,
     keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
     shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
     backdrop: el('bdChoice').value, shotsOn: el('shotsOn').checked,
-    shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value})); } catch (e) {}
+    shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value,
+    qrSec: el('qrSec').value, shotCount: el('shotCount').checked})); } catch (e) {}
 }
 function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
@@ -1111,22 +1150,28 @@ function bindTextures(){
 const video = document.createElement('video');
 video.muted = true; video.setAttribute('playsinline', ''); video.setAttribute('autoplay', '');
 let useVideo = false, lastVideoTime = -1;
-el('camBtn').addEventListener('click', async () => {
+// camWanted: the camera should be on; remembered, so it restarts by itself after a
+// reload (the browser must have been allowed to use the camera on this site)
+let camWanted = !!(remembered && remembered.camOn);
+async function startCamera(auto){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('camNote').textContent = 'Deze browser geeft geen toegang tot een camera. Je ziet het voorbeeldbeeld.'; return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
     video.srcObject = stream; await video.play();
-    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false;
+    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false; camWanted = true;
     el('camBtn').textContent = 'Camera staat aan'; el('camBtn').disabled = true;
     plateValid = false; learnStartAt = 0;
     bgChanged();
   } catch (e) {
-    el('camNote').textContent = 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
+    el('camNote').textContent = auto
+      ? 'De camera kon niet vanzelf gestart worden (geen toestemming of geen camera). Klik op "Camera aan".'
+      : 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
   }
-});
+}
+el('camBtn').addEventListener('click', () => startCamera(false));
 el('demoBtn').addEventListener('click', () => {
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true;
+  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true; camWanted = false;
   el('camBtn').textContent = 'Camera aan'; el('camBtn').disabled = false;
   camLocked = false; cancelCapture(); bgChanged();
 });
@@ -1151,14 +1196,14 @@ async function lockCamera(on){
 // ---------- panel and docked spin slider ----------
 const panel = el('panel');
 function updateDock(){ el('spinDockBox').hidden = !(keepSpin.checked && panel.classList.contains('hidden')); }
-el('toggle').addEventListener('click', () => {
-  const hide = !panel.classList.contains('hidden');
+function setPanelHidden(hide){
   panel.classList.toggle('hidden', hide);
   el('toggle').textContent = hide ? 'Tonen' : 'Verbergen';
   el('toggle').setAttribute('aria-expanded', String(!hide));
   updateDock();
-});
-updateDock();
+}
+el('toggle').addEventListener('click', () => { setPanelHidden(!panel.classList.contains('hidden')); save(); });
+setPanelHidden(!!(remembered && remembered.panelHidden));
 
 // ---------- banner (instructions / countdown) ----------
 const banner = el('banner');
@@ -1650,7 +1695,7 @@ async function backdropChanged(){
   if (c === 'sterren') { bdNote('Waar je achtergrond was, kijk je door naar de sterrenhemel rond het zwarte gat.'); save(); return; }
   try {
     if (c === 'eigen') {
-      const blob = await idbGet('ownBackdrop').catch(() => null);
+      const blob = ownBlob || await idbGet('ownBackdrop').catch(() => null);
       if (!blob) { bdNote('Kies een afbeelding op je computer. Ze blijft op je toestel.'); save(); return; }
       const url = URL.createObjectURL(blob);
       try { const im = await loadImage(url); if (id === bdLoadId) setBackdrop(im); } finally { URL.revokeObjectURL(url); }
@@ -1664,7 +1709,8 @@ async function backdropChanged(){
   } catch (e) { console.error(e); if (id === bdLoadId) bdNote('De afbeelding kon niet geladen worden.'); }
   save();
 }
-bdChoice.addEventListener('change', () => { backdropChanged(); if (bdChoice.value === 'eigen') idbGet('ownBackdrop').then(b => { if (!b) el('bdFile').click(); }).catch(() => el('bdFile').click()); });
+let ownBlob = null;                      // own picture of this session (also kept when not remembering)
+bdChoice.addEventListener('change', () => { backdropChanged(); if (bdChoice.value === 'eigen' && !ownBlob) idbGet('ownBackdrop').then(b => { if (!b) el('bdFile').click(); }).catch(() => el('bdFile').click()); });
 el('bdFileBtn').addEventListener('click', () => el('bdFile').click());
 el('bdFile').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0];
@@ -1677,7 +1723,8 @@ el('bdFile').addEventListener('change', async e => {
     c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
-    await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
+    ownBlob = blob;
+    if (el('remember').checked) await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
     bdChoice.value = 'eigen'; setBackdrop(c); bdLoadId++;
     el('bdOwnRow').hidden = false;
     bdNote('Je eigen afbeelding. De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.');
@@ -1717,12 +1764,13 @@ function updateShotUI(){
 }
 let qrNoteSticky = false;
 function qrConfigured(){ return /^https?:\/\/\S+$/.test(qrBase.value.trim()) && qrKey.value.length > 0; }
+el('shotCount').addEventListener('change', save);
 [shotsOn, shotLocal, shotQR].forEach(c => c.addEventListener('change', () => { if (!shotsOn.checked || !shotQR.checked) hideQR(); updateShotUI(); save(); }));
 [qrBase, qrKey].forEach(c => c.addEventListener('input', () => { qrNoteSticky = false; updateShotUI(); save(); }));
 el('shotDirBtn').addEventListener('click', async () => {
   try {
     shotDir = await window.showDirectoryPicker({id: 'zwart-gat-fotos', mode: 'readwrite', startIn: 'downloads'});
-    await idbSet('shotDir', shotDir).catch(e => console.warn('could not remember the folder', e));
+    if (el('remember').checked) await idbSet('shotDir', shotDir).catch(e => console.warn('could not remember the folder', e));
   } catch (e) { if (e && e.name !== 'AbortError') console.warn(e); }
   updateShotUI();
 });
@@ -1734,8 +1782,25 @@ function toast(t){
   const e = el('toast'); e.textContent = t; e.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 4000);
 }
+// Optional countdown on screen before the photo (not in the photo itself). Esc cancels it.
+let counting = false, countCancel = null;
+function countdown(){
+  return new Promise(resolve => {
+    const box = el('count'); let n = 3, timer = null;
+    const show = (t, snap) => { box.innerHTML = '<span' + (snap ? ' class="snap"' : '') + '>' + t + '</span>'; };
+    const done = ok => { clearTimeout(timer); countCancel = null; box.hidden = true; box.innerHTML = ''; resolve(ok); };
+    countCancel = () => done(false);
+    box.hidden = false; show(n);
+    const tick = () => {
+      n--;
+      if (n > 0) { show(n); timer = setTimeout(tick, 1000); }
+      else { show('klik!', true); timer = setTimeout(() => done(true), 350); }   // photo right after "klik!"
+    };
+    timer = setTimeout(tick, 1000);
+  });
+}
 async function takeShot(){
-  if (shotBusy || shotPending) return;
+  if (shotBusy || shotPending || counting) return;
   if (!shotLocal.checked && !shotQR.checked) { toast('Kies in Instellingen hoe foto\'s bewaard worden (op deze computer en/of met een QR-code).'); return; }
   hideQR();
   // ask for permission to write in the folder now, while the click still counts
@@ -1745,6 +1810,12 @@ async function takeShot(){
       if (p !== 'granted') p = await shotDir.requestPermission({mode: 'readwrite'});
       if (p !== 'granted') toast('Geen toestemming voor de map "' + shotDir.name + '": de foto gaat naar Downloads.');
     } catch (e) { console.warn(e); }
+  }
+  if (el('shotCount').checked) {
+    counting = true;
+    const ok = await countdown();
+    counting = false;
+    if (!ok) return;
   }
   shotPending = true;                     // grabbed right after the next frame is drawn
   const f = el('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
@@ -1842,9 +1913,14 @@ el('qrTest').addEventListener('click', async () => {
   }
 });
 
-// -- QR code on screen (until the next photo, at most 30 s); Q or the "QR" button shows
-//    recent ones again (pressing again goes further back)
-const QR_SECONDS = 30;
+// -- QR code on screen until the next photo, at most the time set with the slider (the
+//    last slider step: no time limit); Q or the "QR" button shows recent ones again
+//    (pressing again goes further back)
+const qrSec = el('qrSec');
+function qrSeconds(){ const v = Number(qrSec.value); return v > 120 ? Infinity : v; }
+function qrSecLabel(){ el('qrSecVal').textContent = qrSeconds() === Infinity ? 'tot de volgende foto' : qrSeconds() + ' s'; }
+qrSec.addEventListener('input', () => { qrSecLabel(); save(); });
+qrSecLabel();
 let qrHistory = [], qrShown = -1, qrTimer = null, qrLib = null;
 function loadQrLib(){
   if (!qrLib) qrLib = new Promise((res, rej) => {
@@ -1862,8 +1938,11 @@ function startQrTimer(){
   clearTimeout(qrTimer);
   const bar = el('qrBar');
   bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'; void bar.offsetWidth;
-  bar.style.transition = 'transform ' + QR_SECONDS + 's linear'; bar.style.transform = 'scaleX(0)';
-  qrTimer = setTimeout(hideQR, QR_SECONDS*1000);
+  const s = qrSeconds();
+  bar.parentElement.hidden = s === Infinity;   // no countdown bar without a time limit
+  if (s === Infinity) return;
+  bar.style.transition = 'transform ' + s + 's linear'; bar.style.transform = 'scaleX(0)';
+  qrTimer = setTimeout(hideQR, s*1000);
 }
 function showQRWaiting(thumb){
   el('qrThumb').src = thumb;
@@ -1907,7 +1986,7 @@ document.addEventListener('keydown', e => {
   if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); takeShot(); }
   else if ((e.key === 'q' || e.key === 'Q') && shotQR.checked) { e.preventDefault(); showQrAgain(); }
-  else if (e.key === 'Escape') hideQR();
+  else if (e.key === 'Escape') { hideQR(); if (countCancel) countCancel(); }
 });
 
 // ---------- render loop ----------
@@ -1950,7 +2029,33 @@ window.zgcStats = () => {
   return {maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, ready: workerReady, error: workerError,
     shownAsPerson: pct(pbin, v => v), networkPerson: pct(aiMask, v => v > 0.5), backgroundUnknown: pct(bCount, v => v < 3)};
 };
+// ---------- remember settings ----------
+function updateRememberNote(){
+  el('rememberNote').textContent = el('remember').checked
+    ? 'Na herladen of herstarten begint de pagina zoals je hem achterliet: ook de camera start vanzelf (als de browser de camera voor deze site blijvend mag gebruiken) en verborgen instellingen blijven verborgen. Een vastgelegde lege achtergrond moet je opnieuw vastleggen; de stand-modus leert vanzelf opnieuw.'
+    : 'Er wordt niets bewaard: na herladen begint de pagina met de standaardinstellingen.';
+}
+el('remember').addEventListener('change', () => {
+  if (el('remember').checked) {                 // keep what is set now
+    save();
+    if (ownBlob) idbSet('ownBackdrop', ownBlob).catch(() => {});
+    if (shotDir) idbSet('shotDir', shotDir).catch(() => {});
+  } else {                                      // forget what was stored (this session keeps working)
+    save();
+    idbSet('ownBackdrop', null).catch(() => {}); idbSet('shotDir', null).catch(() => {});
+  }
+  updateRememberNote();
+});
+el('resetAll').addEventListener('click', async () => {
+  if (!confirm('Alle instellingen terugzetten naar de standaard? Ook het adres van de fotodienst, de standsleutel, de gekozen map en je eigen achtergrond worden vergeten.')) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  await idbSet('ownBackdrop', null).catch(() => {}); await idbSet('shotDir', null).catch(() => {});
+  location.reload();
+});
+updateRememberNote();
+
 bgChanged(); backdropChanged(); updateShotUI();
+if (camWanted) startCamera(true);               // camera was on last time
 requestAnimationFrame(frame);
 })();
 </script>
