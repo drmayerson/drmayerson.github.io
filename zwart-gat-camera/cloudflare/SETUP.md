@@ -77,6 +77,8 @@ site. **Alles terugzetten** forgets everything again. Optionally also keep
 
 At the booth:
 
+- **Aftellen voor de foto** (optional, in Instellingen → Foto's): a big 3, 2, 1… klik!
+  on screen before the photo is taken; Esc cancels it.
 - **Click or arrow key**: take a photo. The QR code shows until the next photo, or at
   most as long as set with the slider **QR-code blijft zichtbaar** (default 30 s; all
   the way right: no time limit).

@@ -32,6 +32,14 @@ body.picking canvas{cursor:crosshair}
 body.picking .panel,body.picking .dock{display:none}
 body.shots canvas{cursor:copy}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+.count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;
+  font-family:var(--display);font-weight:700;font-size:min(42vh,42vw);line-height:1;color:#fff;
+  text-shadow:0 0 .12em rgba(0,0,0,.65),0 .04em .3em rgba(0,0,0,.5)}
+.count[hidden]{display:none}
+.count span{animation:countPop 1s ease-out both}
+.count span.snap{font-size:.45em}
+@keyframes countPop{0%{transform:scale(1.6);opacity:0}15%{transform:scale(1);opacity:1}80%{opacity:1}100%{transform:scale(.85);opacity:0}}
+@media (prefers-reduced-motion:reduce){.count span{animation:none}}
 .flash.go{animation:flash .45s ease-out}
 @keyframes flash{from{opacity:.75}to{opacity:0}}
 @media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}}
@@ -218,6 +226,10 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     </label>
     <div class="sub" id="shotSub" hidden>
       <label class="check">
+        <input type="checkbox" id="shotCount">
+        <span>Aftellen voor de foto (3, 2, 1… klik!)</span>
+      </label>
+      <label class="check">
         <input type="checkbox" id="shotLocal" checked>
         <span>Opslaan op deze computer</span>
       </label>
@@ -273,6 +285,7 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
 </div>
 
 <div class="flash" id="flash"></div>
+<div class="count" id="count" aria-live="assertive" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="qr" id="qrBox" role="dialog" aria-label="QR-code om je foto te downloaden" hidden>
   <div class="qr-card" id="qrCard">
@@ -1029,6 +1042,7 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (typeof s.qrBase === 'string') el('qrBase').value = s.qrBase;
     if (typeof s.qrKey === 'string') el('qrKey').value = s.qrKey;
     if (s.qrSec != null) el('qrSec').value = s.qrSec;
+    if (s.shotCount != null) el('shotCount').checked = !!s.shotCount;
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
@@ -1040,7 +1054,7 @@ function save(){
     shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
     backdrop: el('bdChoice').value, shotsOn: el('shotsOn').checked,
     shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value,
-    qrSec: el('qrSec').value})); } catch (e) {}
+    qrSec: el('qrSec').value, shotCount: el('shotCount').checked})); } catch (e) {}
 }
 function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
@@ -1750,6 +1764,7 @@ function updateShotUI(){
 }
 let qrNoteSticky = false;
 function qrConfigured(){ return /^https?:\/\/\S+$/.test(qrBase.value.trim()) && qrKey.value.length > 0; }
+el('shotCount').addEventListener('change', save);
 [shotsOn, shotLocal, shotQR].forEach(c => c.addEventListener('change', () => { if (!shotsOn.checked || !shotQR.checked) hideQR(); updateShotUI(); save(); }));
 [qrBase, qrKey].forEach(c => c.addEventListener('input', () => { qrNoteSticky = false; updateShotUI(); save(); }));
 el('shotDirBtn').addEventListener('click', async () => {
@@ -1767,8 +1782,25 @@ function toast(t){
   const e = el('toast'); e.textContent = t; e.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 4000);
 }
+// Optional countdown on screen before the photo (not in the photo itself). Esc cancels it.
+let counting = false, countCancel = null;
+function countdown(){
+  return new Promise(resolve => {
+    const box = el('count'); let n = 3, timer = null;
+    const show = (t, snap) => { box.innerHTML = '<span' + (snap ? ' class="snap"' : '') + '>' + t + '</span>'; };
+    const done = ok => { clearTimeout(timer); countCancel = null; box.hidden = true; box.innerHTML = ''; resolve(ok); };
+    countCancel = () => done(false);
+    box.hidden = false; show(n);
+    const tick = () => {
+      n--;
+      if (n > 0) { show(n); timer = setTimeout(tick, 1000); }
+      else { show('klik!', true); timer = setTimeout(() => done(true), 350); }   // photo right after "klik!"
+    };
+    timer = setTimeout(tick, 1000);
+  });
+}
 async function takeShot(){
-  if (shotBusy || shotPending) return;
+  if (shotBusy || shotPending || counting) return;
   if (!shotLocal.checked && !shotQR.checked) { toast('Kies in Instellingen hoe foto\'s bewaard worden (op deze computer en/of met een QR-code).'); return; }
   hideQR();
   // ask for permission to write in the folder now, while the click still counts
@@ -1778,6 +1810,12 @@ async function takeShot(){
       if (p !== 'granted') p = await shotDir.requestPermission({mode: 'readwrite'});
       if (p !== 'granted') toast('Geen toestemming voor de map "' + shotDir.name + '": de foto gaat naar Downloads.');
     } catch (e) { console.warn(e); }
+  }
+  if (el('shotCount').checked) {
+    counting = true;
+    const ok = await countdown();
+    counting = false;
+    if (!ok) return;
   }
   shotPending = true;                     // grabbed right after the next frame is drawn
   const f = el('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
@@ -1948,7 +1986,7 @@ document.addEventListener('keydown', e => {
   if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); takeShot(); }
   else if ((e.key === 'q' || e.key === 'Q') && shotQR.checked) { e.preventDefault(); showQrAgain(); }
-  else if (e.key === 'Escape') hideQR();
+  else if (e.key === 'Escape') { hideQR(); if (countCancel) countCancel(); }
 });
 
 // ---------- render loop ----------
