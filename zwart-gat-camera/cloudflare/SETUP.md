@@ -73,8 +73,9 @@ The browser on that computer remembers these settings. Optionally also keep
 
 At the booth:
 
-- **Click or arrow key**: take a photo. The QR code shows until the next photo, or for
-  30 seconds at most.
+- **Click or arrow key**: take a photo. The QR code shows until the next photo, or at
+  most as long as set with the slider **QR-code blijft zichtbaar** (default 30 s; all
+  the way right: no time limit).
 - **Q key or the small "QR" button (bottom right)**: show the most recent QR code again.
   Press again to go further back, for someone who missed theirs. A thumbnail shows
   which photo it is.

@@ -242,6 +242,11 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
           <span>Standsleutel</span>
           <input type="password" id="qrKey" autocomplete="off">
         </label>
+        <label>
+          <span class="lab"><span>QR-code blijft zichtbaar</span><span id="qrSecVal"></span></span>
+          <input type="range" id="qrSec" min="5" max="125" step="5" value="30" aria-describedby="qrSecHint">
+        </label>
+        <p class="hint" id="qrSecHint">Tot de volgende foto, of hooguit zo lang. Helemaal rechts: blijft staan tot de volgende foto.</p>
         <div class="btns"><button id="qrTest">Verbinding testen</button></div>
         <p class="hint" id="qrNote"></p>
       </div>
@@ -1008,6 +1013,7 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s.shotQR != null) el('shotQR').checked = !!s.shotQR;
     if (typeof s.qrBase === 'string') el('qrBase').value = s.qrBase;
     if (typeof s.qrKey === 'string') el('qrKey').value = s.qrKey;
+    if (s.qrSec != null) el('qrSec').value = s.qrSec;
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
@@ -1015,7 +1021,8 @@ function save(){
     keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
     shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
     backdrop: el('bdChoice').value, shotsOn: el('shotsOn').checked,
-    shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value})); } catch (e) {}
+    shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value,
+    qrSec: el('qrSec').value})); } catch (e) {}
 }
 function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
@@ -1842,9 +1849,14 @@ el('qrTest').addEventListener('click', async () => {
   }
 });
 
-// -- QR code on screen (until the next photo, at most 30 s); Q or the "QR" button shows
-//    recent ones again (pressing again goes further back)
-const QR_SECONDS = 30;
+// -- QR code on screen until the next photo, at most the time set with the slider (the
+//    last slider step: no time limit); Q or the "QR" button shows recent ones again
+//    (pressing again goes further back)
+const qrSec = el('qrSec');
+function qrSeconds(){ const v = Number(qrSec.value); return v > 120 ? Infinity : v; }
+function qrSecLabel(){ el('qrSecVal').textContent = qrSeconds() === Infinity ? 'tot de volgende foto' : qrSeconds() + ' s'; }
+qrSec.addEventListener('input', () => { qrSecLabel(); save(); });
+qrSecLabel();
 let qrHistory = [], qrShown = -1, qrTimer = null, qrLib = null;
 function loadQrLib(){
   if (!qrLib) qrLib = new Promise((res, rej) => {
@@ -1862,8 +1874,11 @@ function startQrTimer(){
   clearTimeout(qrTimer);
   const bar = el('qrBar');
   bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)'; void bar.offsetWidth;
-  bar.style.transition = 'transform ' + QR_SECONDS + 's linear'; bar.style.transform = 'scaleX(0)';
-  qrTimer = setTimeout(hideQR, QR_SECONDS*1000);
+  const s = qrSeconds();
+  bar.parentElement.hidden = s === Infinity;   // no countdown bar without a time limit
+  if (s === Infinity) return;
+  bar.style.transition = 'transform ' + s + 's linear'; bar.style.transform = 'scaleX(0)';
+  qrTimer = setTimeout(hideQR, s*1000);
 }
 function showQRWaiting(thumb){
   el('qrThumb').src = thumb;
