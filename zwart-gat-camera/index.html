@@ -38,9 +38,9 @@ body.picking .panel,body.picking .dock{display:none}
 .row-head strong{font-family:var(--display);font-weight:700;font-size:1.05rem}
 label.check{flex-direction:row;align-items:flex-start;gap:8px;cursor:pointer}
 label.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
-fieldset{border:1px solid var(--line);border-radius:14px;margin:0;padding:8px 12px 12px;display:flex;flex-direction:column;gap:10px}
+fieldset{border:1px solid var(--line);border-radius:14px;margin:0;padding:8px 12px 12px;display:flex;flex-direction:column;gap:10px;min-width:0}
 legend{font-family:var(--display);font-weight:700;padding:0 6px}
-select{font:inherit;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:40px}
+select{font:inherit;width:100%;max-width:100%;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:40px}
 select option{color:#000}
 select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sub{display:flex;flex-direction:column;gap:10px}
@@ -116,8 +116,9 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
       <select id="bgMode">
         <option value="off">Uit</option>
         <option value="green">Groen scherm</option>
-        <option value="ai">Slim: persoon herkennen</option>
-        <option value="plate">Slim: stilstaande achtergrond</option>
+        <option value="booth">Slim: stand / mensen op afstand</option>
+        <option value="ai">Slim: één persoon dichtbij</option>
+        <option value="plate">Slim: alleen vaste achtergrond (offline)</option>
       </select>
     </label>
     <div class="sub" id="subGreen" hidden>
@@ -131,12 +132,27 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
       </label>
     </div>
     <div class="sub" id="subPlate" hidden>
-      <div class="btns"><button id="plateBtn">Lege achtergrond vastleggen</button></div>
+      <div class="btns">
+        <button id="plateBtn">Lege achtergrond vastleggen</button>
+        <button id="relearnBtn">Opnieuw leren</button>
+      </div>
       <label>
-        <span class="lab"><span>Gevoeligheid</span><span id="plateTolVal"></span></span>
-        <input type="range" id="plateTol" min="10" max="120" step="1" value="40">
+        <span class="lab"><span>Gevoeligheid</span><span id="plateSensVal"></span></span>
+        <input type="range" id="plateSens" min="1" max="10" step="0.5" value="5">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="shadows" checked>
+        <span>Schaduwen negeren</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="lockCam" checked>
+        <span>Belichting en kleur van de camera vastzetten (als de camera dat toelaat)</span>
       </label>
     </div>
+    <label class="check" id="showMaskRow" hidden>
+      <input type="checkbox" id="showMask">
+      <span>Toon wat als achtergrond gezien wordt (paars, zonder zwart gat)</span>
+    </label>
     <p class="hint" id="bgNote"></p>
   </fieldset>
 
@@ -173,6 +189,7 @@ uniform float uBgMode;       // background removal: 0 off, 1 colour key, 2 perso
 uniform vec3  uKey;          // colour key: picked background colour (rgb)
 uniform float uKeyTol;       // colour key: distance that still counts as background
 uniform sampler2D uMask;     // person mask (1 = person), rows stored top-down
+uniform float uShowMask;     // raw pass: tint the removed background
 
 vec2 c_p(vec2 x, vec2 y){
     return vec2(x[0]+y[0], x[1]+y[1]);
@@ -567,13 +584,10 @@ vec2 chromaOf(vec3 c){
 }
 float lumaOf(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
 
-// Camera pixel tc, whose ray arrives from direction n.  With background removal on,
-// the background part of the camera image is replaced by the star sky in that same
-// direction, so the person floats in front of the (lensed) sky.
-vec4 camComposite(vec2 tc, vec3 n){
-    vec4 c = texture2D(textureft, tc);
-    if (uBgMode < 0.5) return c;
-    vec3 col = c.rgb;
+// How much of camera pixel tc is foreground (1) rather than background (0).
+// The colour key also cleans the key colour out of edge pixels (col).
+float fgAlpha(vec2 tc, inout vec3 col){
+    if (uBgMode < 0.5) return 1.0;
     float a;
     if (uBgMode < 1.5) {
         // colour key: mostly chroma (shadows on the screen keep their colour), a little luma
@@ -591,6 +605,15 @@ vec4 camComposite(vec2 tc, vec3 n){
     } else {
         a = smoothstep(0.3, 0.7, texture2D(uMask, vec2(tc.x, 1.0 - tc.y)).r);
     }
+    return a;
+}
+
+// Camera pixel tc, whose ray arrives from direction n.  With background removal on,
+// the background part of the camera image is replaced by the star sky in that same
+// direction, so the person floats in front of the (lensed) sky.
+vec4 camComposite(vec2 tc, vec3 n){
+    vec3 col = texture2D(textureft, tc).rgb;
+    float a = fgAlpha(tc, col);
     if (a > 0.996) return vec4(col, 1.0);
     return vec4(mix(texture2D(texturebg, skyUV(n)).rgb, col, a), 1.0);
 }
@@ -619,10 +642,14 @@ void main(){
     else                gl_FragColor = texture2D(texturebg, m.xy);
 }
 #elif defined(RAW_PASS)
-// plain (mirrored) camera image without the black hole, used to pick the key colour
+// plain (mirrored) camera image without the black hole: to pick the key colour, and
+// (uShowMask) to show what is taken as background, tinted purple
 void main(){
     vec2 xy = uScreen*(gl_FragCoord.xy/uResolution - 0.5);
-    gl_FragColor = texture2D(textureft, vec2(0.5 - xy.x/uCamScale.x, 0.5 + xy.y/uCamScale.y));
+    vec2 tc = vec2(0.5 - xy.x/uCamScale.x, 0.5 + xy.y/uCamScale.y);
+    vec3 col = texture2D(textureft, tc).rgb;
+    if (uShowMask > 0.5) col = mix(vec3(0.38, 0.0, 0.34), col, fgAlpha(tc, col));
+    gl_FragColor = vec4(col, 1.0);
 }
 #else
 void main(){
@@ -834,7 +861,8 @@ function allocMap(w, h){
 const el = id => document.getElementById(id);
 const spin = el('spin'), incl = el('incl'), mass = el('mass');
 const spinDock = el('spinDock'), keepSpin = el('keepSpin');
-const bgMode = el('bgMode'), keyTol = el('keyTol'), plateTol = el('plateTol');
+const bgMode = el('bgMode'), keyTol = el('keyTol'), plateSens = el('plateSens');
+const shadows = el('shadows'), lockCam = el('lockCam'), showMask = el('showMask');
 let keyRGB = [0, 177, 64];               // typical chroma-key green until one is picked
 try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
   if (s) {
@@ -842,12 +870,15 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s.keepSpin != null) keepSpin.checked = !!s.keepSpin;
     if (s.bgMode && bgMode.querySelector('option[value="' + s.bgMode + '"]')) bgMode.value = s.bgMode;
     if (s.keyTol != null) keyTol.value = s.keyTol;
-    if (s.plateTol != null) plateTol.value = s.plateTol;
+    if (s.plateSens != null) plateSens.value = s.plateSens;
+    if (s.shadows != null) shadows.checked = !!s.shadows;
+    if (s.lockCam != null) lockCam.checked = !!s.lockCam;
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify({spin: spin.value, incl: incl.value, mass: mass.value,
-    keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateTol: plateTol.value, key: keyRGB})); } catch (e) {}
+    keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
+    shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB})); } catch (e) {}
 }
 function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
@@ -857,14 +888,16 @@ function labels(){
   el('inclVal').textContent = incl.value + '°' + (Number(incl.value) === 90 ? ' (van opzij)' : Number(incl.value) === 0 ? ' (langs de as)' : '');
   el('massVal').textContent = Number(mass.value).toFixed(1);
   el('keyTolVal').textContent = Math.round(Number(keyTol.value)*100);
-  el('plateTolVal').textContent = plateTol.value;
+  el('plateSensVal').textContent = Number(plateSens.value).toFixed(1).replace('.0', '') + (Number(plateSens.value) === 5 ? ' (normaal)' : '');
   el('swatch').style.background = 'rgb(' + keyRGB.join(',') + ')';
 }
 let dirty = true;
 function changed(){ labels(); dirty = true; save(); }
 [spin, incl, mass].forEach(i => i.addEventListener('input', changed));
 spinDock.addEventListener('input', () => { spin.value = spinDock.value; changed(); });
-[keyTol, plateTol].forEach(i => i.addEventListener('input', () => { labels(); save(); }));
+[keyTol, plateSens].forEach(i => i.addEventListener('input', () => { labels(); save(); }));
+shadows.addEventListener('change', save);
+lockCam.addEventListener('change', () => { lockCamera(lockCam.checked && usesPlate() && plateValid); save(); });
 keepSpin.addEventListener('change', () => { updateDock(); save(); });
 labels();
 
@@ -897,7 +930,7 @@ function geom(){
 function activeBgMode(){
   const m = bgMode.value;
   if (m === 'green') return 1;
-  if ((m === 'ai' || m === 'plate') && useVideo && maskReady) return 2;
+  if (m !== 'off' && useVideo && maskReady) return 2;
   return 0;
 }
 
@@ -917,6 +950,7 @@ function setUniforms(P){
   const Rfov = 0.5*Math.min(xs, ys), Mv = Number(mass.value);
   set1('uRing', 0.5); set1('uTol', 1.3*4*Mv/Rfov);
   set1('uBgMode', activeBgMode()); set1('uKeyTol', Number(keyTol.value));
+  set1('uShowMask', showMask.checked && !picking ? 1 : 0);
   if (P.u.uKey) gl.uniform3f(P.u.uKey, keyRGB[0]/255, keyRGB[1]/255, keyRGB[2]/255);
   if (P.u.textureft) gl.uniform1i(P.u.textureft, 0);
   if (P.u.texturebg) gl.uniform1i(P.u.texturebg, 1);
@@ -940,8 +974,9 @@ el('camBtn').addEventListener('click', async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
     video.srcObject = stream; await video.play();
-    useVideo = true; dirty = true; lastVideoTime = -1;
+    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false;
     el('camBtn').textContent = 'Camera staat aan'; el('camBtn').disabled = true;
+    plateValid = false; learnStartAt = 0;
     bgChanged();
   } catch (e) {
     el('camNote').textContent = 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
@@ -951,8 +986,25 @@ el('demoBtn').addEventListener('click', () => {
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true;
   el('camBtn').textContent = 'Camera aan'; el('camBtn').disabled = false;
-  maskReady = false; bgChanged();
+  camLocked = false; cancelCapture(); bgChanged();
 });
+
+// Fix exposure, white balance and focus (where browser and camera allow it), so the
+// picture doesn't change when someone walks in. The current values are kept.
+let camLocked = false;
+async function lockCamera(on){
+  const t = video.srcObject && video.srcObject.getVideoTracks()[0];
+  if (!t || !t.getCapabilities || on === camLocked) return;
+  camLocked = on;
+  const caps = t.getCapabilities(), st = t.getSettings ? t.getSettings() : {};
+  const mode = on ? 'manual' : 'continuous';
+  for (const [k, v] of [['exposureMode', 'exposureTime'], ['whiteBalanceMode', 'colorTemperature'], ['focusMode', 'focusDistance']]) {
+    if (!Array.isArray(caps[k]) || !caps[k].includes(mode)) continue;
+    const c = {[k]: mode};
+    if (on && st[v] != null) c[v] = st[v];
+    try { await t.applyConstraints({advanced: [c]}); } catch (e) { console.warn('camera lock', k, e); }
+  }
+}
 
 // ---------- panel and docked spin slider ----------
 const panel = el('panel');
@@ -975,143 +1027,218 @@ function showBanner(text, opts){
   banner.hidden = false;
 }
 function hideBanner(){ banner.hidden = true; }
-el('bannerCancel').addEventListener('click', () => { stopPicking(); cancelPlate(); });
+el('bannerCancel').addEventListener('click', () => { stopPicking(); cancelCapture(); });
 
 // ---------- background removal ----------
-// Small working copy of the camera frame, for the mask methods.
+// Three "smart" modes:
+//  booth : background model that learns by itself which pixels never change, guided by a
+//          person-recognition network (DeepLab, also run on zoomed-in tiles so that small,
+//          distant people are found). Anything that differs from the background is shown,
+//          at any distance; the network also fills holes (clothes the colour of the wall).
+//  ai    : person recognition only (MediaPipe selfie model), for one person close by.
+//  plate : background model from a recorded empty scene, no network (works offline).
+// The networks run in a Web Worker so the black hole keeps running smoothly.
+const usesPlate = () => bgMode.value === 'plate' || bgMode.value === 'booth';
+const PROC_W = 320;                      // working resolution of the mask (width)
 const proc = document.createElement('canvas');
 const pctx = proc.getContext('2d', {willReadFrequently: true});
-const PROC_W = 320;
 let maskReady = false, maskBytes = null;
+
+// background model (planar RGB of the lightly blurred frame), scratch space
+let BR, BG, BB, bVar, bCount, CR, CG, CB, T1, T2, pmask, pnear, pbin, pseen, pstack, plist, still;
+let aiMask = null, plateValid = false, learnStartAt = 0, gA = [1, 1, 1], gB = [0, 0, 0];
 function sizeProc(){
   const w = PROC_W, h = Math.max(1, Math.round(PROC_W*video.videoHeight/video.videoWidth));
-  if (proc.width !== w || proc.height !== h) { proc.width = w; proc.height = h; maskBytes = new Uint8Array(w*h); return true; }
-  return false;
+  if (proc.width === w && proc.height === h && BR) return false;
+  proc.width = w; proc.height = h;
+  const n = w*h, f = () => new Float32Array(n);
+  BR = f(); BG = f(); BB = f(); bVar = f(); bCount = new Uint16Array(n);
+  CR = f(); CG = f(); CB = f(); T1 = f(); T2 = f(); pmask = f(); pnear = f();
+  pbin = new Uint8Array(n); pseen = new Uint8Array(n); pstack = new Int32Array(n); plist = new Int32Array(n);
+  still = new Uint16Array(n);
+  maskBytes = new Uint8Array(n); aiMask = null; plateValid = false; learnStartAt = 0; maskReady = false;
+  return true;
 }
-
-function bgNote(t){ el('bgNote').textContent = t || ''; }
-function bgChanged(){
-  const m = bgMode.value;
-  el('subGreen').hidden = m !== 'green';
-  el('subPlate').hidden = m !== 'plate';
-  maskReady = false;
-  if (m !== 'plate') cancelPlate();
-  if (m === 'off') bgNote('');
-  else if (m === 'green') bgNote('Sta voor een effen achtergrond (bv. een groen scherm) en klik op "Kies de achtergrondkleur". Waar die kleur in beeld is, zie je sterren.');
-  else if (!useVideo) bgNote('Zet eerst je camera aan.');
-  else if (m === 'ai') { bgNote('Het herkenningsmodel wordt geladen…'); loadSeg(); }
-  else if (m === 'plate') bgNote(plate ? 'Alles wat verschilt van de vastgelegde achtergrond blijft zichtbaar.'
-    : 'Klik op "Lege achtergrond vastleggen" en stap even uit beeld. De camera moet daarna stil blijven staan.');
-  save();
-}
-bgMode.addEventListener('change', bgChanged);
-
-// (b1) person segmentation, the way video-call apps do it: a small neural network
-// (MediaPipe selfie segmenter) that runs in the browser. Loaded only when chosen.
-const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
-let seg = null, segLoading = null, segTs = 0;
-function loadSeg(){
-  if (seg) { segReadyNote(); return; }
-  if (segLoading) return;
-  segLoading = (async () => {
-    const mp = await import(MP + '/vision_bundle.mjs');
-    const files = await mp.FilesetResolver.forVisionTasks(MP + '/wasm');
-    const opts = delegate => ({baseOptions: {modelAssetPath: MP_MODEL, delegate}, runningMode: 'VIDEO',
-      outputCategoryMask: false, outputConfidenceMasks: true});
-    try { seg = await mp.ImageSegmenter.createFromOptions(files, opts('GPU')); }
-    catch (e) { console.warn('GPU segmenter unavailable, using CPU', e); seg = await mp.ImageSegmenter.createFromOptions(files, opts('CPU')); }
-    segReadyNote();
-  })().catch(e => {
-    console.error(e); segLoading = null;
-    if (bgMode.value === 'ai') bgNote('Het herkenningsmodel kon niet geladen worden (geen internet?). Probeer "Slim: stilstaande achtergrond".');
-  });
-}
-function segReadyNote(){ if (bgMode.value === 'ai') bgNote('Je wordt automatisch herkend; de rest van het beeld wordt sterrenhemel. Het model draait op je eigen toestel.'); }
-function runSeg(){
-  sizeProc();
-  pctx.drawImage(video, 0, 0, proc.width, proc.height);
-  const ts = Math.max(performance.now(), segTs + 1); segTs = ts;
-  seg.segmentForVideo(proc, ts, res => {
-    const ms = res.confidenceMasks;
-    if (!ms || !ms.length) return;
-    const mk = ms[ms.length - 1];        // last mask = person confidence
-    const f = mk.getAsFloat32Array(), w = mk.width, h = mk.height;
-    if (!maskBytes || maskBytes.length !== w*h) maskBytes = new Uint8Array(w*h);
-    for (let i = 0; i < w*h; i++) maskBytes[i] = f[i] >= 1 ? 255 : f[i] <= 0 ? 0 : f[i]*255;
-    uploadMask(maskBytes, w, h); maskReady = true;
-  });
-}
-
-// (b2) static background: record the empty scene once, then everything that differs
-// from it is foreground. Background pixels keep adapting slowly (light changes), and
-// a global gain follows the camera's automatic exposure.
-let plate = null, plateGain = 1, plateTimer = null, plateAcc = null, plateCount = 0;
-let pdiff = null, pmask = null, ptmp = null;
-const PLATE_FRAMES = 12;
-function cancelPlate(){
-  if (plateTimer) { clearInterval(plateTimer); plateTimer = null; hideBanner(); }
-  plateAcc = null;
-}
-el('plateBtn').addEventListener('click', () => {
-  if (!useVideo) { bgNote('Zet eerst je camera aan.'); return; }
-  cancelPlate();
-  let left = 3;
-  showBanner('Stap uit beeld… ' + left, {big: true, cancel: true});
-  plateTimer = setInterval(() => {
-    left--;
-    if (left > 0) { showBanner('Stap uit beeld… ' + left, {big: true, cancel: true}); return; }
-    clearInterval(plateTimer); plateTimer = null;
-    showBanner('Achtergrond vastleggen…', {big: true});
-    sizeProc(); plateAcc = new Float32Array(proc.width*proc.height*3); plateCount = 0;
-  }, 1000);
-});
-function plateStep(){
-  if (sizeProc()) {                                // camera resolution changed: start over
-    plate = null; plateAcc = null; maskReady = false; hideBanner(); bgChanged(); return;
-  }
+function readFrame(){
   const w = proc.width, h = proc.height, n = w*h;
-  if (!maskBytes || maskBytes.length !== n) maskBytes = new Uint8Array(n);
+  // downscaling (4x) already averages away most sensor noise
+  pctx.imageSmoothingEnabled = true; pctx.imageSmoothingQuality = 'high';
   pctx.drawImage(video, 0, 0, w, h);
   const px = pctx.getImageData(0, 0, w, h).data;
-  if (plateAcc) {                                  // recording the empty background
-    for (let i = 0, j = 0; i < n; i++, j += 4) { plateAcc[3*i] += px[j]; plateAcc[3*i+1] += px[j+1]; plateAcc[3*i+2] += px[j+2]; }
-    if (++plateCount >= PLATE_FRAMES) {
-      plate = plateAcc.map(v => v/PLATE_FRAMES); plateAcc = null; plateGain = 1;
-      pdiff = new Float32Array(n); pmask = new Float32Array(n); ptmp = new Float32Array(n);
-      showBanner('Klaar! Kom maar terug in beeld.', {big: true}); setTimeout(hideBanner, 1800);
-      bgChanged();
-    }
-    return;
-  }
-  if (!plate) return;
-  // exposure: compare brightness over the pixels that were background last frame
-  let sc = 0, sp = 0;
-  for (let i = 0, j = 0; i < n; i++, j += 4) if (pmask[i] < 0.2) {
-    sc += px[j] + px[j+1] + px[j+2]; sp += plate[3*i] + plate[3*i+1] + plate[3*i+2];
-  }
-  if (sp > n*30) plateGain = 0.8*plateGain + 0.2*Math.min(1.5, Math.max(0.67, sc/sp));
-  const g = plateGain;
   for (let i = 0, j = 0; i < n; i++, j += 4) {
-    const dr = px[j] - g*plate[3*i], dg = px[j+1] - g*plate[3*i+1], db = px[j+2] - g*plate[3*i+2];
-    pdiff[i] = Math.sqrt(dr*dr + dg*dg + db*db);
+    const r = px[j], g = px[j+1], b = px[j+2], dr = r - CR[i], dg = g - CG[i], db = b - CB[i];
+    // frames in a row that this pixel did not change (beyond noise)
+    if (dr*dr + dg*dg + db*db < 8*bVar[i] + 20) { if (still[i] < 65535) still[i]++; } else still[i] = 0;
+    CR[i] = r; CG[i] = g; CB[i] = b;
   }
-  boxBlur(pdiff, ptmp, w, h, 1);                   // remove sensor noise
-  const t0 = Number(plateTol.value), t1 = 2*t0;
-  for (let i = 0; i < n; i++) { const v = (pdiff[i] - t0)/(t1 - t0); pmask[i] = v <= 0 ? 0 : v >= 1 ? 1 : v; }
-  // close small holes and specks, then soften the edge
-  boxBlur(pmask, ptmp, w, h, 3);
-  for (let i = 0; i < n; i++) pmask[i] = pmask[i] > 0.35 ? 1 : pmask[i]/0.35*0.5;
-  boxBlur(pmask, ptmp, w, h, 2);
-  // slowly absorb clear background into the model
-  const k = 0.02;
-  for (let i = 0, j = 0; i < n; i++, j += 4) if (pmask[i] < 0.05) {
-    plate[3*i]   += k*(px[j]/g   - plate[3*i]);
-    plate[3*i+1] += k*(px[j+1]/g - plate[3*i+1]);
-    plate[3*i+2] += k*(px[j+2]/g - plate[3*i+2]);
+}
+const VAR0 = 24, VAR_MIN = 12;            // noise variance (sum over r,g,b) of a working pixel
+
+// -- recording an empty scene (button), for 'plate' and as a clean start for 'booth'
+const CAP_FRAMES = 15;
+let capTimer = null, cap = null;
+function cancelCapture(){
+  if (capTimer) { clearInterval(capTimer); capTimer = null; hideBanner(); }
+  cap = null;
+}
+el('plateBtn').addEventListener('click', () => {
+  if (!useVideo) { updateNote(); return; }
+  cancelCapture();
+  let left = 3;
+  showBanner('Stap uit beeld… ' + left, {big: true, cancel: true});
+  capTimer = setInterval(async () => {
+    left--;
+    if (left > 0) { showBanner('Stap uit beeld… ' + left, {big: true, cancel: true}); return; }
+    clearInterval(capTimer); capTimer = null;
+    showBanner('Achtergrond vastleggen… blijf even uit beeld', {big: true});
+    if (lockCam.checked) await lockCamera(true);
+    setTimeout(() => {
+      sizeProc();
+      const n = proc.width*proc.height;
+      cap = {left: CAP_FRAMES, r: new Float32Array(n), g: new Float32Array(n), b: new Float32Array(n), q: new Float32Array(n)};
+    }, 500);
+  }, 1000);
+});
+function captureStep(){
+  const n = proc.width*proc.height;
+  for (let i = 0; i < n; i++) {
+    cap.r[i] += CR[i]; cap.g[i] += CG[i]; cap.b[i] += CB[i];
+    cap.q[i] += CR[i]*CR[i] + CG[i]*CG[i] + CB[i]*CB[i];
   }
+  if (--cap.left > 0) return;
+  const N = CAP_FRAMES;
+  for (let i = 0; i < n; i++) {
+    const r = cap.r[i]/N, g = cap.g[i]/N, b = cap.b[i]/N;
+    BR[i] = r; BG[i] = g; BB[i] = b;
+    bVar[i] = Math.max(VAR_MIN, cap.q[i]/N - r*r - g*g - b*b);
+    bCount[i] = 600;
+  }
+  boxBlur(bVar, T1, proc.width, proc.height, 3);
+  pmask.fill(0); gA = [1, 1, 1]; gB = [0, 0, 0]; plateValid = true; cap = null;
+  showBanner('Klaar! Kom maar terug in beeld.', {big: true}); setTimeout(hideBanner, 1800);
+  updateNote();
+}
+el('relearnBtn').addEventListener('click', () => {
+  plateValid = false; learnStartAt = 0; if (worker) worker.postMessage({type: 'reset'}); updateNote();
+});
+
+// -- one camera frame through the background model
+function plateStep(){
+  const booth = bgMode.value === 'booth';
+  if (sizeProc()) updateNote();
+  const w = proc.width, h = proc.height, n = w*h;
+  readFrame();
+  if (cap) { captureStep(); return; }
+  if (!plateValid) {
+    if (!booth) return;                   // 'plate' needs a recorded empty scene
+    // booth: start learning from the current frame (after locking the camera)
+    const now = performance.now();
+    if (!learnStartAt) { learnStartAt = now + (lockCam.checked ? 800 : 0); if (lockCam.checked) lockCamera(true); }
+    if (now < learnStartAt) return;
+    // wait (up to 15 s) for the network, so people standing in view now are not learned
+    if (worker && !workerError && !aiMask && now < learnStartAt + 15000) return;
+    BR.set(CR); BG.set(CG); BB.set(CB); bVar.fill(VAR0); bCount.fill(1); pmask.fill(0);
+    if (aiMask) {                         // where people are, the background is still unknown
+      T2.set(aiMask); boxBlur(T2, T1, w, h, 4);
+      for (let i = 0; i < n; i++) if (T2[i] > 0.05) bCount[i] = 0;
+    }
+    gA = [1, 1, 1]; gB = [0, 0, 0]; plateValid = true; updateNote();
+  }
+  // 1. exposure / white-balance drift of the camera: per colour channel
+  //    current = a*background + b, fitted over pixels that were clearly background
+  const C = [CR, CG, CB], Bk = [BR, BG, BB];
+  for (let ch = 0; ch < 3; ch++) {
+    const X = Bk[ch], Y = C[ch];
+    let cnt = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let i = 0; i < n; i += 2) if (pmask[i] < 0.1 && bCount[i] >= 3) {
+      const x = X[i], y = Y[i]; cnt++; sx += x; sy += y; sxx += x*x; sxy += x*y;
+    }
+    if (cnt < 0.025*n) continue;
+    const mx = sx/cnt, my = sy/cnt, vx = sxx/cnt - mx*mx;
+    let A = vx > 100 ? (sxy/cnt - mx*my)/vx : my/Math.max(1, mx);
+    A = Math.min(2, Math.max(0.5, A));
+    const B = Math.min(60, Math.max(-60, my - A*mx));
+    gA[ch] = 0.8*gA[ch] + 0.2*A; gB[ch] = 0.8*gB[ch] + 0.2*B;
+  }
+  const g0 = gA[0], g1 = gA[1], g2 = gA[2], o0 = gB[0], o1 = gB[1], o2 = gB[2];
+  // 2. difference with the background, in units of the local noise level
+  const f = Math.pow(2, (5 - Number(plateSens.value))/2.5), shadow = shadows.checked;
+  for (let i = 0; i < n; i++) {
+    const r = g0*BR[i] + o0, g = g1*BG[i] + o1, b = g2*BB[i] + o2, cr = CR[i], cg = CG[i], cb = CB[i];
+    const dr = cr - r, dg = cg - g, db = cb - b;
+    let d2 = dr*dr + dg*dg + db*db;
+    if (shadow) {                         // darker but same colour: a shadow, not a person
+      const bb = r*r + g*g + b*b;
+      if (bb > 400) {
+        const al = (cr*r + cg*g + cb*b)/bb;
+        if (al > 0.45 && al < 1.0) {
+          const er = cr - al*r, eg = cg - al*g, eb = cb - al*b;
+          d2 = Math.min(d2, 2*(er*er + eg*eg + eb*eb));
+        }
+      }
+    }
+    T2[i] = Math.sqrt(d2)/(f*(6 + 3*Math.sqrt(bVar[i])));
+  }
+  boxBlur(T2, T1, w, h, 1);
+  for (let i = 0; i < n; i++) { pbin[i] = T2[i] > 1 ? 1 : 0; pnear[i] = pbin[i]; }
+  boxBlur(pnear, T1, w, h, 6);            // pnear > 0: close to something that differs
+  // 3. booth: the network fills holes in people the background model already sees, and
+  //    covers pixels whose background is not known yet
+  const ai = booth ? aiMask : null;
+  if (ai) for (let i = 0; i < n; i++) if (ai[i] > 0.5 && (pnear[i] > 0.01 || bCount[i] < 3)) pbin[i] = 1;
+  cleanMask(pbin, w, h);
+  // 4. learn the background
+  if (ai) { T2.set(ai); boxBlur(T2, T1, w, h, 4); }   // T2: people according to the network, widened
+  const kSlow = booth ? 1/600 : 1/1500;   // ~20 s resp. ~50 s at 30 frames per second
+  // Something that differs but has not moved for a few seconds, where the network sees
+  // nobody (a moved chair, the spot where someone stood at the start), is absorbed quickly.
+  const ABSORB = 0.03;
+  for (let i = 0; i < n; i++) {
+    const c = bCount[i], base = Math.max(kSlow, 1/(c + 1));
+    let k;
+    if (!booth) k = pnear[i] > 0.02 ? 0 : base;           // never near something that differs
+    // (a "person" that has not moved at all for a minute is a poster or a statue)
+    else if (ai) k = T2[i] > 0.05 ? (still[i] > 1800 ? ABSORB : 0) : !pbin[i] ? base : still[i] > 90 ? ABSORB : 0.25*base;
+    else k = !pbin[i] ? (pnear[i] > 0.02 ? 0.3*base : base) : still[i] > 300 ? ABSORB : 0.1*base;  // no network
+    if (!k) continue;
+    const er = (CR[i] - o0)/g0 - BR[i], eg = (CG[i] - o1)/g1 - BG[i], eb = (CB[i] - o2)/g2 - BB[i];
+    BR[i] += k*er; BG[i] += k*eg; BB[i] += k*eb;
+    if (!pbin[i] && c > 0) {
+      const v = bVar[i];
+      bVar[i] = Math.max(VAR_MIN, v + k*(Math.min(er*er + eg*eg + eb*eb, 4*v) - v));
+    }
+    if (c < 65535) bCount[i] = c + 1;
+  }
+  // 5. soft edge, upload
+  for (let i = 0; i < n; i++) pmask[i] = pbin[i];
+  boxBlur(pmask, T1, w, h, 2);
   for (let i = 0; i < n; i++) maskBytes[i] = pmask[i]*255;
   uploadMask(maskBytes, w, h); maskReady = true;
+}
+
+// Remove small specks of foreground and fill small holes inside foreground (4-connected).
+function cleanMask(bin, w, h){
+  const n = w*h, minBlob = Math.max(20, n*0.0015), maxHole = n*0.015;
+  for (let pass = 0; pass < 2; pass++) {
+    const v = pass === 0 ? 1 : 0;
+    pseen.fill(0);
+    for (let s0 = 0; s0 < n; s0++) {
+      if (bin[s0] !== v || pseen[s0]) continue;
+      let top = 0, cnt = 0, border = false;
+      pstack[top++] = s0; pseen[s0] = 1;
+      while (top) {
+        const p = pstack[--top]; plist[cnt++] = p;
+        const x = p % w;
+        if (x === 0 || x === w - 1 || p < w || p >= n - w) border = true;
+        if (x > 0     && bin[p - 1] === v && !pseen[p - 1]) { pseen[p - 1] = 1; pstack[top++] = p - 1; }
+        if (x < w - 1 && bin[p + 1] === v && !pseen[p + 1]) { pseen[p + 1] = 1; pstack[top++] = p + 1; }
+        if (p >= w    && bin[p - w] === v && !pseen[p - w]) { pseen[p - w] = 1; pstack[top++] = p - w; }
+        if (p < n - w && bin[p + w] === v && !pseen[p + w]) { pseen[p + w] = 1; pstack[top++] = p + w; }
+      }
+      if (pass === 0 ? cnt < minBlob : (!border && cnt < maxHole))
+        for (let k = 0; k < cnt; k++) bin[plist[k]] = 1 - v;
+    }
+  }
 }
 // separable box blur of radius r, in place (tmp is scratch space of the same size)
 function boxBlur(a, tmp, w, h, r){
@@ -1134,6 +1261,166 @@ function boxBlur(a, tmp, w, h, r){
   }
 }
 
+// -- person recognition in a Web Worker
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODELS = {
+  // MediaPipe selfie segmenter: one or a few people close to the camera
+  selfie:  {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite', cls: -1, inW: 320},
+  // DeepLab v3 (PASCAL VOC, class 15 = person): people anywhere in a scene
+  deeplab: {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite', cls: 15, inW: 513},
+};
+// overlapping quarter tiles (fractions of the frame); one is analysed per round, next to
+// the whole frame, so distant people are seen about 1.7x larger by the network
+const TILES = [[0, 0, 0.6, 0.6], [0.4, 0, 0.6, 0.6], [0, 0.4, 0.6, 0.6], [0.4, 0.4, 0.6, 0.6]];
+const WORKER_SRC = `
+let seg = null, cls = -1;
+const store = {};                         // latest mask per image region
+async function loadLib(base){
+  // the CommonJS build works in a classic worker (the ES module build needs importScripts,
+  // which module workers lack); the CDN serves it with a non-script MIME type, hence the blob
+  const txt = await (await fetch(base + '/vision_bundle.cjs')).text();
+  self.module = {exports: {}}; self.exports = self.module.exports;
+  importScripts(URL.createObjectURL(new Blob([txt], {type: 'text/javascript'})));
+  return self.module.exports;
+}
+self.onmessage = async e => {
+  const d = e.data;
+  if (d.type === 'init') {
+    try {
+      const mp = await loadLib(d.lib);
+      const files = await mp.FilesetResolver.forVisionTasks(d.lib + '/wasm');
+      const opts = delegate => ({baseOptions: {modelAssetPath: d.model, delegate}, runningMode: 'IMAGE',
+        outputCategoryMask: false, outputConfidenceMasks: true});
+      let delegate = 'GPU';
+      try { seg = await mp.ImageSegmenter.createFromOptions(files, opts('GPU')); }
+      catch (err) { delegate = 'CPU'; seg = await mp.ImageSegmenter.createFromOptions(files, opts('CPU')); }
+      cls = d.cls;
+      self.postMessage({type: 'ready', delegate});
+    } catch (err) { self.postMessage({type: 'error', message: String(err && err.message || err)}); }
+  } else if (d.type === 'reset') {
+    for (const k in store) delete store[k];
+  } else if (d.type === 'frame') {
+    const t0 = performance.now(), bm = d.bitmap, W = bm.width, H = bm.height, oW = d.outW, oH = d.outH;
+    try {
+      for (const reg of d.rects) {
+        const r = reg.r, sw = r[2]*W, sh = r[3]*H;
+        const crop = await createImageBitmap(bm, r[0]*W, r[1]*H, sw, sh,
+          {resizeWidth: d.inW, resizeHeight: Math.max(1, Math.round(d.inW*sh/sw)), resizeQuality: 'medium'});
+        seg.segment(crop, res => {
+          const ms = res.confidenceMasks, m = cls < 0 ? ms[ms.length - 1] : ms[cls];
+          const f = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+          const x0 = Math.floor(r[0]*oW), y0 = Math.floor(r[1]*oH);
+          const x1 = Math.min(oW, Math.ceil((r[0] + r[2])*oW)), y1 = Math.min(oH, Math.ceil((r[1] + r[3])*oH));
+          const data = new Float32Array((x1 - x0)*(y1 - y0));
+          for (let y = y0; y < y1; y++) {
+            const v = Math.min(mh - 1, Math.max(0, Math.floor(((y + 0.5)/oH - r[1])/r[3]*mh)));
+            for (let x = x0; x < x1; x++) {
+              const u = Math.min(mw - 1, Math.max(0, Math.floor(((x + 0.5)/oW - r[0])/r[2]*mw)));
+              data[(y - y0)*(x1 - x0) + (x - x0)] = f[v*mw + u];
+            }
+          }
+          store[reg.id] = {oW, oH, x0, y0, x1, y1, data};
+        });
+        crop.close();
+      }
+    } catch (err) { self.postMessage({type: 'error', message: String(err && err.message || err)}); return; }
+    finally { bm.close(); }
+    const out = new Uint8Array(oW*oH);
+    for (const k in store) {
+      const s = store[k];
+      if (s.oW !== oW || s.oH !== oH) continue;
+      const sw = s.x1 - s.x0;
+      for (let y = s.y0; y < s.y1; y++) for (let x = s.x0; x < s.x1; x++) {
+        const v = s.data[(y - s.y0)*sw + (x - s.x0)]*255, o = y*oW + x;
+        if (v > out[o]) out[o] = v;
+      }
+    }
+    self.postMessage({type: 'mask', mask: out, w: oW, h: oH, ms: performance.now() - t0}, [out.buffer]);
+  }
+};`;
+let worker = null, workerModel = null, workerReady = false, workerBusy = false, workerError = null, tileTurn = 0, aiMs = 0;
+function startWorker(model){
+  if (worker && workerModel === model) return;
+  stopWorker();
+  workerModel = model; workerError = null;
+  try {
+    worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], {type: 'text/javascript'})));
+  } catch (e) { workerError = String(e); worker = null; updateNote(); return; }
+  worker.onmessage = onWorker;
+  worker.onerror = e => { workerError = e.message || 'worker'; stopWorker(true); updateNote(); };
+  worker.postMessage({type: 'init', lib: MP, model: MODELS[model].url, cls: MODELS[model].cls});
+}
+function stopWorker(keepError){
+  if (worker) worker.terminate();
+  worker = null; workerReady = false; workerBusy = false; aiMask = null;
+  if (!keepError) { workerModel = null; workerError = null; }
+}
+function onWorker(e){
+  const d = e.data;
+  if (d.type === 'ready') { workerReady = true; updateNote(); }
+  else if (d.type === 'error') { console.error('person recognition:', d.message); workerError = d.message; stopWorker(true); updateNote(); }
+  else if (d.type === 'mask') {
+    workerBusy = false; aiMs = 0.7*aiMs + 0.3*d.ms;
+    if (!BR || d.w !== proc.width || d.h !== proc.height) return;
+    const n = d.w*d.h;
+    if (!aiMask || aiMask.length !== n) aiMask = new Float32Array(n);
+    if (bgMode.value === 'ai') {                 // used directly: smooth a little over time
+      for (let i = 0; i < n; i++) { aiMask[i] = 0.3*aiMask[i] + 0.7*d.mask[i]/255; maskBytes[i] = aiMask[i]*255; }
+      uploadMask(maskBytes, d.w, d.h); maskReady = true;
+    } else {
+      for (let i = 0; i < n; i++) aiMask[i] = d.mask[i]/255;
+    }
+  }
+}
+async function sendAI(){
+  workerBusy = true;
+  const m = MODELS[workerModel], rects = [{id: 'full', r: [0, 0, 1, 1]}];
+  if (workerModel === 'deeplab') { const t = tileTurn++ % TILES.length; rects.push({id: 'tile' + t, r: TILES[t]}); }
+  try {
+    const bm = await createImageBitmap(video);
+    if (!worker) { bm.close(); return; }
+    worker.postMessage({type: 'frame', bitmap: bm, rects, outW: proc.width, outH: proc.height, inW: m.inW}, [bm]);
+  } catch (e) { workerBusy = false; }
+}
+
+// -- mode switching and explanations
+function bgNote(t){ el('bgNote').textContent = t || ''; }
+function aiStatus(){
+  if (workerError) return 'Het herkenningsmodel kon niet geladen worden (geen internet?).';
+  if (!workerReady) return 'Het herkenningsmodel wordt geladen…';
+  return '';
+}
+function updateNote(){
+  const m = bgMode.value;
+  if (m === 'off') bgNote('');
+  else if (m === 'green') bgNote('Sta voor een effen achtergrond (bv. een groen scherm) en klik op "Kies de achtergrondkleur". Waar die kleur in beeld is, zie je sterren.');
+  else if (!useVideo) bgNote('Zet eerst je camera aan.');
+  else if (m === 'booth') bgNote('Voor een stand of beurs: de camera leert vanzelf hoe de achtergrond eruitziet, ook als er mensen voorbij lopen. ' +
+    'Alles wat daarvan afwijkt blijft zichtbaar, ook mensen ver weg. Zet de camera stevig vast. ' +
+    (aiStatus() || 'Het herkenningsmodel helpt mee.') + (workerError ? ' Het werkt nu alleen met de geleerde achtergrond.' : '') +
+    (plateValid ? '' : ' Bezig met starten…'));
+  else if (m === 'ai') bgNote((aiStatus() ? aiStatus() + ' ' : '') + (workerError ? 'Probeer "alleen vaste achtergrond".'
+    : 'Herkent één of enkele mensen dichtbij de camera, zoals bij videobellen. Voor mensen verder weg: kies "stand".'));
+  else if (m === 'plate') bgNote(plateValid ? 'Alles wat verschilt van de vastgelegde achtergrond blijft zichtbaar. Schuif "Gevoeligheid" hoger als er stukken van jou wegvallen, lager als er vlekken van de kamer blijven staan.'
+    : 'Klik op "Lege achtergrond vastleggen" en stap even uit beeld. De camera moet daarna stil blijven staan.');
+}
+function bgChanged(){
+  const m = bgMode.value;
+  el('subGreen').hidden = m !== 'green';
+  el('subPlate').hidden = !usesPlate();
+  el('relearnBtn').hidden = m !== 'booth';
+  el('showMaskRow').hidden = m === 'off';
+  if (m === 'off') showMask.checked = false;
+  maskReady = false;
+  if (!usesPlate()) { cancelCapture(); lockCamera(false); }
+  else if (plateValid && lockCam.checked) lockCamera(true);
+  const model = !useVideo ? null : m === 'booth' ? 'deeplab' : m === 'ai' ? 'selfie' : null;
+  if (!model) stopWorker();
+  else if (workerModel !== model || (!worker && !workerError)) startWorker(model);
+  updateNote(); save();
+}
+bgMode.addEventListener('change', () => { if (workerError) stopWorker(); bgChanged(); });
+
 // (a) green screen: pick the key colour by clicking on the plain camera image
 let picking = false;
 const pickCan = document.createElement('canvas');
@@ -1143,7 +1430,7 @@ function startPicking(){
 }
 function stopPicking(){ if (!picking) return; picking = false; document.body.classList.remove('picking'); hideBanner(); }
 el('pickBtn').addEventListener('click', startPicking);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopPicking(); cancelPlate(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopPicking(); cancelCapture(); } });
 canvas.addEventListener('click', e => {
   if (!picking) return;
   const r = canvas.getBoundingClientRect();
@@ -1166,6 +1453,7 @@ canvas.addEventListener('click', e => {
 });
 
 // ---------- render loop ----------
+let plateMs = 0;
 function frame(){
   resize();
   if (useVideo && video.readyState >= 2 && video.videoWidth && video.currentTime !== lastVideoTime) {
@@ -1173,14 +1461,16 @@ function frame(){
     upload(camTex, video);
     const a = video.videoHeight/video.videoWidth;
     if (Math.abs(a - camAspect) > 1e-6) { camAspect = a; dirty = true; }
+    const m = bgMode.value;
     try {
-      if (bgMode.value === 'ai' && seg) runSeg();
-      else if (bgMode.value === 'plate' && (plate || plateAcc)) plateStep();
+      if (usesPlate()) { const t = performance.now(); plateStep(); plateMs = 0.9*plateMs + 0.1*(performance.now() - t); }
+      else if (m === 'ai') sizeProc();
+      if (worker && workerReady && !workerBusy && (m === 'ai' || m === 'booth')) sendAI();
     } catch (e) { console.error(e); }
   }
   const W = canvas.width, H = canvas.height;
   gl.viewport(0, 0, W, H);
-  if (picking) {
+  if (picking || (showMask.checked && bgMode.value !== 'off')) {
     setUniforms(progRaw); bindTextures(); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   } else if (progMap && allocMap(W, H)) {
     if (dirty) {
@@ -1195,6 +1485,12 @@ function frame(){
   }
   requestAnimationFrame(frame);
 }
+// timings for checking a booth computer (console: zgcStats())
+window.zgcStats = () => {
+  const pct = (a, test) => a ? Math.round(100*a.reduce((s, v) => s + (test(v) ? 1 : 0), 0)/a.length) + '%' : '-';
+  return {maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, ready: workerReady, error: workerError,
+    shownAsPerson: pct(pbin, v => v), networkPerson: pct(aiMask, v => v > 0.5), backgroundUnknown: pct(bCount, v => v < 3)};
+};
 bgChanged();
 requestAnimationFrame(frame);
 })();
