@@ -30,6 +30,14 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.01em;font-size:cl
 .banner{z-index:5}
 body.picking canvas{cursor:crosshair}
 body.picking .panel,body.picking .dock{display:none}
+body.shots canvas{cursor:copy}
+.flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:flash .45s ease-out}
+@keyframes flash{from{opacity:.75}to{opacity:0}}
+@media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}}
+.toast{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);
+  padding:8px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:.92rem;z-index:5;pointer-events:none}
+.toast[hidden]{display:none}
 .panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));
   width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 90px);overflow:auto;background:var(--panel);border:1px solid var(--line);
   border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(6px)}
@@ -112,7 +120,7 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
   <fieldset>
     <legend>Achtergrond wegwerken</legend>
     <label>
-      <span>Vervang de achtergrond achter jou door sterren</span>
+      <span>Haal de achtergrond achter jou weg</span>
       <select id="bgMode">
         <option value="off">Uit</option>
         <option value="green">Groen scherm</option>
@@ -121,6 +129,25 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
         <option value="plate">Slim: alleen vaste achtergrond (offline)</option>
       </select>
     </label>
+    <div class="sub" id="subBackdrop" hidden>
+      <label>
+        <span>Nieuwe achtergrond</span>
+        <select id="bdChoice">
+          <option value="sterren">Sterrenhemel</option>
+          <option value="aarde">De aarde vanuit de ruimte</option>
+          <option value="aardopgang">Aardopgang boven de maan</option>
+          <option value="maan">Op de maan</option>
+          <option value="pilaren">Pilaren van de schepping (nevel)</option>
+          <option value="diep-heelal">Duizenden sterrenstelsels</option>
+          <option value="eigen">Eigen afbeelding…</option>
+        </select>
+      </label>
+      <div class="btns" id="bdOwnRow" hidden>
+        <button id="bdFileBtn">Kies een afbeelding op je computer…</button>
+        <input type="file" id="bdFile" accept="image/*" hidden>
+      </div>
+      <p class="hint" id="bdNote"></p>
+    </div>
     <div class="sub" id="subGreen" hidden>
       <div class="btns">
         <button id="pickBtn">Kies de achtergrondkleur</button>
@@ -156,6 +183,22 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     <p class="hint" id="bgNote"></p>
   </fieldset>
 
+  <fieldset>
+    <legend>Foto's</legend>
+    <label class="check">
+      <input type="checkbox" id="shotsOn">
+      <span>Klik in het beeld of druk op een pijltjestoets om een foto te maken (zonder de instellingen)</span>
+    </label>
+    <div class="sub" id="shotSub" hidden>
+      <p class="hint">Opslaan in: <b id="shotDirName">Downloads</b></p>
+      <div class="btns">
+        <button id="shotDirBtn">Kies een map…</button>
+        <button id="shotDirReset" hidden>Terug naar Downloads</button>
+      </div>
+      <p class="hint" id="shotNote"></p>
+    </div>
+  </fieldset>
+
   <details>
     <summary>Wat zie je?</summary>
     <p>De zwarte vlek is de <b>schaduw</b> van het zwarte gat: licht dat daar vandaan zou moeten komen, is in het zwarte gat verdwenen.</p>
@@ -165,6 +208,8 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
   </details>
 </div>
 
+<div class="flash" id="flash"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="msg" id="msg"></div>
 
 <script id="frag" type="x-shader/x-fragment">
@@ -190,6 +235,9 @@ uniform vec3  uKey;          // colour key: picked background colour (rgb)
 uniform float uKeyTol;       // colour key: distance that still counts as background
 uniform sampler2D uMask;     // person mask (1 = person), rows stored top-down
 uniform float uShowMask;     // raw pass: tint the removed background
+uniform sampler2D uBackdrop; // chosen background photo
+uniform float uUseBackdrop;  // 1: removed background shows the photo instead of the sky
+uniform vec2  uBdScale;      // cover fit of the photo onto the camera image
 
 vec2 c_p(vec2 x, vec2 y){
     return vec2(x[0]+y[0], x[1]+y[1]);
@@ -615,7 +663,12 @@ vec4 camComposite(vec2 tc, vec3 n){
     vec3 col = texture2D(textureft, tc).rgb;
     float a = fgAlpha(tc, col);
     if (a > 0.996) return vec4(col, 1.0);
-    return vec4(mix(texture2D(texturebg, skyUV(n)).rgb, col, a), 1.0);
+    // the photo hangs where your room was (so it is lensed like you, and not mirrored);
+    // otherwise the star sky in the ray's own direction shows through
+    vec3 bg = uUseBackdrop > 0.5
+        ? texture2D(uBackdrop, vec2(0.5 - (tc.x - 0.5)*uBdScale.x, 0.5 + (tc.y - 0.5)*uBdScale.y)).rgb
+        : texture2D(texturebg, skyUV(n)).rgb;
+    return vec4(mix(bg, col, a), 1.0);
 }
 #endif
 
@@ -740,6 +793,7 @@ function uploadMask(bytes, w, h){        // one byte per pixel, rows top-down, 2
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
 }
 uploadMask(new Uint8Array([255]), 1, 1);
+const bdTex = makeTex(gl.CLAMP_TO_EDGE);     // chosen background picture
 function upload(tex, src){
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -873,12 +927,15 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s.plateSens != null) plateSens.value = s.plateSens;
     if (s.shadows != null) shadows.checked = !!s.shadows;
     if (s.lockCam != null) lockCam.checked = !!s.lockCam;
+    if (s.backdrop && el('bdChoice').querySelector('option[value="' + s.backdrop + '"]')) el('bdChoice').value = s.backdrop;
+    if (s.shotsOn != null) el('shotsOn').checked = !!s.shotsOn;
     if (Array.isArray(s.key) && s.key.length === 3) keyRGB = s.key.map(Number);
   } } catch (e) {}
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify({spin: spin.value, incl: incl.value, mass: mass.value,
     keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
-    shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB})); } catch (e) {}
+    shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
+    backdrop: el('bdChoice').value, shotsOn: el('shotsOn').checked})); } catch (e) {}
 }
 function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
@@ -951,6 +1008,10 @@ function setUniforms(P){
   set1('uRing', 0.5); set1('uTol', 1.3*4*Mv/Rfov);
   set1('uBgMode', activeBgMode()); set1('uKeyTol', Number(keyTol.value));
   set1('uShowMask', showMask.checked && !picking ? 1 : 0);
+  // background picture: cover the camera image, keep the picture's proportions
+  set1('uUseBackdrop', bdReady && bdChoice.value !== 'sterren' ? 1 : 0);
+  if (P.u.uBdScale) { const r = bdAspect/camAspect; gl.uniform2f(P.u.uBdScale, r > 1 ? 1 : r, r > 1 ? 1/r : 1); }
+  if (P.u.uBackdrop) gl.uniform1i(P.u.uBackdrop, 4);
   if (P.u.uKey) gl.uniform3f(P.u.uKey, keyRGB[0]/255, keyRGB[1]/255, keyRGB[2]/255);
   if (P.u.textureft) gl.uniform1i(P.u.textureft, 0);
   if (P.u.texturebg) gl.uniform1i(P.u.texturebg, 1);
@@ -962,6 +1023,7 @@ function bindTextures(){
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, skyTex);
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, mapTex);
   gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, maskTex);
+  gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, bdTex);
   gl.activeTexture(gl.TEXTURE0);
 }
 
@@ -1407,6 +1469,7 @@ function updateNote(){
 function bgChanged(){
   const m = bgMode.value;
   el('subGreen').hidden = m !== 'green';
+  el('subBackdrop').hidden = m === 'off';
   el('subPlate').hidden = !usesPlate();
   el('relearnBtn').hidden = m !== 'booth';
   el('showMaskRow').hidden = m === 'off';
@@ -1432,7 +1495,7 @@ function stopPicking(){ if (!picking) return; picking = false; document.body.cla
 el('pickBtn').addEventListener('click', startPicking);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopPicking(); cancelCapture(); } });
 canvas.addEventListener('click', e => {
-  if (!picking) return;
+  if (!picking) { if (shotsOn.checked) takeShot(); return; }
   const r = canvas.getBoundingClientRect();
   const {xs, ys, cw, ch} = geom();
   // same mapping as the RAW_PASS shader (screen -> mirrored camera coordinate)
@@ -1450,6 +1513,185 @@ canvas.addEventListener('click', e => {
   for (let i = 0; i < d.length; i += 4) if (d[i+3] > 0) { s[0] += d[i]; s[1] += d[i+1]; s[2] += d[i+2]; k++; }
   if (k) { keyRGB = s.map(t => Math.round(t/k)); labels(); save(); }
   stopPicking();
+});
+
+// ---------- small key-value store (IndexedDB): own background picture, photo folder ----------
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('zwart-gat-camera', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(k){
+  const db = await idbOpen();
+  return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+}
+async function idbSet(k, v){
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const t = db.transaction('kv', 'readwrite'), st = t.objectStore('kv');
+    if (v == null) st.delete(k); else st.put(v, k);
+    t.oncomplete = () => res(); t.onerror = () => rej(t.error);
+  });
+}
+
+// ---------- background picture ----------
+// The removed background shows either the star sky (each ray's own direction, as around
+// the black hole) or a picture that hangs where your room was, lensed together with you.
+const BACKDROPS = {
+  'aarde':       {src: 'achtergronden/aarde.jpg',       credit: 'Foto: NASA, Apollo 17 (1972).'},
+  'aardopgang':  {src: 'achtergronden/aardopgang.jpg',  credit: 'Foto: NASA, Bill Anders, Apollo 8 (1968).'},
+  'maan':        {src: 'achtergronden/maan.jpg',        credit: 'Foto: NASA, Apollo 11 (1969).'},
+  'pilaren':     {src: 'achtergronden/pilaren.jpg',     credit: 'Foto: NASA, ESA en het Hubble Heritage Team (2014).'},
+  'diep-heelal': {src: 'achtergronden/diep-heelal.jpg', credit: 'Foto: NASA en ESA, Hubble Ultra Deep Field (2004).'},
+};
+const bdChoice = el('bdChoice');
+let bdReady = false, bdAspect = 1, bdLoadId = 0;
+function bdNote(t){ el('bdNote').textContent = t || ''; }
+function setBackdrop(img){
+  // keep the texture modest (and within every GPU's limits)
+  const MAX = 2048, k = Math.min(1, MAX/Math.max(img.width, img.height));
+  let src = img;
+  if (k < 1) {
+    src = document.createElement('canvas'); src.width = Math.round(img.width*k); src.height = Math.round(img.height*k);
+    src.getContext('2d').drawImage(img, 0, 0, src.width, src.height);
+  }
+  upload(bdTex, src); bdAspect = src.height/src.width; bdReady = true;
+}
+function loadImage(url){
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+}
+async function backdropChanged(){
+  const c = bdChoice.value, id = ++bdLoadId;
+  el('bdOwnRow').hidden = c !== 'eigen';
+  bdReady = false;
+  const lensed = ' De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.';
+  if (c === 'sterren') { bdNote('Waar je achtergrond was, kijk je door naar de sterrenhemel rond het zwarte gat.'); save(); return; }
+  try {
+    if (c === 'eigen') {
+      const blob = await idbGet('ownBackdrop').catch(() => null);
+      if (!blob) { bdNote('Kies een afbeelding op je computer. Ze blijft op je toestel.'); save(); return; }
+      const url = URL.createObjectURL(blob);
+      try { const im = await loadImage(url); if (id === bdLoadId) setBackdrop(im); } finally { URL.revokeObjectURL(url); }
+      bdNote('Je eigen afbeelding.' + lensed);
+    } else {
+      bdNote('Laden…');
+      const im = await loadImage(BACKDROPS[c].src);
+      if (id !== bdLoadId) return;
+      setBackdrop(im); bdNote(BACKDROPS[c].credit + lensed);
+    }
+  } catch (e) { console.error(e); if (id === bdLoadId) bdNote('De afbeelding kon niet geladen worden.'); }
+  save();
+}
+bdChoice.addEventListener('change', () => { backdropChanged(); if (bdChoice.value === 'eigen') idbGet('ownBackdrop').then(b => { if (!b) el('bdFile').click(); }).catch(() => el('bdFile').click()); });
+el('bdFileBtn').addEventListener('click', () => el('bdFile').click());
+el('bdFile').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    // store a reduced copy, so it is still there next time (also on a booth computer)
+    const url = URL.createObjectURL(f), im = await loadImage(url); URL.revokeObjectURL(url);
+    const k = Math.min(1, 2048/Math.max(im.width, im.height)), c = document.createElement('canvas');
+    c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+    await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
+    bdChoice.value = 'eigen'; setBackdrop(c); bdLoadId++;
+    el('bdOwnRow').hidden = false;
+    bdNote('Je eigen afbeelding. De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.');
+    save();
+  } catch (err) { console.error(err); bdNote('Dit bestand kon niet als afbeelding gelezen worden.'); }
+});
+
+// ---------- photos ----------
+// A click in the picture saves what is on screen (only the black-hole image, without the
+// settings). In Chrome/Edge a folder can be chosen; otherwise photos go to Downloads.
+const shotsOn = el('shotsOn'), canPickDir = typeof window.showDirectoryPicker === 'function';
+let shotDir = null, shotPending = false, shotBusy = false;
+function updateShotUI(){
+  document.body.classList.toggle('shots', shotsOn.checked);
+  el('shotSub').hidden = !shotsOn.checked;
+  el('shotDirName').textContent = shotDir ? shotDir.name : 'Downloads';
+  el('shotDirReset').hidden = !shotDir;
+  el('shotDirBtn').hidden = !canPickDir;
+  el('shotNote').textContent = canPickDir
+    ? (shotDir ? 'De eerste keer na het openen vraagt de browser of hij in deze map mag schrijven.' : 'Foto\'s komen in de downloadmap van de browser.')
+    : 'Deze browser bewaart foto\'s altijd in de downloadmap. Met Chrome of Edge kun je een andere map kiezen.';
+}
+shotsOn.addEventListener('change', () => { updateShotUI(); save(); });
+el('shotDirBtn').addEventListener('click', async () => {
+  try {
+    shotDir = await window.showDirectoryPicker({id: 'zwart-gat-fotos', mode: 'readwrite', startIn: 'downloads'});
+    await idbSet('shotDir', shotDir).catch(e => console.warn('could not remember the folder', e));
+  } catch (e) { if (e && e.name !== 'AbortError') console.warn(e); }
+  updateShotUI();
+});
+el('shotDirReset').addEventListener('click', () => { shotDir = null; idbSet('shotDir', null).catch(() => {}); updateShotUI(); });
+if (canPickDir) idbGet('shotDir').then(h => { if (h) { shotDir = h; updateShotUI(); } }).catch(() => {});
+
+let toastTimer = null;
+function toast(t){
+  const e = el('toast'); e.textContent = t; e.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { e.hidden = true; }, 3500);
+}
+async function takeShot(){
+  if (shotBusy || shotPending) return;
+  // ask for permission to write in the folder now, while the click still counts
+  if (shotDir) {
+    try {
+      let p = await shotDir.queryPermission({mode: 'readwrite'});
+      if (p !== 'granted') p = await shotDir.requestPermission({mode: 'readwrite'});
+      if (p !== 'granted') toast('Geen toestemming voor de map "' + shotDir.name + '": de foto gaat naar Downloads.');
+    } catch (e) { console.warn(e); }
+  }
+  shotPending = true;                     // grabbed right after the next frame is drawn
+  const f = el('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+}
+// called in the render loop right after drawing, while the picture is still in the buffer
+function grabShot(){
+  shotPending = false; shotBusy = true;
+  const W = canvas.width, H = canvas.height, px = new Uint8Array(W*H*4);
+  gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), img = x.createImageData(W, H), row = W*4;
+  for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y)*row, (H - y)*row), y*row);   // GL rows are bottom-up
+  x.putImageData(img, 0, 0);
+  c.toBlob(b => saveShot(b).finally(() => { shotBusy = false; }), 'image/jpeg', 0.92);
+}
+function stamp(){
+  const d = new Date(), z = v => String(v).padStart(2, '0');
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '_' + z(d.getHours()) + '-' + z(d.getMinutes()) + '-' + z(d.getSeconds());
+}
+async function saveShot(blob){
+  if (!blob) { toast('De foto kon niet gemaakt worden.'); return; }
+  const name = 'zwart-gat_' + stamp() + '.jpg';
+  if (shotDir) {
+    try {
+      if (await shotDir.queryPermission({mode: 'readwrite'}) === 'granted') {
+        const fh = await shotDir.getFileHandle(name, {create: true}), w = await fh.createWritable();
+        await w.write(blob); await w.close();
+        toast('Foto bewaard in ' + shotDir.name + ': ' + name);
+        return;
+      }
+    } catch (e) { console.warn('saving in the folder failed', e); }
+  }
+  const a = document.createElement('a'), url = URL.createObjectURL(blob);
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  toast('Foto bewaard in Downloads: ' + name);
+}
+
+// Arrow keys also take a photo (handy with a presenter remote or a big button at a booth),
+// except while a slider, menu or text field has the focus: there they keep their usual job.
+document.addEventListener('keydown', e => {
+  if (!shotsOn.checked || picking || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+  e.preventDefault();
+  takeShot();
 });
 
 // ---------- render loop ----------
@@ -1483,6 +1725,7 @@ function frame(){
   } else {
     setUniforms(progDirect); bindTextures(); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
+  if (shotPending) grabShot();
   requestAnimationFrame(frame);
 }
 // timings for checking a booth computer (console: zgcStats())
@@ -1491,7 +1734,7 @@ window.zgcStats = () => {
   return {maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, ready: workerReady, error: workerError,
     shownAsPerson: pct(pbin, v => v), networkPerson: pct(aiMask, v => v > 0.5), backgroundUnknown: pct(bCount, v => v < 3)};
 };
-bgChanged();
+bgChanged(); backdropChanged(); updateShotUI();
 requestAnimationFrame(frame);
 })();
 </script>
