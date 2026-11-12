@@ -19,30 +19,42 @@ Sign up at <https://dash.cloudflare.com/sign-up> (free plan). No website or doma
 1. In the dashboard, open **Storage & databases → Workers KV** (on older layouts:
    **Workers & Pages → KV**).
 2. **Create** a namespace, for example called `zwart-gat-fotos`.
+3. Under **Data location**, choose **Jurisdiction** and then **European Union (EU)**.
+   The photos are personal data of visitors; this keeps them stored in the EU only.
+   ("Standard" also works, but copies them to data centres worldwide.) This choice
+   cannot be changed later; you would have to create a new namespace.
 
 KV deletes every photo by itself 24 hours after the upload.
 
 ## 3. Create the Worker
 
-1. Open **Workers & Pages → Create → Worker** (choose the "Hello World" starting point).
-2. Name it, for example `zwart-gat-fotos`, and click **Deploy**.
-3. Click **Edit code**, delete everything in the editor, paste the full contents of
-   [`worker.js`](worker.js), and click **Deploy** again.
-4. Note the address of the Worker, something like
-   `https://zwart-gat-fotos.<your-account>.workers.dev`.
+1. In the left sidebar, open **Workers & Pages** (in newer layouts under **Compute**).
+2. Click the blue **Create** (or **Create application**) button at the top right.
+3. Among the ways to start (Import a repository, Start with Hello World!, Select a
+   template, ...) choose **Start with Hello World!** (sometimes a small **Get started**
+   link next to it).
+4. Name it, for example `zwart-gat-fotos`, and click **Deploy**.
+5. Click **Edit code**, delete everything in the editor, paste the full contents of
+   [`worker.js`](worker.js), and click **Deploy** again. (The file is also at
+   <https://raw.githubusercontent.com/drmayerson/drmayerson.github.io/main/zwart-gat-camera/cloudflare/worker.js>.)
+6. Note the address of the Worker, `https://<worker-name>.<your-account>.workers.dev`.
+   For this booth it is `https://zwart-gat-fotos.drmayerson.workers.dev`.
 
 ## 4. Connect the storage and set the booth key
 
-In the Worker, open **Settings**:
+Open the Worker. It has a row of tabs at the top:
+**Overview · Metrics · Deployments · Bindings · Observability · Settings**.
 
-1. **Bindings → Add → KV namespace**. Variable name: `PHOTOS_KV` (exactly like this);
-   namespace: the one from step 2.
-2. **Variables and Secrets → Add**:
+1. **Bindings** tab → **Add binding** → **KV namespace**. Variable name: `PHOTOS_KV`
+   (exactly like this); KV namespace: the one from step 2 → **Add binding**.
+   (The same is reachable from the **Overview** tab, panel on the right.)
+2. **Settings** tab → scroll down to **Variables and Secrets** → **+ Add**:
    - Type **Secret**, name `BOOTH_KEY`, value: a long password you make up, e.g. four
      random words. Only devices that know this key can upload photos.
-   - Type **Text**, name `ALLOWED_ORIGIN`, value `https://drmayerson.github.io`
-     (so only the camera page can use the service from a browser).
-3. Click **Deploy** if the dashboard asks for it.
+   - **+ Add** again: type **Text**, name `ALLOWED_ORIGIN`, value
+     `https://drmayerson.github.io` (no slash at the end), so only the camera page can
+     use the service from a browser.
+3. Click **Deploy** (or **Save and deploy**) at the bottom.
 
 Check: opening the Worker address in a browser shows
 "Zwart gat camera: fotodienst actief."
@@ -67,6 +79,19 @@ At the booth:
   Press again to go further back, for someone who missed theirs. A thumbnail shows
   which photo it is.
 - **Esc**: hide the QR code.
+
+## Before the expo
+
+- Scan a QR code with an iPhone and an Android phone and tap **Foto downloaden** on
+  both. On an iPhone the photo may open first; then press and hold it and choose
+  "Bewaar" (the page says so too).
+- Close a QR code and press **Q** to check that it comes back.
+- Uploaded photos are visible in the dashboard under your KV namespace (its entries).
+  24 hours after a test they should be gone, and the old QR link should say
+  "Deze foto is niet meer beschikbaar".
+
+Cloudflare rearranges its dashboard now and then; if a menu is not where this guide
+says, look for the same words (Workers KV, Bindings, Variables and Secrets) nearby.
 
 ## Privacy
 
