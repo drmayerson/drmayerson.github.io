@@ -192,7 +192,7 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     <div class="sub" id="shotSub" hidden>
       <p class="hint">Opslaan in: <b id="shotDirName">Downloads</b></p>
       <div class="btns">
-        <button id="shotDirBtn">Kies een map…</button>
+        <button id="shotDirBtn">Kies een map (opslaan zonder vragen)…</button>
         <button id="shotDirReset" hidden>Terug naar Downloads</button>
       </div>
       <p class="hint" id="shotNote"></p>
@@ -656,18 +656,31 @@ float fgAlpha(vec2 tc, inout vec3 col){
     return a;
 }
 
+// Background picture at camera coordinate tc: it hangs where your room was, so it is
+// lensed like you (and shown the right way round, not mirrored). Beyond its edges it
+// continues mirrored, so there is never a seam.
+vec3 backdropAt(vec2 tc){
+    vec2 uv = vec2(0.5 - (tc.x - 0.5)*uBdScale.x, 0.5 + (tc.y - 0.5)*uBdScale.y);
+    uv = 1.0 - abs(mod(uv, 2.0) - 1.0);
+    return texture2D(uBackdrop, uv).rgb;
+}
+// What a ray arriving from direction n shows when it does not hit the camera image: the
+// star sky, or (with a background picture) the picture all around, using the same
+// projection as the camera image, also for light from behind the camera. So the photon
+// ring (light that went once around the black hole) shows the same picture.
+vec3 skyColor(vec3 n){
+    if (uUseBackdrop > 0.5) return backdropAt(vec2(0.5 - CAM_D*n.x/uCamScale.x, 0.5 + CAM_D*n.y/uCamScale.y));
+    return texture2D(texturebg, skyUV(n)).rgb;
+}
+
 // Camera pixel tc, whose ray arrives from direction n.  With background removal on,
 // the background part of the camera image is replaced by the star sky in that same
-// direction, so the person floats in front of the (lensed) sky.
+// direction (or by the background picture), so the person floats in front of it.
 vec4 camComposite(vec2 tc, vec3 n){
     vec3 col = texture2D(textureft, tc).rgb;
     float a = fgAlpha(tc, col);
     if (a > 0.996) return vec4(col, 1.0);
-    // the photo hangs where your room was (so it is lensed like you, and not mirrored);
-    // otherwise the star sky in the ray's own direction shows through
-    vec3 bg = uUseBackdrop > 0.5
-        ? texture2D(uBackdrop, vec2(0.5 - (tc.x - 0.5)*uBdScale.x, 0.5 + (tc.y - 0.5)*uBdScale.y)).rgb
-        : texture2D(texturebg, skyUV(n)).rgb;
+    vec3 bg = uUseBackdrop > 0.5 ? backdropAt(tc) : texture2D(texturebg, skyUV(n)).rgb;
     return vec4(mix(bg, col, a), 1.0);
 }
 #endif
@@ -675,11 +688,11 @@ vec4 camComposite(vec2 tc, vec3 n){
 #ifdef MAP_PASS
 #define OUT_BLACK()    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0)
 #define OUT_CAM(tc, n) gl_FragColor = vec4(tc, 1.0, n.z)
-#define OUT_SKY(sc)    gl_FragColor = vec4(sc, 2.0, 1.0)
+#define OUT_SKY(n)     gl_FragColor = vec4(n.x, n.y, 2.0, n.z)
 #else
 #define OUT_BLACK()    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0)
 #define OUT_CAM(tc, n) gl_FragColor = camComposite(tc, n)
-#define OUT_SKY(sc)    gl_FragColor = texture2D(texturebg, sc)
+#define OUT_SKY(n)     gl_FragColor = vec4(skyColor(n), 1.0)
 #endif
 
 #if defined(DISPLAY_PASS)
@@ -692,7 +705,7 @@ void main(){
         vec2 p = (0.5 - m.xy)*uCamScale;
         gl_FragColor = camComposite(m.xy, vec3(p.x/CAM_D, -p.y/CAM_D, m.w));
     }
-    else                gl_FragColor = texture2D(texturebg, m.xy);
+    else                gl_FragColor = vec4(skyColor(vec3(m.x, m.y, m.w)), 1.0);   // map keeps n
 }
 #elif defined(RAW_PASS)
 // plain (mirrored) camera image without the black hole: to pick the key colour, and
@@ -730,7 +743,7 @@ void main(){
     bool barely   = abs(defl) < uTol;
     bool inRect   = tc.x >= 0.0 && tc.x <= 1.0 && tc.y >= 0.0 && tc.y <= 1.0;
     if (inCircle || (barely && inRect)) { OUT_CAM(tc, n); }
-    else                                { OUT_SKY(skyUV(n)); }
+    else                                { OUT_SKY(n); }
 }
 #endif
 </script>
@@ -1009,7 +1022,7 @@ function setUniforms(P){
   set1('uBgMode', activeBgMode()); set1('uKeyTol', Number(keyTol.value));
   set1('uShowMask', showMask.checked && !picking ? 1 : 0);
   // background picture: cover the camera image, keep the picture's proportions
-  set1('uUseBackdrop', bdReady && bdChoice.value !== 'sterren' ? 1 : 0);
+  set1('uUseBackdrop', bdReady && bdChoice.value !== 'sterren' && bgMode.value !== 'off' ? 1 : 0);
   if (P.u.uBdScale) { const r = bdAspect/camAspect; gl.uniform2f(P.u.uBdScale, r > 1 ? 1 : r, r > 1 ? 1/r : 1); }
   if (P.u.uBackdrop) gl.uniform1i(P.u.uBackdrop, 4);
   if (P.u.uKey) gl.uniform3f(P.u.uKey, keyRGB[0]/255, keyRGB[1]/255, keyRGB[2]/255);
@@ -1617,8 +1630,9 @@ function updateShotUI(){
   el('shotDirReset').hidden = !shotDir;
   el('shotDirBtn').hidden = !canPickDir;
   el('shotNote').textContent = canPickDir
-    ? (shotDir ? 'De eerste keer na het openen vraagt de browser of hij in deze map mag schrijven.' : 'Foto\'s komen in de downloadmap van de browser.')
-    : 'Deze browser bewaart foto\'s altijd in de downloadmap. Met Chrome of Edge kun je een andere map kiezen.';
+    ? (shotDir ? 'Foto\'s worden hier zonder vragen bewaard. Alleen na het openen van de pagina vraagt de browser één keer of hij in deze map mag schrijven (kies "Toestaan bij elk bezoek").'
+               : 'Foto\'s gaan via de browser naar Downloads. Verschijnt er bij elke foto een venster "Opslaan als"? Kies dan hierboven een map (dat mag ook Downloads zijn): dan bewaart de pagina de foto\'s zelf, zonder vragen.')
+    : 'Deze browser bewaart foto\'s in de downloadmap. Verschijnt er bij elke foto een venster "Opslaan als", zet dat dan uit in de instellingen van de browser (of gebruik Chrome of Edge en kies een map).';
 }
 shotsOn.addEventListener('change', () => { updateShotUI(); save(); });
 el('shotDirBtn').addEventListener('click', async () => {
@@ -1660,9 +1674,13 @@ function grabShot(){
   x.putImageData(img, 0, 0);
   c.toBlob(b => saveShot(b).finally(() => { shotBusy = false; }), 'image/jpeg', 0.92);
 }
+let lastStamp = '', stampCount = 0;
 function stamp(){
   const d = new Date(), z = v => String(v).padStart(2, '0');
-  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '_' + z(d.getHours()) + '-' + z(d.getMinutes()) + '-' + z(d.getSeconds());
+  const t = d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '_' + z(d.getHours()) + '-' + z(d.getMinutes()) + '-' + z(d.getSeconds());
+  // several photos within one second get -2, -3, ... so none is overwritten
+  stampCount = t === lastStamp ? stampCount + 1 : 1; lastStamp = t;
+  return stampCount > 1 ? t + '-' + stampCount : t;
 }
 async function saveShot(blob){
   if (!blob) { toast('De foto kon niet gemaakt worden.'); return; }
@@ -1670,9 +1688,11 @@ async function saveShot(blob){
   if (shotDir) {
     try {
       if (await shotDir.queryPermission({mode: 'readwrite'}) === 'granted') {
-        const fh = await shotDir.getFileHandle(name, {create: true}), w = await fh.createWritable();
+        let fname = name;                 // never overwrite a photo already in the folder
+        for (let k = 2; await shotDir.getFileHandle(fname).then(() => true, () => false); k++) fname = name.replace('.jpg', '_' + k + '.jpg');
+        const fh = await shotDir.getFileHandle(fname, {create: true}), w = await fh.createWritable();
         await w.write(blob); await w.close();
-        toast('Foto bewaard in ' + shotDir.name + ': ' + name);
+        toast('Foto bewaard in ' + shotDir.name + ': ' + fname);
         return;
       }
     } catch (e) { console.warn('saving in the folder failed', e); }
