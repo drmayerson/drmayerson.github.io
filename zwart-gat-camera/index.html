@@ -187,7 +187,7 @@ summary{cursor:pointer;color:var(--ink);font-weight:700}
     <legend>Foto's</legend>
     <label class="check">
       <input type="checkbox" id="shotsOn">
-      <span>Klik in het beeld om een foto te maken (zonder de instellingen)</span>
+      <span>Klik in het beeld of druk op een pijltjestoets om een foto te maken (zonder de instellingen)</span>
     </label>
     <div class="sub" id="shotSub" hidden>
       <p class="hint">Opslaan in: <b id="shotDirName">Downloads</b></p>
@@ -1682,6 +1682,17 @@ async function saveShot(blob){
   setTimeout(() => URL.revokeObjectURL(url), 30000);
   toast('Foto bewaard in Downloads: ' + name);
 }
+
+// Arrow keys also take a photo (handy with a presenter remote or a big button at a booth),
+// except while a slider, menu or text field has the focus: there they keep their usual job.
+document.addEventListener('keydown', e => {
+  if (!shotsOn.checked || picking || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+  e.preventDefault();
+  takeShot();
+});
 
 // ---------- render loop ----------
 let plateMs = 0;
