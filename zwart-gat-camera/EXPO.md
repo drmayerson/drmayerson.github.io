@@ -67,7 +67,7 @@ folder permissions are already granted.
 | Countdown 3-2-1 | tick *Aftellen voor de foto* in Settings |
 | Show recent QR codes again | key **Q** or the small **QR** button bottom right (press again for older ones) |
 | Hide QR code / cancel countdown | **Esc** |
-| Spin and size without opening Settings | arrows at the right edge (tick the two options in Settings) |
+| Spin, size, background picture without opening Settings | arrows at the right edge (tick the options in Settings) |
 | Full screen on/off | **F** (or Esc to leave) |
 | Settings | small gear bottom left |
 | Check performance | press F12 → Console → type `zgcStats()` (fps should be 50–60) |
@@ -83,6 +83,46 @@ folder permissions are already granted.
 | Laptop on battery | lower performance, fans | keep it plugged in |
 | More than ~1,000 QR photos per day | Cloudflare's free KV limit is reached; uploads fail, photos saved locally | switch the service to R2 (see SETUP.md) for very busy events |
 | A visitor grabs the mouse | could open Settings | the gear is small and dim; keep mouse/remote with staff |
+
+## Unattended touchscreen (no staff at the booth)
+
+**Verdict: works by touch alone once staff have set it up.** The setup itself (QR service,
+booth key, photo folder, PIN) needs a keyboard or the on-screen keyboard, once.
+
+Everything a visitor can do is a tap: take a photo (tap the picture; with countdown if
+ticked), close the QR code (×), re-show a QR code (only if allowed, see below), the arrows at
+the right edge (spin, size, background picture; hold to repeat), the language buttons top
+right, and the (i) explanation. None of it needs hover, a right click or a key.
+
+Checked here:
+
+| Item | Result |
+|---|---|
+| Settings protected by a PIN | tapping the gear shows a keypad; wrong PIN shakes and clears; right PIN opens the settings |
+| Keypad left alone | closes after 20 s |
+| Settings left open | close by themselves after 2 minutes without use (when the PIN is on) |
+| Restart with PIN on | always starts with the settings closed |
+| Forgotten PIN | open the page with `?pinreset` after the address (needs the address bar, so not possible for visitors in kiosk mode) |
+| Visitor language buttons, (i) explanation | work; explanation closes after 60 s |
+| Long press on the picture | no menu or text selection |
+| Double tap / pinch on the picture | no zoom (pinch on buttons is still possible in a normal browser window, see kiosk flags below) |
+| Earlier QR codes | could be re-shown by anyone: there is now an option to remove the "QR" button; **switch it off when unattended** |
+
+Not testable here: a real touchscreen (the tests used mouse clicks; all controls use pointer
+events, which touch screens send too).
+
+Set up for unattended use:
+
+1. Settings → *Zichtbaar als de instellingen verborgen zijn*: tick what visitors may use
+   (spin, size, background picture, languages, explanation).
+2. Settings → *Beveiligen*: tick the PIN option and choose a PIN of 4–8 digits.
+3. If photos are on: untick *Knop "QR" voor eerdere QR-codes tonen*; prefer the QR code over
+   saving on the laptop (a "Save as" or permission prompt could pop up for a visitor).
+4. Run Chrome in kiosk mode (see above) and add these options to the shortcut, so visitors
+   cannot zoom or swipe away from the page:
+   `--kiosk --disable-pinch --overscroll-history-navigation=0`
+5. Windows: switch off edge swipes (Action Center) for the booth account, or use Windows'
+   own kiosk mode ("assigned access"); no keyboard within reach of visitors.
 
 ## Before going live: update the photo service once
 
