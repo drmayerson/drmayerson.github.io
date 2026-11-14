@@ -29,6 +29,8 @@ export function tilesCentreOut(w, h, edge) {
  * @property {number} [compacted]            rays traced again in compaction rounds (Stage 1B B5)
  * @property {boolean} [cached]              restored from the record cache (Stage 1B B5)
  * @property {number} [traced]               fraction of the full-resolution pixels traced (Stage 1B B6 refinement)
+ * @property {Promise<number|null>} [gpuLater] previews (review P3): the GPU time, when the timer queries arrive (null if unavailable)
+ * @property {Promise<number|null>} [wallLater] one-tile previews (review P3): the service time, when the preview is done
  */
 
 /**
@@ -36,6 +38,8 @@ export function tilesCentreOut(w, h, edge) {
  * appears at once) and then the full image. A middle level (the M3-M8 levels 4 -> 2 -> 1) would cost another 25%.
  * @param {number} N
  */
+/** review P3: the longest a one-tile preview may run (ms, from the measured rate) */
+const ONE_TILE_MS = 100;
 export const finalLevels = (N) => (N >= 2048 ? [8, 1] : N >= 512 ? [4, 1] : N >= 256 ? [2, 1] : [1]);
 
 /** Edge of the probe tile that starts every trace (worst case 1024 rays x maxSteps). */
@@ -117,7 +121,17 @@ export class TracePipeline {
     this.rateMs = /** @type {Map<string, number>} */ (new Map());
     this.onProgress = opts.onProgress ?? (() => {});
     this.generation = 0;
+    /** traces with a generation below this stop after their current tile (review P3: a preview does not cancel a
+     * running preview, which would never finish while a drag sends one per frame; it waits, and replaces older waiters) */
+    this.cancelAt = 0;
+    /** the running trace is a foreground preview */
+    this.runningPreview = false;
     this.busy = false;
+    /** review P3: previews submitted and not yet done, and when the last one was */
+    this.previewFlight = /** @type {Promise<void>[]} */ ([]);
+    this.previewDone = 0;
+    /** traces waiting for the running one to end */
+    this.waiting = /** @type {((v: undefined) => void)[]} */ ([]);
     this.onStage = opts.onStage ?? (() => {});
     /** trace programs compiled so far */
     this.compiled = new Set();
@@ -170,7 +184,10 @@ export class TracePipeline {
   tileEdge() { return Math.max(16, Math.round(Math.sqrt(this.tileRays) / 8) * 8); }
 
   /** Cancel the running trace (it stops after its current tile). */
-  cancel() { this.generation++; }
+  cancel() { this.cancelAt = ++this.generation; }
+
+  /** @param {number} gen @returns {boolean} the trace of generation gen is cancelled */
+  stale(gen) { return gen < this.cancelAt; }
 
   /**
    * Trace all tiles of a w x h image with `submit`, adapting the tile size (the first tile is a small probe: one tile's
@@ -204,7 +221,7 @@ export class TracePipeline {
     const inflight = [];
     let lastDone = performance.now();
     while (pending.length || inflight.length) {
-      if (gen !== this.generation) { await Promise.allSettled(inflight.map((x) => x.p)); return false; }
+      if (this.stale(gen)) { await Promise.allSettled(inflight.map((x) => x.p)); return false; }
       while (inflight.length < (probe ? 1 : TILES_IN_FLIGHT) && pending.length) {
         const tt = /** @type {import('./backend.js').Rect} */ (pending.shift());
         inflight.push({ t: tt, p: submit(tt), at: performance.now() });
@@ -249,17 +266,23 @@ export class TracePipeline {
    *   cached is restored instead of traced (stats.cached); background traces (opts.background: idle pre-tracing) run in
    *   the backend's background record set and only fill the cache.
    *   from traceConfig.gpuTraceSetup
-   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean, final?: boolean, keep?: boolean}} [opts]
+   * @param {{levels?: number[], measureSteps?: boolean, adaptTiles?: boolean, cache?: boolean, background?: boolean, final?: boolean, keep?: boolean, store?: boolean}} [opts]
    *   final: false for previews (30 ms tiles); otherwise final traces use larger tiles (review P1)
    *   keep: cache the records even when they exceed half the budget (compare sides, review P6)
+   *   store: false looks the cache up but does not add to it (drag previews, review P3: storing cost 20% of the rate)
    * @returns {Promise<TraceStats|null>}  null if cancelled
    */
   async trace(setup, opts = {}) {
     // a background trace (idle pre-tracing) never cancels or waits for another trace: it runs only on an idle pipeline
     if (opts.background && this.busy) return null;
     const gen = ++this.generation;
-    while (this.busy) { await new Promise((r) => setTimeout(r, 0)); if (gen !== this.generation) return null; }
+    const preview = opts.final === false && !opts.background;
+    if (!(preview && this.busy && this.runningPreview)) this.cancelAt = gen;
+    // wait for the running trace (woken when it ends, not polled: review P3, a preview right after the last one); a
+    // newer request replaces a waiting one
+    while (this.busy) { await new Promise((r) => this.waiting.push(r)); if (gen !== this.generation) return null; }
     this.busy = true;
+    this.runningPreview = preview;
     const be = this.backend;
     try {
       const levels = opts.levels ?? finalLevels(setup.N);
@@ -283,10 +306,11 @@ export class TracePipeline {
       this.silent = !!opts.background;
       // devices without 8 draw buffers: no compaction or refinement (the plain program, every pixel traced)
       if (setup.program.includes('+compact') && !be.compactSupported()) setup = { ...setup, program: setup.program.replace('+compact', ''), compact: null, refine: null };
-      if (!this.compiled.has(setup.program)) this.onStage(`compiling the ${setup.program.startsWith('trace_kerr') ? 'closed-form Kerr' : 'tabulated'} tracer (first use)…`);
+      // background traces (pre-tracing, the tier probe) leave the status line to the displayed view
+      if (!this.compiled.has(setup.program) && !opts.background) this.onStage(`compiling the ${setup.program.startsWith('trace_kerr') ? 'closed-form Kerr' : 'tabulated'} tracer (first use)…`);
       await be.setTracer(setup.program);
       this.compiled.add(setup.program);
-      if (gen !== this.generation) return null;
+      if (this.stale(gen)) return null;
       if (setup.tables && setup.tableKey !== this.tableKey) { be.uploadTables(setup.tables); this.tableKey = setup.tableKey ?? null; }
       if (setup.fluid && setup.fluidKey !== this.fluidKey) { be.uploadFluid(setup.fluid); this.fluidKey = setup.fluidKey ?? null; }
       if (!opts.background) be.resize(setup.N, setup.N);
@@ -302,6 +326,8 @@ export class TracePipeline {
       const tileMs = opts.final === false ? this.targetTileMs : this.finalTileMs;
       const compactRounds = setup.compact ? compactLimits(setup.compact.n1, setup.maxSteps ?? 0) : [];
       let compacted = 0;
+      /** review P3: the service time of a submitted preview (resolves when it is done) */
+      let oneTile = /** @type {Promise<number|null>|null} */ (null);
       /** fraction of the full-resolution pixels traced (B6 adaptive refinement; 1 without it) */
       let traced = 1;
       for (const [li, st] of levels.entries()) {
@@ -327,11 +353,46 @@ export class TracePipeline {
         // Stage 1B B5 ray compaction: phase A stops rays at the first limit; each later round traces the unfinished rays
         // as a dense compact image (up to the next limit, the last one without a limit) and scatters them back
         be.setCompactPhase(compactRounds.length ? 1 : 0, compactRounds[0] ?? 0);
+        // review P3: a preview is one tile (its stride already bounds its cost): with probe tiles, a preview of a kind not
+        // yet measured was cancelled between tiles by the next drag input, every frame, and never finished
+        // one tile only while its known cost is small (a single dispatch on a slow GPU risks the OS watchdog); unknown: try
+        const one = opts.final === false && !compactRounds.length && !(rate * w * h > ONE_TILE_MS);
+        if (one) {
+          // review P3: a preview is submitted, not waited for. Chrome signals a fence only at a frame boundary, so waiting
+          // cost each preview two frames with the GPU idle in between; GL runs the commands in order (this tile, the
+          // display after it, the next preview's clear), so the image is right. At most two previews are in flight.
+          // Their service time (fence minus the later of submission and the previous preview's fence) and GPU time
+          // arrive later (stats.wallLater, stats.gpuLater).
+          while (this.previewFlight.length >= 2) {
+            await Promise.race(this.previewFlight);
+            if (this.stale(gen)) return null;
+          }
+          const at = performance.now();
+          const p = be.traceTile({ x: 0, y: 0, w, h }, st);
+          nTiles++;
+          const f = p.then((r) => {
+            const now = performance.now(), svc = now - Math.max(at, this.previewDone);
+            this.previewDone = now;
+            return { wall: svc, gpu: r.gpuMs };
+          });
+          // its cost per ray (GPU time, else the service time) for the next preview's one-tile decision
+          f.then(async (x) => {
+            const ms = (await x.gpu) ?? x.wall, old = this.rateMs.get(rk), m = ms / (w * h);
+            this.rateMs.set(rk, old ? Math.sqrt(old * m) : m);
+          }, () => {});
+          const slot = f.then(() => {}, () => {});
+          this.previewFlight.push(slot);
+          slot.then(() => this.previewFlight.splice(this.previewFlight.indexOf(slot), 1));
+          gpu.push(f.then((x) => x.gpu, () => null));
+          oneTile = f.then((x) => x.wall, () => null);
+          if (!this.silent) this.onProgress({ level: st, done: 1, total: 1 });
+          continue;
+        }
         const ok = await this.runTiles(gen, w, h, (t) => be.traceTile(t, st), st, opts.adaptTiles !== false, gpu, () => nTiles++, rate, tileMs);
         if (!ok) return null;
         for (let k = 1; k < compactRounds.length + 1 && compactRounds.length; k++) {
           const M = await be.compactList(st);
-          if (gen !== this.generation) return null;
+          if (this.stale(gen)) return null;
           if (!M) break;
           compacted += M;
           be.setCompactPhase(2, compactRounds[k] ?? 0);
@@ -346,25 +407,33 @@ export class TracePipeline {
       const wallMs = performance.now() - t0;
       // review P1: the measured cost per ray of this kind of trace (wall time, all levels; refinement and compaction
       // rounds included); a log-space average with the previous value
-      {
+      if (!oneTile) {
         const rays = levels.reduce((a, st) => a + Math.ceil(setup.N / st) ** 2, 0);
         const m = wallMs / Math.max(1, rays);
         const old = this.rateMs.get(rk);
         this.rateMs.set(rk, old ? Math.sqrt(old * m) : m);
       }
-      // GPU timer results arrive a little after the fences
+      // GPU timer results arrive a little after the fences; previews do not wait for them (review P3: the next preview
+      // starts sooner)
       let gpuMs = /** @type {number|null} */ (null);
-      const settled = await Promise.race([
+      const settled = opts.final === false ? null : await Promise.race([
         (async () => { for (let k = 0; k < 100; k++) { be.pollTiming(); await new Promise((r) => setTimeout(r, 2)); } return null; })(),
         Promise.all(gpu),
       ]);
       if (Array.isArray(settled) && settled.every((x) => x !== null)) gpuMs = settled.reduce((a, b) => a + /** @type {number} */ (b), 0);
       const steps = opts.measureSteps && !opts.background ? await be.readSteps() : null;
+      /** @type {TraceStats} */
       const stats = { N: setup.N, levels, wallMs, gpuMs, tiles: nTiles, steps, compacted, traced };
+      if (oneTile) stats.wallLater = oneTile;
+      if (opts.final === false) {
+        // the timers are polled by later traces and draws (pollTiming); give up after a second
+        stats.gpuLater = Promise.race([Promise.all(gpu).then((a) => (a.every((x) => x !== null) ? a.reduce((x, y) => x + /** @type {number} */ (y), 0) : null)),
+          new Promise((r) => setTimeout(() => r(null), 1000))]);
+      }
       // review P6: an entry larger than half the budget is not cached (it would evict everything else), unless the
       // caller keeps it (compare mode draws its sides from the cache)
       const bytes = levels.reduce((a, st) => a + Math.ceil(setup.N / st) ** 2 * 96, 0);
-      if (useCache && (bytes <= this.cacheBytes / 2 || opts.keep)) this.cachePut(key, be.cacheStore(levels), stats);
+      if (useCache && opts.store !== false && (bytes <= this.cacheBytes / 2 || opts.keep)) this.cachePut(key, be.cacheStore(levels), stats);
       return stats;
     } finally {
       be.useRecordSet(0);
@@ -373,6 +442,7 @@ export class TracePipeline {
       // a background trace may have replaced the fluid table the display reads (Omega, envelope radius)
       if (opts.background && this.displayed) this.showFluid(this.displayed);
       this.busy = false;
+      for (const w of this.waiting.splice(0)) w(undefined);
     }
   }
 }

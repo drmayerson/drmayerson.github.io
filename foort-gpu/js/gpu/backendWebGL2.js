@@ -4,7 +4,7 @@
 // GPU timer queries where available. Display pass: draws a view of the record to the canvas.
 // Shader sources are fetched at runtime from shaders/glsl/ (no build step).
 
-import { noiseFadeWidth } from '../noise/noiseField.js';
+import { noiseFadeWidth, wrapTime } from '../noise/noiseField.js';
 
 const VERT = `#version 300 es
 void main() {
@@ -155,6 +155,8 @@ export async function createWebGL2Backend(canvas, opts = {}) {
   const lcPending = /** @type {{pbo: WebGLBuffer, sync: WebGLSync, tag: any}[]} */ ([]);
   const lcDone = /** @type {{tag: any, v: Float32Array}[]} */ ([]);
   /** the last image the tone map read per view: the blurred one (2^k times smaller) or the linear one (B8 tests) */
+  /** the linear emission target last drawn per side (readLinear) */
+  const lastLin = /** @type {Map<string, {fbo: WebGLFramebuffer, w: number, h: number}>} */ (new Map());
   const lastPost = /** @type {Map<string, {t: {fbo: WebGLFramebuffer, w: number, h: number}, k: number}>} */ (new Map());
   const pollLc = () => {
     while (lcPending.length) {
@@ -562,7 +564,8 @@ void main() {
 
     async readLinear(side = 'A') {
       // the last linear emission image of a view (B8 tests: light-curve reduction vs a CPU sum)
-      const t = [...postTargets.entries()].find(([k]) => k.startsWith(`lin${side}:`))?.[1];
+      // the target last drawn (there is one per size: a draw at another resolution leaves an older one behind)
+      const t = lastLin.get(side);
       if (!t) return null;
       gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
       gl.readBuffer(gl.COLOR_ATTACHMENT0);
@@ -810,6 +813,7 @@ void main() {
       const linear = !!view.post && view.mode === 8;
       const side = src.side ?? 'A';
       const lin = linear ? postTarget(`lin${side}`, RW, RH) : null;
+      if (lin) lastLin.set(side, lin);
       if (lin) { gl.bindFramebuffer(gl.FRAMEBUFFER, lin.fbo); gl.viewport(0, 0, RW, RH); }
       else {
         gl.viewport(vp[0], vp[1], vp[2], vp[3]);
@@ -852,7 +856,11 @@ void main() {
       gl.uniform4i(display.loc('uNoiseN'), nm?.Nt ?? 2, nm?.Nx ?? 2, nm?.Nphi ?? 2, nm && nz.tex && fl.tex ? 1 : 0);
       gl.uniform4f(display.loc('uNoiseP'), tm.sigma, nm?.T_over_M ?? 1, nm?.xmin ?? 0, nm?.xmax ?? 1);
       gl.uniform4f(display.loc('uNoiseFade'), nm ? noiseFadeWidth(nm) : 1, 0, 0, 0);
-      gl.uniform4f(display.loc('uTime'), tm.tObs, tm.slow ? 1 : 0, tm.M, tm.advect);
+      // review C5: float32 spacing at t = 1.7e6 M is 0.125 M (a day at 20 M/s); the field is periodic in T, so wrap in
+      // double precision here, and send the advection phase fract(t/D) separately
+      const T = nm?.T_over_M ?? 0;
+      gl.uniform4f(display.loc('uTime'), wrapTime(tm.tObs, T), tm.slow ? 1 : 0, tm.M, tm.advect);
+      gl.uniform4f(display.loc('uTime2'), tm.advect > 0 ? wrapTime(tm.tObs / tm.advect, 1) : 0, 0, 0, 0);
       gl.uniform4f(display.loc('uCamAz'), view.azimuth ?? 0, 0, 0, 0);
       gl.uniform4i(display.loc('uView'), view.mode, RW, RH, view.storeH ? 1 : 0);
       gl.uniform4i(display.loc('uOrigin'), lin ? 0 : vp[0], lin ? 0 : vp[1], 0, 0);

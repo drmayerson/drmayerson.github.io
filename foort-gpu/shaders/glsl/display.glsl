@@ -14,7 +14,8 @@ uniform highp sampler3D uNoise;   // X: texel (phi, x, t), R16F, linear, repeat 
 uniform ivec4 uNoiseN;  // Nt, Nx, Nphi, noise on (1/0)
 uniform vec4 uNoiseP;   // sigma_n, T_over_M, xmin, xmax
 uniform vec4 uNoiseFade;  // B4 coverage guard: width (in x = log r) over which sigma_n fades to 0 outside [xmin, xmax], 0, 0, 0
-uniform vec4 uTime;     // t_obs / M, slow light (1/0), M_ADM, procedural advection duration D / M (0: off)
+uniform vec4 uTime;     // t_obs / M wrapped to [0, T) in double precision (review C5), slow light (1/0), M_ADM, procedural advection duration D / M (0: off)
+uniform vec4 uTime2;    // fract(t_obs / D) in double precision (review C5: the advection phase), 0, 0, 0
 uniform vec4 uCamAz;    // camera azimuth (rad), 0, 0, 0 (Stage 1B B5: display-only; in an axisymmetric spacetime rotating the
                         // camera about the axis adds it to every crossing and escape phi)
 uniform highp sampler2D uFluidD;  // fluid table (1/u^t, u^r/u^t, Omega) (js/fluid/fluidTable.js), for advection
@@ -109,7 +110,9 @@ float noiseFactor(vec4 c) {
   float X;
   if (uTime.w > 0.0) {
     float D = uTime.w, om = fluidOmega(c.x) * M;   // Omega in units of 1/M
-    float fa = fract(tau / D), fb = fract(tau / D + 0.5);
+    // phase from the wrapped advection phase (C5): fract(t/D + d/D) = fract(fract(t/D) + d/D)
+    float ph = fract(uTime2.x + (uTime.y > 0.5 ? c.z / M : 0.0) / D);
+    float fa = ph, fb = fract(ph + 0.5);
     float wa = 1.0 - abs(2.0 * fa - 1.0), wb = 1.0 - wa;
     float Xa = noiseX(tau, x, c.y - om * fa * D), Xb = noiseX(tau, x, c.y - om * fb * D);
     X = (wa * Xa + wb * Xb) / sqrt(wa * wa + wb * wb);
