@@ -35,7 +35,14 @@ What was checked (November 2026):
 3. **Interruptions:** pause Windows Update for the duration of the expo; turn on *Do not
    disturb* (no notification pop-ups on the big screen).
 4. **Webcam:** an external webcam on a small tripod or clamp, aimed at the visitors' spot.
-   It must not move once booth mode has learned the background.
+   It must not move once booth mode has learned the background. The page asks for 1080p
+   (a 720p camera simply gives 720p).
+   **Portrait screen?** Mount the webcam on its side and choose *Camera op zijn kant
+   gemonteerd* in Settings (pick the option that shows the picture upright): the whole
+   camera picture is then used, sharper and with a wider view. Settings shows a hint when
+   a portrait screen is used with a landscape camera.
+   **Picture quality** is *Automatisch* by default: full screen resolution (e.g. 4K), stepping
+   down to the laptop level only if the picture would stutter. Settings shows the size drawn.
 5. **Open the page** <https://drmayerson.github.io/zwart-gat-camera/>, click **Camera aan**
    and allow the camera; in the site settings (padlock icon left of the address) set
    *Camera* to **Allow**, so it starts by itself next time.
