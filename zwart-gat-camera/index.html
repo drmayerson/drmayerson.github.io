@@ -2473,6 +2473,21 @@ el('resetAll').addEventListener('click', async () => {
 });
 updateRememberNote();
 
+// ---------- offline cache (sw.js): after one visit with internet, the page starts without it ----------
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('offline cache not available', e));
+}
+// console: zgcOffline() lists what is kept for offline use
+window.zgcOffline = async () => {
+  if (!window.caches) return 'no offline cache in this browser';
+  const out = {};
+  for (const k of await caches.keys()) {
+    const reqs = await (await caches.open(k)).keys();
+    out[k] = reqs.map(r => r.url.replace(location.origin, '').replace(/^https:\/\//, '').slice(0, 90));
+  }
+  return out;
+};
+
 // ---------- language buttons: redraw every text ----------
 function setLang(l){
   if (!TXT[l] || l === lang) return;

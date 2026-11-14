@@ -20,6 +20,7 @@ What was checked (November 2026):
 | Restart of browser / computer | page comes back as it was left (settings, language, camera on, panel hidden), if "Onthouden" is on |
 | Graphics driver reset / laptop waking up | page restarts itself with the same settings |
 | Screen going to sleep | the page asks the browser to keep the screen on while it is open (Chrome/Edge) |
+| Starting without internet | after one visit with internet, the page starts offline too (offline cache): page, texts, pictures, fonts, QR library, and the person recognition once it has been used; tested by switching the web server off and reloading |
 | Mouse pointer | disappears after 3 s without movement |
 | Photo keys | click, arrow keys, PageUp/PageDown (what most presenter remotes send) |
 | Languages | NL (default), EN, FR, DE; visitor download page follows the phone's language |
@@ -46,6 +47,11 @@ What was checked (November 2026):
 8. **Full screen:** button **Volledig scherm** or key **F**.
 9. **Restart test:** close the browser, open the page again: it should come back exactly
    as set up, camera running.
+10. **Offline test:** with internet, use every mode you plan to use once (especially the
+    "stand" background mode, so the person-recognition files are stored). Then switch
+    Wi-Fi off, close the browser and open the page again: it should start normally. In
+    the console (F12), `zgcOffline()` lists what is stored. After an update of the page,
+    open it once with internet so the new version is stored too.
 
 ### Optional: start automatically as a kiosk
 
@@ -76,7 +82,7 @@ folder permissions are already granted.
 
 | Risk | Effect | Mitigation |
 |---|---|---|
-| No or poor internet at the venue | fonts fall back to standard ones; booth mode works with the learned background only (no person recognition); QR upload fails → photo is saved on the laptop instead, with a message | test the venue Wi-Fi; bring a phone hotspot; the offline mode "alleen vaste achtergrond" needs no internet at all |
+| No or poor internet at the venue | the page still starts and runs from the offline cache (after one visit with internet, see setup step 10); only the QR upload needs internet: it fails → photo is saved on the laptop instead, with a message | do the offline test; bring a phone hotspot for the QR codes |
 | Changing light (daylight, spots switching) | booth mode adapts within ~20 s; offline mode needs a new recording | use the camera lock option; avoid windows behind the visitors |
 | Moving things in the background (screens, people walking behind) | they appear as "people" | aim the camera at a calm background |
 | Webcam unplugged / USB hiccup | picture freezes, message, automatic reconnect | tape the cable; use a USB port directly on the laptop |
