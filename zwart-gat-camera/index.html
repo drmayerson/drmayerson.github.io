@@ -7,42 +7,59 @@
 <meta name="description" content="Bekijk jezelf door een draaiend zwart gat: je camerabeeld wordt live afgebogen volgens de algemene relativiteitstheorie.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@400;500;700&display=swap">
+<script src="teksten.js"></script>
 <style>
-:root{--panel:rgba(20,14,38,.82);--ink:#f3ecff;--soft:#c3b6e0;--line:rgba(190,170,240,.28);--accent:#ff6c9c;
-  --display:"Instrument Sans","Helvetica Neue",Arial,system-ui,sans-serif;--body:"Instrument Sans","Helvetica Neue",Arial,system-ui,sans-serif}
+:root{--panel:rgba(14,10,30,.84);--ink:#f3ecff;--soft:#c3b6e0;--line:rgba(190,170,240,.28);--accent:#ff6c9c;
+  --display:"Unbounded","Helvetica Neue",Arial,system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Helvetica Neue",Arial,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --logo-w:clamp(64px,8.5vw,124px);--logo-h:calc(var(--logo-w)*1.19)}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:#000;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;overflow:hidden}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
-.top{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
-  padding:12px max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
-.top>*{pointer-events:auto}
-h1{font-family:var(--display);font-weight:700;letter-spacing:-.01em;font-size:clamp(1.2rem,4vw,1.6rem);margin:0;padding:6px 12px;border-radius:14px;background:var(--panel)}
-.dock{width:min(200px,45vw);padding:6px 10px 2px;border-radius:12px;background:rgba(20,14,38,.55);font-size:.82rem;opacity:.6;transition:opacity .2s}
-.dock:hover,.dock:focus-within{opacity:1}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Einstein Telescope logo, top left, without a box: light on the picture with a soft shadow */
+.brand{position:fixed;top:max(14px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));width:var(--logo-w);
+  margin:0;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(0,0,0,.35))}
+.brand[hidden]{display:none}
+.et-logo{display:block;width:100%;height:auto}
+.et-word{fill:#fff}
+/* tap controls for size and spin, right edge (like the exhibit) */
+.dock{position:fixed;right:max(14px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);z-index:3;
+  display:flex;align-items:center;gap:clamp(6px,1.4vw,18px);color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7))}
 .dock[hidden]{display:none}
-.dock input[type=range]{min-height:22px}
+.dock-col{display:flex;flex-direction:column;align-items:center;gap:2px}
+.dock-col[hidden]{display:none}
+.dock-btn{width:52px;height:52px;min-height:0;padding:0;border:0;border-radius:50%;background:transparent;color:#fff;display:flex;
+  align-items:center;justify-content:center;opacity:.85;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.dock-btn:hover{border:0;opacity:1;background:rgba(255,255,255,.08)}
+.dock-btn:active{background:rgba(255,255,255,.18)}
+.dock-btn svg{width:26px;height:26px}
+.dock-reset svg{width:24px;height:24px}
+.dock-icon{display:flex;flex-direction:column;align-items:center;gap:2px}
+.dock-icon svg{width:40px;height:40px}
+.dock-val{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;opacity:.8;font-variant-numeric:tabular-nums}
 .banner{position:fixed;top:64px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);display:flex;align-items:center;gap:10px;
-  padding:10px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--accent);font-weight:600;text-align:center}
+  padding:10px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--accent);font-weight:700;text-align:center;z-index:5}
 .banner[hidden]{display:none}
-.banner.big{font-size:clamp(1.2rem,4vw,1.8rem)}
-.banner{z-index:5}
+.banner.big{font-family:var(--display);font-weight:500;font-size:clamp(1.1rem,3.6vw,1.6rem)}
 body.picking canvas{cursor:crosshair}
 body.picking .panel,body.picking .dock{display:none}
 body.shots canvas{cursor:copy}
+body.idle,body.idle canvas{cursor:none}
 .flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:flash .45s ease-out}
+@keyframes flash{from{opacity:.75}to{opacity:0}}
 .count{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:6;
-  font-family:var(--display);font-weight:700;font-size:min(42vh,42vw);line-height:1;color:#fff;
+  font-family:var(--display);font-weight:700;font-size:min(40vh,40vw);line-height:1;color:#fff;
   text-shadow:0 0 .12em rgba(0,0,0,.65),0 .04em .3em rgba(0,0,0,.5)}
 .count[hidden]{display:none}
 .count span{animation:countPop 1s ease-out both}
-.count span.snap{font-size:.45em}
+.count span.snap{font-size:.4em;letter-spacing:.02em}
 @keyframes countPop{0%{transform:scale(1.6);opacity:0}15%{transform:scale(1);opacity:1}80%{opacity:1}100%{transform:scale(.85);opacity:0}}
-@media (prefers-reduced-motion:reduce){.count span{animation:none}}
-.flash.go{animation:flash .45s ease-out}
-@keyframes flash{from{opacity:.75}to{opacity:0}}
-@media (prefers-reduced-motion:reduce){.flash.go{animation-duration:.01s}}
+@media (prefers-reduced-motion:reduce){.count span{animation:none}.flash.go{animation-duration:.01s}}
 .toast{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);
   padding:8px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:.92rem;z-index:5;pointer-events:none}
 .toast[hidden]{display:none}
@@ -60,246 +77,299 @@ body.shots canvas{cursor:copy}
   .qr-code{width:min(320px,72vw,44vh)}
 }
 .qr-code img{width:100%;height:100%;image-rendering:pixelated}
-.qr-code .wait{font-weight:600;color:#5a4a7a}
-.qr-title{margin:0;font-weight:700;font-size:1.2rem}
+.qr-code .wait{font-weight:700;color:#5a4a7a}
+.qr-title{margin:0;font-family:var(--display);font-weight:500;font-size:1.05rem;letter-spacing:.01em}
 .qr-small{margin:0;color:#5a4a7a;font-size:.9rem;max-width:300px}
 .qr-close{position:absolute;top:6px;right:6px;min-height:36px;width:36px;padding:0;border:0;background:transparent;color:#5a4a7a;font-size:1.6rem;line-height:1}
 .qr-close:hover{color:#1b0f2c}
 .qr-bar{position:absolute;left:0;right:0;bottom:0;height:5px;border-radius:0 0 22px 22px;overflow:hidden;background:#eee}
 .qr-bar i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left}
 .qr-again{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:4;
-  min-height:44px;min-width:44px;padding:6px 10px;border-radius:12px;background:rgba(20,14,38,.55);opacity:.6;font-size:.85rem}
+  min-height:44px;min-width:44px;padding:6px 10px;border-radius:12px;background:rgba(20,14,38,.55);opacity:.6;font-family:var(--mono);font-size:.8rem}
 .qr-again:hover,.qr-again:focus-visible{opacity:1}
 .qr-again[hidden]{display:none}
 .indent{padding-left:26px}
 input[type=url],input[type=password]{font:inherit;width:100%;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:40px}
-.panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));
-  width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 90px);overflow:auto;background:var(--panel);border:1px solid var(--line);
+/* settings panel */
+.panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:4;
+  width:min(390px,calc(100vw - 24px));max-height:calc(100vh - 44px - var(--logo-h));overflow:auto;background:var(--panel);border:1px solid var(--line);
   border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(6px)}
-.panel.hidden>*:not(.row-head){display:none}
 .row-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.row-head strong{font-family:var(--display);font-weight:700;font-size:1.05rem}
+.row-head strong{font-family:var(--display);font-weight:500;font-size:.95rem;letter-spacing:.08em;text-transform:uppercase}
+#toggle{display:flex;align-items:center;gap:6px}
+#toggle svg{width:22px;height:22px;display:none}
+/* hidden: only a small round gear button remains */
+body.nologo .panel{max-height:calc(100vh - 24px)}
+.panel.hidden{width:auto;padding:0;gap:0;background:transparent;border:0;backdrop-filter:none;overflow:visible}
+.panel.hidden>*:not(.row-head){display:none}
+.panel.hidden .row-head strong{display:none}
+.panel.hidden #toggle{width:44px;height:44px;min-height:0;padding:0;justify-content:center;border-radius:50%;background:rgba(10,8,20,.5);opacity:.5}
+.panel.hidden #toggle:hover,.panel.hidden #toggle:focus-visible{opacity:1}
+.panel.hidden #toggle svg{display:block}
+.panel.hidden .tog-text{display:none}
+.langs{display:flex;gap:6px}
+.langs button{flex:1;min-height:34px;padding:4px 0;font-family:var(--mono);font-weight:600;font-size:.78rem;letter-spacing:.12em}
+.langs button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#1b0f2c}
 label.check{flex-direction:row;align-items:flex-start;gap:8px;cursor:pointer}
 label.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
 fieldset{border:1px solid var(--line);border-radius:14px;margin:0;padding:8px 12px 12px;display:flex;flex-direction:column;gap:10px;min-width:0}
-legend{font-family:var(--display);font-weight:700;padding:0 6px}
+legend{font-family:var(--mono);font-weight:600;font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--soft);padding:0 6px}
 select{font:inherit;width:100%;max-width:100%;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:40px}
 select option{color:#000}
 select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sub{display:flex;flex-direction:column;gap:10px}
 .sub[hidden]{display:none}
 .swatch{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);flex:none}
-button{font:inherit;font-weight:700;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;min-height:40px}
+button{font-family:var(--display);font-weight:500;font-size:.8rem;letter-spacing:.03em;color:var(--ink);background:rgba(255,255,255,.08);
+  border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;min-height:40px}
 button:hover{border-color:var(--accent)}
 button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 button.primary{background:var(--accent);border-color:var(--accent);color:#1b0f2c}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 label{display:flex;flex-direction:column;gap:4px}
 .lab{display:flex;justify-content:space-between;gap:8px}
-.lab span:last-child{color:var(--soft);font-variant-numeric:tabular-nums}
+.lab span:last-child{color:var(--soft);font-family:var(--mono);font-size:.82rem;font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
 .hint{color:var(--soft);font-size:.9rem;margin:0}
 details{color:var(--soft);font-size:.92rem}
 details p{margin:6px 0 0}
-summary{cursor:pointer;color:var(--ink);font-weight:700}
+summary{cursor:pointer;color:var(--ink);font-family:var(--display);font-weight:500;font-size:.85rem;letter-spacing:.03em}
 .msg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:1.1rem}
 .msg.show{display:flex}
 </style>
 </head>
 <body>
-<canvas id="c" aria-label="Je camerabeeld, afgebogen door een zwart gat"></canvas>
+<canvas id="c" aria-label="Je camerabeeld, afgebogen door een zwart gat" data-t-attr="aria-label:canvasLabel"></canvas>
 
-<div class="top">
-  <h1>Zwart gat camera</h1>
-  <div class="dock" id="spinDockBox" hidden>
-    <label>
-      <span class="lab"><span>Draaiing</span><span id="spinDockVal"></span></span>
-      <input type="range" id="spinDock" min="0" max="0.99" step="0.01" value="0.9" aria-label="Draaiing van het zwarte gat (a/M)">
-    </label>
+<h1 class="sr-only" data-t="title">Zwart gat camera</h1>
+<div class="brand" id="brand"><svg class="et-logo" viewBox="145 226 305 362" role="img" aria-label="Einstein Telescope"><defs><linearGradient id="etg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef0f6"/><stop offset="1" stop-color="#9aa2b4"/></linearGradient></defs><path class="et-mark" fill="url(#etg)" d="M 381.85 421.95 C 374.85 421.95 369.18 416.27 369.18 409.27 C 369.18 402.27 374.85 396.59 381.85 396.59 C 388.86 396.59 394.53 402.27 394.53 409.27 C 394.53 416.27 388.86 421.95 381.85 421.95 M 212.88 421.95 C 205.88 421.95 200.2 416.27 200.2 409.27 C 200.2 402.27 205.88 396.59 212.88 396.59 C 219.88 396.59 225.55 402.27 225.55 409.27 C 225.55 416.27 219.88 421.95 212.88 421.95 M 297.44 250.38 C 304.44 250.38 310.11 256.06 310.11 263.06 C 310.11 270.06 304.44 275.74 297.44 275.74 C 290.44 275.74 284.76 270.06 284.76 263.06 C 284.76 256.06 290.44 250.38 297.44 250.38 M 350.73 397.04 L 244 397.04 C 242.79 393.96 241.14 391.1 239.11 388.55 L 292.47 296.13 C 294.09 296.38 295.75 296.5 297.44 296.5 C 299.12 296.5 300.79 296.38 302.41 296.13 L 355.7 388.44 C 353.64 391.02 351.96 393.91 350.73 397.04 M 381.85 375.83 C 380.16 375.83 378.51 375.96 376.89 376.2 L 323.59 283.89 C 328.15 278.18 330.88 270.94 330.88 263.06 C 330.88 244.59 315.91 229.62 297.44 229.62 C 278.97 229.62 264 244.59 264 263.06 C 264 270.94 266.73 278.17 271.29 283.89 L 217.98 376.21 C 216.32 375.96 214.61 375.83 212.88 375.83 C 194.41 375.83 179.44 390.8 179.44 409.27 C 179.44 427.74 194.41 442.71 212.88 442.71 C 227.03 442.71 239.11 433.92 244 421.51 L 350.73 421.51 C 355.62 433.92 367.7 442.71 381.85 442.71 C 400.32 442.71 415.3 427.74 415.3 409.27 C 415.3 390.8 400.32 375.83 381.85 375.83"/><path class="et-word" d="M 185.24 456.33 L 212.36 456.33 L 212.36 463.21 L 192.9 463.21 L 192.9 475.34 L 210.41 475.34 L 210.41 482.02 L 192.9 482.02 L 192.9 495.25 L 212.36 495.25 L 212.36 502.13 L 185.24 502.13 Z M 185.24 456.33 M 226.86 502.13 L 219.6 502.13 L 219.6 470.08 L 226.86 470.08 Z M 218.37 459.57 C 218.37 456.78 220.51 454.84 223.23 454.84 C 225.96 454.84 228.03 456.78 228.03 459.57 C 228.03 462.3 225.96 464.37 223.23 464.37 C 220.51 464.37 218.37 462.3 218.37 459.57 M 263.65 481.37 L 263.65 502.13 L 256.38 502.13 L 256.38 482.67 C 256.38 477.87 253.98 475.6 250.35 475.6 C 245.74 475.6 243.41 478.91 243.41 483.51 L 243.41 502.13 L 236.14 502.13 L 236.14 470.08 L 242.7 470.08 L 243.02 473.91 C 244.84 470.73 248.47 469.04 252.36 469.04 C 259.63 469.04 263.65 473.97 263.65 481.37 M 269.94 493.57 L 275.97 491.95 C 276.36 495.32 279.02 497.27 282.79 497.27 C 286.03 497.27 287.91 495.84 287.91 493.44 C 287.91 491.43 286.55 490.32 284.47 489.8 L 279.22 488.51 C 273.51 487.14 270.52 483.64 270.52 478.97 C 270.52 473.07 275.2 469.04 282.46 469.04 C 289.27 469.04 293.68 472.61 294.53 477.87 L 288.37 479.55 C 287.98 476.7 285.57 474.82 282.4 474.82 C 279.54 474.82 277.79 476.31 277.79 478.52 C 277.79 480.66 279.35 481.7 281.62 482.21 L 287.13 483.58 C 292.19 484.88 295.18 488.12 295.18 492.85 C 295.18 498.89 290.18 503.11 282.72 503.11 C 275.52 503.11 270.59 499.15 269.94 493.57 M 299.8 470.08 L 305.75 470.08 L 305.75 462.1 L 313.02 461.26 L 313.02 470.08 L 321.97 470.08 L 321.97 476.31 L 313.02 476.31 L 313.02 491.36 C 313.02 495.32 314.83 496.75 318.21 496.75 C 319.31 496.75 320.73 496.55 321.97 496.42 L 321.97 502.07 C 320.21 502.59 317.82 503.04 315.87 503.04 C 309.32 503.04 305.75 498.95 305.75 492.34 L 305.75 476.31 L 299.8 476.31 Z M 299.8 470.08 M 334.23 483.06 L 351.16 483.06 C 350.97 478.25 347.79 475.14 342.99 475.14 C 338.25 475.14 334.55 478.32 334.23 483.06 M 352.39 491.43 L 358.3 493.89 C 356.03 499.93 350.06 503.11 343.18 503.11 C 333.39 503.11 326.77 496.36 326.77 486.3 C 326.77 475.92 333.45 469.04 343.25 469.04 C 352.39 469.04 358.49 475.14 358.49 484.36 C 358.49 485.78 358.36 487.14 358.1 488.31 L 334.29 488.31 C 334.42 493.57 337.86 497.01 343.25 497.01 C 347.72 497.01 351.03 494.67 352.39 491.43 M 373.7 502.13 L 366.43 502.13 L 366.43 470.08 L 373.7 470.08 Z M 365.2 459.57 C 365.2 456.78 367.34 454.84 370.06 454.84 C 372.79 454.84 374.86 456.78 374.86 459.57 C 374.86 462.3 372.79 464.37 370.06 464.37 C 367.34 464.37 365.2 462.3 365.2 459.57 M 410.48 481.37 L 410.48 502.13 L 403.21 502.13 L 403.21 482.67 C 403.21 477.87 400.81 475.6 397.18 475.6 C 392.57 475.6 390.24 478.91 390.24 483.51 L 390.24 502.13 L 382.97 502.13 L 382.97 470.08 L 389.53 470.08 L 389.85 473.91 C 391.67 470.73 395.3 469.04 399.19 469.04 C 406.46 469.04 410.48 473.97 410.48 481.37 M 182.92 531.57 L 169.67 531.57 L 169.67 570.55 L 162 570.55 L 162 531.57 L 148.75 531.57 L 148.75 524.68 L 182.92 524.68 Z M 182.92 531.57 M 187.34 551.45 L 204.3 551.45 C 204.1 546.64 200.92 543.52 196.11 543.52 C 191.37 543.52 187.66 546.7 187.34 551.45 M 205.53 559.83 L 211.44 562.3 C 209.17 568.34 203.19 571.52 196.3 571.52 C 186.49 571.52 179.87 564.77 179.87 554.7 C 179.87 544.3 186.56 537.41 196.37 537.41 C 205.53 537.41 211.64 543.52 211.64 552.75 C 211.64 554.18 211.51 555.54 211.25 556.71 L 187.4 556.71 C 187.53 561.97 190.98 565.41 196.37 565.41 C 200.85 565.41 204.16 563.08 205.53 559.83 M 218.71 524.68 L 225.99 524.68 L 225.99 570.55 L 218.71 570.55 Z M 218.71 524.68 M 239.73 551.45 L 256.69 551.45 C 256.49 546.64 253.31 543.52 248.5 543.52 C 243.76 543.52 240.05 546.7 239.73 551.45 M 257.92 559.83 L 263.83 562.3 C 261.56 568.34 255.58 571.52 248.7 571.52 C 238.88 571.52 232.26 564.77 232.26 554.7 C 232.26 544.3 238.95 537.41 248.76 537.41 C 257.92 537.41 264.03 543.52 264.03 552.75 C 264.03 554.18 263.9 555.54 263.64 556.71 L 239.79 556.71 C 239.92 561.97 243.37 565.41 248.76 565.41 C 253.24 565.41 256.55 563.08 257.92 559.83 M 269.38 561.97 L 275.43 560.35 C 275.82 563.73 278.48 565.68 282.25 565.68 C 285.5 565.68 287.38 564.25 287.38 561.84 C 287.38 559.83 286.02 558.72 283.94 558.2 L 278.68 556.9 C 272.96 555.54 269.97 552.03 269.97 547.35 C 269.97 541.44 274.64 537.41 281.92 537.41 C 288.74 537.41 293.16 540.98 294.01 546.25 L 287.84 547.94 C 287.45 545.08 285.04 543.2 281.86 543.2 C 279 543.2 277.25 544.69 277.25 546.9 C 277.25 549.04 278.8 550.08 281.08 550.6 L 286.6 551.96 C 291.67 553.27 294.66 556.51 294.66 561.26 C 294.66 567.3 289.65 571.52 282.18 571.52 C 274.97 571.52 270.03 567.56 269.38 561.97 M 300.27 554.5 C 300.27 544.3 307.48 537.41 317.03 537.41 C 324.11 537.41 329.89 541.18 331.91 547.61 L 325.41 549.95 C 324.17 546.25 321.05 543.91 316.83 543.91 C 311.31 543.91 307.67 548.13 307.67 554.5 C 307.67 561.06 311.5 565.02 316.77 565.02 C 321.12 565.02 324.17 562.62 325.54 559.05 L 332.04 561.45 C 329.89 567.75 323.85 571.52 316.77 571.52 C 307.35 571.52 300.27 564.7 300.27 554.5 M 353.5 565.35 C 359.02 565.35 362.79 561 362.79 554.5 C 362.79 547.94 359.02 543.52 353.5 543.52 C 347.97 543.52 344.2 547.94 344.2 554.5 C 344.2 561 347.97 565.35 353.5 565.35 M 353.56 537.41 C 363.43 537.41 370.19 544.23 370.19 554.5 C 370.19 564.7 363.43 571.52 353.56 571.52 C 343.62 571.52 336.8 564.7 336.8 554.5 C 336.8 544.23 343.62 537.41 353.56 537.41 M 399.66 554.5 C 399.66 548 396.61 543.98 391.54 543.98 C 386.6 543.98 383.55 547.61 383.55 554.5 C 383.55 561.26 386.6 564.96 391.54 564.96 C 396.61 564.96 399.66 560.87 399.66 554.5 M 407 554.5 C 407 565.16 401.02 571.52 392.71 571.52 C 388.81 571.52 385.5 570.03 383.55 567.49 L 383.55 583.6 L 376.27 583.6 L 376.27 538.45 L 382.7 538.45 L 383.03 542.09 C 385.11 539.1 388.68 537.41 392.71 537.41 C 401.41 537.41 407 544.11 407 554.5 M 420.21 551.45 L 437.17 551.45 C 436.97 546.64 433.79 543.52 428.98 543.52 C 424.24 543.52 420.54 546.7 420.21 551.45 M 438.4 559.83 L 444.31 562.3 C 442.04 568.34 436.06 571.52 429.18 571.52 C 419.36 571.52 412.74 564.77 412.74 554.7 C 412.74 544.3 419.43 537.41 429.24 537.41 C 438.4 537.41 444.51 543.52 444.51 552.75 C 444.51 554.18 444.38 555.54 444.12 556.71 L 420.27 556.71 C 420.4 561.97 423.85 565.41 429.24 565.41 C 433.72 565.41 437.04 563.08 438.4 559.83 M 410.48 515.76 L 185.85 515.76 L 185.85 513.76 L 410.48 513.76 Z M 410.48 515.76 M 446.06 583.6 L 149.84 583.6 L 149.84 581.61 L 446.06 581.61 Z M 446.06 583.6"/></svg></div>
+
+<div class="dock" id="dock" hidden>
+  <button class="dock-btn dock-reset" id="dockReset" aria-label="Draaiing en grootte terugzetten" data-t-attr="aria-label:dockReset;title:dockReset">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 9.5A8 8 0 0 0 5.2 7.2L3.5 9"/><path d="M3.5 4.5V9H8"/><path d="M4.5 14.5a8 8 0 0 0 14.3 2.3l1.7-1.8"/><path d="M20.5 19.5V15H16"/></svg>
+  </button>
+  <div class="dock-col" id="dockMass">
+    <button class="dock-btn" data-act="mass" data-dir="1" aria-label="Groter" data-t-attr="aria-label:massUp;title:massUp">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
+    <span class="dock-icon">
+      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><circle cx="20" cy="9" r="3.6"/><path d="M13 13.5h14l6.5 20h-27z"/><text x="20" y="29" text-anchor="middle" font-family="Unbounded, Arial, sans-serif" font-size="7.5" font-weight="500" fill="currentColor" stroke="none">KG</text></svg>
+      <span class="dock-val" id="dockMassVal"></span>
+    </span>
+    <button class="dock-btn" data-act="mass" data-dir="-1" aria-label="Kleiner" data-t-attr="aria-label:massDown;title:massDown">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5.5 12.5 12 19l6.5-6.5"/></svg></button>
+  </div>
+  <div class="dock-col" id="dockSpin">
+    <button class="dock-btn" data-act="spin" data-dir="1" aria-label="Sneller draaien" data-t-attr="aria-label:spinUp;title:spinUp">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
+    <span class="dock-icon">
+      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M20 4v32"/><ellipse cx="20" cy="21" rx="16" ry="5.2"/><ellipse cx="20" cy="21" rx="10.5" ry="3.3"/><circle cx="20" cy="20" r="3.8" fill="currentColor" stroke="none"/><path d="M27 9.5a8 3 0 0 0-14 0" stroke-width="1.4"/><path d="M13 9.5l-.6-2.6M13 9.5l2.5-.9" stroke-width="1.4"/></svg>
+      <span class="dock-val" id="dockSpinVal"></span>
+    </span>
+    <button class="dock-btn" data-act="spin" data-dir="-1" aria-label="Trager draaien" data-t-attr="aria-label:spinDown;title:spinDown">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5.5 12.5 12 19l6.5-6.5"/></svg></button>
   </div>
 </div>
 
 <div class="banner" id="banner" role="status" aria-live="polite" hidden>
   <span id="bannerText"></span>
-  <button id="bannerCancel" hidden>Annuleren</button>
+  <button id="bannerCancel" data-t="cancel" hidden>Annuleren</button>
 </div>
 
 <div class="panel" id="panel">
   <div class="row-head">
-    <strong>Instellingen</strong>
-    <button id="toggle" aria-expanded="true" aria-controls="panel">Verbergen</button>
+    <strong data-t="settings">Instellingen</strong>
+    <button id="toggle" aria-expanded="true" aria-controls="panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>
+      <span class="tog-text" data-t="hide">Verbergen</span>
+    </button>
+  </div>
+  <div class="langs" role="group" aria-label="Taal" data-t-attr="aria-label:lang">
+    <button data-lang="nl" aria-pressed="true">NL</button><button data-lang="en" aria-pressed="false">EN</button><button data-lang="fr" aria-pressed="false">FR</button><button data-lang="de" aria-pressed="false">DE</button>
   </div>
   <div class="btns">
-    <button id="camBtn" class="primary">Camera aan</button>
-    <button id="demoBtn">Voorbeeldbeeld</button>
+    <button id="camBtn" class="primary" data-t="camOn">Camera aan</button>
+    <button id="demoBtn" data-t="demo">Voorbeeldbeeld</button>
+    <button id="fsBtn" data-t="fullscreen">Volledig scherm</button>
   </div>
-  <p class="hint" id="camNote">Je camerabeeld blijft op je eigen toestel: er wordt niets opgeslagen of verstuurd.</p>
+  <label id="camPickRow" hidden>
+    <span data-t="camPick">Camera</span>
+    <select id="camPick"></select>
+  </label>
+  <p class="hint" id="camNote"></p>
 
   <label>
-    <span class="lab"><span>Draaiing van het zwarte gat</span><span id="spinVal"></span></span>
+    <span class="lab"><span data-t="spin">Draaiing van het zwarte gat</span><span id="spinVal"></span></span>
     <input type="range" id="spin" min="0" max="0.99" step="0.01" value="0.9">
   </label>
   <label>
-    <span class="lab"><span>Kijkhoek</span><span id="inclVal"></span></span>
+    <span class="lab"><span data-t="incl">Kijkhoek</span><span id="inclVal"></span></span>
     <input type="range" id="incl" min="0" max="90" step="1" value="90">
   </label>
   <label>
-    <span class="lab"><span>Grootte</span><span id="massVal"></span></span>
+    <span class="lab"><span data-t="size">Grootte</span><span id="massVal"></span></span>
     <input type="range" id="mass" min="1" max="6" step="0.1" value="3">
   </label>
   <label class="check">
     <input type="checkbox" id="keepSpin">
-    <span>Schuifje voor de draaiing ook tonen als de instellingen verborgen zijn</span>
+    <span data-t="keepSpin">Knoppen voor de draaiing ook tonen als de instellingen verborgen zijn</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="keepMass">
+    <span data-t="keepMass">Knoppen voor de grootte ook tonen als de instellingen verborgen zijn</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="showLogo" checked>
+    <span data-t="showLogo">Logo van de Einstein Telescope tonen</span>
   </label>
 
   <fieldset>
-    <legend>Achtergrond wegwerken</legend>
+    <legend data-t="bgLegend">Achtergrond wegwerken</legend>
     <label>
-      <span>Haal de achtergrond achter jou weg</span>
+      <span data-t="bgLabel">Haal de achtergrond achter jou weg</span>
       <select id="bgMode">
-        <option value="off">Uit</option>
-        <option value="green">Groen scherm</option>
-        <option value="booth">Slim: stand / mensen op afstand</option>
-        <option value="ai">Slim: één persoon dichtbij</option>
-        <option value="plate">Slim: alleen vaste achtergrond (offline)</option>
+        <option value="off" data-t="bgOff">Uit</option>
+        <option value="green" data-t="bgGreen">Groen scherm</option>
+        <option value="booth" data-t="bgBooth">Slim: stand / mensen op afstand</option>
+        <option value="ai" data-t="bgAi">Slim: één persoon dichtbij</option>
+        <option value="plate" data-t="bgPlate">Slim: alleen vaste achtergrond (offline)</option>
       </select>
     </label>
     <div class="sub" id="subBackdrop" hidden>
       <label>
-        <span>Nieuwe achtergrond</span>
+        <span data-t="bdLabel">Nieuwe achtergrond</span>
         <select id="bdChoice">
-          <option value="sterren">Sterrenhemel</option>
-          <option value="aarde">De aarde vanuit de ruimte</option>
-          <option value="aardopgang">Aardopgang boven de maan</option>
-          <option value="maan">Op de maan</option>
-          <option value="pilaren">Pilaren van de schepping (nevel)</option>
-          <option value="diep-heelal">Duizenden sterrenstelsels</option>
-          <option value="eigen">Eigen afbeelding…</option>
+          <option value="sterren" data-t="bdStars">Sterrenhemel</option>
+          <option value="aarde" data-t="bdEarth">De aarde vanuit de ruimte</option>
+          <option value="aardopgang" data-t="bdEarthrise">Aardopgang boven de maan</option>
+          <option value="maan" data-t="bdMoon">Op de maan</option>
+          <option value="pilaren" data-t="bdPillars">Pilaren van de schepping (nevel)</option>
+          <option value="diep-heelal" data-t="bdDeep">Duizenden sterrenstelsels</option>
+          <option value="eigen" data-t="bdOwn">Eigen afbeelding…</option>
         </select>
       </label>
       <div class="btns" id="bdOwnRow" hidden>
-        <button id="bdFileBtn">Kies een afbeelding op je computer…</button>
+        <button id="bdFileBtn" data-t="bdFileBtn">Kies een afbeelding op je computer…</button>
         <input type="file" id="bdFile" accept="image/*" hidden>
       </div>
       <p class="hint" id="bdNote"></p>
     </div>
     <div class="sub" id="subGreen" hidden>
       <div class="btns">
-        <button id="pickBtn">Kies de achtergrondkleur</button>
-        <span class="swatch" id="swatch" title="Gekozen achtergrondkleur"></span>
+        <button id="pickBtn" data-t="pickBtn">Kies de achtergrondkleur</button>
+        <span class="swatch" id="swatch" title="Gekozen achtergrondkleur" data-t-attr="title:swatchTitle"></span>
       </div>
       <label>
-        <span class="lab"><span>Gevoeligheid</span><span id="keyTolVal"></span></span>
+        <span class="lab"><span data-t="sens">Gevoeligheid</span><span id="keyTolVal"></span></span>
         <input type="range" id="keyTol" min="0.02" max="0.4" step="0.01" value="0.12">
       </label>
     </div>
     <div class="sub" id="subPlate" hidden>
       <div class="btns">
-        <button id="plateBtn">Lege achtergrond vastleggen</button>
-        <button id="relearnBtn">Opnieuw leren</button>
+        <button id="plateBtn" data-t="plateBtn">Lege achtergrond vastleggen</button>
+        <button id="relearnBtn" data-t="relearn">Opnieuw leren</button>
       </div>
       <label>
-        <span class="lab"><span>Gevoeligheid</span><span id="plateSensVal"></span></span>
+        <span class="lab"><span data-t="sens">Gevoeligheid</span><span id="plateSensVal"></span></span>
         <input type="range" id="plateSens" min="1" max="10" step="0.5" value="5">
       </label>
       <label class="check">
         <input type="checkbox" id="shadows" checked>
-        <span>Schaduwen negeren</span>
+        <span data-t="shadows">Schaduwen negeren</span>
       </label>
       <label class="check">
         <input type="checkbox" id="lockCam" checked>
-        <span>Belichting en kleur van de camera vastzetten (als de camera dat toelaat)</span>
+        <span data-t="lockCam">Belichting en kleur van de camera vastzetten (als de camera dat toelaat)</span>
       </label>
     </div>
     <label class="check" id="showMaskRow" hidden>
       <input type="checkbox" id="showMask">
-      <span>Toon wat als achtergrond gezien wordt (paars, zonder zwart gat)</span>
+      <span data-t="showMask">Toon wat als achtergrond gezien wordt (paars, zonder zwart gat)</span>
     </label>
     <p class="hint" id="bgNote"></p>
   </fieldset>
 
   <fieldset>
-    <legend>Foto's</legend>
+    <legend data-t="photosLegend">Foto's</legend>
     <label class="check">
       <input type="checkbox" id="shotsOn">
-      <span>Klik in het beeld of druk op een pijltjestoets om een foto te maken (zonder de instellingen)</span>
+      <span data-t="shotsOn">Klik in het beeld of druk op een pijltjestoets om een foto te maken (zonder de instellingen)</span>
     </label>
     <div class="sub" id="shotSub" hidden>
       <label class="check">
         <input type="checkbox" id="shotCount">
-        <span>Aftellen voor de foto (3, 2, 1… klik!)</span>
+        <span data-t="shotCount">Aftellen voor de foto (3, 2, 1… klik!)</span>
       </label>
       <label class="check">
         <input type="checkbox" id="shotLocal" checked>
-        <span>Opslaan op deze computer</span>
+        <span data-t="shotLocal">Opslaan op deze computer</span>
       </label>
       <div class="sub indent" id="shotLocalSub">
-        <p class="hint">Opslaan in: <b id="shotDirName">Downloads</b></p>
+        <p class="hint"><span data-t="saveIn">Opslaan in:</span> <b id="shotDirName">Downloads</b></p>
         <div class="btns">
-          <button id="shotDirBtn">Kies een map (opslaan zonder vragen)…</button>
-          <button id="shotDirReset" hidden>Terug naar Downloads</button>
+          <button id="shotDirBtn" data-t="shotDirBtn">Kies een map (opslaan zonder vragen)…</button>
+          <button id="shotDirReset" data-t="shotDirReset" hidden>Terug naar Downloads</button>
         </div>
         <p class="hint" id="shotNote"></p>
       </div>
       <label class="check">
         <input type="checkbox" id="shotQR">
-        <span>QR-code tonen, zodat bezoekers hun foto op hun telefoon kunnen downloaden</span>
+        <span data-t="shotQR">QR-code tonen, zodat bezoekers hun foto op hun telefoon kunnen downloaden</span>
       </label>
       <div class="sub indent" id="shotQRSub" hidden>
         <label>
-          <span>Adres van de fotodienst</span>
-          <input type="url" id="qrBase" placeholder="https://zwart-gat-fotos.jouwnaam.workers.dev" spellcheck="false" autocomplete="off">
+          <span data-t="qrBase">Adres van de fotodienst</span>
+          <input type="url" id="qrBase" placeholder="https://zwart-gat-fotos.jouwnaam.workers.dev" data-t-attr="placeholder:qrBasePh" spellcheck="false" autocomplete="off">
         </label>
         <label>
-          <span>Standsleutel</span>
+          <span data-t="qrKey">Standsleutel</span>
           <input type="password" id="qrKey" autocomplete="off">
         </label>
         <label>
-          <span class="lab"><span>QR-code blijft zichtbaar</span><span id="qrSecVal"></span></span>
+          <span class="lab"><span data-t="qrSec">QR-code blijft zichtbaar</span><span id="qrSecVal"></span></span>
           <input type="range" id="qrSec" min="5" max="125" step="5" value="30" aria-describedby="qrSecHint">
         </label>
-        <p class="hint" id="qrSecHint">Tot de volgende foto, of hooguit zo lang. Helemaal rechts: blijft staan tot de volgende foto.</p>
-        <div class="btns"><button id="qrTest">Verbinding testen</button></div>
+        <p class="hint" id="qrSecHint" data-t="qrSecHint">Tot de volgende foto, of hooguit zo lang. Helemaal rechts: blijft staan tot de volgende foto.</p>
+        <div class="btns"><button id="qrTest" data-t="qrTest">Verbinding testen</button></div>
         <p class="hint" id="qrNote"></p>
       </div>
     </div>
   </fieldset>
 
   <fieldset>
-    <legend>Onthouden</legend>
+    <legend data-t="rememberLegend">Onthouden</legend>
     <label class="check">
       <input type="checkbox" id="remember" checked>
-      <span>Instellingen op deze computer onthouden, ook na herladen of herstarten</span>
+      <span data-t="remember">Instellingen op deze computer onthouden, ook na herladen of herstarten</span>
     </label>
     <p class="hint" id="rememberNote"></p>
-    <div class="btns"><button id="resetAll">Alles terugzetten</button></div>
+    <div class="btns"><button id="resetAll" data-t="resetAll">Alles terugzetten</button></div>
   </fieldset>
 
   <details>
-    <summary>Wat zie je?</summary>
-    <p>De zwarte vlek is de <b>schaduw</b> van het zwarte gat: licht dat daar vandaan zou moeten komen, is in het zwarte gat verdwenen.</p>
-    <p>Daarrond buigt de zwaartekracht het licht af. Je ziet jezelf vervormd, en vlak langs de schaduw zelfs een tweede keer: licht dat helemaal rond het zwarte gat is gegaan. In de donkere ring zie je sterren van opzij en van achter je.</p>
-    <p>Een <b>draaiend</b> zwart gat sleurt de ruimte rond zich mee. De schaduw schuift dan opzij en wordt aan één kant platter, en de sterren worden in een draaikolk meegetrokken. Dat zie je het best met de kijkhoek op 90° (van opzij); bij 0° kijk je langs de draai-as en blijft de schaduw rond.</p>
-    <p>Alles wordt exact uitgerekend met de formules voor lichtbanen rond een draaiend (Kerr-)zwart gat, uit het werk van Gralla &amp; Lupsasca (2020).</p>
+    <summary data-t="whatTitle">Wat zie je?</summary>
+    <p data-t-html="what1"></p>
+    <p data-t-html="what2"></p>
+    <p data-t-html="what3"></p>
+    <p data-t-html="what4"></p>
   </details>
 </div>
 
 <div class="flash" id="flash"></div>
 <div class="count" id="count" aria-live="assertive" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<div class="qr" id="qrBox" role="dialog" aria-label="QR-code om je foto te downloaden" hidden>
+<div class="qr" id="qrBox" role="dialog" aria-label="QR-code om je foto te downloaden" data-t-attr="aria-label:qrDialog" hidden>
   <div class="qr-card" id="qrCard">
-    <button class="qr-close" id="qrClose" aria-label="Sluiten">×</button>
-    <img class="qr-thumb" id="qrThumb" alt="Je foto">
+    <button class="qr-close" id="qrClose" aria-label="Sluiten" data-t-attr="aria-label:close">×</button>
+    <img class="qr-thumb" id="qrThumb" alt="Je foto" data-t-attr="alt:yourPhoto">
     <div class="qr-main">
       <div class="qr-code" id="qrCode"></div>
-      <p class="qr-title" id="qrTitle">Scan om je foto te downloaden</p>
+      <p class="qr-title" id="qrTitle"></p>
       <p class="qr-small" id="qrInfo"></p>
     </div>
     <div class="qr-bar"><i id="qrBar"></i></div>
   </div>
 </div>
-<button class="qr-again" id="qrAgain" title="Laatste QR-codes opnieuw tonen (toets Q)" hidden>QR</button>
+<button class="qr-again" id="qrAgain" title="Laatste QR-codes opnieuw tonen (toets Q)" data-t-attr="title:qrAgainTitle" hidden>QR</button>
 <div class="msg" id="msg"></div>
 
 <script id="frag" type="x-shader/x-fragment">
@@ -844,12 +914,33 @@ void main(){
 const KEY = 'zwart-gat-camera-instellingen';
 const canvas = document.getElementById('c');
 const msg = document.getElementById('msg');
-function fail(t){ msg.textContent = t; msg.classList.add('show'); }
+// ---------- languages (all texts are in teksten.js) ----------
+const TXT = window.ZGC_TEXT || {nl: {}};
+let lang = 'nl';
+try { const s0 = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s0 && s0.remember !== false && TXT[s0.lang]) lang = s0.lang; } catch (e) {}
+function t(k, v){
+  let s = TXT[lang] && TXT[lang][k] != null ? TXT[lang][k] : TXT.nl && TXT.nl[k] != null ? TXT.nl[k] : k;
+  if (v) s = s.replace(/\{(\w+)\}/g, (m, n) => (n in v ? String(v[n]) : m));
+  return s;
+}
+function applyStaticText(){
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  const md = document.querySelector('meta[name="description"]'); if (md) md.content = t('metaDesc');
+  document.querySelectorAll('[data-t]').forEach(e => { e.textContent = t(e.dataset.t); });
+  document.querySelectorAll('[data-t-html]').forEach(e => { e.innerHTML = t(e.dataset.tHtml); });
+  document.querySelectorAll('[data-t-attr]').forEach(e => e.dataset.tAttr.split(';').forEach(pair => {
+    const [a, k] = pair.split(':'); e.setAttribute(a, t(k));
+  }));
+  document.querySelectorAll('.langs [data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+}
+applyStaticText();
+function fail(m){ msg.textContent = m; msg.classList.add('show'); }
 
 let gl = canvas.getContext('webgl2', {antialias:false, premultipliedAlpha:false});
 const isGL2 = !!gl;
 if (!gl) gl = canvas.getContext('webgl', {antialias:false, premultipliedAlpha:false});
-if (!gl) { fail('Je browser ondersteunt geen WebGL, dus het zwarte gat kan niet getekend worden.'); return; }
+if (!gl) { fail(t('noWebGL')); return; }
 
 // ---------- shaders ----------
 const fragSrc = document.getElementById('frag').textContent;
@@ -871,7 +962,7 @@ function program(defs){
 }
 let progDirect, progRaw, progMap = null, progDisp = null;
 try { progDirect = program(''); progRaw = program('#define RAW_PASS\n'); }
-catch (e) { console.error(e); fail('Het zwarte gat kon niet getekend worden op dit toestel.'); return; }
+catch (e) { console.error(e); fail(t('glFail')); return; }
 
 const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
@@ -958,10 +1049,10 @@ function makeDemo(){
   for (let x = 0; x <= W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
   for (let y = 0; y <= H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
   ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 8;
-  ctx.font = 'bold 120px "Instrument Sans", Helvetica, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.strokeText('VOORBEELD', W/2, H*0.2); ctx.fillText('VOORBEELD', W/2, H*0.2);
-  ctx.font = '600 64px "Instrument Sans", Helvetica, Arial, sans-serif';
-  ctx.strokeText('Zet je camera aan', W/2, H*0.82); ctx.fillText('Zet je camera aan', W/2, H*0.82);
+  ctx.font = '700 104px Unbounded, Helvetica, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.strokeText(t('demoTitle'), W/2, H*0.2); ctx.fillText(t('demoTitle'), W/2, H*0.2);
+  ctx.font = '700 64px "Atkinson Hyperlegible", Helvetica, Arial, sans-serif';
+  ctx.strokeText(t('demoSub'), W/2, H*0.82); ctx.fillText(t('demoSub'), W/2, H*0.82);
   // image is mirrored on screen (like a mirror), so flip the text once here
   const m = document.createElement('canvas'); m.width = W; m.height = H;
   const mc = m.getContext('2d'); mc.translate(W, 0); mc.scale(-1, 1); mc.drawImage(c, 0, 0);
@@ -975,7 +1066,7 @@ let camAspect = demo.height/demo.width;
 // the demo text is drawn on a canvas, so redraw it once the web font has arrived
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => {
   demo = makeDemo(); if (!useVideo) upload(camTex, demo);
-});
+}).catch(() => {});
 
 // ---------- lens map (precomputed once per setting) ----------
 let mapTex = null, mapFbo = null, mapType = null, mapW = 0, mapH = 0;
@@ -1017,7 +1108,7 @@ function allocMap(w, h){
 // ---------- settings ----------
 const el = id => document.getElementById(id);
 const spin = el('spin'), incl = el('incl'), mass = el('mass');
-const spinDock = el('spinDock'), keepSpin = el('keepSpin');
+const keepSpin = el('keepSpin'), keepMass = el('keepMass'), showLogo = el('showLogo');
 const bgMode = el('bgMode'), keyTol = el('keyTol'), plateSens = el('plateSens');
 const shadows = el('shadows'), lockCam = el('lockCam'), showMask = el('showMask');
 let keyRGB = [0, 177, 64];               // typical chroma-key green until one is picked
@@ -1030,6 +1121,8 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     remembered = s;
     spin.value = s.spin; incl.value = s.incl; mass.value = s.mass;
     if (s.keepSpin != null) keepSpin.checked = !!s.keepSpin;
+    if (s.keepMass != null) keepMass.checked = !!s.keepMass;
+    if (s.showLogo != null) showLogo.checked = !!s.showLogo;
     if (s.bgMode && bgMode.querySelector('option[value="' + s.bgMode + '"]')) bgMode.value = s.bgMode;
     if (s.keyTol != null) keyTol.value = s.keyTol;
     if (s.plateSens != null) plateSens.value = s.plateSens;
@@ -1048,7 +1141,8 @@ try { const s = JSON.parse(localStorage.getItem(KEY) || 'null');
 function save(){
   try {
     if (!el('remember').checked) { localStorage.setItem(KEY, JSON.stringify({remember: false})); return; }
-    localStorage.setItem(KEY, JSON.stringify({remember: true, camOn: camWanted, panelHidden: panel.classList.contains('hidden'),
+    localStorage.setItem(KEY, JSON.stringify({remember: true, lang, camOn: camWanted, camId: camDeviceId, panelHidden: panel.classList.contains('hidden'),
+    keepMass: keepMass.checked, showLogo: showLogo.checked,
     spin: spin.value, incl: incl.value, mass: mass.value,
     keepSpin: keepSpin.checked, bgMode: bgMode.value, keyTol: keyTol.value, plateSens: plateSens.value,
     shadows: shadows.checked, lockCam: lockCam.checked, key: keyRGB,
@@ -1056,25 +1150,27 @@ function save(){
     shotLocal: el('shotLocal').checked, shotQR: el('shotQR').checked, qrBase: el('qrBase').value.trim(), qrKey: el('qrKey').value,
     qrSec: el('qrSec').value, shotCount: el('shotCount').checked})); } catch (e) {}
 }
-function spinText(v){ return Number(v) === 0 ? 'stil (0)' : 'a/M = ' + Number(v).toFixed(2); }
+function spinText(v){ return Number(v) === 0 ? t('spinStill') : 'a/M = ' + Number(v).toFixed(2); }
 function labels(){
   el('spinVal').textContent = spinText(spin.value);
-  el('spinDockVal').textContent = spinText(spin.value);
-  spinDock.value = spin.value;
-  el('inclVal').textContent = incl.value + '°' + (Number(incl.value) === 90 ? ' (van opzij)' : Number(incl.value) === 0 ? ' (langs de as)' : '');
+  el('dockSpinVal').textContent = Number(spin.value).toFixed(2);
+  el('dockMassVal').textContent = Number(mass.value).toFixed(1);
+  el('inclVal').textContent = incl.value + '°' + (Number(incl.value) === 90 ? t('inclSide') : Number(incl.value) === 0 ? t('inclAxis') : '');
   el('massVal').textContent = Number(mass.value).toFixed(1);
   el('keyTolVal').textContent = Math.round(Number(keyTol.value)*100);
-  el('plateSensVal').textContent = Number(plateSens.value).toFixed(1).replace('.0', '') + (Number(plateSens.value) === 5 ? ' (normaal)' : '');
+  el('plateSensVal').textContent = Number(plateSens.value).toFixed(1).replace('.0', '') + (Number(plateSens.value) === 5 ? t('normal') : '');
   el('swatch').style.background = 'rgb(' + keyRGB.join(',') + ')';
 }
 let dirty = true;
 function changed(){ labels(); dirty = true; save(); }
 [spin, incl, mass].forEach(i => i.addEventListener('input', changed));
-spinDock.addEventListener('input', () => { spin.value = spinDock.value; changed(); });
 [keyTol, plateSens].forEach(i => i.addEventListener('input', () => { labels(); save(); }));
 shadows.addEventListener('change', save);
 lockCam.addEventListener('change', () => { lockCamera(lockCam.checked && usesPlate() && plateValid); save(); });
-keepSpin.addEventListener('change', () => { updateDock(); save(); });
+[keepSpin, keepMass].forEach(c => c.addEventListener('change', () => { updateDock(); save(); }));
+function updateLogo(){ el('brand').hidden = !showLogo.checked; document.body.classList.toggle('nologo', !showLogo.checked); }
+showLogo.addEventListener('change', () => { updateLogo(); save(); });
+updateLogo();
 labels();
 
 // ---------- size ----------
@@ -1151,29 +1247,82 @@ const video = document.createElement('video');
 video.muted = true; video.setAttribute('playsinline', ''); video.setAttribute('autoplay', '');
 let useVideo = false, lastVideoTime = -1;
 // camWanted: the camera should be on; remembered, so it restarts by itself after a
-// reload (the browser must have been allowed to use the camera on this site)
+// reload (the browser must have been allowed to use the camera on this site).
+// camDeviceId: the chosen camera when there are several (remembered as well).
 let camWanted = !!(remembered && remembered.camOn);
-async function startCamera(auto){
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { el('camNote').textContent = 'Deze browser geeft geen toegang tot een camera. Je ziet het voorbeeldbeeld.'; return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
-    video.srcObject = stream; await video.play();
-    useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false; camWanted = true;
-    el('camBtn').textContent = 'Camera staat aan'; el('camBtn').disabled = true;
-    plateValid = false; learnStartAt = 0;
-    bgChanged();
-  } catch (e) {
-    el('camNote').textContent = auto
-      ? 'De camera kon niet vanzelf gestart worden (geen toestemming of geen camera). Klik op "Camera aan".'
-      : 'De camera kon niet gestart worden (geen toestemming of geen camera). Je ziet het voorbeeldbeeld.';
-  }
+let camDeviceId = (remembered && remembered.camId) || '';
+let camErr = null, camRetry = null;
+function updateCamNote(){
+  el('camNote').textContent = camErr ? t(camErr) : t(el('shotsOn').checked && el('shotQR').checked ? 'privacyQR' : 'privacy');
 }
+function updateCamUI(){
+  el('camBtn').textContent = t(useVideo ? 'camIsOn' : 'camOn'); el('camBtn').disabled = useVideo;
+  updateCamNote();
+}
+function stopStream(){
+  if (video.srcObject) { video.srcObject.getTracks().forEach(tr => { tr.onended = null; tr.stop(); }); video.srcObject = null; }
+}
+async function startCamera(auto){
+  const md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia) { camErr = 'camNoAccess'; updateCamNote(); return false; }
+  const size = {width: {ideal: 1280}, height: {ideal: 720}};
+  let stream = null;
+  try {
+    stream = await md.getUserMedia({audio: false, video: Object.assign(camDeviceId ? {deviceId: {exact: camDeviceId}} : {facingMode: 'user'}, size)});
+  } catch (e) {
+    // the chosen camera is not there (unplugged?): take any camera instead
+    if (camDeviceId) { try { stream = await md.getUserMedia({audio: false, video: Object.assign({facingMode: 'user'}, size)}); } catch (e2) {} }
+  }
+  if (!stream) { camErr = auto ? 'camAutoFail' : 'camFail'; updateCamNote(); return false; }
+  stopStream();
+  video.srcObject = stream;
+  try { await video.play(); } catch (e) { console.warn(e); }
+  const track = stream.getVideoTracks()[0];
+  if (track) track.onended = cameraLost;
+  useVideo = true; dirty = true; lastVideoTime = -1; camLocked = false; camWanted = true; camErr = null;
+  clearInterval(camRetry); camRetry = null;
+  plateValid = false; learnStartAt = 0;
+  updateCamUI(); listCams(); bgChanged();
+  return true;
+}
+// camera unplugged, switched off or taken by another program: keep trying every 3 s
+function cameraLost(){
+  if (!camWanted) return;
+  camErr = 'camLost'; updateCamNote();
+  clearInterval(camRetry);
+  camRetry = setInterval(async () => {
+    if (!camWanted) { clearInterval(camRetry); camRetry = null; return; }
+    if (await startCamera(true)) { clearInterval(camRetry); camRetry = null; }
+    else { camErr = 'camLost'; updateCamNote(); }
+  }, 3000);
+}
+// cameras to choose from (names are only known once the camera has been allowed)
+async function listCams(){
+  const md = navigator.mediaDevices;
+  if (!md || !md.enumerateDevices) return;
+  let devs = [];
+  try { devs = (await md.enumerateDevices()).filter(d => d.kind === 'videoinput'); } catch (e) { return; }
+  const sel = el('camPick'), tr = video.srcObject && video.srcObject.getVideoTracks()[0];
+  const cur = camDeviceId && devs.some(d => d.deviceId === camDeviceId) ? camDeviceId
+    : (tr && tr.getSettings && tr.getSettings().deviceId) || '';
+  sel.innerHTML = '';
+  devs.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId; o.textContent = d.label || t('camN', {n: i + 1}); sel.appendChild(o);
+  });
+  if (cur && devs.some(d => d.deviceId === cur)) sel.value = cur;
+  el('camPickRow').hidden = devs.length < 2;
+}
+el('camPick').addEventListener('change', async () => {
+  camDeviceId = el('camPick').value; save();
+  if (useVideo || camWanted) await startCamera(false);
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener('devicechange', listCams);
 el('camBtn').addEventListener('click', () => startCamera(false));
 el('demoBtn').addEventListener('click', () => {
-  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true; camWanted = false;
-  el('camBtn').textContent = 'Camera aan'; el('camBtn').disabled = false;
-  camLocked = false; cancelCapture(); bgChanged();
+  stopStream(); clearInterval(camRetry); camRetry = null;
+  useVideo = false; upload(camTex, demo); camAspect = demo.height/demo.width; dirty = true; camWanted = false; camErr = null;
+  updateCamUI(); camLocked = false; cancelCapture(); bgChanged();
 });
 
 // Fix exposure, white balance and focus (where browser and camera allow it), so the
@@ -1193,17 +1342,70 @@ async function lockCamera(on){
   }
 }
 
-// ---------- panel and docked spin slider ----------
+// ---------- expo helpers: screen stays on, full screen, hidden mouse pointer ----------
+let wakeLock = null;
+async function keepAwake(){
+  try {
+    if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* not supported or not allowed: the computer's own power settings apply */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+keepAwake();
+function toggleFullscreen(){
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+}
+el('fsBtn').addEventListener('click', toggleFullscreen);
+document.addEventListener('keydown', e => {   // F: full screen (Esc leaves it)
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat &&
+      !(e.target && (e.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)))) toggleFullscreen();
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 3000);
+}
+['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach(ev => document.addEventListener(ev, wake, {passive: true}));
+wake();
+
+// ---------- panel and tap controls ----------
 const panel = el('panel');
-function updateDock(){ el('spinDockBox').hidden = !(keepSpin.checked && panel.classList.contains('hidden')); }
+function updateDock(){
+  const hid = panel.classList.contains('hidden'), s = keepSpin.checked && hid, m = keepMass.checked && hid;
+  el('dock').hidden = !(s || m); el('dockSpin').hidden = !s; el('dockMass').hidden = !m;
+}
 function setPanelHidden(hide){
   panel.classList.toggle('hidden', hide);
-  el('toggle').textContent = hide ? 'Tonen' : 'Verbergen';
-  el('toggle').setAttribute('aria-expanded', String(!hide));
+  const tg = el('toggle');
+  tg.setAttribute('aria-expanded', String(!hide));
+  if (hide) { tg.setAttribute('aria-label', t('showSettings')); tg.title = t('showSettings'); }
+  else { tg.removeAttribute('aria-label'); tg.removeAttribute('title'); }
   updateDock();
 }
 el('toggle').addEventListener('click', () => { setPanelHidden(!panel.classList.contains('hidden')); save(); });
 setPanelHidden(!!(remembered && remembered.panelHidden));
+// arrows at the right edge: one step per tap, repeating while held (touch screen or mouse)
+const STEP = {spin: 0.1, mass: 0.5};
+function nudge(what, dir){
+  const inp = what === 'spin' ? spin : mass, st = STEP[what];
+  const v = Math.min(Number(inp.max), Math.max(Number(inp.min), Math.round((Number(inp.value) + dir*st)/st)*st));
+  inp.value = v; changed();
+}
+document.querySelectorAll('.dock-btn[data-act]').forEach(b => {
+  let timer = null, rep = null;
+  const stop = () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; };
+  const go = () => nudge(b.dataset.act, Number(b.dataset.dir));
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); stop(); go();
+    timer = setTimeout(() => { rep = setInterval(go, 180); }, 450);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+});
+el('dockReset').addEventListener('click', () => { spin.value = 0.9; mass.value = 3; changed(); });
 
 // ---------- banner (instructions / countdown) ----------
 const banner = el('banner');
@@ -1272,12 +1474,12 @@ el('plateBtn').addEventListener('click', () => {
   if (!useVideo) { updateNote(); return; }
   cancelCapture();
   let left = 3;
-  showBanner('Stap uit beeld… ' + left, {big: true, cancel: true});
+  showBanner(t('stepOut', {n: left}), {big: true, cancel: true});
   capTimer = setInterval(async () => {
     left--;
-    if (left > 0) { showBanner('Stap uit beeld… ' + left, {big: true, cancel: true}); return; }
+    if (left > 0) { showBanner(t('stepOut', {n: left}), {big: true, cancel: true}); return; }
     clearInterval(capTimer); capTimer = null;
-    showBanner('Achtergrond vastleggen… blijf even uit beeld', {big: true});
+    showBanner(t('capturing'), {big: true});
     if (lockCam.checked) await lockCamera(true);
     setTimeout(() => {
       sizeProc();
@@ -1302,7 +1504,7 @@ function captureStep(){
   }
   boxBlur(bVar, T1, proc.width, proc.height, 3);
   pmask.fill(0); gA = [1, 1, 1]; gB = [0, 0, 0]; plateValid = true; cap = null;
-  showBanner('Klaar! Kom maar terug in beeld.', {big: true}); setTimeout(hideBanner, 1800);
+  showBanner(t('capDone'), {big: true}); setTimeout(hideBanner, 1800);
   updateNote();
 }
 el('relearnBtn').addEventListener('click', () => {
@@ -1452,9 +1654,9 @@ function boxBlur(a, tmp, w, h, r){
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODELS = {
   // MediaPipe selfie segmenter: one or a few people close to the camera
-  selfie:  {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite', cls: -1, inW: 320},
+  selfie:  {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite', cls: -1, inW: 320, prefer: 'GPU', gapMs: 0},
   // DeepLab v3 (PASCAL VOC, class 15 = person): people anywhere in a scene
-  deeplab: {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite', cls: 15, inW: 513},
+  deeplab: {url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite', cls: 15, inW: 513, prefer: 'CPU', gapMs: 150},
 };
 // overlapping quarter tiles (fractions of the frame); one is analysed per round, next to
 // the whole frame, so distant people are seen about 1.7x larger by the network
@@ -1478,9 +1680,12 @@ self.onmessage = async e => {
       const files = await mp.FilesetResolver.forVisionTasks(d.lib + '/wasm');
       const opts = delegate => ({baseOptions: {modelAssetPath: d.model, delegate}, runningMode: 'IMAGE',
         outputCategoryMask: false, outputConfidenceMasks: true});
-      let delegate = 'GPU';
-      try { seg = await mp.ImageSegmenter.createFromOptions(files, opts('GPU')); }
-      catch (err) { delegate = 'CPU'; seg = await mp.ImageSegmenter.createFromOptions(files, opts('CPU')); }
+      // the large model runs on the processor: on the graphics chip it competes with
+      // drawing the black hole (measured: 60 -> 12 frames per second on a laptop)
+      const order = d.prefer === 'CPU' ? ['CPU', 'GPU'] : ['GPU', 'CPU'];
+      let delegate = order[0];
+      try { seg = await mp.ImageSegmenter.createFromOptions(files, opts(order[0])); }
+      catch (err) { delegate = order[1]; seg = await mp.ImageSegmenter.createFromOptions(files, opts(order[1])); }
       cls = d.cls;
       self.postMessage({type: 'ready', delegate});
     } catch (err) { self.postMessage({type: 'error', message: String(err && err.message || err)}); }
@@ -1525,7 +1730,7 @@ self.onmessage = async e => {
     self.postMessage({type: 'mask', mask: out, w: oW, h: oH, ms: performance.now() - t0}, [out.buffer]);
   }
 };`;
-let worker = null, workerModel = null, workerReady = false, workerBusy = false, workerError = null, tileTurn = 0, aiMs = 0;
+let worker = null, workerModel = null, workerReady = false, workerBusy = false, workerError = null, tileTurn = 0, aiMs = 0, aiDelegateNote = '';
 function startWorker(model){
   if (worker && workerModel === model) return;
   stopWorker();
@@ -1535,7 +1740,7 @@ function startWorker(model){
   } catch (e) { workerError = String(e); worker = null; updateNote(); return; }
   worker.onmessage = onWorker;
   worker.onerror = e => { workerError = e.message || 'worker'; stopWorker(true); updateNote(); };
-  worker.postMessage({type: 'init', lib: MP, model: MODELS[model].url, cls: MODELS[model].cls});
+  worker.postMessage({type: 'init', lib: MP, model: MODELS[model].url, cls: MODELS[model].cls, prefer: MODELS[model].prefer});
 }
 function stopWorker(keepError){
   if (worker) worker.terminate();
@@ -1544,10 +1749,13 @@ function stopWorker(keepError){
 }
 function onWorker(e){
   const d = e.data;
-  if (d.type === 'ready') { workerReady = true; updateNote(); }
+  if (d.type === 'ready') { workerReady = true; aiDelegateNote = d.delegate || ''; updateNote(); }
   else if (d.type === 'error') { console.error('person recognition:', d.message); workerError = d.message; stopWorker(true); updateNote(); }
   else if (d.type === 'mask') {
-    workerBusy = false; aiMs = 0.7*aiMs + 0.3*d.ms;
+    aiMs = 0.7*aiMs + 0.3*d.ms;
+    // a short pause between rounds leaves room for drawing (booth mode)
+    const gap = workerModel ? MODELS[workerModel].gapMs : 0;
+    if (gap) setTimeout(() => { workerBusy = false; }, gap); else workerBusy = false;
     if (!BR || d.w !== proc.width || d.h !== proc.height) return;
     const n = d.w*d.h;
     if (!aiMask || aiMask.length !== n) aiMask = new Float32Array(n);
@@ -1573,23 +1781,21 @@ async function sendAI(){
 // -- mode switching and explanations
 function bgNote(t){ el('bgNote').textContent = t || ''; }
 function aiStatus(){
-  if (workerError) return 'Het herkenningsmodel kon niet geladen worden (geen internet?).';
-  if (!workerReady) return 'Het herkenningsmodel wordt geladen…';
+  if (workerError) return t('aiFail');
+  if (!workerReady) return t('aiLoading');
   return '';
 }
 function updateNote(){
   const m = bgMode.value;
   if (m === 'off') bgNote('');
-  else if (m === 'green') bgNote('Sta voor een effen achtergrond (bv. een groen scherm) en klik op "Kies de achtergrondkleur". Waar die kleur in beeld is, zie je sterren.');
-  else if (!useVideo) bgNote('Zet eerst je camera aan.');
-  else if (m === 'booth') bgNote('Voor een stand of beurs: de camera leert vanzelf hoe de achtergrond eruitziet, ook als er mensen voorbij lopen. ' +
-    'Alles wat daarvan afwijkt blijft zichtbaar, ook mensen ver weg. Zet de camera stevig vast. ' +
-    (aiStatus() || 'Het herkenningsmodel helpt mee.') + (workerError ? ' Het werkt nu alleen met de geleerde achtergrond.' : '') +
-    (plateValid ? '' : ' Bezig met starten…'));
-  else if (m === 'ai') bgNote((aiStatus() ? aiStatus() + ' ' : '') + (workerError ? 'Probeer "alleen vaste achtergrond".'
-    : 'Herkent één of enkele mensen dichtbij de camera, zoals bij videobellen. Voor mensen verder weg: kies "stand".'));
-  else if (m === 'plate') bgNote(plateValid ? 'Alles wat verschilt van de vastgelegde achtergrond blijft zichtbaar. Schuif "Gevoeligheid" hoger als er stukken van jou wegvallen, lager als er vlekken van de kamer blijven staan.'
-    : 'Klik op "Lege achtergrond vastleggen" en stap even uit beeld. De camera moet daarna stil blijven staan.');
+  else if (m === 'green') bgNote(t('greenNote'));
+  else if (!useVideo) bgNote(t('camFirst'));
+  else if (m === 'booth') bgNote(t('boothNote') + ' ' + (aiStatus() || t('aiHelps')) +
+    (workerError ? ' ' + t('boothOnlyLearned') : '') + (plateValid ? '' : ' ' + t('starting')));
+  else if (m === 'ai') bgNote((aiStatus() ? aiStatus() + ' ' : '') + (workerError ? t('aiTryPlate')
+    : t('aiNote')));
+  else if (m === 'plate') bgNote(plateValid ? t('plateOk')
+    : t('plateNeed'));
 }
 function bgChanged(){
   const m = bgMode.value;
@@ -1614,7 +1820,7 @@ let picking = false;
 const pickCan = document.createElement('canvas');
 function startPicking(){
   picking = true; document.body.classList.add('picking');
-  showBanner('Klik of tik in het beeld op de achtergrond (het groene scherm).', {cancel: true});
+  showBanner(t('pickBanner'), {cancel: true});
 }
 function stopPicking(){ if (!picking) return; picking = false; document.body.classList.remove('picking'); hideBanner(); }
 el('pickBtn').addEventListener('click', startPicking);
@@ -1665,15 +1871,16 @@ async function idbSet(k, v){
 // The removed background shows either the star sky (each ray's own direction, as around
 // the black hole) or a picture that hangs where your room was, lensed together with you.
 const BACKDROPS = {
-  'aarde':       {src: 'achtergronden/aarde.jpg',       credit: 'Foto: NASA, Apollo 17 (1972).'},
-  'aardopgang':  {src: 'achtergronden/aardopgang.jpg',  credit: 'Foto: NASA, Bill Anders, Apollo 8 (1968).'},
-  'maan':        {src: 'achtergronden/maan.jpg',        credit: 'Foto: NASA, Apollo 11 (1969).'},
-  'pilaren':     {src: 'achtergronden/pilaren.jpg',     credit: 'Foto: NASA, ESA en het Hubble Heritage Team (2014).'},
-  'diep-heelal': {src: 'achtergronden/diep-heelal.jpg', credit: 'Foto: NASA en ESA, Hubble Ultra Deep Field (2004).'},
+  'aarde':       {src: 'achtergronden/aarde.jpg'},
+  'aardopgang':  {src: 'achtergronden/aardopgang.jpg'},
+  'maan':        {src: 'achtergronden/maan.jpg'},
+  'pilaren':     {src: 'achtergronden/pilaren.jpg'},
+  'diep-heelal': {src: 'achtergronden/diep-heelal.jpg'},
 };
 const bdChoice = el('bdChoice');
 let bdReady = false, bdAspect = 1, bdLoadId = 0;
-function bdNote(t){ el('bdNote').textContent = t || ''; }
+let bdNoteFn = null;
+function bdNote(fn){ bdNoteFn = fn || null; el('bdNote').textContent = fn ? fn() : ''; }
 function setBackdrop(img){
   // keep the texture modest (and within every GPU's limits)
   const MAX = 2048, k = Math.min(1, MAX/Math.max(img.width, img.height));
@@ -1691,22 +1898,21 @@ async function backdropChanged(){
   const c = bdChoice.value, id = ++bdLoadId;
   el('bdOwnRow').hidden = c !== 'eigen';
   bdReady = false;
-  const lensed = ' De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.';
-  if (c === 'sterren') { bdNote('Waar je achtergrond was, kijk je door naar de sterrenhemel rond het zwarte gat.'); save(); return; }
+  if (c === 'sterren') { bdNote(() => t('bdStarsNote')); save(); return; }
   try {
     if (c === 'eigen') {
       const blob = ownBlob || await idbGet('ownBackdrop').catch(() => null);
-      if (!blob) { bdNote('Kies een afbeelding op je computer. Ze blijft op je toestel.'); save(); return; }
+      if (!blob) { bdNote(() => t('bdOwnNeed')); save(); return; }
       const url = URL.createObjectURL(blob);
       try { const im = await loadImage(url); if (id === bdLoadId) setBackdrop(im); } finally { URL.revokeObjectURL(url); }
-      bdNote('Je eigen afbeelding.' + lensed);
+      bdNote(() => t('bdOwnNote') + ' ' + t('lensed'));
     } else {
-      bdNote('Laden…');
+      bdNote(() => t('loading'));
       const im = await loadImage(BACKDROPS[c].src);
       if (id !== bdLoadId) return;
-      setBackdrop(im); bdNote(BACKDROPS[c].credit + lensed);
+      setBackdrop(im); bdNote(() => t('cr_' + c) + ' ' + t('lensed'));
     }
-  } catch (e) { console.error(e); if (id === bdLoadId) bdNote('De afbeelding kon niet geladen worden.'); }
+  } catch (e) { console.error(e); if (id === bdLoadId) bdNote(() => t('bdFail')); }
   save();
 }
 let ownBlob = null;                      // own picture of this session (also kept when not remembering)
@@ -1727,9 +1933,9 @@ el('bdFile').addEventListener('change', async e => {
     if (el('remember').checked) await idbSet('ownBackdrop', blob).catch(err => console.warn('could not keep the picture', err));
     bdChoice.value = 'eigen'; setBackdrop(c); bdLoadId++;
     el('bdOwnRow').hidden = false;
-    bdNote('Je eigen afbeelding. De foto hangt waar je kamer was, en wordt samen met jou afgebogen door het zwarte gat.');
+    bdNote(() => t('bdOwnNote') + ' ' + t('lensed'));
     save();
-  } catch (err) { console.error(err); bdNote('Dit bestand kon niet als afbeelding gelezen worden.'); }
+  } catch (err) { console.error(err); bdNote(() => t('bdBadFile')); }
 });
 
 // ---------- photos ----------
@@ -1747,19 +1953,17 @@ function updateShotUI(){
   el('shotSub').hidden = !shotsOn.checked;
   el('shotLocalSub').hidden = !shotLocal.checked;
   el('shotQRSub').hidden = !shotQR.checked;
-  el('shotDirName').textContent = shotDir ? shotDir.name : 'Downloads';
+  el('shotDirName').textContent = shotDir ? shotDir.name : t('downloads');
   el('shotDirReset').hidden = !shotDir;
   el('shotDirBtn').hidden = !canPickDir;
   el('shotNote').textContent = canPickDir
-    ? (shotDir ? 'Foto\'s worden hier zonder vragen bewaard. Alleen na het openen van de pagina vraagt de browser één keer of hij in deze map mag schrijven (kies "Toestaan bij elk bezoek").'
-               : 'Foto\'s gaan via de browser naar Downloads. Verschijnt er bij elke foto een venster "Opslaan als"? Kies dan hierboven een map (dat mag ook Downloads zijn): dan bewaart de pagina de foto\'s zelf, zonder vragen.')
-    : 'Deze browser bewaart foto\'s in de downloadmap. Verschijnt er bij elke foto een venster "Opslaan als", zet dat dan uit in de instellingen van de browser (of gebruik Chrome of Edge en kies een map).';
+    ? (shotDir ? t('shotNoteDir')
+               : t('shotNoteDl'))
+    : t('shotNoteNoPick');
   if (!qrNoteSticky) el('qrNote').textContent = qrConfigured()
-    ? 'Foto\'s worden via een geheime link 24 uur online bewaard en daarna gewist. Toets Q of de knop "QR" rechtsonder toont recente QR-codes opnieuw.'
-    : 'Vul het adres van de fotodienst en de standsleutel in (zie cloudflare/SETUP.md bij deze pagina).';
-  el('camNote').textContent = shotsOn.checked && shotQR.checked
-    ? 'Je camerabeeld blijft op je eigen toestel. Alleen foto\'s die je maakt, worden 24 uur online bewaard (voor de QR-code) en daarna gewist.'
-    : 'Je camerabeeld blijft op je eigen toestel: er wordt niets opgeslagen of verstuurd.';
+    ? t('qrNoteOk')
+    : t('qrNoteNeed');
+  updateCamNote();
   updateQrAgain();
 }
 let qrNoteSticky = false;
@@ -1794,21 +1998,21 @@ function countdown(){
     const tick = () => {
       n--;
       if (n > 0) { show(n); timer = setTimeout(tick, 1000); }
-      else { show('klik!', true); timer = setTimeout(() => done(true), 350); }   // photo right after "klik!"
+      else { show(t('snap'), true); timer = setTimeout(() => done(true), 350); }   // photo right after "klik!"
     };
     timer = setTimeout(tick, 1000);
   });
 }
 async function takeShot(){
   if (shotBusy || shotPending || counting) return;
-  if (!shotLocal.checked && !shotQR.checked) { toast('Kies in Instellingen hoe foto\'s bewaard worden (op deze computer en/of met een QR-code).'); return; }
+  if (!shotLocal.checked && !shotQR.checked) { toast(t('chooseSave')); return; }
   hideQR();
   // ask for permission to write in the folder now, while the click still counts
   if (shotLocal.checked && shotDir) {
     try {
       let p = await shotDir.queryPermission({mode: 'readwrite'});
       if (p !== 'granted') p = await shotDir.requestPermission({mode: 'readwrite'});
-      if (p !== 'granted') toast('Geen toestemming voor de map "' + shotDir.name + '": de foto gaat naar Downloads.');
+      if (p !== 'granted') toast(t('noFolderPerm', {name: shotDir.name}));
     } catch (e) { console.warn(e); }
   }
   if (el('shotCount').checked) {
@@ -1845,14 +2049,14 @@ function stamp(){
   return stampCount > 1 ? t + '-' + stampCount : t;
 }
 async function handleShot(blob, thumb){
-  if (!blob) { toast('De foto kon niet gemaakt worden.'); return; }
+  if (!blob) { toast(t('shotFail')); return; }
   const name = 'zwart-gat_' + stamp() + '.jpg';
   const wantLocal = shotLocal.checked, wantQR = shotQR.checked;
   const local = wantLocal ? saveLocal(blob, name) : null;
   if (wantQR) {
     showQRWaiting(thumb);
     try {
-      if (!qrConfigured()) throw new Error('fotodienst nog niet ingesteld');
+      if (!qrConfigured()) throw new Error(t('serviceNotSet'));
       const r = await uploadShot(blob, name);
       qrHistory.unshift({page: r.page, thumb, time: new Date(), expires: r.expires || Date.now() + 24*3600e3});
       if (qrHistory.length > 20) qrHistory.length = 20;
@@ -1860,9 +2064,9 @@ async function handleShot(blob, thumb){
     } catch (e) {
       console.warn('upload failed', e);
       hideQR();
-      const why = e && e.name === 'AbortError' ? 'geen antwoord' : (e && e.message) || 'fout';
-      if (!wantLocal) { await saveLocal(blob, name); toast('Uploaden lukte niet (' + why + '). De foto is op deze computer bewaard.'); }
-      else toast('Uploaden lukte niet (' + why + '). De foto is wel op deze computer bewaard.');
+      const why = e && e.name === 'AbortError' ? t('noAnswer') : (e && e.message) || t('error');
+      if (!wantLocal) { await saveLocal(blob, name); toast(t('upFailSaved', {why})); }
+      else toast(t('upFailAlso', {why}));
       return;
     }
   }
@@ -1877,14 +2081,14 @@ async function saveLocal(blob, name){
         for (let k = 2; await shotDir.getFileHandle(fname).then(() => true, () => false); k++) fname = name.replace('.jpg', '_' + k + '.jpg');
         const fh = await shotDir.getFileHandle(fname, {create: true}), w = await fh.createWritable();
         await w.write(blob); await w.close();
-        return 'Foto bewaard in ' + shotDir.name + ': ' + fname;
+        return t('savedIn', {dir: shotDir.name, file: fname});
       }
     } catch (e) { console.warn('saving in the folder failed', e); }
   }
   const a = document.createElement('a'), url = URL.createObjectURL(blob);
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
-  return 'Foto bewaard in Downloads: ' + name;
+  return t('savedDl', {file: name});
 }
 function serviceUrl(path){ return qrBase.value.trim().replace(/\/+$/, '') + path; }
 async function callService(path, opts){
@@ -1892,7 +2096,7 @@ async function callService(path, opts){
   try {
     const r = await fetch(serviceUrl(path), Object.assign({signal: ctl.signal}, opts));
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || ('fout ' + r.status));
+    if (!r.ok) throw new Error(j.error || (t('error') + ' ' + r.status));
     return j;
   } finally { clearTimeout(timer); }
 }
@@ -1903,13 +2107,13 @@ function uploadShot(blob, name){
 el('qrTest').addEventListener('click', async () => {
   qrNoteSticky = true;
   const note = el('qrNote');
-  if (!qrConfigured()) { note.textContent = 'Vul eerst het adres (beginnend met https://) en de standsleutel in.'; return; }
-  note.textContent = 'Bezig met testen…';
+  if (!qrConfigured()) { note.textContent = t('needUrl'); return; }
+  note.textContent = t('testing');
   try {
     const j = await callService('/check', {headers: {'X-Booth-Key': qrKey.value}});
-    note.textContent = 'Verbinding in orde. Foto\'s blijven ' + (j.keepHours || 24) + ' uur bewaard en worden daarna gewist.';
+    note.textContent = t('connOk', {h: j.keepHours || 24});
   } catch (e) {
-    note.textContent = 'Verbinding mislukt: ' + (e && e.name === 'AbortError' ? 'geen antwoord' : e && e.message === 'Failed to fetch' ? 'adres niet bereikbaar' : (e && e.message) || 'fout') + '.';
+    note.textContent = t('connFail', {why: (e && e.name === 'AbortError' ? t('noAnswer') : e && e.message === 'Failed to fetch' ? t('unreachable') : (e && e.message) || t('error'))});
   }
 });
 
@@ -1918,7 +2122,7 @@ el('qrTest').addEventListener('click', async () => {
 //    (pressing again goes further back)
 const qrSec = el('qrSec');
 function qrSeconds(){ const v = Number(qrSec.value); return v > 120 ? Infinity : v; }
-function qrSecLabel(){ el('qrSecVal').textContent = qrSeconds() === Infinity ? 'tot de volgende foto' : qrSeconds() + ' s'; }
+function qrSecLabel(){ el('qrSecVal').textContent = qrSeconds() === Infinity ? t('qrSecUntil') : qrSeconds() + ' s'; }
 qrSec.addEventListener('input', () => { qrSecLabel(); save(); });
 qrSecLabel();
 let qrHistory = [], qrShown = -1, qrTimer = null, qrLib = null;
@@ -1947,7 +2151,7 @@ function startQrTimer(){
 function showQRWaiting(thumb){
   el('qrThumb').src = thumb;
   el('qrCode').innerHTML = '<span class="wait">Foto wordt klaargezet…</span>';
-  el('qrTitle').textContent = 'Even geduld';
+  el('qrTitle').textContent = t('wait');
   el('qrInfo').textContent = '';
   el('qrBox').hidden = false; qrShown = -1;
   clearTimeout(qrTimer); el('qrBar').style.transition = 'none'; el('qrBar').style.transform = 'scaleX(1)';
@@ -1957,20 +2161,21 @@ async function showQR(i, again){
   const h = qrHistory[i];
   if (!h) { hideQR(); return; }
   let qrcode;
-  try { qrcode = await loadQrLib(); } catch (e) { hideQR(); toast('De QR-code kon niet gemaakt worden (geen internet?). Link: ' + h.page); return; }
-  const qr = qrcode(0, 'M'); qr.addData(h.page); qr.make();
+  try { qrcode = await loadQrLib(); } catch (e) { hideQR(); toast(t('qrFail', {url: h.page})); return; }
+  // the visitor page uses the phone's language, or else the language of the booth
+  const qr = qrcode(0, 'M'); qr.addData(h.page + (h.page.includes('?') ? '&' : '?') + 'l=' + lang); qr.make();
   el('qrCode').innerHTML = '<img alt="QR-code met de link naar je foto" src="' + qr.createDataURL(8, 4) + '">';
   el('qrThumb').src = h.thumb;
-  el('qrTitle').textContent = 'Scan om je foto te downloaden';
-  el('qrInfo').textContent = (again ? 'Foto van ' + qrTime(h.time) + ' (' + (i + 1) + ' van ' + qrHistory.length + '). ' : '') +
-    'Je foto blijft 24 uur bewaard en wordt daarna gewist.';
+  el('qrTitle').textContent = t('scan');
+  el('qrInfo').textContent = (again ? t('photoOf', {t: qrTime(h.time), i: i + 1, n: qrHistory.length}) : '') +
+    t('kept24');
   el('qrBox').hidden = false; qrShown = i;
   startQrTimer(); updateQrAgain();
 }
 function hideQR(){ clearTimeout(qrTimer); el('qrBox').hidden = true; qrShown = -1; }
 function showQrAgain(){
   qrHistory = qrHistory.filter(h => h.expires > Date.now());
-  if (!qrHistory.length) { toast('Er zijn geen recente foto\'s met een QR-code.'); updateQrAgain(); return; }
+  if (!qrHistory.length) { toast(t('noRecent')); updateQrAgain(); return; }
   showQR(qrShown < 0 ? 0 : (qrShown + 1) % qrHistory.length, true);
 }
 function updateQrAgain(){ el('qrAgain').hidden = !(shotsOn.checked && shotQR.checked && qrHistory.length); }
@@ -1984,7 +2189,8 @@ document.addEventListener('keydown', e => {
   if (!shotsOn.checked || picking || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
   const t = e.target;
   if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) { e.preventDefault(); takeShot(); }
+  // arrow keys, and PageUp/PageDown, which is what most presenter remotes send
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'].includes(e.key)) { e.preventDefault(); takeShot(); }
   else if ((e.key === 'q' || e.key === 'Q') && shotQR.checked) { e.preventDefault(); showQrAgain(); }
   else if (e.key === 'Escape') { hideQR(); if (countCancel) countCancel(); }
 });
@@ -2024,16 +2230,20 @@ function frame(){
   requestAnimationFrame(frame);
 }
 // timings for checking a booth computer (console: zgcStats())
+let fpsCount = 0, fpsT0 = performance.now(), fpsNow = 0;
+(function fpsTick(){ fpsCount++; const now = performance.now();
+  if (now - fpsT0 >= 2000) { fpsNow = Math.round(fpsCount*1000/(now - fpsT0)); fpsCount = 0; fpsT0 = now; }
+  requestAnimationFrame(fpsTick); })();
 window.zgcStats = () => {
   const pct = (a, test) => a ? Math.round(100*a.reduce((s, v) => s + (test(v) ? 1 : 0), 0)/a.length) + '%' : '-';
-  return {maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, ready: workerReady, error: workerError,
+  return {fps: fpsNow, maskMs: +plateMs.toFixed(1), networkMs: +aiMs.toFixed(0), network: workerModel, on: aiDelegateNote, ready: workerReady, error: workerError,
     shownAsPerson: pct(pbin, v => v), networkPerson: pct(aiMask, v => v > 0.5), backgroundUnknown: pct(bCount, v => v < 3)};
 };
 // ---------- remember settings ----------
 function updateRememberNote(){
   el('rememberNote').textContent = el('remember').checked
-    ? 'Na herladen of herstarten begint de pagina zoals je hem achterliet: ook de camera start vanzelf (als de browser de camera voor deze site blijvend mag gebruiken) en verborgen instellingen blijven verborgen. Een vastgelegde lege achtergrond moet je opnieuw vastleggen; de stand-modus leert vanzelf opnieuw.'
-    : 'Er wordt niets bewaard: na herladen begint de pagina met de standaardinstellingen.';
+    ? t('rememberOn')
+    : t('rememberOff');
 }
 el('remember').addEventListener('change', () => {
   if (el('remember').checked) {                 // keep what is set now
@@ -2047,13 +2257,31 @@ el('remember').addEventListener('change', () => {
   updateRememberNote();
 });
 el('resetAll').addEventListener('click', async () => {
-  if (!confirm('Alle instellingen terugzetten naar de standaard? Ook het adres van de fotodienst, de standsleutel, de gekozen map en je eigen achtergrond worden vergeten.')) return;
+  if (!confirm(t('resetConfirm'))) return;
   try { localStorage.removeItem(KEY); } catch (e) {}
   await idbSet('ownBackdrop', null).catch(() => {}); await idbSet('shotDir', null).catch(() => {});
   location.reload();
 });
 updateRememberNote();
 
+// ---------- language buttons: redraw every text ----------
+function setLang(l){
+  if (!TXT[l] || l === lang) return;
+  lang = l; applyStaticText();
+  labels(); updateNote(); updateShotUI(); qrSecLabel(); updateRememberNote(); updateCamUI();
+  setPanelHidden(panel.classList.contains('hidden'));
+  if (bdNoteFn) bdNote(bdNoteFn);
+  listCams();
+  demo = makeDemo(); if (!useVideo) upload(camTex, demo);
+  save();
+}
+document.querySelectorAll('.langs [data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
+// the picture can be lost (graphics driver reset, laptop waking up): start again, with
+// the same settings (they are remembered)
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); fail(t('glLost')); setTimeout(() => location.reload(), 1500); });
+
+updateCamUI(); listCams();
 bgChanged(); backdropChanged(); updateShotUI();
 if (camWanted) startCamera(true);               // camera was on last time
 requestAnimationFrame(frame);
