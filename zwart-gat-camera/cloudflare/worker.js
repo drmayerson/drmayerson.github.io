@@ -70,7 +70,7 @@ export default {
         if (await st.exists(id)) state = 'ok';
         else if (age < 120000) state = 'wait';   // just uploaded; storage may need a moment
       }
-      return new Response(page(state, id, age), {status: state === 'gone' ? 404 : 200,
+      return new Response(page(state, id, age, pickLang(req, url)), {status: state === 'gone' ? 404 : 200,
         headers: privateHeaders({'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'})});
     }
 
@@ -151,22 +151,52 @@ function json(o, status, extra){
   return new Response(JSON.stringify(o), {status, headers: Object.assign({'Content-Type': 'application/json'}, extra)});
 }
 
-function page(state, id, age){
-  const head = '<!doctype html><html lang="nl"><head><meta charset="utf-8">' +
+// visitor page texts; the phone's own language wins if it is one of these, otherwise the
+// booth's language (?l= in the QR link), otherwise Dutch
+const PAGE_TEXT = {
+  nl: {title: 'Je foto met het zwarte gat', alt: 'Je foto, afgebogen door een zwart gat', btn: 'Foto downloaden',
+       hold: 'Lukt downloaden niet? Houd de foto ingedrukt en kies "Bewaar".', left: 'Deze foto wordt over ongeveer {h} uur automatisch gewist.',
+       goneT: 'Deze foto is niet meer beschikbaar', goneP: "Foto's worden 24 uur na het maken automatisch gewist.",
+       waitT: 'Je foto wordt klaargezet…', waitP: 'Een ogenblik: deze pagina ververst vanzelf.'},
+  en: {title: 'Your photo with the black hole', alt: 'Your photo, bent by a black hole', btn: 'Download photo',
+       hold: 'Download not working? Press and hold the photo and choose "Save".', left: 'This photo will be deleted automatically in about {h} hours.',
+       goneT: 'This photo is no longer available', goneP: 'Photos are deleted automatically 24 hours after they are taken.',
+       waitT: 'Preparing your photo…', waitP: 'One moment: this page refreshes by itself.'},
+  fr: {title: 'Votre photo avec le trou noir', alt: 'Votre photo, déviée par un trou noir', btn: 'Télécharger la photo',
+       hold: 'Le téléchargement ne fonctionne pas ? Appuyez longuement sur la photo et choisissez « Enregistrer ».', left: 'Cette photo sera effacée automatiquement dans environ {h} heures.',
+       goneT: "Cette photo n'est plus disponible", goneP: 'Les photos sont effacées automatiquement 24 heures après avoir été prises.',
+       waitT: 'Préparation de votre photo…', waitP: 'Un instant : cette page se rafraîchit toute seule.'},
+  de: {title: 'Dein Foto mit dem Schwarzen Loch', alt: 'Dein Foto, abgelenkt durch ein Schwarzes Loch', btn: 'Foto herunterladen',
+       hold: 'Herunterladen klappt nicht? Halte das Foto gedrückt und wähle „Speichern“.', left: 'Dieses Foto wird in etwa {h} Stunden automatisch gelöscht.',
+       goneT: 'Dieses Foto ist nicht mehr verfügbar', goneP: 'Fotos werden 24 Stunden nach der Aufnahme automatisch gelöscht.',
+       waitT: 'Dein Foto wird vorbereitet…', waitP: 'Einen Moment: Diese Seite lädt sich von selbst neu.'}
+};
+function pickLang(req, url){
+  for (const part of (req.headers.get('Accept-Language') || '').split(',')) {
+    const l = part.trim().slice(0, 2).toLowerCase();
+    if (PAGE_TEXT[l]) return l;
+  }
+  const q = (url.searchParams.get('l') || '').toLowerCase();
+  return PAGE_TEXT[q] ? q : 'nl';
+}
+
+function page(state, id, age, lang){
+  const T = PAGE_TEXT[lang] || PAGE_TEXT.nl;
+  const head = '<!doctype html><html lang="' + lang + '"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">' +
     (state === 'wait' ? '<meta http-equiv="refresh" content="3">' : '') +
-    '<title>Je foto met het zwarte gat</title><style>' +
+    '<title>' + T.title + '</title><style>' +
     'body{margin:0;background:#0b0718;color:#f3ecff;font:17px/1.45 "Helvetica Neue",Arial,system-ui,sans-serif;text-align:center}' +
     'main{max-width:640px;margin:0 auto;padding:20px 16px 32px}h1{font-size:1.4rem;margin:8px 0 16px}' +
     'img{width:100%;height:auto;border-radius:14px;display:block;background:#000}' +
     'a.btn{display:inline-block;margin:18px 0 10px;padding:14px 22px;border-radius:14px;background:#ff6c9c;color:#1b0f2c;font-weight:700;text-decoration:none}' +
     'p{color:#c3b6e0;margin:6px 0}</style></head><body><main>';
-  if (state === 'gone') return head + '<h1>Deze foto is niet meer beschikbaar</h1><p>Foto\'s worden 24 uur na het maken automatisch gewist.</p></main></body></html>';
-  if (state === 'wait') return head + '<h1>Je foto wordt klaargezet…</h1><p>Een ogenblik: deze pagina ververst vanzelf.</p></main></body></html>';
+  if (state === 'gone') return head + '<h1>' + T.goneT + '</h1><p>' + T.goneP + '</p></main></body></html>';
+  if (state === 'wait') return head + '<h1>' + T.waitT + '</h1><p>' + T.waitP + '</p></main></body></html>';
   const left = Math.max(1, Math.round((KEEP_MS - age)/3600000));
-  return head + '<h1>Je foto met het zwarte gat</h1>' +
-    '<img src="/f/' + id + '.jpg" alt="Je foto, afgebogen door een zwart gat">' +
-    '<a class="btn" href="/f/' + id + '.jpg?download=1">Foto downloaden</a>' +
-    '<p>Lukt downloaden niet? Houd de foto ingedrukt en kies "Bewaar".</p>' +
-    '<p>Deze foto wordt over ongeveer ' + left + ' uur automatisch gewist.</p></main></body></html>';
+  return head + '<h1>' + T.title + '</h1>' +
+    '<img src="/f/' + id + '.jpg" alt="' + T.alt + '">' +
+    '<a class="btn" href="/f/' + id + '.jpg?download=1">' + T.btn + '</a>' +
+    '<p>' + T.hold + '</p>' +
+    '<p>' + T.left.replace('{h}', left) + '</p></main></body></html>';
 }
