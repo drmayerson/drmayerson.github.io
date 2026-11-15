@@ -32,7 +32,6 @@ p{margin:0;color:var(--soft);max-width:62ch}
 .langs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 section{display:flex;flex-direction:column;gap:18px}
 .sec-head{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.kicker{font-family:var(--mono);font-weight:600;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 a.card{display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:14px;background:var(--panel);border:1px solid var(--line);color:inherit;text-decoration:none;min-width:0;transition:border-color .15s,transform .15s}
 a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
@@ -65,31 +64,17 @@ html[lang="en"] body [lang="nl"],html[lang="nl"] body [lang="en"]{display:none!i
     </div>
   </header>
 
-  <section aria-labelledby="gw">
+  <section aria-labelledby="outreach">
     <div class="sec-head">
       <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-      <span class="kicker">Leuven Gravity Institute</span>
-      <h2 id="gw"><span lang="en">Gravitational waves and the Einstein Telescope</span><span lang="nl">Zwaartekrachtgolven en de Einstein Telescope</span></h2>
-      <p><span lang="en">Explainers, games and demos about gravitational waves, black holes and the Einstein Telescope.</span><span lang="nl">Uitleg, spelletjes en demo's over zwaartekrachtgolven, zwarte gaten en de Einstein Telescope, vanuit het Leuven Gravity Institute.</span></p>
-      <p class="wip" role="note"><span class="wip-tag"><span lang="en">Work in progress</span><span lang="nl">In opbouw</span></span> <span lang="en">These projects are still being developed. They may change and may still contain bugs.</span><span lang="nl">Deze projecten zijn nog volop in ontwikkeling. Ze kunnen nog veranderen en er kunnen nog foutjes in zitten.</span></p>
+      <h2 id="outreach"><span lang="en">Outreach projects</span><span lang="nl">Outreachprojecten</span></h2>
+      <p><span lang="en">Finished demos and tools about gravitational waves and black holes, ready to use at a stand or in class.</span><span lang="nl">Afgewerkte demo's en tools over zwaartekrachtgolven en zwarte gaten, klaar voor gebruik op een stand of in de klas.</span></p>
     </div>
     <div class="grid">
-      <a class="card" href="twee-zwarte-gaten/">
+      <a class="card" href="foort-gpu/">
         <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">You are two black holes</span><span lang="nl">Jullie zijn twee zwarte gaten</span></h3>
-        <p><span lang="en">Circle two coloured balls around each other and watch the gravitational waves you make, live, all the way to the merger. For visitors from about eight, with a webcam, a touch screen or in demo mode.</span><span lang="nl">Draai samen met twee gekleurde ballen rond elkaar en zie live de zwaartekrachtgolven die jullie maken, tot de samensmelting. Voor bezoekers vanaf een jaar of acht, met webcam, aanraakscherm of in demomodus.</span></p>
-        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
-      </a>
-      <a class="card" href="et-horizon/">
-        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">ET horizon: the universe in layers</span><span lang="nl">ET-horizon: het heelal in lagen</span></h3>
-        <p><span lang="en">Zoom out from the Milky Way to the whole universe and discover what you see in light, and what you can only hear with gravitational waves. Works best on a tablet or a large screen.</span><span lang="nl">Zoom uit van de Melkweg tot het hele heelal en ontdek wat je ziet in licht en wat je alleen hoort met zwaartekrachtgolven. Werkt het best op een tablet of groot scherm.</span></p>
-        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
-      </a>
-      <a class="card" href="arm-op-resonantie/">
-        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">Keeping a 10 km arm on resonance</span><span lang="nl">Een arm van 10 km op resonantie houden</span></h3>
-        <p><span lang="en">An animated simulation of how the Einstein Telescope uses feedback to hold its mirrors in place, up to a gravitational wave passing through the whole detector. With a zoom to the real scale, for curious minds from secondary school.</span><span lang="nl">Een bewegende simulatie van hoe de Einstein Telescope zijn spiegels met terugkoppeling op hun plaats houdt, tot een passerende zwaartekrachtgolf in de hele detector. Met een zoom naar de echte schaal, voor nieuwsgierigen vanaf het middelbaar.</span></p>
+        <h3><span lang="en">FOORT-GPU: black holes and fuzzballs</span><span lang="nl">FOORT-GPU: zwarte gaten en fuzzballs</span></h3>
+        <p><span lang="en">A scientific ray tracer in your browser: an accretion disc around a spinning black hole or around a fuzzball from string theory, computed live on your graphics card. For those who want the details, with all of FOORT's parameters.</span><span lang="nl">Een wetenschappelijke ray tracer in je browser: een accretieschijf rond een draaiend zwart gat of rond een fuzzball uit de snaartheorie, live berekend op je grafische kaart. Voor wie de details wil, met alle parameters van FOORT (in het Engels).</span></p>
         <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
       </a>
       <a class="card" href="bh-camera/">
@@ -98,16 +83,44 @@ html[lang="en"] body [lang="nl"],html[lang="nl"] body [lang="en"]{display:none!i
         <p><span lang="en">See yourself through a spinning black hole: your camera image is bent live, exactly as general relativity predicts. For curious minds from about ten, with a webcam or a sample image.</span><span lang="nl">Bekijk jezelf door een draaiend zwart gat: je camerabeeld wordt live afgebogen, precies zoals de algemene relativiteitstheorie voorspelt. Voor nieuwsgierigen vanaf een jaar of tien, met webcam of met een voorbeeldbeeld.</span></p>
         <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
       </a>
-      <a class="card" href="ruimtetijd-lachspiegel/">
-        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">Spacetime funhouse mirror</span><span lang="nl">Ruimtetijd-lachspiegel</span></h3>
-        <p><span lang="en">See yourself stretched and squeezed by a gravitational wave, hugely exaggerated, with a photo corner and then the real numbers: your height changes by less than a millionth of a proton. For visitors from about eight, with a webcam, a photo or in demo mode.</span><span lang="nl">Zie jezelf uitgerekt en samengedrukt door een zwaartekrachtgolf, sterk overdreven, met een fotohoek en daarna de echte cijfers: je lengte verandert met nog geen miljoenste van een proton. Voor bezoekers vanaf een jaar of acht, met webcam, een foto of in demomodus.</span></p>
-        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
-      </a>
+    </div>
+  </section>
+
+  <section aria-labelledby="wip">
+    <div class="sec-head">
+      <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
+      <h2 id="wip"><span lang="en">Projects in progress</span><span lang="nl">Projecten in ontwikkeling</span></h2>
+      <p class="wip" role="note"><span class="wip-tag"><span lang="en">Work in progress</span><span lang="nl">In opbouw</span></span> <span lang="en">These projects are still being developed. They may change and may still contain bugs.</span><span lang="nl">Deze projecten zijn nog volop in ontwikkeling. Ze kunnen nog veranderen en er kunnen nog foutjes in zitten.</span></p>
+    </div>
+    <div class="grid">
       <a class="card" href="chirp-karaoke/">
         <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
         <h3><span lang="en">Chirp karaoke</span><span lang="nl">Chirp-karaoke</span></h3>
         <p><span lang="en">Sing a rising "whoop" into the microphone and a matched filter finds which pair of neutron stars or black holes sounds most like you, and how far away LIGO and the Einstein Telescope could hear it. With a microphone or a sample chirp, in Dutch, English and French.</span><span lang="nl">Zing een stijgende woeoep in de microfoon en een matched filter zoekt welk paar neutronensterren of zwarte gaten het meest klinkt zoals jij, en tot hoe ver LIGO en de Einstein Telescope het zouden horen. Met microfoon of een voorbeeldchirp, in het Nederlands, Engels en Frans.</span></p>
+        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
+      </a>
+      <a class="card" href="et-horizon/">
+        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
+        <h3><span lang="en">ET horizon: the universe in layers</span><span lang="nl">ET-horizon: het heelal in lagen</span></h3>
+        <p><span lang="en">Zoom out from the Milky Way to the whole universe and discover what you see in light, and what you can only hear with gravitational waves. Works best on a tablet or a large screen.</span><span lang="nl">Zoom uit van de Melkweg tot het hele heelal en ontdek wat je ziet in licht en wat je alleen hoort met zwaartekrachtgolven. Werkt het best op een tablet of groot scherm.</span></p>
+        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
+      </a>
+      <a class="card" href="heelal-samen-meten/">
+        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
+        <h3><span lang="en">Measuring the expansion of the universe</span><span lang="nl">De uitdijing van het heelal meten</span></h3>
+        <p><span lang="en">Each visitor catches one collision: its loudness gives the distance, its host galaxy the redshift. All the points together build a Hubble diagram that gets sharper through the day. Will the crowd pick 67 or 73? For LIGO–Virgo and the Einstein Telescope.</span><span lang="nl">Elke bezoeker vangt één botsing: uit de luidheid volgt de afstand, uit het sterrenstelsel de roodverschuiving. Alle stippen samen vormen een Hubble-diagram dat de hele dag scherper wordt. Kiest het publiek tussen 67 en 73? Voor LIGO–Virgo en de Einstein Telescope.</span></p>
+        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
+      </a>
+      <a class="card" href="arm-op-resonantie/">
+        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
+        <h3><span lang="en">Keeping a 10 km arm on resonance</span><span lang="nl">Een arm van 10 km op resonantie houden</span></h3>
+        <p><span lang="en">An animated simulation of how the Einstein Telescope uses feedback to hold its mirrors in place, up to a gravitational wave passing through the whole detector. With a zoom to the real scale, for curious minds from secondary school.</span><span lang="nl">Een bewegende simulatie van hoe de Einstein Telescope zijn spiegels met terugkoppeling op hun plaats houdt, tot een passerende zwaartekrachtgolf in de hele detector. Met een zoom naar de echte schaal, voor nieuwsgierigen vanaf het middelbaar.</span></p>
+        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
+      </a>
+      <a class="card" href="ruimtetijd-lachspiegel/">
+        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
+        <h3><span lang="en">Spacetime funhouse mirror</span><span lang="nl">Ruimtetijd-lachspiegel</span></h3>
+        <p><span lang="en">See yourself stretched and squeezed by a gravitational wave, hugely exaggerated, with a photo corner and then the real numbers: your height changes by less than a millionth of a proton. For visitors from about eight, with a webcam, a photo or in demo mode.</span><span lang="nl">Zie jezelf uitgerekt en samengedrukt door een zwaartekrachtgolf, sterk overdreven, met een fotohoek en daarna de echte cijfers: je lengte verandert met nog geen miljoenste van een proton. Voor bezoekers vanaf een jaar of acht, met webcam, een foto of in demomodus.</span></p>
         <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
       </a>
       <a class="card" href="zwart-gat-piano/">
@@ -116,26 +129,19 @@ html[lang="en"] body [lang="nl"],html[lang="nl"] body [lang="en"]{display:none!i
         <p><span lang="en">Play the piano on a giant black hole: a stellar binary close to the light ring makes the black hole sing along on its own notes. Find the hidden notes of a mystery black hole and work out its mass and spin. Inspired by Santos, Cardoso et al. (2026), touch screen only, no extra props.</span><span lang="nl">Speel piano op een reuzezwart gat: een sterrenpaar vlak bij de lichtring laat het zwarte gat meezingen op zijn eigen tonen. Vind de verborgen tonen van een geheim zwart gat en ontdek zijn massa en draaiing. Geïnspireerd op Santos, Cardoso et al. (2026), met aanraakscherm, zonder extra materiaal.</span></p>
         <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
       </a>
-      <a class="card" href="heelal-samen-meten/">
+      <a class="card" href="twee-zwarte-gaten/">
         <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">Measuring the universe together</span><span lang="nl">Samen het heelal opmeten</span></h3>
-        <p><span lang="en">Each visitor catches one collision: its loudness gives the distance, its host galaxy the redshift. All the points together build a Hubble diagram that gets sharper through the day. Will the crowd pick 67 or 73? For LIGO–Virgo and the Einstein Telescope.</span><span lang="nl">Elke bezoeker vangt één botsing: uit de luidheid volgt de afstand, uit het sterrenstelsel de roodverschuiving. Alle stippen samen vormen een Hubble-diagram dat de hele dag scherper wordt. Kiest het publiek tussen 67 en 73? Voor LIGO–Virgo en de Einstein Telescope.</span></p>
-        <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
-      </a>
-      <a class="card" href="foort-gpu/">
-        <svg class="wave" aria-hidden="true"><use href="#wv"/></svg>
-        <h3><span lang="en">FOORT-GPU: black holes and fuzzballs</span><span lang="nl">FOORT-GPU: zwarte gaten en fuzzballs</span></h3>
-        <p><span lang="en">A scientific ray tracer in your browser: an accretion disc around a spinning black hole or around a fuzzball from string theory, computed live on your graphics card. For those who want the details, with all of FOORT's parameters.</span><span lang="nl">Een wetenschappelijke ray tracer in je browser: een accretieschijf rond een draaiend zwart gat of rond een fuzzball uit de snaartheorie, live berekend op je grafische kaart. Voor wie de details wil, met alle parameters van FOORT (in het Engels).</span></p>
+        <h3><span lang="en">You are two black holes</span><span lang="nl">Jullie zijn twee zwarte gaten</span></h3>
+        <p><span lang="en">Circle two coloured balls around each other and watch the gravitational waves you make, live, all the way to the merger. For visitors from about eight, with a webcam, a touch screen or in demo mode.</span><span lang="nl">Draai samen met twee gekleurde ballen rond elkaar en zie live de zwaartekrachtgolven die jullie maken, tot de samensmelting. Voor bezoekers vanaf een jaar of acht, met webcam, aanraakscherm of in demomodus.</span></p>
         <span class="go"><span lang="en">Open →</span><span lang="nl">Bekijken →</span></span>
       </a>
     </div>
   </section>
 
-  <section aria-labelledby="fun">
+  <section aria-labelledby="other">
     <div class="sec-head">
       <div class="bow" aria-hidden="true"></div>
-      <h2 id="fun"><span lang="en">Games and small projects</span><span lang="nl">Spelletjes en projectjes</span></h2>
-      <p><span lang="en">Little things we made at home, to practise and to play with.</span><span lang="nl">Kleine dingen die we thuis maakten, om mee te oefenen en te spelen.</span></p>
+      <h2 id="other"><span lang="en">Other projects</span><span lang="nl">Andere projecten</span></h2>
     </div>
     <div class="grid">
       <a class="card" href="eenhoornrace/">
