@@ -97,25 +97,22 @@ body.idle,body.idle canvas{cursor:none}
 .indent{padding-left:26px}
 input[type=url],input[type=password]{font:inherit;width:100%;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:40px}
 /* settings panel */
-.panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:4;
-  width:min(390px,calc(100vw - 24px));max-height:calc(100vh - 44px - var(--logo-h));overflow:auto;background:var(--panel);border:1px solid var(--line);
+/* the gear stays in the corner; the panel opens just above it, so tapping the gear again closes it */
+.gear{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:5;
+  width:44px;height:44px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;
+  background:rgba(10,8,20,.5);opacity:.5}
+.gear svg{width:22px;height:22px}
+.gear:hover,.gear:focus-visible,.gear[aria-expanded=true]{opacity:1}
+.gear[aria-expanded=true]{background:var(--panel);border-color:var(--accent)}
+.panel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 52px);z-index:4;
+  width:min(390px,calc(100vw - 24px));max-height:calc(100vh - 96px - var(--logo-h));overflow:auto;background:var(--panel);border:1px solid var(--line);
   border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(6px)}
 /* the head row stays at the top while the settings scroll */
 .row-head{display:flex;justify-content:space-between;align-items:center;gap:8px;position:sticky;top:-14px;z-index:2;
   margin:-14px -16px 0;padding:14px 16px 10px;background:rgba(14,10,30,.97);border-radius:18px 18px 0 0;border-bottom:1px solid var(--line)}
-.panel.hidden .row-head{position:static;margin:0;padding:0;background:transparent;border:0}
 .row-head strong{font-family:var(--display);font-weight:500;font-size:.95rem;letter-spacing:.08em;text-transform:uppercase}
-#toggle{display:flex;align-items:center;gap:6px}
-#toggle svg{width:22px;height:22px;display:none}
-/* hidden: only a small round gear button remains */
-body.nologo .panel{max-height:calc(100vh - 24px)}
-.panel.hidden{width:auto;padding:0;gap:0;background:transparent;border:0;backdrop-filter:none;overflow:visible}
-.panel.hidden>*:not(.row-head){display:none}
-.panel.hidden .row-head strong{display:none}
-.panel.hidden #toggle{width:44px;height:44px;min-height:0;padding:0;justify-content:center;border-radius:50%;background:rgba(10,8,20,.5);opacity:.5}
-.panel.hidden #toggle:hover,.panel.hidden #toggle:focus-visible{opacity:1}
-.panel.hidden #toggle svg{display:block}
-.panel.hidden .tog-text{display:none}
+body.nologo .panel{max-height:calc(100vh - 76px)}
+.panel.hidden{display:none}
 .langs{display:flex;gap:6px}
 .vlangs{position:fixed;top:max(14px,env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px));z-index:3}
 .vlangs[hidden]{display:none}
@@ -253,13 +250,13 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
   <button id="bannerCancel" data-t="cancel" hidden>Annuleren</button>
 </div>
 
+<button class="gear" id="gear" aria-expanded="true" aria-controls="panel" aria-label="Instellingen tonen" title="Instellingen tonen">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>
+</button>
 <div class="panel" id="panel">
   <div class="row-head">
     <strong data-t="settings">Instellingen</strong>
-    <button id="toggle" aria-expanded="true" aria-controls="panel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.6"/></svg>
-      <span class="tog-text" data-t="hide">Verbergen</span>
-    </button>
+    <button id="toggle" aria-controls="panel" data-t="hide">Verbergen</button>
   </div>
   <div class="langs" role="group" aria-label="Taal" data-t-attr="aria-label:lang">
     <button data-lang="nl" aria-pressed="true">NL</button><button data-lang="en" aria-pressed="false">EN</button><button data-lang="fr" aria-pressed="false">FR</button><button data-lang="de" aria-pressed="false">DE</button>
@@ -1541,17 +1538,18 @@ function updateDock(){
 }
 function setPanelHidden(hide){
   panel.classList.toggle('hidden', hide);
-  const tg = el('toggle');
-  tg.setAttribute('aria-expanded', String(!hide));
-  if (hide) { tg.setAttribute('aria-label', t('showSettings')); tg.title = t('showSettings'); }
-  else { tg.removeAttribute('aria-label'); tg.removeAttribute('title'); panelTouched(); }
+  const g = el('gear'), label = t(hide ? 'showSettings' : 'hide');
+  g.setAttribute('aria-expanded', String(!hide)); g.setAttribute('aria-label', label); g.title = label;
+  if (!hide) panelTouched();
   updateDock();
 }
-el('toggle').addEventListener('click', () => {
+// the gear opens and closes (so a double tap opens and closes again); "Verbergen" closes
+el('gear').addEventListener('click', () => {
   const hidden = panel.classList.contains('hidden');
   if (hidden && pinActive()) { openPinPad(); return; }   // locked: ask for the PIN first
   setPanelHidden(!hidden); save();
 });
+el('toggle').addEventListener('click', () => { setPanelHidden(true); save(); });
 // arrows at the right edge: one step per tap, repeating while held (touch screen or mouse)
 const STEP = {spin: 0.1, mass: 0.5};
 function nudge(what, dir){
