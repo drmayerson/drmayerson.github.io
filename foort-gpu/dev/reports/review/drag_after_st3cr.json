@@ -1,0 +1,40 @@
+{
+ "label": "after",
+ "metric": "st3cr",
+ "date": "2026-11-14T21:52:32.738Z",
+ "rows": [
+  {
+   "pass": "warm-up",
+   "runs": 133,
+   "status": "tracing: stride 8, tile 1/1",
+   "previews": 46,
+   "seconds": 3.0410999999940396,
+   "lastStride": 8,
+   "lastMs": 443.29999999701977,
+   "gpuMedian": 46.40172,
+   "N": 512,
+   "strideFrames": {
+    "4": 11,
+    "8": 107
+   },
+   "fps": 15.126105685472414,
+   "previewRes": 64
+  },
+  {
+   "pass": "measured",
+   "runs": 250,
+   "status": "preview (stride 8, draft); release to refine",
+   "previews": 47,
+   "seconds": 3.0715,
+   "lastStride": 8,
+   "lastMs": 0.29999999701976776,
+   "gpuMedian": 46.47788,
+   "N": 512,
+   "strideFrames": {
+    "8": 116
+   },
+   "fps": 15.30196972163438,
+   "previewRes": 64
+  }
+ ]
+}

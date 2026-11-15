@@ -6,7 +6,7 @@
 import { CLOSED_FORMS } from './metrics/closedForm.js';
 import { tierSettings, pickTier, TIERS, TIER_LABELS, NORMAL_TRACED, TIER_TARGET_S } from './gpu/tiers.js';
 import { createBackend } from './gpu/backend.js';
-import { TracePipeline, finalLevels } from './gpu/pipeline.js';
+import { TracePipeline, finalLevels, rateKey } from './gpu/pipeline.js';
 import { gpuTraceSetup, tableSpec, fluidSpec } from './gpu/traceConfig.js';
 import { BakeClient } from './bake/client.js';
 import { metricEntry, paramBounds, createMetric } from './metrics/registry.js';
@@ -85,6 +85,10 @@ export function viewFromState(s, coarseTables = false, autoTier = 'high') {
  * (0 when the normal panel's "time-averaged" is on).
  * @param {Record<string, any>} s @param {number} tObs @param {number} M @returns {import('./gpu/backend.js').DisplayTime}
  */
+/** review P3: wall-time budget of one drag preview (ms): 30 previews per second */
+const PREVIEW_MS = 33;
+/** the same from the GPU timer queries (ms): the display shares the frame */
+const PREVIEW_GPU_MS = 20;
 export const timeFromState = (s, tObs, M) => ({ tObs, slow: !!s.slowLight, M, advect: s.advect ? s.advectD : 0, sigma: s.timeAvg ? 0 : s.sigmaN });
 
 /** @param {Record<string, any>} s @returns {import('./fluid/emission.js').EmissionParams} */
@@ -193,7 +197,8 @@ async function main() {
   const useNoise = async (name) => {
     if (name === noiseName) return;
     const f = await ensureNoise(name);
-    if (f) { backend.uploadNoise(f, name); noise = f; noiseName = name; }
+    // a slow download may finish after the state asked for another field (review P4: the first one is not awaited)
+    if (f && name === wantedNoise()) { backend.uploadNoise(f, name); noise = f; noiseName = name; }
   };
 
   // B7 compare: the panel edits one side; the other side's own settings wait in `stash`
@@ -211,8 +216,10 @@ async function main() {
   let liveSide = /** @type {'A'|'B'|null} */ (null);
   let blinkManual = /** @type {'A'|'B'|null} */ (null);
 
-  stage('loading the noise field…');
-  await useNoise(wantedNoise());
+  // review P4: the first image does not wait for the noise field (8 MB): it is traced and shown time-averaged while the
+  // field downloads, and the flicker starts when it arrives (refreshNoise below, once the viewer is built)
+  let noiseLoading = true;
+  const firstNoise = useNoise(wantedNoise());
   /** observer time t_obs in units of M */
   let tObs = 0;
 
@@ -387,6 +394,13 @@ async function main() {
   const autoPredicted = /** @type {Record<string, Record<string, number>>} */ ({});
   const autoProbe = /** @type {Record<string, {ms: Partial<Record<import('./gpu/tiers.js').Tier, number>>, rays: number}>} */ ({});
   let tierNow = /** @type {string} */ ('high');
+  // review P4: the probe timings are remembered per GPU, so a second visit runs no probe traces (bump the version when
+  // the tiers change)
+  const PROBE_KEY = () => `foort-gpu:probe:v1:${backend.capabilities().renderer}`;
+  try { Object.assign(autoProbe, JSON.parse(localStorage.getItem(PROBE_KEY()) ?? '{}')); } catch { /* none */ }
+  const saveProbes = () => { try { localStorage.setItem(PROBE_KEY(), JSON.stringify(autoProbe)); } catch { /* not available */ } };
+  /** probe runs this visit (tests) */
+  let probes = 0;
   /**
    * Probe traces of the current view at 64^2 for each tier (in the background record set, twice: the first compiles),
    * scaled to the full image: the highest tier within E1's target (B6, plan 1.2).
@@ -394,6 +408,7 @@ async function main() {
    */
   const probeTier = async (mode, s) => {
     const n = 64;
+    probes++;
     /** @type {Partial<Record<import('./gpu/tiers.js').Tier, number>>} */
     const ms = {};
     for (const t of TIERS) {
@@ -414,7 +429,8 @@ async function main() {
       } catch (e) { console.warn('tier probe failed:', e); return null; }
     }
     autoProbe[mode] = { ms, rays: n * n };
-    return pickTier(ms, n * n, s.N * s.N * (1 + 1 / 16), mode);
+    saveProbes();
+    return autoProbe[mode];
   };
   /** predicted full trace (s) of a state on this device, from the probe of its mode (null: not probed) @param {Record<string, any>} s */
   const predictS = (s) => {
@@ -423,6 +439,44 @@ async function main() {
     const ms = pr?.ms[/** @type {import('./gpu/tiers.js').Tier} */ (t)];
     return ms === undefined ? null : (ms * s.N * s.N * (1 + 1 / 16)) / pr.rays / 1000;
   };
+  /**
+   * Review P3: the preview stride. The GPU time of a preview (timer queries; else its wall time, which Chrome quantizes to
+   * about a frame while the page draws) is remembered per kind of trace (rate key) and resolution, with the rates, per
+   * GPU. The finest resolution measured within budget wins (GPU time 20 ms: room for the display in a 30 fps frame; wall
+   * time 33 ms), and the next finer one is tried once when 4x the measurement is within 1.5x the budget. Unmeasured:
+   * 128^2. Full resolution live on a fast GPU.
+   */
+  const previewKey = (/** @type {any} */ setup, /** @type {number} */ res, /** @type {boolean} */ gpu) => `preview${gpu ? 'gpu' : 'wall'}|${rateKey(setup)}|${res}`;
+  /** @param {any} setup @param {number} res @returns {{ms:number, budget:number}|null} */
+  const previewCost = (setup, res) => {
+    const g = pipeline.rateMs.get(previewKey(setup, res, true));
+    if (g !== undefined) return { ms: g, budget: PREVIEW_GPU_MS };
+    const w = pipeline.rateMs.get(previewKey(setup, res, false));
+    return w !== undefined ? { ms: w, budget: PREVIEW_MS } : null;
+  };
+  const previewStride = (/** @type {any} */ setup, /** @type {number} */ N) => {
+    const coarsest = Math.min(8, Math.max(1, N / 128));
+    // coarser (down to 64^2) when 128^2 is measured over budget (the fuzzball on a laptop GPU)
+    for (let st = coarsest; st < Math.min(8, Math.max(coarsest, N / 64)); st *= 2) {
+      const m = previewCost(setup, Math.ceil(N / st));
+      if (!m || m.ms <= m.budget) { if (st > coarsest) return st; break; }
+      if (2 * st >= Math.min(8, Math.max(coarsest, N / 64))) return 2 * st;
+    }
+    let pick = coarsest;
+    for (let st = coarsest; st >= 1; st /= 2) {
+      const m = previewCost(setup, Math.ceil(N / st));
+      if (!m) {
+        const mc = st < coarsest ? previewCost(setup, Math.ceil(N / (2 * st))) : null;
+        if (mc && 4 * mc.ms <= 1.5 * mc.budget) pick = st;
+        break;
+      }
+      if (m.ms > m.budget) break;
+      pick = st;
+    }
+    return pick;
+  };
+  /** @param {string} k @param {number} ms */
+  const notePreview = (k, ms) => { const old = pipeline.rateMs.get(k); pipeline.rateMs.set(k, old ? Math.sqrt(old * ms) : ms); };
   let runId = 0;
   let lastBake = '';
   /** @type {import('./fluid/fluidTable.js').FluidTable|null} */
@@ -449,9 +503,13 @@ async function main() {
       // quality tier (B6): 'auto' probes this device once per metric mode (before the first final trace)
       const mode = metricEntry(metricIdFromState(s)).mode;
       if (s.quality === 'auto' && final && !autoTiers[mode]) {
-        $('status').textContent = 'measuring this device (quality auto)…';
-        const pk = await probeTier(mode, s);
-        if (id !== runId) return null;
+        if (!autoProbe[mode]) {
+          $('status').textContent = 'measuring this device (quality auto)…';
+          await probeTier(mode, s);
+          if (id !== runId) return null;
+        }
+        const pr = autoProbe[mode];
+        const pk = pr ? pickTier(pr.ms, pr.rays, s.N * s.N * (1 + 1 / 16), mode) : null;
         if (pk) {
           autoTiers[mode] = pk.tier; autoPredicted[mode] = pk.predictedS;
           // B7 phone-safe resolution: when no tier fits the target and the link did not set N, halve it (down to 256)
@@ -477,11 +535,12 @@ async function main() {
           cameraNote = `camera moved out of the ergoregion to r = ${rM} M: a static camera needs g_tt < 0`;
         }
       }
-      const view = viewFromState(s, metricDrag, autoTiers[mode] ?? 'high');
+      // review P3: drag previews are traced at Normal (the draft tier; the final trace uses the chosen one)
+      const view = final ? viewFromState(s, metricDrag, autoTiers[mode] ?? 'high') : viewFromState({ ...s, quality: 'normal' }, metricDrag, 'normal');
       const ts = tableSpec(view);
       let tables;
       if (ts) {
-        $('status').textContent = 'baking metric tables…';
+        if (!bakes.cache.has(ts.key)) $('status').textContent = 'baking metric tables…';
         const bk = await bakes.get(ts);
         if (id !== runId) return null;   // superseded while baking
         tables = bk.tables;
@@ -492,11 +551,21 @@ async function main() {
       const fb = await bakes.get(fs);
       if (id !== runId) return null;
       setup = gpuTraceSetup(view, tables, fb.tables);
-      const levels = final ? finalLevels(s.N) : [Math.min(8, Math.max(1, s.N / 128))];
+      const levels = final ? finalLevels(s.N) : [previewStride(setup, s.N)];
       prog.levels = levels; prog.t0 = performance.now(); prog.on = final;
-      const st = await pipeline.trace(setup, { levels, measureSteps: final && state.ui === 'expert', final, keep: state.compare !== 'off' });
+      const st = await pipeline.trace(setup, { levels, measureSteps: final && state.ui === 'expert', final, keep: state.compare !== 'off', store: final || state.compare !== 'off' });
       if (!st) return null;
       if (final) saveRates();
+      // a superseded preview was still traced and drawn (the next one cancels only between tiles): count it
+      else {
+        previewsDone++; previewLast = { stride: levels[0], N: s.N, ms: st.wallMs };
+        if (!st.cached) {
+          const res = Math.ceil(s.N / levels[0]), su = setup;
+          if (st.wallLater) st.wallLater.then((w) => { if (w) notePreview(previewKey(su, res, false), w); });
+          else notePreview(previewKey(su, res, false), st.wallMs);
+          st.gpuLater?.then((g) => { if (g) { notePreview(previewKey(su, res, true), g); previewGpu.push(g); if (previewGpu.length > 64) previewGpu.shift(); } });
+        }
+      }
       return { st, setup, fluid: fb.tables, fluidKey: fs.key, levels };
     } catch (e) { $('status').textContent = String(/** @type {Error} */ (e).message); return null; }
   };
@@ -507,6 +576,10 @@ async function main() {
   let cameraNote = '';
   /** finished final traces (tests wait for the next one) */
   let finals = 0;
+  /** review P3: finished previews and the last one (benchmarks) */
+  let previewsDone = 0, previewLast = { stride: 0, N: 0, ms: 0 };
+  /** the GPU times of the last previews (ms, benchmarks) */
+  const previewGpu = /** @type {number[]} */ ([]);
   /**
    * @param {boolean} final @param {boolean} [metricDrag] coarse tables while a metric parameter is dragged
    * @param {boolean} [skipWarn] start a trace predicted above 15 s without asking (B7)
@@ -516,7 +589,7 @@ async function main() {
     cancelled = false;
     cameraNote = '';
     $('warnBox').hidden = true;
-    saveUrl(sideState('A'));
+    if (final) saveUrl(sideState('A')); else saveUrlSoon();   // previews: not on every drag frame (review P3)
     // B7: warn before a trace predicted above 15 s on this device
     const pred = final ? predictS(state) : null;
     if (final && !skipWarn && pred !== null && pred > 15) {
@@ -604,20 +677,21 @@ async function main() {
       for (const ns of neighbours) {
         if (id !== runId) return;
         try {
-          const view = viewFromState(ns, !!ns.metricDrag, autoTiers[metricEntry(metricIdFromState(ns)).mode] ?? 'high');
+          const view = viewFromState({ ...ns, quality: 'normal' }, !!ns.metricDrag, 'normal');
           const ts = tableSpec(view);
           const tables = ts ? (await bakes.get(ts)).tables : undefined;
           const fluid = (await bakes.get(fluidSpec(view))).tables;
           if (id !== runId) return;
           const s = gpuTraceSetup(view, tables, fluid);
-          await pipeline.trace(s, { levels: [Math.min(8, Math.max(1, state.N / 128))], measureSteps: false, background: true });
+          await pipeline.trace(s, { levels: [previewStride(s, state.N)], measureSteps: false, background: true });
         } catch (e) { console.warn('pre-trace failed:', e); }
       }
     }, 300);
   };
 
   /** load the field the state asks for (auto: by metric and lambda) and refresh what depends on it */
-  const refreshNoise = () => useNoise(wantedNoise()).then(() => { updateExposure(); $('clock').textContent = clockText(); legend(); requestDraw(); });
+  const noiseArrived = () => { updateExposure(); $('clock').textContent = clockText(); legend(); requestDraw(); };
+  const refreshNoise = () => useNoise(wantedNoise()).then(noiseArrived);
   const applyPanel = () => {
     $('uiToggle').textContent = state.ui === 'normal' ? 'Expert panel' : 'Normal panel';
     $('perfBox').hidden = state.ui === 'normal';
@@ -854,11 +928,12 @@ async function main() {
     updateLightCurve();
     requestAnimationFrame(animate);
   };
-  const clockText = () => `t = ${tObs.toFixed(1)} M${unitsNow() ? ` = ${formatDuration(tObs * /** @type {any} */ (unitsNow()).tS)}` : ''}${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light${state.timeAvg ? ', time-averaged' : ''}`;
+  const clockText = () => `t = ${tObs.toFixed(1)} M${unitsNow() ? ` = ${formatDuration(tObs * /** @type {any} */ (unitsNow()).tS)}` : ''}${noise ? ` (${noiseName}${state.noiseField === 'auto' ? ', auto' : ''}, period ${noise.meta.T_over_M} M; noise covers ${(100 * noiseCoverage).toFixed(1)}% of the emission)` : noiseLoading ? ' (noise field loading…)' : ' (no noise field)'}, ${state.slowLight ? 'slow' : 'fast'} light${state.timeAvg ? ', time-averaged' : ''}`;
   $('clock').textContent = clockText();
   requestAnimationFrame(animate);
 
   legend();
+  firstNoise.then(() => { noiseLoading = false; noiseArrived(); });
   await run(true);
 
   // test hook (Playwright): trace an arbitrary view and return the records
@@ -882,6 +957,10 @@ async function main() {
     /** the run counter (B7 tests: a display-only change starts no run) */
     runs: () => runId,
     noise: () => noise,
+    /** review P4: probe runs this visit, and the first noise field's arrival */
+    probes: () => probes,
+    previews: () => ({ done: previewsDone, ...previewLast, gpu: [...previewGpu] }),
+    noiseReady: () => firstNoise.then(() => true),
     /** set the observer time (units of M) and redraw */
     setTime(/** @type {number} */ t) { tObs = t; draw(); $('clock').textContent = clockText(); },
     /** @param {import('./gpu/traceConfig.js').ViewParams} view @param {{levels?:number[], adaptTiles?:boolean, measureSteps?:boolean, records?:boolean, cache?:boolean}} [o] */

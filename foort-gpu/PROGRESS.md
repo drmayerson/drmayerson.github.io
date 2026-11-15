@@ -1629,3 +1629,40 @@ The viewer's final traces of the default Kerr view, median of 5 (`dev/scripts/r2
 
 - Packages 4 (interactivity) and 5 (kiosk time precision) need no decisions.
 - Packages 7-8 (lay panel, layout) and P2, U2 and E7 need the user.
+
+## External review, packages 4-5 (2026-11-14)
+
+### Package 5: kiosk time precision (C5)
+
+- The display gets t mod T and the advection phase fract(t / D), computed in double precision.
+- **Test** (`review45.spec.js`): at t = 1e7 M, a 0.3 M step changes the frame, and the frame equals the one at the wrapped time. With the wrap undone, the test fails (the frames are identical). There is a unit test of `wrapTime` too.
+
+### Package 4: interactivity (P3, P4)
+
+**Drag previews** (`dev/scripts/r4Drag.mjs`: the inclination slider moved every animation frame for 3 s, 512² view; `dev/reports/review/drag_after_*.json`):
+
+| view | before | after |
+|---|---|---|
+| Kerr (default) | 0 previews finished while the input continued (128², each cancelled by the next frame's input) | 40 previews/s at 256² (GPU 19 ms each) |
+| fuzzball (default) | 0 | 15 previews/s at 64² (128² costs 214 ms of GPU time) |
+
+- **The review's target:** 256² at 30 fps or more for Kerr on this laptop, met. Before, a preview appeared only when the drag paused.
+- **Final traces unchanged:** Kerr 512² 159 / 134 ms wall / GPU, 2048² 2.0 s, fuzzball 1.5 s (package 2: 148 / 133 ms, 2.0 s, 1.7 s).
+
+**First image and probe:**
+- The first image is traced and shown while the noise field downloads. The test holds the download back until after "done", then releases it and the flicker starts.
+- A second visit runs no probe traces and picks the same tier (test).
+
+### Fixed along the way
+
+- **Background compile message:** a background trace's "compiling…" message overwrote "done" (pre-tracing now compiles the Normal program for previews). Background traces no longer write the status line.
+- **`readLinear`:** it read the first linear target of a side, which could be a stale one at another size. It now reads the last one drawn.
+
+### Tests
+
+- Vitest 159 and Playwright 51, in two clean runs; tsc clean.
+
+### Next, per the review
+
+- Package 6 (fluid parity, C6) and package 9 (expert tools) need no decisions.
+- Packages 7-8 (lay panel, layout) wait on the user, as do P2 (tier policy), U2 (Dutch) and E7 (physics options).

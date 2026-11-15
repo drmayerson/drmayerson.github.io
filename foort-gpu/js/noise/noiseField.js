@@ -136,3 +136,10 @@ export function sampleNoise(F, tau, x, phi) {
 export function noiseTexCoord(m, tau, x, phi) {
   return [phi / (2 * Math.PI) + 0.5 / m.Nphi, ((x - m.xmin) / (m.xmax - m.xmin) * (m.Nx - 1) + 0.5) / m.Nx, tau / m.T_over_M + 0.5 / m.Nt];
 }
+
+/**
+ * Review C5: t mod T in [0, T), in double precision (T <= 0: t unchanged). The field is periodic in T, so the display
+ * gets the wrapped time: float32 spacing at t = 1.7e6 M is 0.125 M, a day at the default speed.
+ * @param {number} t @param {number} T
+ */
+export const wrapTime = (t, T) => (T > 0 ? t - Math.floor(t / T) * T : t);

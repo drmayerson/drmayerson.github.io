@@ -443,3 +443,20 @@ non-trivial implementation choice.
   - **Levels:** made on first use; a trace frees the strides it does not use.
   - **Cache:** it takes the textures of a finished trace instead of copying them, and a restored view shows the cached textures directly. A freed entry that is still on screen is deleted when its level goes. Entries larger than half the budget are not cached, except compare sides.
 - 2026-11-11 — **Review packages 1-3 merged to main** (user: "Merge to main").
+
+## External review, packages 4-5
+
+- 2026-11-14 — **Packages 4 and 5 started** (user: "merge to main and go ahead with packages 4 and 5"). Main already held packages 1-3; nothing new in `foort-gpu/` to merge. P2 (tier policy) stays with the user, so the final trace's tier is unchanged.
+- 2026-11-14 — **C5, observer time:** the display uniform gets t mod T (T the noise period), and a new uniform gets the advection phase fract(t / D), both computed in double precision in JS. The shader rebuilds fract((t + Δt)/D) as fract(fract(t/D) + Δt/D). The clock, the light curve and video timing keep the unwrapped time. At t = 1e7 M a 0.3 M step now changes the frame (before: float32 rounds it away).
+- 2026-11-14 — **P3, drag previews:**
+  - **Tier:** previews are traced at Normal whatever the final tier (for the fuzzball Normal = High). Pre-tracing traces the same previews, so its cache entries still hit.
+  - **Root cause found:** a drag that sends an input every frame cancelled every preview. Previews of a kind with no remembered rate began with a probe tile, and the next input cancelled them between tiles. So none finished until the drag paused. The fuzzball (several tiles per preview) always hit this.
+  - **Fix, cancellation:** a preview no longer cancels a running preview. The newest one waits, and older waiting ones are dropped. Final traces still cancel everything.
+  - **Fix, one tile:** a preview whose known cost is under 100 ms is one tile. It is submitted without waiting for its fence, with at most two in flight. Chrome signals fences at frame boundaries, so waiting cost two frames per preview with the GPU idle in between.
+  - **Fix, other costs:** previews are looked up in the record cache but not stored in it (storing cost 20% of the rate). The URL is written 250 ms after a preview, not on every one.
+  - **Stride:** from the measured GPU time per preview resolution (budget 20 ms, room for the display in a 30 fps frame), or the service time where there are no timer queries (budget 33 ms). The next finer resolution is tried once when 4× the measurement fits 1.5× the budget. It goes down to 64² when 128² is over budget. Unmeasured: 128², as before.
+- 2026-11-14 — **P4, first image:** the noise field is no longer awaited. The first image is traced and shown time-averaged, and the flicker starts when the field arrives; the clock says "noise field loading…" meanwhile. A slow download that arrives after the state asked for another field is not installed.
+- 2026-11-14 — **P4, probe:** the tier probe's timings are stored per GPU in localStorage (`foort-gpu:probe:v1:<renderer>`; bump the version when the tiers change). A later visit picks the tier from them for the current N without probe traces. The phone-safe resolution rule applies as before.
+- 2026-11-14 — **P4, not done:**
+  - **Fluid table:** it is already cached per λ within a visit (the bake client's cache). Caching it across visits was left out.
+  - **8-bit noise:** it would halve the 8 MB download. It needs a new field format and a visual check, and with the download off the critical path the gain is smaller. Left for later.
