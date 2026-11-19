@@ -12,7 +12,7 @@
 :root{
   --ink:#090c14; --panel:#111626; --panel-2:#171d31; --line:#26304a;
   --fg:#e9edf6; --muted:#8e98b3; --voice:#ffb547; --tmpl:#62d6ff; --tgt:#8ff3ff; --et:#9b8cff; --ligo:#62d6ff;
-  --good:#7ee2a8; --warn:#ffcf6b;
+  --good:#7ee2a8; --warn:#ffcf6b; --c-gap:#ff8fb1;
   --f-display:"Avenir Next","Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
   --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --f-mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
@@ -132,6 +132,30 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font:400 13px var(--f-mono);font-variant-numeric:tabular-nums}
 .kv dt{color:var(--muted)} .kv dd{margin:0;color:var(--fg)}
 .hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+/* audience mode: counter panel + catalogue */
+.gcount{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:2px}
+#g-num{display:inline-block;transform-origin:left bottom;font:600 clamp(68px,9vw,128px)/0.9 var(--f-mono);color:var(--tgt);font-variant-numeric:tabular-nums;text-shadow:0 0 28px color-mix(in srgb,var(--tgt) 45%,transparent)}
+#g-unit{font:800 clamp(20px,2.4vw,30px)/1.1 var(--f-display)}
+@media (prefers-reduced-motion:no-preference){#g-num.bump{animation:bump .7s cubic-bezier(.2,.9,.3,1.3)} .gcat svg .pop{animation:pop .8s ease-out both}}
+@keyframes bump{0%{transform:scale(1.15);color:#fff}100%{transform:scale(1)}}
+@keyframes pop{0%{opacity:0;transform:translateY(-14px)}100%{opacity:1;transform:none}}
+.gstats{display:flex;gap:26px;flex-wrap:wrap}
+.gstats div{display:flex;flex-direction:column}
+.gstats b{font:500 30px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.gstats span{color:var(--muted);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.chip b{color:var(--fg);font:600 14px var(--f-mono)}
+.gcat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.gcat h3{margin:0;font:700 19px var(--f-display)}
+.gcat .sub{margin:0}
+.gscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.gcat .gscroll > svg{width:100%;min-width:660px;height:auto;display:block}
+.gleg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted)}
+.gleg span{display:inline-flex;align-items:center;gap:6px}
+.gleg svg{width:14px;height:14px;flex:none}
 </style>
 
 <div class="wrap">
@@ -160,6 +184,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
     <div class="choices">
       <button class="choice primary" id="go-kar" type="button"><b id="i-kar"></b><small id="i-karS"></small></button>
       <button class="choice" id="go-free" type="button"><b id="i-free"></b><small id="i-freeS"></small></button>
+      <button class="choice" id="go-grp" type="button"><b id="i-grp"></b><small id="i-grpS"></small></button>
     </div>
     <p class="board" id="i-board"></p>
     <p class="priv" id="i-priv"></p>
@@ -189,6 +214,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
           </div>
           <div class="deck">
             <button class="sing" id="sing" type="button"><span class="dot"></span><span><span id="t-hold"></span><small id="t-hold2"></small></span></button>
+            <button class="sing" id="g-listen" type="button" hidden><span class="dot"></span><span><span id="g-listenT"></span><small id="g-listenS"></small></span></button>
             <button class="btn" id="exBtn" type="button"></button>
             <label class="btn" for="file" id="upLbl"></label>
             <input class="hidden-input" type="file" id="file" accept="audio/*">
@@ -245,7 +271,29 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
             </div>
           </details>
         </section>
+
+        <section class="result" id="gpanel" aria-live="polite" hidden>
+          <div>
+            <p class="eyebrow" id="g-lead"></p>
+            <div class="gcount"><span id="g-num">0</span><span id="g-unit"></span></div>
+          </div>
+          <div class="gstats">
+            <div><b id="g-peak">0</b><span id="g-peakL"></span></div>
+            <div><b id="g-time">0:00</b><span id="g-timeL"></span></div>
+          </div>
+          <div class="chips" id="g-classes"></div>
+          <p class="line" id="g-last"></p>
+          <div class="plays"><button class="btn" id="g-reset" type="button"></button></div>
+          <p class="takeaway" id="g-take"></p>
+        </section>
       </main>
+
+      <section class="gcat" id="gcat" hidden>
+        <h3 id="g-catT"></h3>
+        <p class="sub" id="g-catS"></p>
+        <div class="gscroll"><svg id="g-svg" viewBox="0 0 1000 300" role="img"></svg></div>
+        <div class="gleg" id="g-leg"></div>
+      </section>
     </div>
   </section>
 
@@ -269,6 +317,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
           <li><b>Track fit (free-mode score):</b> leading-order (0PN) chirp <i>f(t) = (1/π)(5/256)<sup>3/8</sup>(G𝓜/c³)<sup>−5/8</sup>(t<sub>c</sub>−t)<sup>−3/8</sup></i>. For each t<sub>c</sub> on a grid, ln 𝓜 is solved by least squares in ln f; the best t<sub>c</sub> wins. Score = mean over frames of exp(−½(Δ/1 semitone)²).</li>
           <li><b>Karaoke score:</b> target = last 1.0 → 0.05 s of the 0PN chirp of the event (GW170817 at real speed; GW150914 with 𝓜/25). Mean over 10 ms target samples of exp(−½(Δ/2 semitones)²), unvoiced = 0; best over time shifts ±0.4 s and whole-octave shifts −2…+2.</li>
           <li><b>Coherent overlap (the real matched filter):</b> normalised, phase-maximised overlap of the raw audio with complex 0PN templates (amplitude ∝ f<sup>2/3</sup>), 𝓜 within ±15 % of the track fit. Shown here only.</li>
+          <li><b>Audience mode:</b> continuous; every 10 ms a Hann-windowed 90 ms spectrum (4096-point FFT). Each spectral peak 80–2000 Hz that stands ≥ 10 dB above the median level (and within 25 dB of its neighbours, to reject side lobes) is a candidate fundamental, scored by a weighted sum over 8 harmonics; the best is taken, its harmonic peaks are removed, and this repeats for up to 6 voices. Pitches are linked into tracks (−1…+2 semitones per frame, gaps ≤ 80 ms). A finished track counts as a merger if it is ≥ 0.3 s long, rises ≥ 3 semitones and its 0PN track-fit score is ≥ 55 %, unless it is mostly a whole multiple of another voice heard at the same time, or of a merger already counted. Synthetic audiences (16 overlapping whoops at 95–330 Hz, up to 4 at once): ≈ 90 % found with 𝓜 within 25 %, ≈ 1 detection per whoop (<code>dev/test-group.mjs</code>). “Most at once” is the largest number of counted chirps that overlap in time.</li>
           <li><b>Tape speed:</b> black-hole mode treats the voice as the wave sped up 25× in time and frequency together, so all masses scale by 25 (exact symmetry of vacuum GR; not exact for neutron-star matter).</li>
           <li><b>Masses:</b> the chirp measures 𝓜 only. Component masses are shown for q = 1 (m = 2<sup>1/5</sup>𝓜). Voice-frame 𝓜 is treated as source-frame. Classes: &lt; 1.0 M☉ each “lighter than any known neutron star”; 1.0–2.5 neutron stars; 2.5–5 mass gap; &gt; 5 black holes.</li>
           <li><b>Reach:</b> same definition and tables as ET-horizon: LIGO-Virgo-KAGRA network at measured O4 sensitivity and ET-D triangle, SNR ≥ 10, redshift where half of the sources (random sky position and orientation) are detected. Generated by <code>dev/gen-reach.mjs</code> from <code>et-horizon/index.html</code>; 𝓜 &lt; 1 extrapolated with SNR ∝ ((1+z)𝓜)<sup>5/6</sup>/D<sub>L</sub>, 𝓜 &gt; 120 with the mass dependence of the earlier PhenomA horizon. Planck 2018 cosmology. Above z = 20 the ET line says “before the first stars (formal limit)”.</li>
@@ -535,6 +584,128 @@ function targetSound(tg, sr=44100){
   const fStart=fOfTau(McV, tg.tauA), fStop=Math.min(tg.ns? fISCO(Mtot) : pa.fmerg, sr*0.45);
   return synthChirp({sr, Mc:McV, fStart, fStop, tStart:tg.t0, tail:0.15, ringdown: tg.ns? null : {fring:Math.min(pa.fring, sr*0.45), tauD:1/(Math.PI*pa.sigma)}});
 }
+
+/* ---------- Audience mode: many voices at once ----------
+   Every 10 ms: spectrum of the last 90 ms; harmonic sum for every spectral peak between 80 and 2000 Hz
+   taken as a fundamental; take the strongest voice, wipe its harmonics, repeat (at most maxVoices). Pitches are linked into tracks;
+   a track that has been silent for gapFrames is judged like a solo whoop: long enough, rising by minRise
+   semitones, and a 0PN chirp fit (fitTrack) scoring at least minScore. Harmonics of a lower voice and the
+   same voice found twice are not counted. */
+const GROUP = {win:0.09, fMin:80, fMax:2000, maxVoices:6, peakDb:14, f0Db:10, relDb:25, gapFrames:8, minPts:20, minDur:0.3, minRise:3, minScore:0.55, maxTrack:5, rows:160, absRms:0.0015};
+const G_WH = [1,0.8,0.65,0.55,0.45,0.4,0.35,0.3];
+function makeGroupDetector(sr, t0=0, opt={}){
+  const P = Object.assign({}, GROUP, opt);
+  // FFT of ~4096 points at 44.1/48 kHz (bins of ~11 Hz) whatever the window, so the bin widths below mean the same
+  const N = nextPow2(sr*0.085), L = Math.min(N, Math.round(sr*P.win)), hop = Math.round(sr*0.01), binHz = sr/N;
+  const K = Math.min(N/2-8, Math.ceil(6000/binHz));
+  const win = new Float64Array(L); for (let i=0;i<L;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(L-1));
+  const R = nextPow2(sr*4), ring = new Float32Array(R);
+  const re=new Float64Array(N), im=new Float64Array(N), db=new Float64Array(K+8), c=new Float64Array(K+8), isPk=new Uint8Array(K+8);
+  const kLo=Math.max(2,Math.round(60/binHz)), kHi=Math.min(K,Math.round(4000/binHz)), fl=new Float64Array(kHi-kLo);
+  const kF0a=Math.max(2,Math.floor(P.fMin/binHz)), kF0b=Math.min(K,Math.ceil(P.fMax/binHz));
+  const rowBin=new Float32Array(P.rows); for (let r=0;r<P.rows;r++) rowBin[r]=F_LO*Math.pow(F_HI/F_LO,(r+0.5)/P.rows)/binHz;
+  let total=0, pos=0, frame=0, last=t0, tracks=[], nextId=1; const recent=[];
+  const pk = k => { let b=k; if (c[k-1]>c[b]) b=k-1; if (c[k+1]>c[b]) b=k+1; return b; };
+  function push(x){ for (let i=0;i<x.length;i++) ring[(total+i)&(R-1)]=x[i]; total+=x.length; if (total-pos>R-N) pos=total-(R-N); }
+  function analyseFrame(){
+    let e=0; for (let i=0;i<L;i++){ const v=ring[(pos+i)&(R-1)]; e+=v*v; re[i]=v*win[i]; im[i]=0; }
+    re.fill(0,L); im.fill(0,L); fft(re,im);
+    for (let k=0;k<K+8;k++) db[k]=10*Math.log10(re[k]*re[k]+im[k]*im[k]+1e-20);
+    for (let k=kLo;k<kHi;k++) fl[k-kLo]=db[k]; fl.sort(); const floor=fl[fl.length>>1];
+    const out=[]; if (Math.sqrt(e/L)<P.absRms) return {out, floor};
+    for (let k=0;k<K+8;k++) c[k]=Math.max(0, db[k]-floor-6);
+    // real spectral peaks: local maxima not dwarfed by a much stronger peak next to them (window side lobes)
+    for (let k=1;k<K+7;k++){ let m=-1e9; if (db[k]>=db[k-1] && db[k]>db[k+1]) for (let j=Math.max(0,k-8);j<=Math.min(K+7,k+8);j++) if (db[j]>m) m=db[j]; isPk[k] = (m>-1e9 && db[k]>=m-25)? 1:0; }
+    // candidate pitches: the peaks themselves (the fundamental must be there), at their interpolated position
+    const cand=[]; for (let k=kF0a;k<=kF0b;k++) if (isPk[k] && c[k]>=P.f0Db-6){ const a=db[k-1], b=db[k], d=db[k+1], den=a-2*b+d; cand.push(k + (den<0? Math.max(-0.5,Math.min(0.5,0.5*(a-d)/den)) : 0)); }
+    // wipe one spectral peak near bin kc: from its top down to the valleys on both sides (at most 4 bins)
+    const wipe = (kc, w=1) => { let p=kc; for (let k=Math.max(1,kc-w);k<=Math.min(K+6,kc+w);k++) if (db[k]>db[p]) p=k; c[p]=0;
+      for (let k=p-1, j=0; k>0 && j<4 && db[k]<=db[k+1]; k--, j++) c[k]=0;
+      for (let k=p+1, j=0; k<K+7 && j<4 && db[k]<=db[k-1]; k++, j++) c[k]=0; return p; };
+    let top=-1e9;
+    for (let v=0, tries=0; v<P.maxVoices && tries<2*P.maxVoices; tries++){
+      let best=-1, bs=0;
+      for (const kb of cand){ if (c[Math.round(kb)]<P.f0Db-6) continue; // wiped by a voice found before
+        let s=0; for (let h=1;h<=8;h++){ const k=Math.round(h*kb); if (k>=K) break; s+=G_WH[h-1]*Math.max(c[k-1],c[k],c[k+1]); }
+        if (s>bs){ bs=s; best=kb; } }
+      if (best<0) break;
+      let kp=-1, hp=1; for (let h=1;h<=3;h++){ const k=Math.round(h*best); if (k>=K) break; const b=pk(k); if (kp<0||c[b]>c[kp]){ kp=b; hp=h; } }
+      if (kp<0 || c[kp]+6 < P.peakDb || db[kp] < top-P.relDb){ wipe(Math.round(best)); continue; }
+      top=Math.max(top, db[kp]);
+      const a=db[kp-1], b=db[kp], d=db[kp+1], den=a-2*b+d, dl = den<0? Math.max(-0.5,Math.min(0.5,0.5*(a-d)/den)) : 0;
+      const f=(kp+dl)*binHz/hp;
+      out.push({f, a:b-floor}); v++;
+      // wipe its harmonics, following the peaks upward so a small pitch error does not grow with h
+      for (let h=1, fh=f;;h++){ const kc=Math.round(h*fh/binHz); if (kc+2>=K) break; const p=wipe(kc, h<3?1:2); if (h>1 && Math.abs(p-h*fh/binHz)<1.5) fh=p*binHz/h; }
+    }
+    return {out, floor};
+  }
+  function rows(floor){ const o=new Float32Array(P.rows);
+    for (let r=0;r<P.rows;r++){ const b=rowBin[r], k=Math.floor(b), w=b-k; if (k+1>=K+8) continue; const v=(db[k]*(1-w)+db[k+1]*w-floor-3)/42; o[r]=v<0?0:v>1?1:v; }
+    return o; }
+  // Is track a a harmonic (or a copy) of track b? Over the frames they share, how often is f_a/f_b
+  // within 0.7 semitone of a whole number 1..8 (up=true) or of 1/2..1/8 (up=false)?
+  function harmonicOf(a, b, up){
+    const m=new Map(); for (const v of b) m.set(Math.round(v.t*100), v.f);
+    let n=0, hit=0;
+    for (const v of a){ const f=m.get(Math.round(v.t*100)); if (!f) continue; n++;
+      const r = up? v.f/f : f/v.f, k=Math.round(r); if (k>=1 && k<=8 && Math.abs(12*Math.log2(r/k))<0.7) hit++; }
+    return n >= 0.4*Math.min(a.length,b.length) && hit >= 0.5*n; }
+  function judge(tr){
+    const p=tr.pts, n=p.length; if (n<P.minPts) return null;
+    const dur=p[n-1].t-p[0].t; if (dur<P.minDur) return null;
+    const q=Math.max(3,Math.round(n*0.15)), med=a=>{ const s=a.map(v=>Math.log2(v.f)).sort((x,y)=>x-y); return s[s.length>>1]; };
+    const rise=12*(med(p.slice(-q))-med(p.slice(0,q))); if (rise<P.minRise) return null;
+    const fit=fitTrack(p); if (!(fit.score>=P.minScore)) return null;
+    // not a new merger: mostly a harmonic of another voice heard at the same moment, a harmonic of a lower
+    // voice still being followed, or a harmonic of (or below) one already counted
+    let nh=0; for (const v of p) if (v.h) nh++; if (nh > 0.5*n) return null;
+    for (const o of tracks) if (o!==tr && o.pts.length>=P.minPts/2 && o.f<tr.f && harmonicOf(p,o.pts,true)) return null;
+    for (const o of recent) if (harmonicOf(p,o.pts,true) || harmonicOf(p,o.pts,false)) return null;
+    const det={id:tr.id, t0:p[0].t, t1:p[n-1].t, Mc:fit.Mc, score:fit.score, rise, pts:p, fit};
+    recent.push(det); while (recent.length && recent[0].t1 < p[n-1].t-15) recent.shift();
+    return det;
+  }
+  function link(out, t){
+    const pairs=[];
+    for (let i=0;i<tracks.length;i++){ const tr=tracks[i], gap=frame-tr.lf;
+      for (let j=0;j<out.length;j++){ const st=12*Math.log2(out[j].f/tr.f); if (st<-1-0.5*gap || st>2+1.5*gap) continue; pairs.push([Math.abs(st-tr.slope*gap), i, j, st, gap]); } }
+    pairs.sort((a,b)=>a[0]-b[0]);
+    const ut=new Uint8Array(tracks.length), up=new Uint8Array(out.length);
+    // h: this pitch sits on a whole multiple (2..8) of another, lower pitch in the same frame
+    const hm = out.map(p => out.some(q => { const r=p.f/q.f, k=Math.round(r); return k>=2 && k<=8 && Math.abs(12*Math.log2(r/k))<0.6; }));
+    for (const [,i,j,st,gap] of pairs){ if (ut[i]||up[j]) continue; ut[i]=up[j]=1; const tr=tracks[i];
+      tr.pts.push({t, f:out[j].f, h:hm[j]}); tr.slope=Math.max(-0.3,Math.min(2.5,0.6*tr.slope+0.4*st/gap)); tr.f=out[j].f; tr.lf=frame;
+      while (tr.pts.length>1 && t-tr.pts[0].t>P.maxTrack) tr.pts.shift(); }
+    for (let j=0;j<out.length;j++) if (!up[j]) tracks.push({id:nextId++, pts:[{t, f:out[j].f, h:hm[j]}], f:out[j].f, lf:frame, slope:0});
+    const done=[], keep=[]; for (const tr of tracks) (frame-tr.lf>P.gapFrames? done : keep).push(tr); tracks=keep;
+    const dets=[]; for (const tr of done){ const d=judge(tr); if (d) dets.push(d); } return dets;
+  }
+  function run(wantCols){ const cols=[], dets=[];
+    while (pos+L<=total){ const t=t0+(pos+L/2)/sr; const fr=analyseFrame(); if (wantCols) cols.push({t, rows:rows(fr.floor)}); if (P.log) P.log.push({t, out:fr.out});
+      for (const d of link(fr.out, t)) dets.push(d); pos+=hop; frame++; last=t; }
+    return {cols, dets}; }
+  function finish(){ frame+=P.gapFrames+1; return link([], last); }
+  return {sr, N, P, push, run, finish, tracks:()=>tracks};
+}
+// A simulated audience for the demo button and the dev tests: overlapping voice-like whoops (vibrato,
+// harmonics, different pitches), plus a steady note and a falling glide that must not be counted.
+function synthCrowd(sr=44100, seed=5){
+  let r=seed; const rnd=()=>{ r=(r*16807)%2147483647; return r/2147483647; };
+  const x=new Float32Array(Math.round(12.5*sr)), truth=[];
+  [0.3,0.9,1.4,2.7,3.0,3.4,4.8,5.3,5.6,6.0,7.6,8.0,8.5,9.9,10.2,10.6].forEach((t0,i)=>{
+    const Mc=0.6*Math.pow(3.5,rnd());
+    const fStart=Math.max(105,Math.min(330,fOfTau(Mc,0.7+0.8*rnd()))), fStop=Math.min(fOfTau(Mc,0.05),1400);
+    const o=synthChirp({sr, Mc, fStart, fStop, tStart:0, tail:0.02, vib:0.2, jitter:0.04, harm:0.3+0.4*rnd(), seed:seed+31*i});
+    const amp=0.5+0.6*rnd(), i0=Math.round(t0*sr);
+    for (let k=0;k<o.x.length && i0+k<x.length;k++) x[i0+k]+=amp*o.x[k];
+    truth.push({t0, t1:t0+tauOfF(Mc,fStart)-tauOfF(Mc,fStop), Mc});
+  });
+  let ph=0; const tone=(a,b,f0,f1)=>{ for (let i=Math.round(a*sr);i<Math.round(b*sr);i++){ const u=(i/sr-a)/(b-a); ph+=2*Math.PI*f0*Math.pow(f1/f0,u)/sr; x[i]+=0.25*Math.min(1,u*20,(1-u)*20)*(Math.sin(ph)+0.4*Math.sin(2*ph)); } };
+  tone(6.6,7.6,233,233); tone(11.3,12.0,520,260);
+  for (let i=0;i<x.length;i++) x[i]+=0.008*(rnd()-0.5);
+  return {x, sr, truth};
+}
 </script>
 
 <script>
@@ -604,7 +775,23 @@ nl:{title:'Chirp-<span class="wave">karaoke</span>',
   "<b>Zwarte-gatenmodus.</b> Echte chirps van zwarte gaten zijn te diep en te kort om te zingen. Volgens Einsteins vergelijkingen mogen we je woeoep zien als een opname die 25 keer sneller wordt afgespeeld: dezelfde chirp hoort dan bij zwarte gaten die 25 keer zwaarder zijn.",
   "<b>Hoe ver?</b> ‘De helft horen’ betekent: van alle zulke botsingen op die afstand wordt de helft opgemerkt; de rest staat te ongunstig. Vandaag: LIGO-Virgo zoals ze in 2025 werkten. Einstein Telescope: zoals hij ontworpen is. De klanken van echte detecties zijn nagebouwd uit hun gemeten massa's (gesimuleerd).",
   "<b>Privacy.</b> Alles gebeurt in deze browser. Je stem wordt niet bewaard en nergens heen gestuurd."],
- axisYou:"jouw toon (Hz)", axisGW:"zwaartekrachtgolf (Hz)", tl:["nu","Zon ontstaat","oerknal"], unit:"zonsmassa's"
+ axisYou:"jouw toon (Hz)", axisGW:"zwaartekrachtgolf (Hz)", tl:["nu","Zon ontstaat","oerknal"], unit:"zonsmassa's",
+ iGrp:"Met de hele zaal", iGrpS:"Iedereen tegelijk: hoeveel botsingen vindt de computer?",
+ grpExpl:"<b>Met de hele zaal.</b> Druk op start en laat iedereen door elkaar woeoepen, zo vaak als je wil. De computer volgt alle stemmen tegelijk en telt elke stijgende chirp als een botsing, ook als ze over elkaar heen vallen.",
+ gStart:"Start met luisteren", gStop:"Stop met luisteren", gStopDemo:"Stop de demo", gListenS:"of druk op de spatiebalk",
+ gDemo:"Demo: een gesimuleerde zaal", gVoices:"stemmen", gDet:"gevonden chirp", gNow:"nu",
+ badgeLive:"LIVE · AAN HET LUISTEREN", badgeDemo:"DEMO · gesimuleerde zaal", badgeGIdle:"ZAALMODUS",
+ noteGrp:"Oranje stippen: elke stem die de computer volgt. Wordt een stem een stijgende chirp, dan telt hij als botsing en licht hij blauw op.",
+ gIdle:"Druk op start en woeoep allemaal tegelijk!",
+ gLead:"Gevonden in deze zaal", gUnit:"botsingen", gUnit1:"botsing", gPeak:"hoogstens tegelijk", gTime:"geluisterd",
+ gCls:{sub:"lichter dan neutronensterren", bns:"paren neutronensterren", gap:"paren in de massakloof", bbh:"paren zwarte gaten"},
+ gObj:{sub:"lichter dan elke gekende neutronenster", bns:"neutronenster", gap:"massakloof", bbh:"zwart gat"},
+ gLast:"Laatste, #{n}: {what}.", gNone:"Nog niets gevonden. Een goede chirp begint laag en traag en eindigt met een snelle zwiep omhoog.",
+ gReset:"Opnieuw tellen",
+ gTake:"Echte detectoren staan voor dezelfde puzzel. De Einstein Telescope zal tienduizenden botsingen per jaar horen. Chirps van neutronensterren duren in zijn gevoelige band urenlang, dus vallen er altijd een paar over elkaar heen, net zoals jullie stemmen.",
+ gCatT:"De catalogus van deze zaal",
+ gCatS:"Elke kolom is één botsing: twee objecten (kleine stippen) smelten samen tot één zwaarder object (grote stip). Open rondjes: echte detecties van LIGO-Virgo-KAGRA, om te vergelijken. De massa's volgen uit de chirp; we nemen aan dat ze gelijk zijn.",
+ gReal:"echte detecties", gRoom:"deze zaal", gShowing:"de laatste {k}", gLegRoom:"gevonden in deze zaal", gLegReal:"echte detectie"
 },
 en:{title:'Chirp <span class="wave">karaoke</span>',
  tag:"Sing like two colliding black holes. The computer compares your whoop with the chirp of every possible pair: the same trick LIGO uses to dig signals out of noise.",
@@ -669,7 +856,23 @@ en:{title:'Chirp <span class="wave">karaoke</span>',
   "<b>Black-hole mode.</b> Real black-hole chirps are too deep and too short to sing. Einstein's equations let us treat your whoop as a recording played 25 times faster: the same chirp then belongs to black holes 25 times heavier.",
   "<b>How far?</b> ‘Hear half’ means: of all such collisions at that distance, half would be detected; the others are placed or turned unfavourably. Today: LIGO-Virgo as they worked in 2025. Einstein Telescope: as designed. The sounds of real detections are rebuilt from their measured masses (simulated).",
   "<b>Privacy.</b> Everything happens in this browser. Your voice is not saved and not sent anywhere."],
- axisYou:"your pitch (Hz)", axisGW:"gravitational wave (Hz)", tl:["now","Sun forms","Big Bang"], unit:"solar masses"
+ axisYou:"your pitch (Hz)", axisGW:"gravitational wave (Hz)", tl:["now","Sun forms","Big Bang"], unit:"solar masses",
+ iGrp:"The whole audience", iGrpS:"Everyone at once: how many collisions can the computer find?",
+ grpExpl:"<b>Whole audience.</b> Press start and let everyone whoop at the same time, as often as they like. The computer follows all the voices at once and counts every rising chirp as a collision, even when they overlap.",
+ gStart:"Start listening", gStop:"Stop listening", gStopDemo:"Stop the demo", gListenS:"or press the space bar",
+ gDemo:"Demo: a simulated audience", gVoices:"voices", gDet:"detected chirp", gNow:"now",
+ badgeLive:"LIVE · LISTENING", badgeDemo:"DEMO · simulated audience", badgeGIdle:"AUDIENCE MODE",
+ noteGrp:"Orange dots: every voice the computer is following. When a voice turns into a rising chirp, it counts as a collision and lights up blue.",
+ gIdle:"Press start and all whoop at once!",
+ gLead:"Found in this room", gUnit:"collisions", gUnit1:"collision", gPeak:"most at once", gTime:"listening",
+ gCls:{sub:"lighter than neutron stars", bns:"neutron-star pairs", gap:"mass-gap pairs", bbh:"black-hole pairs"},
+ gObj:{sub:"lighter than any known neutron star", bns:"neutron star", gap:"mass gap", bbh:"black hole"},
+ gLast:"Latest, #{n}: {what}.", gNone:"Nothing found yet. A good chirp starts low and slow and ends with a quick whip up.",
+ gReset:"Count again",
+ gTake:"Real detectors face the same puzzle. The Einstein Telescope will hear tens of thousands of collisions a year. Neutron-star chirps last for hours in its sensitive band, so a few always overlap, just like your voices.",
+ gCatT:"This room's catalogue",
+ gCatS:"Each column is one collision: two objects (small dots) merge into one heavier object (big dot). Open circles: real detections by LIGO-Virgo-KAGRA, for comparison. Masses follow from the chirp, assuming the two are equal.",
+ gReal:"real detections", gRoom:"this room", gShowing:"the last {k}", gLegRoom:"found in this room", gLegReal:"real detection"
 },
 fr:{title:'Karaoké des <span class="wave">chirps</span>',
  tag:"Chante comme deux trous noirs qui se percutent. L'ordinateur compare ton « wouuup » au chirp de toutes les paires possibles : la même astuce que LIGO utilise pour extraire les signaux du bruit.",
@@ -734,7 +937,23 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
   "<b>Mode trous noirs.</b> Les vrais chirps de trous noirs sont trop graves et trop courts pour être chantés. Les équations d'Einstein nous permettent de traiter ton « wouuup » comme un enregistrement passé 25 fois plus vite : le même chirp appartient alors à des trous noirs 25 fois plus lourds.",
   "<b>Jusqu'où ?</b> « Entendre la moitié » veut dire : de toutes ces collisions à cette distance, la moitié serait détectée ; les autres sont mal placées ou mal orientées. Aujourd'hui : LIGO-Virgo tels qu'ils fonctionnaient en 2025. Einstein Telescope : tel qu'il est conçu. Les sons des vraies détections sont reconstitués à partir de leurs masses mesurées (simulés).",
   "<b>Vie privée.</b> Tout se passe dans ce navigateur. Ta voix n'est ni enregistrée ni envoyée nulle part."],
- axisYou:"ta voix (Hz)", axisGW:"onde gravitationnelle (Hz)", tl:["aujourd'hui","naissance du Soleil","Big Bang"], unit:"masses solaires"
+ axisYou:"ta voix (Hz)", axisGW:"onde gravitationnelle (Hz)", tl:["aujourd'hui","naissance du Soleil","Big Bang"], unit:"masses solaires",
+ iGrp:"Toute la salle", iGrpS:"Tout le monde en même temps : combien de collisions l'ordinateur trouve-t-il ?",
+ grpExpl:"<b>Toute la salle.</b> Appuie sur démarrer et laisse tout le monde faire « wouuup » en même temps, autant de fois qu'il veut. L'ordinateur suit toutes les voix à la fois et compte chaque chirp qui monte comme une collision, même quand ils se chevauchent.",
+ gStart:"Commencer l'écoute", gStop:"Arrêter l'écoute", gStopDemo:"Arrêter la démo", gListenS:"ou appuie sur la barre d'espace",
+ gDemo:"Démo : une salle simulée", gVoices:"voix", gDet:"chirp détecté", gNow:"maintenant",
+ badgeLive:"EN DIRECT · À L'ÉCOUTE", badgeDemo:"DÉMO · salle simulée", badgeGIdle:"MODE SALLE",
+ noteGrp:"Points orange : chaque voix que l'ordinateur suit. Quand une voix devient un chirp qui monte, elle compte comme une collision et s'allume en bleu.",
+ gIdle:"Appuie sur démarrer et faites tous « wouuup » en même temps !",
+ gLead:"Trouvé dans cette salle", gUnit:"collisions", gUnit1:"collision", gPeak:"au maximum en même temps", gTime:"d'écoute",
+ gCls:{sub:"plus légers que les étoiles à neutrons", bns:"paires d'étoiles à neutrons", gap:"paires dans l'écart de masse", bbh:"paires de trous noirs"},
+ gObj:{sub:"plus léger que toute étoile à neutrons connue", bns:"étoile à neutrons", gap:"écart de masse", bbh:"trou noir"},
+ gLast:"Dernière, n° {n} : {what}.", gNone:"Rien trouvé pour l'instant. Un bon chirp commence grave et lentement et finit par un coup de fouet rapide vers l'aigu.",
+ gReset:"Recompter",
+ gTake:"Les vrais détecteurs font face au même casse-tête. L'Einstein Telescope entendra des dizaines de milliers de collisions par an. Les chirps d'étoiles à neutrons durent des heures dans sa bande sensible, donc quelques-uns se chevauchent toujours, comme vos voix.",
+ gCatT:"Le catalogue de cette salle",
+ gCatS:"Chaque colonne est une collision : deux objets (petits points) fusionnent en un objet plus lourd (gros point). Cercles vides : vraies détections de LIGO-Virgo-KAGRA, pour comparer. Les masses découlent du chirp, en supposant les deux égales.",
+ gReal:"vraies détections", gRoom:"cette salle", gShowing:"les {k} dernières", gLegRoom:"trouvé dans cette salle", gLegReal:"vraie détection"
 }};
 
 /* ---------------- state ---------------- */
@@ -799,8 +1018,19 @@ let anim=null; // {t0} while the target is being played with a moving playhead
 function startAnim(t0){ stopAnim(); anim={t0}; const loop=()=>{ if(!anim) return; const t=S.ctx.currentTime-anim.t0; if (t>KAR_T+0.3){ anim=null; drawStage(); return; } drawStage(null, t); anim.raf=requestAnimationFrame(loop); }; anim.raf=requestAnimationFrame(loop); }
 function stopAnim(){ if (anim){ cancelAnimationFrame(anim.raf); anim=null; } }
 
+function drawFreqAxes(g, w, h, C){
+  const ph=h-pad.t-pad.b;
+  g.font=`500 11px ${C("--f-mono")}`; g.textBaseline="middle";
+  const fac = factorOf(curMode());
+  for (const f of [100,200,500,1000,2000]){ const y=yOf(f,h); g.strokeStyle="rgba(255,255,255,0.07)"; g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke();
+    g.fillStyle=C("--muted"); g.textAlign="right"; g.fillText(f>=1000? (f/1000)+"k":f, pad.l-8, y);
+    const fp = f/fac; g.textAlign="left"; g.fillText((fp>=1000?(fp/1000)+"k":(fp<10?nf(fp,0):fp))+"", w-pad.r+8, y); }
+  g.save(); g.translate(14, pad.t+ph/2); g.rotate(-Math.PI/2); g.textAlign="center"; g.fillStyle=C("--voice"); g.fillText(T("axisYou"),0,0); g.restore();
+  g.save(); g.translate(w-12, pad.t+ph/2); g.rotate(Math.PI/2); g.textAlign="center"; g.fillStyle=C("--tmpl"); g.fillText(T("axisGW"),0,0); g.restore();
+}
 function drawStage(live, playT){
   if (S.screen==="intro") return;
+  if (S.kind==="group"){ drawGroup(); return; }
   const {dpr,w,h}=geom(); if (!w||!h) return; const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
   const css=getComputedStyle(document.documentElement); const C=k=>css.getPropertyValue(k).trim();
   g.fillStyle=C("--panel"); g.fillRect(0,0,w,h);
@@ -824,13 +1054,7 @@ function drawStage(live, playT){
     const tmp=document.createElement("canvas"); tmp.width=IW; tmp.height=IH; tmp.getContext("2d").putImageData(img,0,0);
     g.imageSmoothingEnabled=true; g.drawImage(tmp,pad.l,pad.t,pw,ph);
   }
-  g.font=`500 11px ${C("--f-mono")}`; g.textBaseline="middle";
-  const fac = factorOf(curMode());
-  for (const f of [100,200,500,1000,2000]){ const y=yOf(f,h); g.strokeStyle="rgba(255,255,255,0.07)"; g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke();
-    g.fillStyle=C("--muted"); g.textAlign="right"; g.fillText(f>=1000? (f/1000)+"k":f, pad.l-8, y);
-    const fp = f/fac; g.textAlign="left"; g.fillText((fp>=1000?(fp/1000)+"k":(fp<10?nf(fp,0):fp))+"", w-pad.r+8, y); }
-  g.save(); g.translate(14, pad.t+ph/2); g.rotate(-Math.PI/2); g.textAlign="center"; g.fillStyle=C("--voice"); g.fillText(T("axisYou"),0,0); g.restore();
-  g.save(); g.translate(w-12, pad.t+ph/2); g.rotate(Math.PI/2); g.textAlign="center"; g.fillStyle=C("--tmpl"); g.fillText(T("axisGW"),0,0); g.restore();
+  drawFreqAxes(g, w, h, C);
   g.textAlign="center"; g.fillStyle=C("--muted");
   for (let t=0;t<=tMax+1e-6;t+= tMax>3?1:0.5){ g.fillText(nf(t,1)+" s", xOf(t), h-pad.b+15); }
   const tNow = live? live.t : playT;
@@ -923,30 +1147,35 @@ function render(){
   $("scr-intro").hidden = S.screen!=="intro"; $("scr-play").hidden = S.screen==="intro";
   $("i-what").textContent=L.iWhat; $("i-p").textContent=L.iP; $("i-listenT").textContent=L.iListen; $("i-listenS").textContent=L.iListenS;
   $("i-kar").textContent=L.iKar; $("i-karS").textContent=L.iKarS; $("i-free").textContent=L.iFree; $("i-freeS").textContent=L.iFreeS;
+  $("i-grp").textContent=L.iGrp; $("i-grpS").textContent=L.iGrpS;
   $("i-priv").textContent="🔒 "+L.priv;
   const bb=boardLoad(), kb=Math.max(0,...TARGETS.map(t=>bb.best["kar:"+t.id]||0));
   $("i-board").textContent = kb>0? "🏆 "+T("boardIntro",{s:pct(kb)}) : "";
   // play screens
-  const kar=S.kind==="kar", mode=curMode();
+  const kar=S.kind==="kar", grp=S.kind==="group", mode=curMode();
   $("b-back").textContent=L.back;
   $("tgtSeg").hidden=!kar; $("modeSeg").hidden=kar;
   document.querySelectorAll("#tgtSeg button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.t===S.tgtI));
   $("m-real").textContent=L.modeReal; $("m-bh").textContent=L.modeBH;
   $("m-real").setAttribute("aria-pressed",S.mode==="real"); $("m-bh").setAttribute("aria-pressed",S.mode==="bh");
-  $("modeExpl").innerHTML = kar? L.karExpl+" "+L.tgtNote[tg().id] : L.freeExpl+" "+(mode==="real"? L.explReal : L.explBH);
+  $("modeExpl").innerHTML = kar? L.karExpl+" "+L.tgtNote[tg().id] : (grp? L.grpExpl : L.freeExpl)+" "+(mode==="real"? L.explReal : L.explBH);
   if (!recording){ $("t-hold").textContent=L.hold; } $("t-hold2").textContent=L.hold2;
-  $("exBtn").textContent= kar? L.listenAgain : L.example; $("upLbl").textContent=L.upload; $("upLbl").hidden=kar;
-  $("lg-you").textContent=L.you; $("lg-tmpl").textContent= kar? L.tgt : L.tmpl;
-  $("badge").textContent = kar? T("badgeKar",{id:tg().id}) : S.source==="example"? L.badgeEx : S.source==="file"? L.badgeFile : S.source==="mic"? L.badgeYou : "";
-  $("note").textContent = kar? L.noteKar : S.source==="example"? L.noteEx : S.res? L.noteYou : L.noteIdle;
+  $("sing").hidden=grp; $("g-listen").hidden=!grp;
+  $("exBtn").textContent= kar? L.listenAgain : grp? L.gDemo : L.example; $("upLbl").textContent=L.upload; $("upLbl").hidden=kar;
+  $("lg-you").textContent= grp? L.gVoices : L.you; $("lg-tmpl").textContent= kar? L.tgt : grp? L.gDet : L.tmpl;
+  $("badge").textContent = grp? (G.on? L.badgeLive : G.feed? (G.src==="demo"? L.badgeDemo : L.badgeFile) : L.badgeGIdle)
+    : kar? T("badgeKar",{id:tg().id}) : S.source==="example"? L.badgeEx : S.source==="file"? L.badgeFile : S.source==="mic"? L.badgeYou : "";
+  $("note").textContent = grp? L.noteGrp : kar? L.noteKar : S.source==="example"? L.noteEx : S.res? L.noteYou : L.noteIdle;
   renderLevelHint();
   // message (+ drawing of the wanted shape)
   const mk = S.msgKey || (S.res && S.res.err && S.screen!=="result" ? S.res.err : null);
   $("msg").innerHTML = mk? ((["falling","steady","short","nopitch"].includes(mk)? shapeSVG() : "") + `<span>${T(mk)}</span>`) : "";
   // result
   const showRes = S.screen==="result";
-  $("result").hidden=!showRes; $("main").classList.toggle("solo",!showRes);
+  $("result").hidden=!showRes; $("main").classList.toggle("solo",!showRes && !grp);
   if (showRes) renderResult(L);
+  $("gpanel").hidden=!grp; $("gcat").hidden=!grp;
+  if (grp && S.screen!=="intro"){ renderGroup(L); renderCatalog(L); }
   $("howT").textContent=L.howT; $("howBody").innerHTML=L.how.map(x=>`<li>${x}</li>`).join("");
   renderKV(); drawStage();
   if (window.OutreachKit) window.OutreachKit.setLang(S.lang);
@@ -994,6 +1223,8 @@ function renderResult(L){
 function renderKV(){
   if (!DEBUG) return;
   const r=S.res; const kv=[["reach table", REACH.def||"?"]];
+  if (S.kind==="group"){ kv.push(["audience detector", G.det? `${G.det.sr} Hz · FFT ${G.det.N} · ${G.det.tracks().length} open tracks` : "idle"], ["detections", `${G.dets.length} (most at once ${G.peak})`], ["thresholds", Object.entries(GROUP).map(([a,b])=>a+" "+b).join(", ")]);
+    for (const d of G.dets.slice(-6)) kv.push(["#"+d.n, `𝓜 voice ${d.Mc.toFixed(3)} · score ${(d.score*100).toFixed(0)} % · rise ${d.rise.toFixed(1)} st · ${(d.t1-d.t0).toFixed(2)} s · ${d.pts[0].f.toFixed(0)}→${d.pts[d.pts.length-1].f.toFixed(0)} Hz`]); }
   if (r){ kv.push(["source",S.source],["sample rate",r.sr+" Hz"],["gate / top rms",`${r.gate.toFixed(4)} / ${r.top.toFixed(4)}`],["room rms",roomRms().toFixed(4)],["voiced frames",r.seg.length+(r.segDur?` (${r.segDur.toFixed(2)} s)`:"")]);
     if (S.kind==="kar" && S.kar) kv.push(["karaoke",`${(S.kar.score*100).toFixed(1)} % · shift ${S.kar.shift.toFixed(2)} s · octave ${S.kar.oct} · voiced ${(S.kar.cover*100).toFixed(0)} %`]);
     if (r.rise!=null) kv.push(["pitch rise",r.rise.toFixed(1)+" semitones"]);
@@ -1081,7 +1312,7 @@ function renderLevelHint(){ $("lvlHint").textContent = micState==="off"? T("lvlO
 
 let recording=false, proc=null, chunks=[], live=null, raf=0, recT0=0, stopTimer=0;
 async function startRec(){
-  if (recording || S.screen==="intro") return; recording=true; stopPlay(); $("sing").classList.add("rec"); $("t-hold").textContent=T("singing");
+  if (recording || S.screen==="intro" || S.kind==="group") return; recording=true; stopPlay(); $("sing").classList.add("rec"); $("t-hold").textContent=T("singing");
   const c=ctx();
   if (!stream) await openMic();
   if (!stream){ recording=false; $("sing").classList.remove("rec"); $("t-hold").textContent=T("hold"); S.msgKey="mic"; render(); return; }
@@ -1114,18 +1345,175 @@ sing.addEventListener("pointerdown",e=>{ e.preventDefault(); try{sing.setPointer
 for (const ev of ["pointerup","pointercancel","lostpointercapture"]) sing.addEventListener(ev,()=>stopRec());
 sing.addEventListener("keydown",e=>{ if((e.key==="Enter")&&!e.repeat){ e.preventDefault(); startRec(); } });
 sing.addEventListener("keyup",e=>{ if(e.key==="Enter") stopRec(); });
-window.addEventListener("keydown",e=>{ if(e.code==="Space"&&!e.repeat&&S.screen!=="intro"&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement&&e.target!==sing)&&!(e.target.tagName==="SUMMARY")){ e.preventDefault(); startRec(); } });
+window.addEventListener("keydown",e=>{ if(e.code==="Space"&&!e.repeat&&S.screen!=="intro"&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement&&e.target!==sing)&&!(e.target.tagName==="SUMMARY")){ e.preventDefault(); if (S.kind==="group") gToggle(); else startRec(); } });
 window.addEventListener("keyup",e=>{ if(e.code==="Space"&&recording){ e.preventDefault(); stopRec(); } });
+
+/* ---------------- audience mode ----------------
+   The microphone (or the demo / a recording, played aloud) streams into makeGroupDetector; each 10 ms
+   column of its spectrum goes into a ring image (last GW_T seconds), detections go to G.dets.
+   The count survives "← Start" and is cleared by "Count again" and the kiosk idle reset. */
+const GW_T = 8, GW_N = GW_T*100, GH = GROUP.rows;
+const G = {det:null, dets:[], src:null, on:false, feed:null, proc:null, raf:0, iv:0, tNow:0, clock:0, listen:0, peak:0, cols:false, lastIdx:null, lastMs:0, uiMs:0, pokeMs:0, popFrom:Infinity};
+const gOff = document.createElement("canvas"); gOff.width=GW_N; gOff.height=GH;
+const gOffG = gOff.getContext("2d"), gCol = gOffG.createImageData(1, GH);
+const G_BLANK = "rgb("+CMAP[0].join(",")+")";
+function gClearOff(){ gOffG.fillStyle=G_BLANK; gOffG.fillRect(0,0,GW_N,GH); G.cols=false; G.lastIdx=null; }
+gClearOff();
+const gIdx = t => ((Math.round(t*100)%GW_N)+GW_N)%GW_N;
+function gWriteCol(t, rows){
+  const i=gIdx(t);
+  if (G.lastIdx!=null){ gOffG.fillStyle=G_BLANK; for (let j=(G.lastIdx+1)%GW_N, n=0; j!==i && n<GW_N; j=(j+1)%GW_N, n++) gOffG.fillRect(j,0,1,GH); }
+  const d=gCol.data; for (let r=0;r<GH;r++){ const v=rows[r], c=cmap(v*v*0.95+v*0.05), o=(GH-1-r)*4; d[o]=c[0]; d[o+1]=c[1]; d[o+2]=c[2]; d[o+3]=255; }
+  gOffG.putImageData(gCol, i, 0); G.lastIdx=i; G.cols=true;
+}
+const gPair = d => { const McPhys=d.Mc*factorOf(S.mode), m=McPhys*Math.pow(2,0.2); return {McPhys, m, cls:classify(m)}; };
+const G_COLV = {sub:"var(--good)", bns:"var(--voice)", gap:"var(--c-gap)", bbh:"var(--tmpl)"};
+function gPeak(){ const ev=[]; for (const d of G.dets) ev.push([d.t0,1],[d.t1,-1]); ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); let c=0, m=0; for (const e of ev){ c+=e[1]; if (c>m) m=c; } return m; }
+const fmtClock = s => Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0");
+
+function gAddDets(ds){
+  if (!ds.length) return; const ms=performance.now();
+  for (const d of ds){ d.n=G.dets.length+1; d.at=ms; G.dets.push(d); if (G.popFrom===Infinity) G.popFrom=d.n; }
+  G.peak=gPeak(); const L=I18N[S.lang]; renderGroup(L); renderCatalog(L);
+  const el=$("g-num"); el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+}
+function gPump(){ if (!G.det) return; const r=G.det.run(true); for (const c of r.cols){ gWriteCol(c.t, c.rows); G.tNow=c.t; } gAddDets(r.dets); }
+function gEndSource(){ if (!G.det) return; gPump(); gAddDets(G.det.finish()); G.det=null; G.clock=G.tNow+0.5; }
+// Audio is processed on a timer (keeps going when the tab is in the background); drawing on animation frames.
+function gProcess(){
+  const ms=performance.now(), dt=Math.min(1.5,(ms-(G.lastMs||ms))/1000); G.lastMs=ms;
+  if (G.on || G.feed) G.listen+=dt;
+  if (G.feed){ const F=G.feed, upto=Math.min(F.x.length, Math.max(0, Math.floor((S.ctx.currentTime-F.t0)*F.sr)));
+    if (upto>F.pos){ G.det.push(F.x.subarray(F.pos, upto)); F.pos=upto; }
+    if (F.pos>=F.x.length){ G.feed=null; gEndSource(); gIdle(); render(); } }
+  gPump();
+  if (ms-G.uiMs>250){ G.uiMs=ms; $("g-time").textContent=fmtClock(G.listen); }
+  if ((G.on||G.feed) && ms-G.pokeMs>5000){ G.pokeMs=ms; if (window.OutreachKit && window.OutreachKit.poke) window.OutreachKit.poke(); } // no kiosk reset while a room is whooping
+}
+function gLoop(){
+  G.raf=0; if (S.kind!=="group" || S.screen==="intro") return;
+  gProcess(); drawGroup();
+  if (G.on || G.feed || G.dets.some(d=>performance.now()-d.at<2200)) G.raf=requestAnimationFrame(gLoop);
+}
+function gKick(){ if (!G.iv && (G.on||G.feed)){ G.lastMs=performance.now(); G.iv=setInterval(gProcess, 50); } if (!G.raf) G.raf=requestAnimationFrame(gLoop); }
+function gIdle(){ clearInterval(G.iv); G.iv=0; G.lastMs=0; }
+function gHalt(){ // stop the microphone feed and any demo; keep the count
+  gIdle();
+  if (G.proc){ G.proc.onaudioprocess=null; try{ G.proc.disconnect(); if (micSrc) micSrc.disconnect(G.proc); }catch(e){} G.proc=null; }
+  if (G.feed){ G.feed=null; stopPlay(); }
+  gEndSource(); G.on=false;
+}
+async function gStart(){
+  if (G.on) return; gHalt(); stopPlay();
+  const c=ctx(); if (!stream) await openMic();
+  if (!stream){ S.msgKey="mic"; render(); return; }
+  if (S.kind!=="group" || S.screen==="intro" || G.on) return;
+  S.msgKey=null; G.det=makeGroupDetector(c.sampleRate, G.clock); G.src="mic";
+  G.proc=c.createScriptProcessor(2048,1,1); const mute=c.createGain(); mute.gain.value=0;
+  micSrc.connect(G.proc); G.proc.connect(mute).connect(c.destination);
+  G.proc.onaudioprocess=ev=>{ if (G.on && G.det) G.det.push(ev.inputBuffer.getChannelData(0)); };
+  G.on=true; render(); gKick();
+}
+function gStop(){ gHalt(); render(); }
+function gToggle(){ if (G.on || G.feed) gStop(); else gStart(); }
+function gFeed(x, sr, src){ // demo or recording: played aloud and fed to the detector at playback speed
+  gHalt(); const y=normalize(Float32Array.from(x));
+  G.det=makeGroupDetector(sr, G.clock); G.src=src; G.feed={x:y, sr, t0:play(y, sr), pos:0}; S.msgKey=null; render(); gKick();
+}
+function gClear(){ gHalt(); G.dets=[]; G.peak=0; G.listen=0; G.clock=0; G.tNow=0; G.popFrom=Infinity; gClearOff(); }
+function gReset(){ const was=G.on; gClear(); render(); if (was) gStart(); }
+
+function drawGroup(){
+  const {dpr,w,h}=geom(); if (!w||!h) return; const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement); const C=k=>css.getPropertyValue(k).trim();
+  g.fillStyle=C("--panel"); g.fillRect(0,0,w,h);
+  const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b, tA=G.tNow-GW_T, xOf=t=>pad.l+(t-tA)/GW_T*pw;
+  if (G.cols){ const s=(gIdx(G.tNow)+1)%GW_N, wa=(GW_N-s)/GW_N*pw; g.imageSmoothingEnabled=true;
+    g.drawImage(gOff, s,0,GW_N-s,GH, pad.l,pad.t,wa,ph); if (s>0) g.drawImage(gOff, 0,0,s,GH, pad.l+wa,pad.t,pw-wa,ph); }
+  else { g.fillStyle=G_BLANK; g.fillRect(pad.l,pad.t,pw,ph); }
+  drawFreqAxes(g, w, h, C);
+  g.textAlign="center"; g.fillStyle=C("--muted");
+  for (let k=0;k<=GW_T;k+=2) g.fillText(k===GW_T? T("gNow") : "−"+(GW_T-k)+" s", pad.l+k/GW_T*pw, h-pad.b+15);
+  g.save(); g.beginPath(); g.rect(pad.l,pad.t,pw,ph); g.clip(); g.lineCap="round"; g.lineJoin="round";
+  const ms=performance.now(), vis=G.dets.filter(d=>d.t1>tA);
+  const poly=pts=>{ g.beginPath(); pts.forEach((p,i)=>{ const X=xOf(p.t), Y=yOf(p.f,h); i? g.lineTo(X,Y) : g.moveTo(X,Y); }); g.stroke(); };
+  g.strokeStyle=C("--tgt"); g.shadowColor=C("--tgt");
+  for (const d of vis){ const fresh=Math.max(0,1-(ms-d.at)/2000);
+    g.shadowBlur=12+24*fresh; g.globalAlpha=0.3+0.45*fresh; g.lineWidth=8+8*fresh; poly(d.pts);
+    g.shadowBlur=6; g.globalAlpha=1; g.lineWidth=3; poly(d.pts); }
+  g.shadowBlur=0; g.globalAlpha=1;
+  if (G.det){ g.fillStyle=C("--voice"); for (const tr of G.det.tracks()){ if (tr.pts.length<4) continue;
+    for (const p of tr.pts){ if (p.t<tA) continue; g.beginPath(); g.arc(xOf(p.t), yOf(p.f,h), 2.2, 0, 7); g.fill(); } } }
+  g.font=`700 13px ${C("--f-mono")}`; g.textBaseline="alphabetic";
+  const placed=[]; // label boxes already drawn: move a new one up or down until it is free
+  for (const d of vis){ const p=d.pts[d.pts.length-1], P=gPair(d), lab="#"+d.n, sub=sig(P.m)+"+"+sig(P.m)+" M☉"; g.textAlign="left";
+    const tw=Math.max(g.measureText(lab).width, g.measureText(sub).width*0.85)+10, X=Math.min(xOf(p.t)+6, w-pad.r-tw), Y0=yOf(p.f,h)-8;
+    let Y=Y0; for (const dy of [0,-34,34,-68,68,-102,102]){ const y=Math.max(pad.t+16, Math.min(h-pad.b-20, Y0+dy)); Y=y;
+      if (!placed.some(b=>X-4<b.x+b.w && X-4+tw>b.x && y-14<b.y+18 && y+18>b.y-14)) break; }
+    placed.push({x:X-4, y:Y, w:tw});
+    g.fillStyle="rgba(9,12,20,0.75)"; g.fillRect(X-4, Y-14, tw, 32);
+    g.fillStyle=C("--tgt"); g.fillText(lab, X, Y); g.font=`500 11px ${C("--f-mono")}`; g.fillStyle=C(G_COLV[P.cls].slice(4,-1)); g.fillText(sub, X, Y+13); g.font=`700 13px ${C("--f-mono")}`; }
+  g.restore();
+  if (!G.cols && !G.on && !G.feed){ g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); g.font=`800 ${Math.round(Math.min(34,w/22))}px ${C("--f-display")}`; g.fillText(T("gIdle"), pad.l+pw/2, pad.t+ph/2); }
+}
+
+function renderGroup(L){
+  const n=G.dets.length;
+  $("g-lead").textContent=L.gLead; $("g-num").textContent=n; $("g-unit").textContent= n===1? L.gUnit1 : L.gUnit;
+  $("g-peak").textContent=G.peak; $("g-peakL").textContent=L.gPeak; $("g-time").textContent=fmtClock(G.listen); $("g-timeL").textContent=L.gTime;
+  const cnt={sub:0,bns:0,gap:0,bbh:0}; for (const d of G.dets) cnt[gPair(d).cls]++;
+  $("g-classes").innerHTML = ["bbh","gap","bns","sub"].filter(k=>cnt[k]).map(k=>`<span class="chip" style="--c:${G_COLV[k]}"><i></i><b>${cnt[k]}</b>${L.gCls[k]}</span>`).join("");
+  const d=G.dets[n-1]; if (d){ const P=gPair(d); $("g-last").innerHTML=T("gLast",{n:d.n, what:T("head",{cls:L.cls[P.cls], m:sig(P.m)})}); } else $("g-last").textContent=L.gNone;
+  $("g-listenT").textContent = G.on? L.gStop : G.feed? L.gStopDemo : L.gStart; $("g-listenS").textContent=L.gListenS;
+  $("g-listen").classList.toggle("rec", G.on || !!G.feed);
+  $("g-reset").textContent=L.gReset; $("g-reset").disabled = !n && !G.listen;
+  $("g-take").textContent=L.gTake;
+}
+// "Stellar graveyard"-style overview: one column per collision, two objects merging into one.
+function renderCatalog(L){
+  const css=getComputedStyle(document.documentElement); const C=k=>css.getPropertyValue(k).trim();
+  const col={sub:C("--good"), bns:C("--voice"), gap:C("--c-gap"), bbh:C("--tmpl")}, mut=C("--muted"), line=C("--line");
+  const xL=60, xR=992, y0=262, y1=26, lo=0.3, hi=600, Y=m=>y0-Math.log(Math.max(lo,Math.min(hi,m))/lo)/Math.log(hi/lo)*(y0-y1);
+  let s="";
+  for (const [a,b,k] of [[lo,1,"sub"],[1,2.5,"bns"],[2.5,5,"gap"],[5,hi,"bbh"]]) s+=`<rect x="${xL}" y="${Y(b)}" width="${xR-xL}" height="${Y(a)-Y(b)}" fill="${col[k]}" opacity="0.07"/>`;
+  for (const m of [0.3,1,3,10,30,100,300]) s+=`<line x1="${xL}" x2="${xR}" y1="${Y(m)}" y2="${Y(m)}" stroke="${line}"/><text x="${xL-8}" y="${Y(m)+4}" fill="${mut}" font-size="12" text-anchor="end">${nf(m,m<1?1:0)}</text>`;
+  s+=`<text transform="translate(14 ${(y0+y1)/2}) rotate(-90)" fill="${mut}" font-size="12" text-anchor="middle">${T("unit")}</text>`;
+  const pair=(cx, cw, m1, m2, hollow)=>{ const mr=0.95*(m1+m2), dx=Math.min(cw*0.28,9), k=Math.min(1,cw/22), r=m=>(2+2.4*Math.log10(1+m))*k;
+    const c1=col[classify(m1)], c2=col[classify(m2)], cr=col[classify(mr)], st=(c,f)=> hollow? `fill="none" stroke="${c}" stroke-width="1.6"` : `fill="${c}"`;
+    return `<line x1="${cx-dx}" y1="${Y(m1)}" x2="${cx}" y2="${Y(mr)}" stroke="${c1}" stroke-opacity=".55" stroke-width="1.4"/><line x1="${cx+dx}" y1="${Y(m2)}" x2="${cx}" y2="${Y(mr)}" stroke="${c2}" stroke-opacity=".55" stroke-width="1.4"/>`+
+      `<circle cx="${cx-dx}" cy="${Y(m1)}" r="${r(m1)}" ${st(c1)}/><circle cx="${cx+dx}" cy="${Y(m2)}" r="${r(m2)}" ${st(c2)}/><circle cx="${cx}" cy="${Y(mr)}" r="${r(mr)*1.25}" ${st(cr)}/>`; };
+  const cwE=24, xE=xL+14;
+  s+=`<text x="${xE}" y="16" fill="${mut}" font-size="12">${L.gReal}</text>`;
+  EVENTS.forEach((e,i)=>{ const cx=xE+cwE*(i+0.5); s+=pair(cx, cwE, e.m1, e.m2, true)+`<text x="${cx}" y="${y0+16}" fill="${mut}" font-size="10" text-anchor="middle">’${e.id.slice(2,4)}</text>`; });
+  const xD=xE+cwE*EVENTS.length+10, xG=xD+14, avail=xR-xG, maxN=Math.floor(avail/6), show=G.dets.slice(-maxN), cw=Math.min(40, avail/Math.max(show.length,12));
+  s+=`<line x1="${xD}" x2="${xD}" y1="${y1-14}" y2="${y0+20}" stroke="${line}" stroke-width="2"/>`;
+  s+=`<text x="${xG}" y="16" fill="${C("--fg")}" font-size="12" font-weight="600">${L.gRoom}${G.dets.length>show.length? " · "+T("gShowing",{k:show.length}) : ""}</text>`;
+  const every=Math.ceil(22/cw);
+  show.forEach((d,i)=>{ const cx=xG+cw*(i+0.5), m=gPair(d).m, pop=d.n>=G.popFrom;
+    s+=`<g${pop? ` class="pop" style="animation-delay:${Math.min(0.6,(d.n-G.popFrom)*0.08)}s"`:""}>${pair(cx, cw, m, m, false)}${(d.n%every===0||i===show.length-1)? `<text x="${cx}" y="${y0+16}" fill="${C("--tgt")}" font-size="10.5" text-anchor="middle">#${d.n}</text>` : ""}</g>`; });
+  if (!show.length) s+=`<text x="${xG+avail/2}" y="${(y0+y1)/2}" fill="${mut}" font-size="15" text-anchor="middle">${L.gIdle}</text>`;
+  G.popFrom=Infinity;
+  $("g-svg").innerHTML=s;
+  $("g-svg").setAttribute("aria-label", L.gCatT+": "+G.dets.length);
+  $("g-catT").textContent=L.gCatT; $("g-catS").textContent=L.gCatS;
+  const dot=(c,hollow)=>`<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" ${hollow? `fill="none" stroke="${c}" stroke-width="1.6"` : `fill="${c}"`}/></svg>`;
+  $("g-leg").innerHTML = `<span>${dot(col.bbh)}${L.gLegRoom}</span><span>${dot(mut,true)}${L.gLegReal}</span>` + ["bbh","gap","bns","sub"].map(k=>`<span>${dot(col[k])}${L.gObj[k]}</span>`).join("");
+}
 
 /* ---------------- controls ---------------- */
 $("go-kar").onclick=()=>enterPlay("kar");
 $("go-free").onclick=()=>enterPlay("free");
+$("go-grp").onclick=()=>enterPlay("group");
+$("g-listen").onclick=()=>gToggle();
+$("g-reset").onclick=()=>gReset();
 $("i-listen").onclick=()=>{ const o=targetSound(TARGETS[0]); play(normalize(o.x),o.sr); };
 $("b-back").onclick=$("r-start").onclick=()=>goIntro();
-$("exBtn").onclick=()=>{ if (S.kind==="kar"){ if (S.screen==="result"){ S.res=null; S.kar=null; specCache=null; S.screen="sing"; render(); } playTarget(true); return; }
+$("exBtn").onclick=()=>{ if (S.kind==="group"){ const o=synthCrowd(ctx().sampleRate); gFeed(o.x, o.sr, "demo"); return; }
+  if (S.kind==="kar"){ if (S.screen==="result"){ S.res=null; S.kar=null; specCache=null; S.screen="sing"; render(); } playTarget(true); return; }
   const o=exampleWhoop(); finishAnalysis(o.x,o.sr,"example"); if (S.screen==="result") setTimeout(()=>play(o.x,o.sr),0); };
 $("file").onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
   let ab; try{ const buf=await f.arrayBuffer(); ab=await ctx().decodeAudioData(buf); } catch(err){ S.msgKey="decode"; S.screen="sing"; render(); return; }
+  if (S.kind==="group"){ const x=ab.getChannelData(0); gFeed(x.subarray(0, Math.min(x.length, ab.sampleRate*120)), ab.sampleRate, "file"); return; }
   let x=ab.getChannelData(0); if (x.length>ab.sampleRate*6) x=x.slice(0,ab.sampleRate*6);
   finishAnalysis(Float32Array.from(x), ab.sampleRate, "file"); };
 document.querySelectorAll("#tgtSeg button").forEach(b=>b.onclick=()=>{ S.tgtI=+b.dataset.t; S.res=null; S.kar=null; S.audio=null; specCache=null; S.msgKey=null; S.best=null; S.screen="sing"; render(); playTarget(true); });
@@ -1135,13 +1523,13 @@ function rerun(){ if (S.audio) finishAnalysis(S.audio.x, S.audio.sr, S.source); 
 document.querySelectorAll("#langSeg button").forEach(b=>b.onclick=()=>{ S.lang=b.dataset.l; render(); });
 let rz=0; window.addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>drawStage()); });
 
-function goIntro(){ abortRec(); stopPlay(); closeMic(); S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; S.best=null; show("intro"); }
+function goIntro(){ gHalt(); abortRec(); stopPlay(); closeMic(); S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; S.best=null; show("intro"); }
 // Kiosk idle reset (shared outreach kit): back to the intro, in Dutch, nothing of the last visitor left.
-function kioskReset(){ goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; $("more").open=false; $("how").open=false; if (BOARD_CLEAR_ON_IDLE) boardClear(); render(); window.scrollTo(0,0); }
+function kioskReset(){ gClear(); goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; $("more").open=false; $("how").open=false; if (BOARD_CLEAR_ON_IDLE) boardClear(); render(); window.scrollTo(0,0); }
 
 if (DEBUG) $("phys").hidden=false;
 $("i-svg").innerHTML=introSVG();
-window.__chirp = {analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, boardLoad};
+window.__chirp = {G, makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, boardLoad};
 render();
 </script>
 <script src="../shared/outreach-kit.js"></script>

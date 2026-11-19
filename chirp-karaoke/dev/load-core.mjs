@@ -7,5 +7,5 @@ export function loadChirpCore() {
   const m = html.match(/<script id="ck-core">([\s\S]*?)<\/script>/);
   if (!m) throw new Error('ck-core script not found');
   const ctx = vm.createContext({});
-  return vm.runInContext(m[1] + '\n;({REACH, TARGETS, analyze, synthChirp, fOfTau, tauOfF, pitchTrack, karaokeScore, targetSound, interpLog, reachZ, lookback, classify});', ctx);
+  return vm.runInContext(m[1] + '\n;({REACH, TARGETS, analyze, synthChirp, fOfTau, tauOfF, pitchTrack, karaokeScore, targetSound, interpLog, reachZ, lookback, classify, makeGroupDetector, synthCrowd, GROUP});', ctx);
 }
