@@ -6,13 +6,15 @@ The visitors never touch the app. They experience it only through `<run>/dossier
 
 1. **Serve the app.** For a folder in the project, start the project's dev server with `preview_start` (in drmayerson.github.io: name `site`) and use the port it reports. If the browser can't reach it, another session's server may already serve the folder (try `http://localhost:8765/`). For a URL, open it with `preview_start {url}`.
 2. **Set the viewport** for the scenario with `resize_window` (`scenarios.md` gives sizes). Reload after resizing.
-3. **Real first-screen images.** Run, from the project root,
-   `python <skill>/scripts/first_screen.py <app-folder-or-url> <run>/shots --sizes phone,small-phone,laptop,kiosk`
-   (pick the sizes the scenario needs; add `--query kiosk=1` or `--query lang=nl` as needed). A local folder name is served by the script itself, so it does not depend on the dev server. These PNGs are the one thing visitors see with their own eyes, so their first impression rests on them: open one to check it looks right. If the script finds no Chrome/Edge, skip it and describe the first screen in extra detail.
+3. **Real screenshots.** Run, from the project root,
+   `python <skill>/scripts/capture.py <app-folder-or-url> <run>/shots --sizes phone,small-phone --lang nl`
+   (pick the sizes the scenario needs: `laptop`, `tablet`, `kiosk`; add `--query kiosk=1` for kiosk mode). A local folder is served by the script itself (`--root ..` for a sibling repo), so it does not depend on the dev server. By default it saves the first screen; with `--steps` it clicks through the app and saves each state you name (see the script's help), and `{"js": …, "print": true}` steps return measurements, e.g. the contents of `inspect-screen.js`. `--fake-camera` feeds Chrome's synthetic test video (a flat green frame) to camera apps: useful for the layout, not for what people look like, so pair it with the app's own example image if it has one. These PNGs are the only things visitors see with their own eyes: capture the first screen and every key state, and open each one to check it looks right. If no Chrome/Edge is found, describe the screens in extra detail instead.
 4. **Find the intended flow in the source.** Skim the app's HTML/JS for screens, states, timers, permissions (`getUserMedia`, `DeviceMotionEvent`), sound, language tables (and how the default language is chosen), kiosk handling, takeaway strings, and any test or example hooks (an "example" button, a debug object on `window`) that let you reach result screens without a microphone or camera. This tells you what to look for, and covers what the browser cannot exercise.
 5. **Load the inspector.** On each screen, run `scripts/inspect-screen.js` with `javascript_tool` (paste the file's contents; if the dev server serves the project root, `eval(await (await fetch('/.claude/skills/test-audience/scripts/inspect-screen.js')).text())` saves pasting it each time). It returns the visible text above and below the fold with word counts, every visible control with its size and position, and the smallest font. Use its numbers in the dossier.
 
-The built-in browser blocks the microphone and camera, so anything that needs them is "from code" (see below). Its screenshots are for your eyes: they are sometimes cropped or zoomed, so describe what you see in words rather than copying them into `shots/`, unless you have checked that an image shows the whole viewport correctly.
+The built-in browser blocks the microphone and camera, so anything that needs them is "from code" (see below). Its screenshots are for your eyes only: on high-DPI screens they show a cropped, zoomed part of the page. Use `capture.py` for the images visitors get.
+
+Visitors read the dossier first and the screenshots second, so the dossier must say what each image shows, and what it does **not** show (a test pattern instead of a real camera picture, a state staff would normally hide).
 
 ## Walk the happy path
 
@@ -20,6 +22,7 @@ Go through the app as its designer intends, screen by screen. Number each distin
 
 - **How you got here** and how long it took (load, animation, waiting for a result).
 - **Layout**: what is visible without scrolling vs. after scrolling; the dominant element; what draws the eye first; colours that carry meaning (red/green, colour scales); text over busy backgrounds.
+- **Pictures inside the UI** (drawings, diagrams, icons in pop-ups and cards): what they show. Visitors who don't read still look at these, and they are often what people remember.
 - **Text, verbatim**, in the app's default language, with its word count. Note text that is collapsed (`<details>`), in tooltips or only in a "more" panel.
 - **Controls**: label or icon, approximate size in px (measure with `javascript_tool` `getBoundingClientRect`), position, how it looks (e.g. "small grey text link bottom-right", "large purple pill button centre").
 - **Feedback**: what happens on interaction: visuals, sound (and whether the meaning survives without sound), vibration, permission prompts.

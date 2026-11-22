@@ -19,7 +19,7 @@ A panel of fictional visitors tries an app and reports back. Each visitor is a s
 | `protocols/walkthrough.md` | How you (the orchestrator) record the app into a dossier. |
 | `protocols/visitor-brief.md` | The prompt each visitor agent gets, and the JSON it must write. |
 | `protocols/report.md` | How to turn the responses into a report. |
-| `scripts/first_screen.py` | Saves real PNG screenshots of the first screen at phone, laptop and kiosk size (headless Chrome or Edge). |
+| `scripts/capture.py` | Real PNG screenshots at phone, laptop and kiosk size (headless Chrome or Edge, WebGL included), also of states reached by scripted clicks; optional fake camera. |
 | `scripts/inspect-screen.js` | Run in the browser on each screen: visible text above/below the fold, word counts, controls with sizes, smallest font. |
 | `scripts/aggregate.py` | Checks the response files and computes ratings, funnel and drop-off tables. |
 
@@ -77,5 +77,5 @@ Simulated visitors drift towards being too patient, too articulate, too polite a
 
 ## Without Claude Code's browser or subagents
 
-- No browser tools: build the dossier from the source code and, if available, `scripts/first_screen.py` screenshots; set `fidelity: code-only` in the dossier header and say so in the report.
+- No browser tools: build the dossier from the source code and, if available, `scripts/capture.py` screenshots; set `fidelity: code-only` in the dossier header and say so in the report.
 - No subagents (for example claude.ai with this skill uploaded): simulate the visitors one at a time, writing each response before starting the next, and never revise an earlier visitor's response after reading later ones. Say in the report that the visitors were not independent.
