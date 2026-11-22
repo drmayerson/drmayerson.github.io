@@ -164,6 +164,56 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
 .gleg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted)}
 .gleg span{display:inline-flex;align-items:center;gap:6px}
 .gleg svg{width:14px;height:14px;flex:none}
+/* leaderboards */
+.champs{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.champs .lbl{font:600 14px var(--f-body);color:var(--warn);margin:0 2px 0 6px}
+.champ{display:inline-flex;gap:7px;align-items:baseline;padding:4px 11px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);font-size:13px;color:var(--muted);max-width:100%}
+.champ b{color:var(--fg);font-weight:600}
+.champ .v{font:500 13px var(--f-mono);color:var(--warn)}
+.btn.gold{background:var(--warn);color:#1a1205;border-color:transparent;font-weight:600}
+.lbline{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0;color:var(--warn);font:500 14px var(--f-body)}
+.lbline:empty{display:none}
+.lbline.hit{padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn) 12%,var(--panel-2));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);font-weight:600}
+.lbscr{display:flex;flex-direction:column;gap:14px}
+.lbscr h2{font:800 clamp(26px,3.4vw,40px)/1.1 var(--f-display);margin:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.lbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
+.lbcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.lbcard h3{margin:0;font:700 19px var(--f-display);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.lbcard .sub{margin:0;font-size:13px}
+.lbcard ol{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+.lbcard li{display:grid;grid-template-columns:2em minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:5px 8px;border-radius:8px;font-size:15px}
+.lbcard li .rk{font:600 14px var(--f-mono);color:var(--muted)}
+.lbcard li:first-child .rk{color:var(--warn)}
+.lbcard li .nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbcard li .nm small{display:block;font-weight:400;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.lbcard li .v{font:500 14px var(--f-mono);color:var(--tmpl);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lbcard li.me{background:color-mix(in srgb,var(--warn) 16%,transparent)}
+.lbcard li .del{all:unset;cursor:pointer;color:#ff8a7a;padding:2px 6px;font:600 14px var(--f-body);white-space:nowrap}
+.lbempty{color:var(--muted);font-size:14px;margin:8px 0 0}
+.lbadmin{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border:1px dashed var(--warn);border-radius:var(--r);color:var(--warn);font-size:14px}
+/* touch keyboard (bottom sheet) */
+.kb{position:fixed;left:0;right:0;bottom:0;z-index:50;background:color-mix(in srgb,var(--ink) 95%,transparent);border-top:1px solid var(--line);box-shadow:0 -14px 40px rgba(0,0,0,.55);padding:14px max(12px,env(safe-area-inset-left,0px)) max(14px,env(safe-area-inset-bottom,0px))}
+.kb-in{max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.kb-q{margin:0;font:800 clamp(18px,2.2vw,24px)/1.2 var(--f-display);color:var(--warn)}
+.kb-q:empty,.kb-t:empty{display:none}
+.kb-t{margin:0;color:var(--muted);font-size:15px}
+.kb-field{display:flex;align-items:center;min-height:54px;padding:0 16px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font:600 26px var(--f-mono);letter-spacing:.06em;overflow:hidden}
+.kb-field i{flex:none;width:2px;height:28px;background:var(--warn);margin-left:3px}
+@media (prefers-reduced-motion:no-preference){.kb-field i{animation:blink 1s steps(1) infinite}}
+@keyframes blink{50%{opacity:0}}
+.kb-keys{display:flex;flex-direction:column;gap:6px}
+.kb-row{display:flex;gap:6px;justify-content:center}
+.kb-row button{all:unset;cursor:pointer;flex:1 1 0;max-width:78px;min-height:56px;display:grid;place-items:center;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);font:600 21px var(--f-body);color:var(--fg);touch-action:manipulation;user-select:none;-webkit-user-select:none;box-sizing:border-box}
+.kb-row button:active{background:var(--line)}
+.kb-row button.wide{max-width:none;flex:5 1 0;font-size:15px;color:var(--muted)}
+.kb-row button.mid{max-width:130px;flex:1.6 1 0}
+.kb-row.acc button{min-height:44px;font-size:18px;max-width:64px}
+.kb-pin .kb-row button{max-width:110px;min-height:60px}
+.kb-act{display:flex;gap:10px;justify-content:flex-end;align-items:center}
+.kb-act .btn{padding:13px 24px;font-size:17px}
+.kb-msg{margin:0 auto 0 0;color:#ff8a7a;font-size:15px}
+.kb-msg:empty{display:none}
+@media (max-width:560px){.kb-row{gap:4px}.kb-row button{min-height:46px;font-size:17px}.kb-row.acc button{min-height:38px;font-size:15px}}
 </style>
 
 <div class="wrap">
@@ -194,7 +244,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
       <button class="choice" id="go-free" type="button"><b id="i-free"></b><small id="i-freeS"></small></button>
       <button class="choice" id="go-grp" type="button"><b id="i-grp"></b><small id="i-grpS"></small></button>
     </div>
-    <p class="board" id="i-board"></p>
+    <div class="champs" id="i-champs"></div>
     <p class="priv" id="i-priv"></p>
   </section>
 
@@ -203,6 +253,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
     <div class="wrap">
       <div class="bar">
         <button class="btn" id="b-back" type="button"></button>
+        <button class="btn" id="b-lb" type="button" data-lb></button>
         <div class="seg" role="group" id="tgtSeg">
           <button data-t="0" aria-pressed="true">GW170817</button>
           <button data-t="1" aria-pressed="false">GW150914 ×25</button>
@@ -223,6 +274,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
           <div class="deck">
             <button class="sing" id="sing" type="button"><span class="dot"></span><span><span id="t-hold"></span><small id="t-hold2"></small></span></button>
             <button class="sing" id="g-listen" type="button" hidden><span class="dot"></span><span><span id="g-listenT"></span><small id="g-listenS"></small></span></button>
+            <button class="btn gold" id="g-ch" type="button" hidden></button>
             <button class="btn" id="exBtn" type="button"></button>
             <label class="btn" for="file" id="upLbl"></label>
             <input class="hidden-input" type="file" id="file" accept="audio/*">
@@ -250,7 +302,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
             <button class="btn primary" id="p-merge" type="button"></button>
             <button class="btn" id="r-start" type="button"></button>
           </div>
-          <p class="board" id="r-board"></p>
+          <p class="lbline" id="r-board"></p>
           <p class="takeaway" id="r-take"></p>
           <details class="more" id="more">
             <summary id="r-more"></summary>
@@ -297,6 +349,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
           </div>
           <div class="chips" id="g-classes"></div>
           <p class="line" id="g-last"></p>
+          <p class="lbline" id="g-board"></p>
           <div class="plays"><button class="btn" id="g-reset" type="button"></button></div>
           <p class="takeaway" id="g-take"></p>
         </section>
@@ -309,6 +362,15 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
         <div class="gleg" id="g-leg"></div>
       </section>
     </div>
+  </section>
+
+  <!-- Screen 4: today's leaderboards. Managers: hold the title 3 s (or Ctrl+Shift+L) and enter the code. -->
+  <section class="lbscr" id="scr-board" hidden>
+    <div class="bar"><button class="btn" id="lb-back" type="button"></button></div>
+    <h2 id="lb-title"></h2>
+    <p class="mode-expl" id="lb-expl"></p>
+    <div class="lbadmin" id="lb-admin" hidden></div>
+    <div class="lbgrid" id="lb-grid"></div>
   </section>
 
   <details id="how" class="how">
@@ -350,6 +412,17 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
       </div>
     </div>
   </details>
+</div>
+
+<!-- touch keyboard: name for the leaderboard, or the manager code -->
+<div class="kb" id="kb" hidden role="dialog" aria-modal="true" aria-labelledby="kb-qual">
+  <div class="kb-in">
+    <p class="kb-q" id="kb-qual"></p>
+    <p class="kb-t" id="kb-title"></p>
+    <div class="kb-field" aria-live="polite"><span id="kb-text"></span><i></i></div>
+    <div class="kb-keys" id="kb-keys"></div>
+    <div class="kb-act"><p class="kb-msg" id="kb-msg" role="alert"></p><button class="btn" id="kb-skip" type="button"></button><button class="btn primary" id="kb-ok" type="button"></button></div>
+  </div>
 </div>
 
 <script id="ck-core">
@@ -734,8 +807,7 @@ nl:{title:'Chirp-<span class="wave">karaoke</span>',
  iListen:"▶ Luister naar een echte", iListenS:"GW170817: twee neutronensterren, de laatste seconde voor de botsing · nagebouwd uit de gemeten massa's",
  iKar:"Zing mee", iKarS:"Karaoke: volg een echte chirp",
  iFree:"Welk paar ben jij?", iFreeS:"Zing je eigen woeoep en ontdek je paar",
- priv:"Je stem verlaat dit toestel nooit: er wordt niets bewaard of verstuurd.",
- boardIntro:"Beste karaokescore vandaag: {s}",
+ priv:"Je stem verlaat dit toestel nooit en wordt niet bewaard. Alleen een naam die je zelf intypt voor de toplijst blijft op dit toestel staan.",
  back:"← Begin", start:"Terug naar het begin",
  modeReal:"Echte snelheid", modeBH:"Zwarte-gatenmodus ×25",
  explReal:"<b>Echte snelheid.</b> Je stem telt als zwaartekrachtgolf, precies zoals hij is: zelfde toonhoogte, zelfde snelheid. Paren neutronensterren glijden in ongeveer een seconde door deze tonen.",
@@ -775,7 +847,6 @@ nl:{title:'Chirp-<span class="wave">karaoke</span>',
  pYou:"▶ Jouw stem", pTmpl:"▶ Best passende chirp", pMerge:"▶ Door tot de botsing", pEvent:"▶ {id}", pTarget:"▶ {id} (om te volgen)", simulated:"gesimuleerd",
  merger:"Je chirp stopte bij {f} Hz (trillingen per seconde). De botsing zou {dt} later volgen, rond {fm} Hz.",
  bhBand:"In werkelijkheid zou je chirp lopen van {a} tot {b} Hz: lage tonen waar de Einstein Telescope veel gevoeliger is dan LIGO.",
- bestToday:"Beste van vandaag: {s}", newBest:"Nieuw dagrecord!",
  mic:"De microfoon is niet beschikbaar. Geef je browser toegang tot de microfoon, of gebruik een opname.",
  short:"Te kort. Zing een woeoep van minstens een halve seconde.", nopitch:"Geen duidelijke toon gehoord. Probeer wat luider te neuriën of te fluiten.",
  quiet:"Te stil. Zing wat luider of dichter bij de microfoon.", nothing:"We hoorden niemand zingen. Houd de knop ingedrukt terwijl je zingt.",
@@ -810,7 +881,20 @@ nl:{title:'Chirp-<span class="wave">karaoke</span>',
  simLead:"Simulatie · waar de chirp vandaan komt", simYou:"Jouw paar", simIdle:"Zing een woeoep: hier verschijnt jouw paar.",
  simNote:"Twee zware objecten draaien steeds sneller rond elkaar, komen dichterbij en botsen. Elk rondje stuurt twee golven door de ruimte. De animatie loopt gelijk met het geluid, maar de rondjes zijn vertraagd: in het echt zijn het er tientallen tot honderden per seconde.",
  simPh:["Ze spiraleren naar elkaar toe","Botsing!","Het nieuwe zwarte gat trilt na"], simWave:"zwaartekrachtgolf (vertraagd)",
- simHow:"<b>De animatie.</b> Twee objecten draaien rond elkaar boven een ‘rubberen’ ruimte, gelijk met het geluid: hoe hoger de toon, hoe sneller en dichter ze draaien. De rondjes zijn vertraagd en de groottes overdreven: het is een schets, geen berekening met Einsteins vergelijkingen."
+ simHow:"<b>De animatie.</b> Twee objecten draaien rond elkaar boven een ‘rubberen’ ruimte, gelijk met het geluid: hoe hoger de toon, hoe sneller en dichter ze draaien. De rondjes zijn vertraagd en de groottes overdreven: het is een schets, geen berekening met Einsteins vergelijkingen.",
+ lb:{kar:{t:"Beste meezinger",s:"Zing mee: hoe goed je de echte chirp volgde."},
+  match:{t:"Beste chirp",s:"Welk paar ben jij: hoe goed je woeoep op een echte chirp lijkt."},
+  heavy:{t:"Zwaarste paar",s:"Massa van elk object. Telt vanaf 60 % gelijkenis."},
+  far:{t:"Verst weg",s:"Zo ver terug in de tijd hoort de Einstein Telescope zo'n paar nog. Telt vanaf 60 % gelijkenis."},
+  light:{t:"Lichtste paar",s:"Lichter dan een neutronenster? Dan misschien oer-zwarte gaten. Telt vanaf 60 % gelijkenis."},
+  group:{t:"Meeste botsingen in 15 s",s:"Groepsmodus: de uitdaging van 15 seconden."}},
+ lbOpen:"🏆 Toplijsten", lbTitle:"Toplijsten van vandaag", lbExpl:"De top 10 van vandaag in elke categorie. Haal je een plek, dan mag je je naam intypen.", lbBack:"← Terug",
+ lbChamp:"Kampioenen van vandaag:", lbNone:"Nog niemand op de toplijsten van vandaag: word de eerste!", lbEmpty:"Nog niemand. Word de eerste!",
+ lbQual:"Top 10 van vandaag!", lbName:"Typ je naam (of een bijnaam) voor de toplijst.", lbTeam:"Typ een naam voor jullie groep.", lbSave:"Bewaar", lbSkip:"Overslaan",
+ lbEnter:"Zet je naam op de toplijst", lbSaved:"Je staat op de toplijst: {list}", lbSee:"Bekijk de toplijsten", lbBest:"Beste van vandaag, {b}: {n} ({v})", lbPeak:"max. {n} tegelijk", lbGyr:"{x} mld jaar", lbMyr:"{x} mln jaar",
+ kbSpace:"spatie", kbBack:"wissen",
+ lbAdmin:"Beheer: tik ✕ om één naam te wissen, of wis een hele lijst.", lbAdminPin:"Beheerderscode", lbWrongPin:"Verkeerde code.", lbResetAll:"Alle toplijsten wissen", lbReset:"Lijst wissen", lbConfirm:"Nog eens tikken om te bevestigen", lbDone:"Klaar", lbCancel:"Annuleren", lbDel:"Wis deze naam",
+ chBtn:"⏱ Uitdaging: 15 seconden", chStop:"Stop de uitdaging", chReady:"Klaar? Woeoep zoveel je kan!", chGo:"WOEOEP!", chDone:"⏱ {n} botsingen in 15 seconden", badgeCh:"UITDAGING · 15 S"
 },
 en:{title:'Chirp <span class="wave">karaoke</span>',
  tag:"Sing like two colliding black holes. The computer compares your whoop with the chirp of every possible pair: the same trick LIGO uses to dig signals out of noise.",
@@ -819,8 +903,7 @@ en:{title:'Chirp <span class="wave">karaoke</span>',
  iListen:"▶ Listen to a real one", iListenS:"GW170817: two neutron stars, the last second before they collided · rebuilt from the measured masses",
  iKar:"Sing along", iKarS:"Karaoke: follow a real chirp",
  iFree:"Which pair are you?", iFreeS:"Sing your own whoop and find your pair",
- priv:"Your voice never leaves this device: nothing is saved or sent.",
- boardIntro:"Best karaoke score today: {s}",
+ priv:"Your voice never leaves this device and is not saved. Only a name you type yourself for the leaderboard stays on this device.",
  back:"← Start", start:"Back to the start",
  modeReal:"Real speed", modeBH:"Black-hole mode ×25",
  explReal:"<b>Real speed.</b> Your voice counts as a gravitational wave exactly as it is: same pitch, same speed. Neutron-star pairs sweep through these pitches in about a second.",
@@ -860,7 +943,6 @@ en:{title:'Chirp <span class="wave">karaoke</span>',
  pYou:"▶ Your voice", pTmpl:"▶ Best-matching chirp", pMerge:"▶ On to the collision", pEvent:"▶ {id}", pTarget:"▶ {id} (to follow)", simulated:"simulated",
  merger:"Your chirp stopped at {f} Hz (vibrations per second). The collision would follow {dt} later, at about {fm} Hz.",
  bhBand:"In reality your chirp would run from {a} to {b} Hz: low tones where the Einstein Telescope is far more sensitive than LIGO.",
- bestToday:"Best today: {s}", newBest:"New best of the day!",
  mic:"The microphone is not available. Allow microphone access in your browser, or use a recording.",
  short:"Too short. Sing a whoop of at least half a second.", nopitch:"No clear pitch heard. Try humming or whistling a bit louder.",
  quiet:"Too quiet. Sing a bit louder or closer to the microphone.", nothing:"We heard no singing. Hold the button while you sing.",
@@ -895,7 +977,20 @@ en:{title:'Chirp <span class="wave">karaoke</span>',
  simLead:"Simulation · where the chirp comes from", simYou:"Your pair", simIdle:"Sing a whoop: your pair appears here.",
  simNote:"Two heavy objects circle each other ever faster, draw closer and collide. Every orbit sends two waves through space. The animation runs in step with the sound, but the orbits are slowed down: in reality there are tens to hundreds per second.",
  simPh:["Spiralling in","Collision!","The new black hole rings down"], simWave:"gravitational wave (slowed down)",
- simHow:"<b>The animation.</b> Two objects circle each other above a ‘rubber sheet’ of space, in step with the sound: the higher the tone, the faster and closer they orbit. The orbits are slowed down and the sizes exaggerated: it is a sketch, not a calculation with Einstein's equations."
+ simHow:"<b>The animation.</b> Two objects circle each other above a ‘rubber sheet’ of space, in step with the sound: the higher the tone, the faster and closer they orbit. The orbits are slowed down and the sizes exaggerated: it is a sketch, not a calculation with Einstein's equations.",
+ lb:{kar:{t:"Best sing-along",s:"Sing along: how closely you followed the real chirp."},
+  match:{t:"Best chirp",s:"Which pair are you: how closely your whoop matches a real chirp."},
+  heavy:{t:"Heaviest pair",s:"Mass of each object. Counts from a 60% match."},
+  far:{t:"Furthest away",s:"How far back in time the Einstein Telescope still hears such a pair. Counts from a 60% match."},
+  light:{t:"Lightest pair",s:"Lighter than a neutron star? Then maybe primordial black holes. Counts from a 60% match."},
+  group:{t:"Most collisions in 15 s",s:"Group mode: the 15-second challenge."}},
+ lbOpen:"🏆 Leaderboards", lbTitle:"Today's leaderboards", lbExpl:"Today's top 10 in each category. Make the list and you can type your name.", lbBack:"← Back",
+ lbChamp:"Today's champions:", lbNone:"Nobody on today's leaderboards yet: be the first!", lbEmpty:"Nobody yet. Be the first!",
+ lbQual:"Today's top 10!", lbName:"Type your name (or a nickname) for the leaderboard.", lbTeam:"Type a name for your group.", lbSave:"Save", lbSkip:"Skip",
+ lbEnter:"Put your name on the board", lbSaved:"You're on the leaderboard: {list}", lbSee:"See the leaderboards", lbBest:"Best today, {b}: {n} ({v})", lbPeak:"max. {n} at once", lbGyr:"{x} bn yrs", lbMyr:"{x} M yrs",
+ kbSpace:"space", kbBack:"delete",
+ lbAdmin:"Manager mode: tap ✕ to remove one name, or reset a whole list.", lbAdminPin:"Manager code", lbWrongPin:"Wrong code.", lbResetAll:"Reset all leaderboards", lbReset:"Reset list", lbConfirm:"Tap again to confirm", lbDone:"Done", lbCancel:"Cancel", lbDel:"Remove this name",
+ chBtn:"⏱ 15-second challenge", chStop:"Stop the challenge", chReady:"Ready? Whoop as much as you can!", chGo:"WHOOP!", chDone:"⏱ {n} collisions in 15 seconds", badgeCh:"CHALLENGE · 15 S"
 },
 fr:{title:'Karaoké des <span class="wave">chirps</span>',
  tag:"Chante comme deux trous noirs qui se percutent. L'ordinateur compare ton « wouuup » au chirp de toutes les paires possibles : la même astuce que LIGO utilise pour extraire les signaux du bruit.",
@@ -904,8 +999,7 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
  iListen:"▶ Écoute un vrai chirp", iListenS:"GW170817 : deux étoiles à neutrons, la dernière seconde avant la collision · reconstitué à partir des masses mesurées",
  iKar:"Chante avec", iKarS:"Karaoké : suis un vrai chirp",
  iFree:"Quelle paire es-tu ?", iFreeS:"Chante ton propre « wouuup » et découvre ta paire",
- priv:"Ta voix ne quitte jamais cet appareil : rien n'est enregistré ni envoyé.",
- boardIntro:"Meilleur score karaoké du jour : {s}",
+ priv:"Ta voix ne quitte jamais cet appareil et n'est pas enregistrée. Seul un nom que tu tapes toi-même pour le classement reste sur cet appareil.",
  back:"← Début", start:"Retour au début",
  modeReal:"Vitesse réelle", modeBH:"Mode trous noirs ×25",
  explReal:"<b>Vitesse réelle.</b> Ta voix compte comme une onde gravitationnelle, telle quelle : même hauteur, même vitesse. Les paires d'étoiles à neutrons parcourent ces notes en environ une seconde.",
@@ -945,7 +1039,6 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
  pYou:"▶ Ta voix", pTmpl:"▶ Chirp le plus ressemblant", pMerge:"▶ Jusqu'à la collision", pEvent:"▶ {id}", pTarget:"▶ {id} (à suivre)", simulated:"simulé",
  merger:"Ton chirp s'est arrêté à {f} Hz (vibrations par seconde). La collision suivrait {dt} plus tard, vers {fm} Hz.",
  bhBand:"En réalité, ton chirp irait de {a} à {b} Hz : des sons graves où l'Einstein Telescope est bien plus sensible que LIGO.",
- bestToday:"Meilleur du jour : {s}", newBest:"Nouveau record du jour !",
  mic:"Le micro n'est pas disponible. Autorise l'accès au micro dans ton navigateur, ou utilise un enregistrement.",
  short:"Trop court. Chante un « wouuup » d'au moins une demi-seconde.", nopitch:"Pas de note claire entendue. Essaie de fredonner ou de siffler un peu plus fort.",
  quiet:"Trop faible. Chante un peu plus fort ou plus près du micro.", nothing:"Nous n'avons entendu personne chanter. Maintiens le bouton pendant que tu chantes.",
@@ -980,13 +1073,25 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
  simLead:"Simulation · d'où vient le chirp", simYou:"Ta paire", simIdle:"Chante un « wouuup » : ta paire apparaît ici.",
  simNote:"Deux objets massifs tournent l'un autour de l'autre de plus en plus vite, se rapprochent et se percutent. Chaque tour envoie deux vagues à travers l'espace. L'animation suit le son, mais les tours sont ralentis : en réalité, il y en a des dizaines à des centaines par seconde.",
  simPh:["Ils spiralent l'un vers l'autre","Collision !","Le nouveau trou noir vibre encore"], simWave:"onde gravitationnelle (ralentie)",
- simHow:"<b>L'animation.</b> Deux objets tournent l'un autour de l'autre au-dessus d'un espace « en caoutchouc », au rythme du son : plus le son est aigu, plus ils tournent vite et près. Les tours sont ralentis et les tailles exagérées : c'est un croquis, pas un calcul avec les équations d'Einstein."
+ simHow:"<b>L'animation.</b> Deux objets tournent l'un autour de l'autre au-dessus d'un espace « en caoutchouc », au rythme du son : plus le son est aigu, plus ils tournent vite et près. Les tours sont ralentis et les tailles exagérées : c'est un croquis, pas un calcul avec les équations d'Einstein.",
+ lb:{kar:{t:"Meilleur karaoké",s:"Chante avec : à quel point tu as suivi le vrai chirp."},
+  match:{t:"Meilleur chirp",s:"Quelle paire es-tu : à quel point ton « wouuup » ressemble à un vrai chirp."},
+  heavy:{t:"Paire la plus lourde",s:"Masse de chaque objet. Compte à partir de 60 % de ressemblance."},
+  far:{t:"Le plus lointain",s:"Jusqu'où dans le passé l'Einstein Telescope entend encore une telle paire. Compte à partir de 60 % de ressemblance."},
+  light:{t:"Paire la plus légère",s:"Plus légère qu'une étoile à neutrons ? Alors peut-être des trous noirs primordiaux. Compte à partir de 60 % de ressemblance."},
+  group:{t:"Le plus de collisions en 15 s",s:"Mode groupe : le défi de 15 secondes."}},
+ lbOpen:"🏆 Classements", lbTitle:"Classements du jour", lbExpl:"Le top 10 du jour dans chaque catégorie. Si tu y entres, tu peux taper ton nom.", lbBack:"← Retour",
+ lbChamp:"Champions du jour :", lbNone:"Personne encore dans les classements du jour : à toi de jouer !", lbEmpty:"Personne pour l'instant : à toi de jouer !",
+ lbQual:"Top 10 du jour !", lbName:"Tape ton nom (ou un surnom) pour le classement.", lbTeam:"Tapez un nom pour votre groupe.", lbSave:"Enregistrer", lbSkip:"Passer",
+ lbEnter:"Mets ton nom au classement", lbSaved:"Tu es au classement : {list}", lbSee:"Voir les classements", lbBest:"Meilleur du jour, {b} : {n} ({v})", lbPeak:"max. {n} en même temps", lbGyr:"{x} Mrd ans", lbMyr:"{x} M ans",
+ kbSpace:"espace", kbBack:"effacer",
+ lbAdmin:"Mode gestionnaire : touche ✕ pour effacer un nom, ou efface toute une liste.", lbAdminPin:"Code gestionnaire", lbWrongPin:"Code erroné.", lbResetAll:"Effacer tous les classements", lbReset:"Effacer la liste", lbConfirm:"Touche encore pour confirmer", lbDone:"Terminé", lbCancel:"Annuler", lbDel:"Effacer ce nom",
+ chBtn:"⏱ Défi : 15 secondes", chStop:"Arrêter le défi", chReady:"Prêts ? Faites « wouuup » autant que possible !", chGo:"WOUUUP !", chDone:"⏱ {n} collisions en 15 secondes", badgeCh:"DÉFI · 15 S"
 }};
 
 /* ---------------- state ---------------- */
 const Q = new URLSearchParams(location.search);
 const DEBUG = Q.get("debug")==="1";
-const BOARD_CLEAR_ON_IDLE = false; // the day's best stays across visitors; set true to wipe it at every kiosk idle reset
 const S = { lang:"nl", screen:"intro", kind:"kar", tgtI:0, mode:"bh", audio:null, source:null, res:null, kar:null, msgKey:null, ctx:null, best:null };
 if (I18N[Q.get("lang")]) S.lang = Q.get("lang");
 const $ = id => document.getElementById(id);
@@ -1004,14 +1109,148 @@ const tg = () => TARGETS[S.tgtI];
 const curMode = () => S.kind==="kar"? tg().mode : S.mode;
 const factorOf = m => m==="bh"? BH_FACTOR : 1;
 
-/* ---------------- day leaderboard (this device only) ---------------- */
-const BOARD_KEY="ck-board";
+/* ---------------- leaderboards (this device only) ----------------
+   Top LB_N per category in localStorage; with LB_DAILY a new day starts empty. A score only enters when
+   the visitor types a name. Only live-microphone attempts count (not the example or an uploaded file),
+   and the free-mode records (heaviest, lightest, furthest) need a match of at least LB_MIN_MATCH so a
+   stray noise cannot set them. Managers: hold the leaderboard title for 3 s (or Ctrl+Shift+L) and enter
+   the code (LB_PIN, or ?pin=1234 in the kiosk URL) to remove single names or reset lists. */
+const LB_KEY="ck-lb", LB_N=10, LB_DAILY=true, LB_MIN_MATCH=0.6, LB_NAME_MAX=12, LB_PIN=Q.get("pin")||"1915";
+const LB_BOARDS=[{id:"kar"},{id:"match"},{id:"heavy"},{id:"far"},{id:"light",lo:true},{id:"group"}];
+const LB_BY=Object.fromEntries(LB_BOARDS.map(b=>[b.id,b]));
 const today = () => { const d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); };
-let boardMem = null;
-function boardLoad(){ let b=null; try{ b=JSON.parse(localStorage.getItem(BOARD_KEY)||"null"); }catch(e){ b=boardMem; } if(!b||b.date!==today()) b={date:today(), best:{}}; return b; }
-function boardSave(b){ boardMem=b; try{ localStorage.setItem(BOARD_KEY, JSON.stringify(b)); }catch(e){} }
-function boardSubmit(key, score){ const b=boardLoad(); const old=b.best[key]||0; const isNew = score>old; if(isNew){ b.best[key]=score; boardSave(b); } return {best:Math.max(old,score), isNew: isNew && old>0}; }
-function boardClear(){ boardMem=null; try{ localStorage.removeItem(BOARD_KEY); }catch(e){} }
+const esc = s => String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let lbMem=null;
+function lbLoad(){ let b=null; try{ b=JSON.parse(localStorage.getItem(LB_KEY)||"null"); }catch(e){} if (!b) b=lbMem;
+  if (!b || typeof b.boards!=="object" || (LB_DAILY && b.date!==today())) b={date:today(), boards:{}};
+  for (const B of LB_BOARDS) if (!Array.isArray(b.boards[B.id])) b.boards[B.id]=[];
+  return b; }
+function lbStore(b){ lbMem=b; try{ localStorage.setItem(LB_KEY, JSON.stringify(b)); }catch(e){} }
+// place a new value would get (ties go to whoever was there first); 0 = not in the top LB_N
+function lbRank(id, v){ const B=LB_BY[id]; let r=1; for (const e of lbLoad().boards[id]) if (B.lo? e.v<=v : e.v>=v) r++; return r<=LB_N? r : 0; }
+// the entries the attempt just analysed would get, if the visitor types a name
+function lbCands(){
+  const out=[], r=S.res, add=(id,v,d)=>{ if (v==null || !isFinite(v) || (S.lbDone && S.lbDone.has(id))) return; const rank=lbRank(id,v); if (rank) out.push({id, v, d, rank}); };
+  if (S.source!=="mic") return out;
+  if (S.kind==="kar"){ if (S.kar && S.kar.score>=0.05) add("kar", S.kar.score, {ev:tg().id}); }
+  else if (S.kind==="free" && r && r.fit){ const d={m:r.m, cls:r.cls, mode:curMode()};
+    add("match", r.fit.score, d);
+    if (r.fit.score>=LB_MIN_MATCH){ add("heavy", r.m, d); add("light", r.m, d); if (r.zE!=null) add("far", r.zE, d); } }
+  return out;
+}
+function lbCommit(name){
+  const pend=S.lbPend; if (!pend || !pend.length) return;
+  const b=lbLoad(), t=Date.now(), saved=[];
+  for (const c of pend){ const B=LB_BY[c.id], list=b.boards[c.id]; list.push({name, v:c.v, d:c.d, t});
+    list.sort((x,y)=> (B.lo? x.v-y.v : y.v-x.v) || x.t-y.t); list.length=Math.min(list.length, LB_N);
+    const i=list.findIndex(e=>e.t===t); if (i>=0) saved.push({id:c.id, rank:i+1});
+    if (S.lbDone) S.lbDone.add(c.id); }
+  lbStore(b); S.lbPend=null; S.lbSaved=saved; S.lbLast=t; render();
+}
+function lbClear(){ S.lbPend=null; S.lbSaved=null; S.chRes=null; if (KB.open && KB.mode!=="pin") kbClose(); }
+// after a result: offer the keyboard if the attempt qualifies
+function lbPrompt(){ const p=S.lbPend; if (p) setTimeout(()=>{ if (S.lbPend===p && S.screen!=="intro" && S.screen!=="board" && !KB.open && !recording) kbOpen("name"); }, 900); }
+function lbTime(z){ const g=lookback(z); return g>=0.995? T("lbGyr",{x:nf(g, g>=10?2:1)}) : T("lbMyr",{x:nf(Math.max(1,Math.round(g*1000)),0)}); }
+// [value, small tag] of an entry, in the current language
+function lbFmt(id, e){ const L=I18N[S.lang], d=e.d||{}, mm = d.m!=null? sig(d.m)+" + "+sig(d.m)+" M☉" : "";
+  if (id==="kar") return [pct(e.v), d.ev||""];
+  if (id==="match") return [pct(e.v), mm];
+  if (id==="heavy" || id==="light") return [mm, d.cls? L.gObj[d.cls] : ""];
+  if (id==="far") return [lbTime(e.v), mm];
+  return [String(e.v), d.peak? T("lbPeak",{n:d.peak}) : ""]; }
+const lbList = list => list.map(s=>"#"+s.rank+" "+I18N[S.lang].lb[s.id].t).join(" · ");
+// the leaderboard line on the result card / group panel
+function lbLine(id){ const L=I18N[S.lang];
+  if (S.lbSaved && S.lbSaved.length) return {hit:true, html:"🏆 "+esc(T("lbSaved",{list:lbList(S.lbSaved)}))+` <button class="btn" type="button" data-lb>${L.lbSee}</button>`};
+  if (S.lbPend && S.lbPend.length) return {hit:true, html:"🏆 "+esc(L.lbQual+" "+lbList(S.lbPend))+` <button class="btn gold" type="button" data-lbname>${L.lbEnter}</button>`};
+  const top=lbLoad().boards[id][0];
+  return {hit:false, html: top? "🏆 "+esc(T("lbBest",{b:L.lb[id].t, n:top.name, v:lbFmt(id,top)[0]})) : ""}; }
+function setLine(el, o){ el.className="lbline"+(o.hit?" hit":""); el.innerHTML=o.html; }
+function renderChamps(L){
+  const b=lbLoad(), chips=LB_BOARDS.filter(B=>b.boards[B.id].length).map(B=>{ const e=b.boards[B.id][0];
+    return `<span class="champ"><span>${L.lb[B.id].t}</span><b>${esc(e.name)}</b><span class="v">${lbFmt(B.id,e)[0]}</span></span>`; });
+  $("i-champs").innerHTML = `<button class="btn gold" type="button" data-lb>${L.lbOpen}</button>` + `<span class="lbl">${chips.length? L.lbChamp : L.lbNone}</span>` + chips.join("");
+}
+function renderBoards(L){
+  const b=lbLoad(), adm=S.lbAdmin, conf=k=>S.lbConfirm===k;
+  $("lb-back").textContent=L.lbBack; $("lb-title").textContent=L.lbTitle; $("lb-expl").textContent=L.lbExpl;
+  $("lb-admin").hidden=!adm;
+  if (adm) $("lb-admin").innerHTML = `<span>${L.lbAdmin}</span><button class="btn" type="button" data-reset="*">${conf("reset:*")? L.lbConfirm : L.lbResetAll}</button><button class="btn primary" type="button" data-admin-done>${L.lbDone}</button>`;
+  $("lb-grid").innerHTML = LB_BOARDS.map(B=>{ const list=b.boards[B.id], info=L.lb[B.id];
+    const rows=list.map((e,i)=>{ const [v,tag]=lbFmt(B.id,e), k="del:"+B.id+":"+e.t;
+      return `<li class="${e.t===S.lbLast?"me":""}"><span class="rk">${i+1}</span><span class="nm">${esc(e.name)}${tag? `<small>${esc(tag)}</small>`:""}</span><span class="v">${v}</span>`+
+        (adm? `<button class="del" type="button" data-del="${B.id}:${e.t}" aria-label="${L.lbDel}" title="${conf(k)? L.lbConfirm : L.lbDel}">${conf(k)? "✕?" : "✕"}</button>` : "<span></span>")+`</li>`; }).join("");
+    return `<section class="lbcard"><h3><span>${info.t}</span>${adm && list.length? `<button class="btn" type="button" data-reset="${B.id}">${conf("reset:"+B.id)? L.lbConfirm : L.lbReset}</button>`:""}</h3><p class="sub">${info.s}</p>`+
+      (rows? `<ol>${rows}</ol>` : `<p class="lbempty">${L.lbEmpty}</p>`)+`</section>`; }).join("");
+}
+// manager actions need a second tap within 3 s
+function lbAdminAct(key){
+  if (!S.lbAdmin) return;
+  if (S.lbConfirm!==key){ S.lbConfirm=key; clearTimeout(S.lbConfirmT); S.lbConfirmT=setTimeout(()=>{ S.lbConfirm=null; render(); }, 3000); render(); return; }
+  S.lbConfirm=null; clearTimeout(S.lbConfirmT);
+  const b=lbLoad(), [act, id, t]=key.split(":");
+  if (act==="reset"){ for (const B of LB_BOARDS) if (id==="*" || id===B.id) b.boards[B.id]=[]; }
+  else b.boards[id]=b.boards[id].filter(e=>String(e.t)!==t);
+  lbStore(b); render();
+}
+function openBoards(){ if (S.screen==="board") return; kbClose(); abortRec(); chCancel(); gHalt(); stopPlay(); S.prevScreen=S.screen; S.lbAdmin=false; show("board"); window.scrollTo(0,0); }
+function closeBoards(){ S.lbAdmin=false; S.lbConfirm=null; kbClose(); const p=S.prevScreen||"intro"; if (p==="intro") goIntro(); else show(p); }
+
+/* ---------------- touch keyboard ----------------
+   A bottom sheet with big keys: AZERTY in Dutch and French, QWERTY in English, a row of accents; a
+   physical keyboard works too. Mode "name" saves the pending leaderboard entries, "pin" asks the manager code. */
+const KB={open:false, mode:"name", text:"", msg:""};
+const KB_LAY={azerty:["AZERTYUIOP","QSDFGHJKLM","WXCVBN"], qwerty:["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"]}, KB_ACC="ÀÂÇÉÈÊËÏÔÖÜ";
+function kbOpen(mode){ if (mode==="name" && !(S.lbPend && S.lbPend.length)) return; KB.open=true; KB.mode=mode; KB.text=""; KB.msg=""; $("kb").hidden=false; kbRender(); if (mode==="name") window.scrollTo({top:0, behavior:"smooth"}); }
+function kbClose(){ if (!KB.open) return; KB.open=false; $("kb").hidden=true; }
+function kbRender(){
+  if (!KB.open) return; const L=I18N[S.lang], pin=KB.mode==="pin"; let rows;
+  if (pin) rows=[["1","2","3"],["4","5","6"],["7","8","9"],["⌫","0"]];
+  else { rows=[[...KB_ACC], ...(S.lang==="en"? KB_LAY.qwerty : KB_LAY.azerty).map(r=>[...r])]; rows[rows.length-1].push("⌫"); rows.push(["-","␣","'"]); }
+  $("kb-keys").className="kb-keys"+(pin?" kb-pin":"");
+  $("kb-keys").innerHTML = rows.map((r,i)=>`<div class="kb-row${!pin&&i===0?" acc":""}">`+r.map(k=>
+    `<button type="button" data-k="${k}"${k==="␣"?' class="wide"':k==="⌫"?' class="mid"':""} aria-label="${k==="␣"?L.kbSpace:k==="⌫"?L.kbBack:k}">${k==="␣"?L.kbSpace:k}</button>`).join("")+`</div>`).join("");
+  $("kb-qual").textContent = pin? L.lbAdminPin : "🏆 "+L.lbQual+" "+lbList(S.lbPend||[]);
+  $("kb-title").textContent = pin? "" : (S.kind==="group"? L.lbTeam : L.lbName);
+  $("kb-skip").textContent = pin? L.lbCancel : L.lbSkip; $("kb-ok").textContent = pin? "OK" : L.lbSave; $("kb-msg").textContent=KB.msg;
+  kbText();
+}
+function kbText(){ $("kb-text").textContent = KB.mode==="pin"? "•".repeat(KB.text.length) : KB.text; $("kb-ok").disabled = !KB.text.trim(); }
+function kbKey(k){
+  const max = KB.mode==="pin"? 8 : LB_NAME_MAX; if (KB.msg){ KB.msg=""; $("kb-msg").textContent=""; }
+  if (k==="⌫") KB.text=KB.text.slice(0,-1);
+  else if (KB.text.length<max){ if (k==="␣"){ if (KB.text && !KB.text.endsWith(" ")) KB.text+=" "; } else KB.text+=k; }
+  kbText();
+}
+function kbOk(){
+  const v=KB.text.trim().replace(/\s+/g," "); if (!v) return;
+  if (KB.mode==="pin"){ if (v===LB_PIN){ kbClose(); S.lbAdmin=true; render(); } else { KB.text=""; KB.msg=I18N[S.lang].lbWrongPin; kbRender(); } return; }
+  kbClose(); lbCommit(v);
+}
+function kbSkip(){ kbClose(); render(); }
+$("kb-keys").addEventListener("click", e=>{ const b=e.target.closest("button[data-k]"); if (b) kbKey(b.dataset.k); });
+$("kb-ok").onclick=kbOk; $("kb-skip").onclick=kbSkip;
+// physical keyboard while the sheet is open (capture phase: the space bar must not start singing)
+window.addEventListener("keydown", e=>{
+  if (e.ctrlKey && e.shiftKey && (e.key==="L"||e.key==="l")){ e.preventDefault(); openBoards(); if (!S.lbAdmin) kbOpen("pin"); return; }
+  if (!KB.open || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k=e.key; let used=true;
+  if (k==="Backspace") kbKey("⌫"); else if (k==="Enter") kbOk(); else if (k==="Escape") kbSkip(); else if (k===" ") kbKey("␣");
+  else if (k.length===1 && (KB.mode==="pin"? /[0-9]/.test(k) : /[\p{L}0-9'\-]/u.test(k))) kbKey(k.toLocaleUpperCase());
+  else used=false;
+  if (used){ e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+window.addEventListener("keyup", e=>{ if (KB.open) e.stopImmediatePropagation(); }, true);
+// buttons drawn inside innerHTML (intro, result line, leaderboard screen)
+document.addEventListener("click", e=>{ const t=e.target.closest("[data-lb],[data-lbname],[data-del],[data-reset],[data-admin-done]"); if (!t) return;
+  if (t.hasAttribute("data-lb")) openBoards();
+  else if (t.hasAttribute("data-lbname")) kbOpen("name");
+  else if (t.hasAttribute("data-admin-done")){ S.lbAdmin=false; S.lbConfirm=null; render(); }
+  else lbAdminAct(t.dataset.del? "del:"+t.dataset.del : "reset:"+t.dataset.reset); });
+$("lb-back").onclick=()=>closeBoards();
+(()=>{ const el=$("lb-title"); let tm=0; const clear=()=>{ clearTimeout(tm); tm=0; };
+  el.addEventListener("pointerdown", ()=>{ clear(); tm=setTimeout(()=>{ tm=0; if (!S.lbAdmin) kbOpen("pin"); }, 3000); });
+  for (const ev of ["pointerup","pointerleave","pointercancel"]) el.addEventListener(ev, clear);
+  el.addEventListener("contextmenu", e=>e.preventDefault()); })();
 
 /* ---------------- audio out ---------------- */
 function ctx(){ if(!S.ctx){ S.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if (S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
@@ -1056,7 +1295,7 @@ function drawFreqAxes(g, w, h, C){
   g.save(); g.translate(w-12, pad.t+ph/2); g.rotate(Math.PI/2); g.textAlign="center"; g.fillStyle=C("--tmpl"); g.fillText(T("axisGW"),0,0); g.restore();
 }
 function drawStage(live, playT){
-  if (S.screen==="intro") return;
+  if (S.screen==="intro" || S.screen==="board") return;
   if (S.kind==="group"){ drawGroup(); return; }
   const {dpr,w,h}=geom(); if (!w||!h) return; const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
   const css=getComputedStyle(document.documentElement); const C=k=>css.getPropertyValue(k).trim();
@@ -1307,13 +1546,14 @@ function render(){
   $("t-title").innerHTML=L.title; $("t-tag").textContent=L.tag;
   document.querySelectorAll("#langSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===S.lang));
   // intro
-  $("scr-intro").hidden = S.screen!=="intro"; $("scr-play").hidden = S.screen==="intro";
+  $("scr-intro").hidden = S.screen!=="intro"; $("scr-play").hidden = S.screen==="intro" || S.screen==="board"; $("scr-board").hidden = S.screen!=="board";
+  renderChamps(L); $("b-lb").textContent=L.lbOpen;
+  if (S.screen==="board") renderBoards(L);
+  if (KB.open) kbRender();
   $("i-what").textContent=L.iWhat; $("i-p").textContent=L.iP; $("i-listenT").textContent=L.iListen; $("i-listenS").textContent=L.iListenS;
   $("i-kar").textContent=L.iKar; $("i-karS").textContent=L.iKarS; $("i-free").textContent=L.iFree; $("i-freeS").textContent=L.iFreeS;
   $("i-grp").textContent=L.iGrp; $("i-grpS").textContent=L.iGrpS;
   $("i-priv").textContent="🔒 "+L.priv;
-  const bb=boardLoad(), kb=Math.max(0,...TARGETS.map(t=>bb.best["kar:"+t.id]||0));
-  $("i-board").textContent = kb>0? "🏆 "+T("boardIntro",{s:pct(kb)}) : "";
   // play screens
   const kar=S.kind==="kar", grp=S.kind==="group", mode=curMode();
   $("b-back").textContent=L.back;
@@ -1323,10 +1563,10 @@ function render(){
   $("m-real").setAttribute("aria-pressed",S.mode==="real"); $("m-bh").setAttribute("aria-pressed",S.mode==="bh");
   $("modeExpl").innerHTML = kar? L.karExpl+" "+L.tgtNote[tg().id] : (grp? L.grpExpl : L.freeExpl)+" "+(mode==="real"? L.explReal : L.explBH);
   if (!recording){ $("t-hold").textContent=L.hold; } $("t-hold2").textContent=L.hold2;
-  $("sing").hidden=grp; $("g-listen").hidden=!grp;
+  $("sing").hidden=grp; $("g-listen").hidden=!grp || !!G.ch; $("g-ch").hidden=!grp;
   $("exBtn").textContent= kar? L.listenAgain : grp? L.gDemo : L.example; $("upLbl").textContent=L.upload; $("upLbl").hidden=kar;
   $("lg-you").textContent= grp? L.gVoices : L.you; $("lg-tmpl").textContent= kar? L.tgt : grp? L.gDet : L.tmpl;
-  $("badge").textContent = grp? (G.on? L.badgeLive : G.feed? (G.src==="demo"? L.badgeDemo : L.badgeFile) : L.badgeGIdle)
+  $("badge").textContent = grp? (G.ch? L.badgeCh : G.on? L.badgeLive : G.feed? (G.src==="demo"? L.badgeDemo : L.badgeFile) : L.badgeGIdle)
     : kar? T("badgeKar",{id:tg().id}) : S.source==="example"? L.badgeEx : S.source==="file"? L.badgeFile : S.source==="mic"? L.badgeYou : "";
   $("note").textContent = grp? L.noteGrp : kar? L.noteKar : S.source==="example"? L.noteEx : S.res? L.noteYou : L.noteIdle;
   renderLevelHint();
@@ -1364,7 +1604,7 @@ function renderResult(L){
   $("r-take").textContent = L.takeaway;
   $("p-merge").innerHTML = L.pMergeAuto+`<span class="sim">${L.simulated}</span>`; $("p-merge").disabled=!P;
   $("r-start").textContent=L.start;
-  $("r-board").textContent = S.best? ("🏆 "+(S.best.isNew? L.newBest+" " : "")+T("bestToday",{s:pct(S.best.best)})) : "";
+  setLine($("r-board"), lbLine(kar? "kar" : "match"));
   // "more"
   $("r-more").textContent=L.more;
   $("r-scoreLbl").textContent=L.score;
@@ -1409,21 +1649,23 @@ function renderKV(){
 /* ---------------- flow ---------------- */
 function show(screen){ S.screen=screen; render(); }
 function enterPlay(kind){
-  S.kind=kind; S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; S.best=null;
+  chCancel(); lbClear();
+  S.kind=kind; S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null;
   show("sing"); openMic();
   if (kind==="kar") playTarget(true);
 }
 function finishAnalysis(x, sr, source){
+  if (S.lbFor!==x){ S.lbFor=x; S.lbDone=new Set(); } // re-analysing the same audio (mode switch) cannot enter a board twice
+  lbClear();
   S.audio={x, sr}; S.source=source; S.msgKey=null; const mode=curMode();
   S.res = analyze(x, sr, mode, source==="mic"? roomRms() : 0);
   specCache = computeSpec(x, sr);
   if (S.kind==="kar"){
     S.kar = karaokeScore(S.res.voiced||[], tg());
     if (S.kar.cover < 0.1){ S.msgKey = S.res.err==="quiet"? "quiet" : "nothing"; S.res=null; show("sing"); return; }
-    S.best = boardSubmit("kar:"+tg().id, S.kar.score);
-    show("result"); autoPlayPair();
-  } else if (S.res.err){ show("sing"); }
-  else { S.best = boardSubmit("free", S.res.fit.score); show("result"); autoPlayPair(); }
+  } else if (S.res.err){ show("sing"); return; }
+  const c=lbCands(); S.lbPend = c.length? c : null;
+  show("result"); autoPlayPair(); lbPrompt();
 }
 function pairSound(){
   const r=S.res, sr=44100;
@@ -1480,12 +1722,12 @@ function renderLevelHint(){ $("lvlHint").textContent = micState==="off"? T("lvlO
 
 let recording=false, proc=null, chunks=[], live=null, raf=0, recT0=0, stopTimer=0;
 async function startRec(){
-  if (recording || S.screen==="intro" || S.kind==="group") return; recording=true; stopPlay(); $("sing").classList.add("rec"); $("t-hold").textContent=T("singing");
+  if (recording || S.screen==="intro" || S.screen==="board" || S.kind==="group" || KB.open) return; recording=true; stopPlay(); $("sing").classList.add("rec"); $("t-hold").textContent=T("singing");
   const c=ctx();
   if (!stream) await openMic();
   if (!stream){ recording=false; $("sing").classList.remove("rec"); $("t-hold").textContent=T("hold"); S.msgKey="mic"; render(); return; }
   if (!recording) return;
-  if (S.screen==="result"){ S.res=null; S.kar=null; specCache=null; S.screen="sing"; }
+  if (S.screen==="result"){ S.res=null; S.kar=null; specCache=null; S.screen="sing"; lbClear(); }
   proc=c.createScriptProcessor(2048,1,1);
   const mute=c.createGain(); mute.gain.value=0; micSrc.connect(proc); proc.connect(mute).connect(c.destination);
   chunks=[]; recT0=c.currentTime; live={t:0, pitch:[], spec:{cols:[],N:an.fftSize,sr:c.sampleRate}};
@@ -1514,7 +1756,7 @@ sing.addEventListener("pointerdown",e=>{ e.preventDefault(); try{sing.setPointer
 for (const ev of ["pointerup","pointercancel","lostpointercapture"]) sing.addEventListener(ev,()=>stopRec());
 sing.addEventListener("keydown",e=>{ if((e.key==="Enter")&&!e.repeat){ e.preventDefault(); startRec(); } });
 sing.addEventListener("keyup",e=>{ if(e.key==="Enter") stopRec(); });
-window.addEventListener("keydown",e=>{ if(e.code==="Space"&&!e.repeat&&S.screen!=="intro"&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement&&e.target!==sing)&&!(e.target.tagName==="SUMMARY")){ e.preventDefault(); if (S.kind==="group") gToggle(); else startRec(); } });
+window.addEventListener("keydown",e=>{ if(e.code==="Space"&&!e.repeat&&S.screen!=="intro"&&S.screen!=="board"&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement&&e.target!==sing)&&!(e.target.tagName==="SUMMARY")){ e.preventDefault(); if (S.kind==="group") gToggle(); else startRec(); } });
 window.addEventListener("keyup",e=>{ if(e.code==="Space"&&recording){ e.preventDefault(); stopRec(); } });
 
 /* ---------------- group mode ----------------
@@ -1560,7 +1802,7 @@ function gProcess(){
   if ((G.on||G.feed) && ms-G.pokeMs>5000){ G.pokeMs=ms; if (window.OutreachKit && window.OutreachKit.poke) window.OutreachKit.poke(); } // no kiosk reset while a room is whooping
 }
 function gLoop(){
-  G.raf=0; if (S.kind!=="group" || S.screen==="intro") return;
+  G.raf=0; if (S.kind!=="group" || S.screen==="intro" || S.screen==="board") return;
   gProcess(); drawGroup();
   if (G.on || G.feed || G.dets.some(d=>performance.now()-d.at<2200)) G.raf=requestAnimationFrame(gLoop);
 }
@@ -1576,7 +1818,7 @@ async function gStart(){
   if (G.on) return; gHalt(); stopPlay();
   const c=ctx(); if (!stream) await openMic();
   if (!stream){ S.msgKey="mic"; render(); return; }
-  if (S.kind!=="group" || S.screen==="intro" || G.on) return;
+  if (S.kind!=="group" || S.screen==="intro" || S.screen==="board" || G.on) return;
   S.msgKey=null; G.det=makeGroupDetector(c.sampleRate, G.clock); G.src="mic";
   G.proc=c.createScriptProcessor(2048,1,1); const mute=c.createGain(); mute.gain.value=0;
   micSrc.connect(G.proc); G.proc.connect(mute).connect(c.destination);
@@ -1584,13 +1826,34 @@ async function gStart(){
   G.on=true; render(); gKick();
 }
 function gStop(){ gHalt(); render(); }
-function gToggle(){ if (G.on || G.feed) gStop(); else gStart(); }
+function gToggle(){ if (G.ch){ chCancel(); render(); return; } if (G.on || G.feed) gStop(); else gStart(); }
+/* 15-second challenge: a 3-2-1 countdown, then the count starts from zero and listening stops after CH.T
+   seconds. Whoops still going at the bell are finished and counted. A top-10 count asks for a group name. */
+const CH = {T:15, PRE:3};
+async function chStart(){
+  if (G.ch) return; gHalt(); stopPlay(); lbClear();
+  if (!stream) await openMic();
+  if (!stream){ S.msgKey="mic"; render(); return; }
+  if (S.kind!=="group" || S.screen==="intro" || S.screen==="board" || G.ch) return;
+  gClear(); S.msgKey=null; G.ch={phase:"pre", t0:performance.now()}; G.chIv=setInterval(chTick, 50); render(); chTick();
+}
+function chTick(){
+  if (!G.ch) return; const el=(performance.now()-G.ch.t0)/1000;
+  if (G.ch.phase==="pre"){ if (el>=CH.PRE){ G.ch={phase:"run", t0:performance.now()}; gStart(); } else drawGroup(); return; }
+  if (window.OutreachKit && window.OutreachKit.poke) window.OutreachKit.poke();
+  if (el<CH.T) return;
+  clearInterval(G.chIv); G.chIv=0; G.ch=null; gHalt();
+  const n=G.dets.length; S.chRes={n, peak:G.peak};
+  const rank = n>0? lbRank("group", n) : 0; S.lbPend = rank? [{id:"group", v:n, d:{peak:G.peak}, rank}] : null;
+  render(); drawGroup(); lbPrompt();
+}
+function chCancel(){ if (G.chIv){ clearInterval(G.chIv); G.chIv=0; } if (G.ch){ G.ch=null; gHalt(); } }
 function gFeed(x, sr, src){ // demo or recording: played aloud and fed to the detector at playback speed
   gHalt(); const y=normalize(Float32Array.from(x));
   G.det=makeGroupDetector(sr, G.clock); G.src=src; G.feed={x:y, sr, t0:play(y, sr), pos:0}; S.msgKey=null; render(); gKick();
 }
 function gClear(){ gHalt(); G.dets=[]; G.peak=0; G.listen=0; G.clock=0; G.tNow=0; G.popFrom=Infinity; gClearOff(); }
-function gReset(){ const was=G.on; gClear(); render(); if (was) gStart(); }
+function gReset(){ chCancel(); lbClear(); const was=G.on; gClear(); render(); if (was) gStart(); }
 
 function drawGroup(){
   const {dpr,w,h}=geom(); if (!w||!h) return; const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
@@ -1623,7 +1886,15 @@ function drawGroup(){
     g.fillStyle="rgba(9,12,20,0.75)"; g.fillRect(X-4, Y-14, tw, 32);
     g.fillStyle=C("--tgt"); g.fillText(lab, X, Y); g.font=`500 11px ${C("--f-mono")}`; g.fillStyle=C(G_COLV[P.cls].slice(4,-1)); g.fillText(sub, X, Y+13); g.font=`700 13px ${C("--f-mono")}`; }
   g.restore();
-  if (!G.cols && !G.on && !G.feed){ g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); let fs=Math.round(Math.min(34,w/22)); const fnt=()=>`800 ${fs}px ${C("--f-display")}`; g.font=fnt();
+  if (G.ch){ const el=(performance.now()-G.ch.t0)/1000, cxm=pad.l+pw/2, disp=C("--f-display"); g.textAlign="center"; g.textBaseline="middle";
+    const fitFont=(s,wt,max,fam)=>{ let fs=max; g.font=`${wt} ${fs}px ${fam}`; while (fs>11 && g.measureText(s).width>pw-24){ fs--; g.font=`${wt} ${fs}px ${fam}`; } };
+    if (G.ch.phase==="pre"){ g.fillStyle="rgba(9,12,20,0.6)"; g.fillRect(pad.l,pad.t,pw,ph);
+      g.fillStyle=C("--warn"); g.font=`800 ${Math.round(Math.min(140,ph*0.45))}px ${disp}`; g.fillText(String(Math.max(1,Math.ceil(CH.PRE-el))), cxm, pad.t+ph*0.42);
+      g.fillStyle=C("--fg"); fitFont(T("chReady"), 800, Math.round(Math.min(30,w/24)), disp); g.fillText(T("chReady"), cxm, pad.t+ph*0.78); }
+    else { const rem=Math.max(0,CH.T-el); g.fillStyle=C("--warn"); g.fillRect(pad.l, pad.t, pw*rem/CH.T, 6);
+      g.textAlign="right"; g.textBaseline="top"; g.font=`700 ${Math.round(Math.min(56,ph*0.2))}px ${C("--f-mono")}`; g.fillText(Math.ceil(rem)+" s", w-pad.r-12, pad.t+16);
+      if (el<0.9){ g.globalAlpha=1-el/0.9; g.textAlign="center"; g.textBaseline="middle"; fitFont(T("chGo"), 800, Math.round(Math.min(110,ph*0.36)), disp); g.fillText(T("chGo"), cxm, pad.t+ph/2); g.globalAlpha=1; } } }
+  else if (!G.cols && !G.on && !G.feed){ g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); let fs=Math.round(Math.min(34,w/22)); const fnt=()=>`800 ${fs}px ${C("--f-display")}`; g.font=fnt();
     while (fs>11 && g.measureText(T("gIdle")).width>pw-24){ fs--; g.font=fnt(); }
     g.fillText(T("gIdle"), pad.l+pw/2, pad.t+ph/2); }
 }
@@ -1638,6 +1909,8 @@ function renderGroup(L){
   $("g-listenT").textContent = G.on? L.gStop : G.feed? L.gStopDemo : L.gStart; $("g-listenS").textContent=L.gListenS;
   $("g-listen").classList.toggle("rec", G.on || !!G.feed);
   $("g-reset").textContent=L.gReset; $("g-reset").disabled = !n && !G.listen;
+  $("g-ch").textContent = G.ch? L.chStop : L.chBtn;
+  const ln=lbLine("group"); if (S.chRes){ ln.html = esc(T("chDone",{n:S.chRes.n}))+(ln.html? " · "+ln.html : ""); ln.hit=true; } setLine($("g-board"), ln);
   $("g-take").textContent=L.gTake;
 }
 // "Stellar graveyard"-style overview: one column per collision, two objects merging into one.
@@ -1677,6 +1950,7 @@ $("go-free").onclick=()=>enterPlay("free");
 $("go-grp").onclick=()=>enterPlay("group");
 $("g-listen").onclick=()=>gToggle();
 $("g-reset").onclick=()=>gReset();
+$("g-ch").onclick=()=>{ if (G.ch){ chCancel(); render(); } else chStart(); };
 $("i-listen").onclick=()=>{ const o=targetSound(TARGETS[0]); const t0=play(normalize(o.x),o.sr); simStart(simIntro, targetSimSpec(TARGETS[0]), t0); };
 $("b-back").onclick=$("r-start").onclick=()=>goIntro();
 $("exBtn").onclick=()=>{ if (S.kind==="group"){ const o=synthCrowd(ctx().sampleRate); gFeed(o.x, o.sr, "demo"); return; }
@@ -1687,19 +1961,19 @@ $("file").onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!
   if (S.kind==="group"){ const x=ab.getChannelData(0); gFeed(x.subarray(0, Math.min(x.length, ab.sampleRate*120)), ab.sampleRate, "file"); return; }
   let x=ab.getChannelData(0); if (x.length>ab.sampleRate*6) x=x.slice(0,ab.sampleRate*6);
   finishAnalysis(Float32Array.from(x), ab.sampleRate, "file"); };
-document.querySelectorAll("#tgtSeg button").forEach(b=>b.onclick=()=>{ S.tgtI=+b.dataset.t; S.res=null; S.kar=null; S.audio=null; specCache=null; S.msgKey=null; S.best=null; S.screen="sing"; render(); playTarget(true); });
+document.querySelectorAll("#tgtSeg button").forEach(b=>b.onclick=()=>{ S.tgtI=+b.dataset.t; S.res=null; S.kar=null; S.audio=null; specCache=null; S.msgKey=null; lbClear(); S.screen="sing"; render(); playTarget(true); });
 $("m-real").onclick=()=>{ S.mode="real"; rerun(); };
 $("m-bh").onclick=()=>{ S.mode="bh"; rerun(); };
 function rerun(){ if (S.audio) finishAnalysis(S.audio.x, S.audio.sr, S.source); else render(); }
 document.querySelectorAll("#langSeg button").forEach(b=>b.onclick=()=>{ S.lang=b.dataset.l; render(); });
 let rz=0; window.addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>drawStage()); });
 
-function goIntro(){ gHalt(); abortRec(); stopPlay(); closeMic(); S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; S.best=null; show("intro"); }
+function goIntro(){ chCancel(); gHalt(); abortRec(); stopPlay(); closeMic(); kbClose(); lbClear(); S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; show("intro"); }
 // Kiosk idle reset (shared outreach kit): back to the intro, in Dutch, nothing of the last visitor left.
-function kioskReset(){ gClear(); goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; $("more").open=false; $("how").open=false; if (BOARD_CLEAR_ON_IDLE) boardClear(); render(); window.scrollTo(0,0); }
+function kioskReset(){ gClear(); goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; S.lbAdmin=false; S.lbConfirm=null; S.lbLast=null; $("more").open=false; $("how").open=false; render(); window.scrollTo(0,0); }
 
 if (DEBUG) $("phys").hidden=false;
-window.__chirp = {simSpec, simDraw,targetSimSpec, fitSimSpec, simPlay, simIntro, G,makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, boardLoad};
+window.__chirp = {simSpec, simDraw,targetSimSpec, fitSimSpec, simPlay, simIntro, G,makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, lbLoad, lbStore, lbCands, KB, chStart, CH};
 render();
 </script>
 <script src="../shared/outreach-kit.js"></script>
