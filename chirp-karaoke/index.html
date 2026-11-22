@@ -57,9 +57,17 @@ h1 .wave{color:var(--voice)}
 .board:empty{display:none}
 .intro .board{grid-column:1/-1}
 /* stage + result */
-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start}
-main.solo{grid-template-columns:minmax(0,1fr)}
-@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}}
+main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);grid-template-areas:"stage sim" "stage side";grid-template-rows:auto 1fr;gap:14px;align-items:start}
+main.grp{grid-template-areas:"stage side";grid-template-rows:auto}
+#stage{grid-area:stage} #simbox{grid-area:sim} #result,#gpanel{grid-area:side}
+@media (max-width:900px){main,main.grp{grid-template-columns:minmax(0,1fr);grid-template-areas:"stage" "sim" "side";grid-template-rows:auto}}
+/* binary animation (the source of the chirp) */
+.simbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-width:0}
+.simbox .eyebrow{padding:12px 16px 0}
+.simcv{position:relative;width:100%;aspect-ratio:16/11}
+.simcv canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.simnote{margin:0;padding:6px 16px 12px;color:var(--muted);font-size:12.5px;text-wrap:pretty}
+.intro .simcv{border-radius:12px;overflow:hidden;background:var(--panel)}
 .stage{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-width:0}
 .canvas-box{position:relative;width:100%;height:clamp(260px,46vh,520px)}
 .canvas-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -132,7 +140,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font:400 13px var(--f-mono);font-variant-numeric:tabular-nums}
 .kv dt{color:var(--muted)} .kv dd{margin:0;color:var(--fg)}
 .hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-/* audience mode: counter panel + catalogue */
+/* group mode: counter panel + catalogue */
 .gcount{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-top:2px}
 #g-num{display:inline-block;transform-origin:left bottom;font:600 clamp(68px,9vw,128px)/0.9 var(--f-mono);color:var(--tgt);font-variant-numeric:tabular-nums;text-shadow:0 0 28px color-mix(in srgb,var(--tgt) 45%,transparent)}
 #g-unit{font:800 clamp(20px,2.4vw,30px)/1.1 var(--f-display)}
@@ -180,7 +188,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
       <p class="lead" id="i-p"></p>
       <button class="btn listen" id="i-listen" type="button"><span id="i-listenT"></span><small id="i-listenS"></small></button>
     </div>
-    <svg id="i-svg" viewBox="0 0 420 170" aria-hidden="true"></svg>
+    <div class="simcv"><canvas id="i-sim" role="img" aria-label="GW170817"></canvas></div>
     <div class="choices">
       <button class="choice primary" id="go-kar" type="button"><b id="i-kar"></b><small id="i-karS"></small></button>
       <button class="choice" id="go-free" type="button"><b id="i-free"></b><small id="i-freeS"></small></button>
@@ -205,7 +213,7 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
         </div>
       </div>
       <p class="mode-expl" id="modeExpl"></p>
-      <main id="main" class="solo">
+      <main id="main">
         <section class="stage" id="stage">
           <div class="canvas-box">
             <canvas id="cv"></canvas>
@@ -222,6 +230,12 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
             <p class="msg" id="msg" role="status"></p>
           </div>
           <p class="note" id="note"></p>
+        </section>
+
+        <section class="simbox" id="simbox">
+          <p class="eyebrow" id="s-lead"></p>
+          <div class="simcv"><canvas id="simcv" role="img"></canvas></div>
+          <p class="simnote" id="s-note"></p>
         </section>
 
         <section class="result" id="result" aria-live="polite" hidden>
@@ -317,10 +331,11 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
           <li><b>Track fit (free-mode score):</b> leading-order (0PN) chirp <i>f(t) = (1/π)(5/256)<sup>3/8</sup>(G𝓜/c³)<sup>−5/8</sup>(t<sub>c</sub>−t)<sup>−3/8</sup></i>. For each t<sub>c</sub> on a grid, ln 𝓜 is solved by least squares in ln f; the best t<sub>c</sub> wins. Score = mean over frames of exp(−½(Δ/1 semitone)²).</li>
           <li><b>Karaoke score:</b> target = last 1.0 → 0.05 s of the 0PN chirp of the event (GW170817 at real speed; GW150914 with 𝓜/25). Mean over 10 ms target samples of exp(−½(Δ/2 semitones)²), unvoiced = 0; best over time shifts ±0.4 s and whole-octave shifts −2…+2.</li>
           <li><b>Coherent overlap (the real matched filter):</b> normalised, phase-maximised overlap of the raw audio with complex 0PN templates (amplitude ∝ f<sup>2/3</sup>), 𝓜 within ±15 % of the track fit. Shown here only.</li>
-          <li><b>Audience mode:</b> continuous; every 10 ms a Hann-windowed 90 ms spectrum (4096-point FFT). Each spectral peak 80–2000 Hz that stands ≥ 10 dB above the median level (and within 25 dB of its neighbours, to reject side lobes) is a candidate fundamental, scored by a weighted sum over 8 harmonics; the best is taken, its harmonic peaks are removed, and this repeats for up to 6 voices. Pitches are linked into tracks (−1…+2 semitones per frame, gaps ≤ 80 ms). A finished track counts as a merger if it is ≥ 0.3 s long, rises ≥ 3 semitones and its 0PN track-fit score is ≥ 55 %, unless it is mostly a whole multiple of another voice heard at the same time, or of a merger already counted. Synthetic audiences (16 overlapping whoops at 95–330 Hz, up to 4 at once): ≈ 90 % found with 𝓜 within 25 %, ≈ 1 detection per whoop (<code>dev/test-group.mjs</code>). “Most at once” is the largest number of counted chirps that overlap in time.</li>
+          <li><b>Group mode:</b> continuous; every 10 ms a Hann-windowed 90 ms spectrum (4096-point FFT). Each spectral peak 80–2000 Hz that stands ≥ 10 dB above the median level (and within 25 dB of its neighbours, to reject side lobes) is a candidate fundamental, scored by a weighted sum over 8 harmonics; the best is taken, its harmonic peaks are removed, and this repeats for up to 6 voices. Pitches are linked into tracks (−1…+2 semitones per frame, gaps ≤ 80 ms). A finished track counts as a merger if it is ≥ 0.3 s long, rises ≥ 3 semitones and its 0PN track-fit score is ≥ 55 %, unless it is mostly a whole multiple of another voice heard at the same time, or of a merger already counted. Synthetic audiences (16 overlapping whoops at 95–330 Hz, up to 4 at once): ≈ 90 % found with 𝓜 within 25 %, ≈ 1 detection per whoop (<code>dev/test-group.mjs</code>). “Most at once” is the largest number of counted chirps that overlap in time.</li>
           <li><b>Tape speed:</b> black-hole mode treats the voice as the wave sped up 25× in time and frequency together, so all masses scale by 25 (exact symmetry of vacuum GR; not exact for neutron-star matter).</li>
           <li><b>Masses:</b> the chirp measures 𝓜 only. Component masses are shown for q = 1 (m = 2<sup>1/5</sup>𝓜). Voice-frame 𝓜 is treated as source-frame. Classes: &lt; 1.0 M☉ each “lighter than any known neutron star”; 1.0–2.5 neutron stars; 2.5–5 mass gap; &gt; 5 black holes.</li>
           <li><b>Reach:</b> same definition and tables as ET-horizon: LIGO-Virgo-KAGRA network at measured O4 sensitivity and ET-D triangle, SNR ≥ 10, redshift where half of the sources (random sky position and orientation) are detected. Generated by <code>dev/gen-reach.mjs</code> from <code>et-horizon/index.html</code>; 𝓜 &lt; 1 extrapolated with SNR ∝ ((1+z)𝓜)<sup>5/6</sup>/D<sub>L</sub>, 𝓜 &gt; 120 with the mass dependence of the earlier PhenomA horizon. Planck 2018 cosmology. Above z = 20 the ET line says “before the first stars (formal limit)”.</li>
+          <li><b>Binary animation:</b> a sketch, not numerical relativity. Circular orbit; separation ∝ f<sup>−2/3</sup> (Kepler) along the 0PN chirp of the pair being played, driven by the audio clock. Orbital rate shown = 2.2 rev/s × f/f<sub>start</sub>, saturating (tanh) at 8 rev/s; when (f<sub>merg</sub>/f)<sup>2/3</sup> exceeds 4.4 the separation is compressed (power law) so the pair stays visible. Ripples: m = 2 spiral at twice the retarded orbital phase, amplitude ∝ f<sup>2/3</sup>, exponential ringdown (0.12 s) after merger. Sizes ∝ √m, exaggerated. The strip below shows the same slowed-down wave.</li>
           <li><b>Audio of templates and events:</b> simplified waveforms built from published masses (0PN inspiral, PhenomA merger and ringdown frequencies). Simulated, not detector data.</li>
         </ul>
       </div>
@@ -585,7 +600,7 @@ function targetSound(tg, sr=44100){
   return synthChirp({sr, Mc:McV, fStart, fStop, tStart:tg.t0, tail:0.15, ringdown: tg.ns? null : {fring:Math.min(pa.fring, sr*0.45), tauD:1/(Math.PI*pa.sigma)}});
 }
 
-/* ---------- Audience mode: many voices at once ----------
+/* ---------- Group mode: many voices at once ----------
    Every 10 ms: spectrum of the last 90 ms; harmonic sum for every spectral peak between 80 and 2000 Hz
    taken as a fundamental; take the strongest voice, wipe its harmonics, repeat (at most maxVoices). Pitches are linked into tracks;
    a track that has been silent for gapFrames is judged like a solo whoop: long enough, rising by minRise
@@ -776,22 +791,26 @@ nl:{title:'Chirp-<span class="wave">karaoke</span>',
   "<b>Hoe ver?</b> ‘De helft horen’ betekent: van alle zulke botsingen op die afstand wordt de helft opgemerkt; de rest staat te ongunstig. Vandaag: LIGO-Virgo zoals ze in 2025 werkten. Einstein Telescope: zoals hij ontworpen is. De klanken van echte detecties zijn nagebouwd uit hun gemeten massa's (gesimuleerd).",
   "<b>Privacy.</b> Alles gebeurt in deze browser. Je stem wordt niet bewaard en nergens heen gestuurd."],
  axisYou:"jouw toon (Hz)", axisGW:"zwaartekrachtgolf (Hz)", tl:["nu","Zon ontstaat","oerknal"], unit:"zonsmassa's",
- iGrp:"Met de hele zaal", iGrpS:"Iedereen tegelijk: hoeveel botsingen vindt de computer?",
- grpExpl:"<b>Met de hele zaal.</b> Druk op start en laat iedereen door elkaar woeoepen, zo vaak als je wil. De computer volgt alle stemmen tegelijk en telt elke stijgende chirp als een botsing, ook als ze over elkaar heen vallen.",
+ iGrp:"Groepsmodus", iGrpS:"Met vrienden, de klas of een hele zaal: woeoep samen en tel de botsingen",
+ grpExpl:"<b>Groepsmodus.</b> Leg je telefoon of laptop in het midden, druk op start en laat iedereen door elkaar woeoepen, zo vaak als je wil. De computer volgt alle stemmen tegelijk en telt elke stijgende chirp als een botsing, ook als ze over elkaar heen vallen. Het werkt met twee vrienden net zo goed als met een volle zaal.",
  gStart:"Start met luisteren", gStop:"Stop met luisteren", gStopDemo:"Stop de demo", gListenS:"of druk op de spatiebalk",
- gDemo:"Demo: een gesimuleerde zaal", gVoices:"stemmen", gDet:"gevonden chirp", gNow:"nu",
- badgeLive:"LIVE · AAN HET LUISTEREN", badgeDemo:"DEMO · gesimuleerde zaal", badgeGIdle:"ZAALMODUS",
+ gDemo:"Demo: een gesimuleerde groep", gVoices:"stemmen", gDet:"gevonden chirp", gNow:"nu",
+ badgeLive:"LIVE · AAN HET LUISTEREN", badgeDemo:"DEMO · gesimuleerde groep", badgeGIdle:"GROEPSMODUS",
  noteGrp:"Oranje stippen: elke stem die de computer volgt. Wordt een stem een stijgende chirp, dan telt hij als botsing en licht hij blauw op.",
  gIdle:"Druk op start en woeoep allemaal tegelijk!",
- gLead:"Gevonden in deze zaal", gUnit:"botsingen", gUnit1:"botsing", gPeak:"hoogstens tegelijk", gTime:"geluisterd",
+ gLead:"Gevonden door jullie groep", gUnit:"botsingen", gUnit1:"botsing", gPeak:"hoogstens tegelijk", gTime:"geluisterd",
  gCls:{sub:"lichter dan neutronensterren", bns:"paren neutronensterren", gap:"paren in de massakloof", bbh:"paren zwarte gaten"},
  gObj:{sub:"lichter dan elke gekende neutronenster", bns:"neutronenster", gap:"massakloof", bbh:"zwart gat"},
  gLast:"Laatste, #{n}: {what}.", gNone:"Nog niets gevonden. Een goede chirp begint laag en traag en eindigt met een snelle zwiep omhoog.",
  gReset:"Opnieuw tellen",
  gTake:"Echte detectoren staan voor dezelfde puzzel. De Einstein Telescope zal tienduizenden botsingen per jaar horen. Chirps van neutronensterren duren in zijn gevoelige band urenlang, dus vallen er altijd een paar over elkaar heen, net zoals jullie stemmen.",
- gCatT:"De catalogus van deze zaal",
+ gCatT:"De catalogus van jullie groep",
  gCatS:"Elke kolom is één botsing: twee objecten (kleine stippen) smelten samen tot één zwaarder object (grote stip). Open rondjes: echte detecties van LIGO-Virgo-KAGRA, om te vergelijken. De massa's volgen uit de chirp; we nemen aan dat ze gelijk zijn.",
- gReal:"echte detecties", gRoom:"deze zaal", gShowing:"de laatste {k}", gLegRoom:"gevonden in deze zaal", gLegReal:"echte detectie"
+ gReal:"echte detecties", gRoom:"jullie groep", gShowing:"de laatste {k}", gLegRoom:"gevonden door jullie groep", gLegReal:"echte detectie",
+ simLead:"Simulatie · waar de chirp vandaan komt", simYou:"Jouw paar", simIdle:"Zing een woeoep: hier verschijnt jouw paar.",
+ simNote:"Twee zware objecten draaien steeds sneller rond elkaar, komen dichterbij en botsen. Elk rondje stuurt twee golven door de ruimte. De animatie loopt gelijk met het geluid, maar de rondjes zijn vertraagd: in het echt zijn het er tientallen tot honderden per seconde.",
+ simPh:["Ze spiraleren naar elkaar toe","Botsing!","Het nieuwe zwarte gat trilt na"], simWave:"zwaartekrachtgolf (vertraagd)",
+ simHow:"<b>De animatie.</b> Twee objecten draaien rond elkaar boven een ‘rubberen’ ruimte, gelijk met het geluid: hoe hoger de toon, hoe sneller en dichter ze draaien. De rondjes zijn vertraagd en de groottes overdreven: het is een schets, geen berekening met Einsteins vergelijkingen."
 },
 en:{title:'Chirp <span class="wave">karaoke</span>',
  tag:"Sing like two colliding black holes. The computer compares your whoop with the chirp of every possible pair: the same trick LIGO uses to dig signals out of noise.",
@@ -857,22 +876,26 @@ en:{title:'Chirp <span class="wave">karaoke</span>',
   "<b>How far?</b> ‘Hear half’ means: of all such collisions at that distance, half would be detected; the others are placed or turned unfavourably. Today: LIGO-Virgo as they worked in 2025. Einstein Telescope: as designed. The sounds of real detections are rebuilt from their measured masses (simulated).",
   "<b>Privacy.</b> Everything happens in this browser. Your voice is not saved and not sent anywhere."],
  axisYou:"your pitch (Hz)", axisGW:"gravitational wave (Hz)", tl:["now","Sun forms","Big Bang"], unit:"solar masses",
- iGrp:"The whole audience", iGrpS:"Everyone at once: how many collisions can the computer find?",
- grpExpl:"<b>Whole audience.</b> Press start and let everyone whoop at the same time, as often as they like. The computer follows all the voices at once and counts every rising chirp as a collision, even when they overlap.",
+ iGrp:"Group mode", iGrpS:"With friends, a class or a whole room: whoop together and count the collisions",
+ grpExpl:"<b>Group mode.</b> Put your phone or laptop in the middle, press start and let everyone whoop at the same time, as often as they like. The computer follows all the voices at once and counts every rising chirp as a collision, even when they overlap. It works with two friends as well as with a full room.",
  gStart:"Start listening", gStop:"Stop listening", gStopDemo:"Stop the demo", gListenS:"or press the space bar",
- gDemo:"Demo: a simulated audience", gVoices:"voices", gDet:"detected chirp", gNow:"now",
- badgeLive:"LIVE · LISTENING", badgeDemo:"DEMO · simulated audience", badgeGIdle:"AUDIENCE MODE",
+ gDemo:"Demo: a simulated group", gVoices:"voices", gDet:"detected chirp", gNow:"now",
+ badgeLive:"LIVE · LISTENING", badgeDemo:"DEMO · simulated group", badgeGIdle:"GROUP MODE",
  noteGrp:"Orange dots: every voice the computer is following. When a voice turns into a rising chirp, it counts as a collision and lights up blue.",
  gIdle:"Press start and all whoop at once!",
- gLead:"Found in this room", gUnit:"collisions", gUnit1:"collision", gPeak:"most at once", gTime:"listening",
+ gLead:"Found by your group", gUnit:"collisions", gUnit1:"collision", gPeak:"most at once", gTime:"listening",
  gCls:{sub:"lighter than neutron stars", bns:"neutron-star pairs", gap:"mass-gap pairs", bbh:"black-hole pairs"},
  gObj:{sub:"lighter than any known neutron star", bns:"neutron star", gap:"mass gap", bbh:"black hole"},
  gLast:"Latest, #{n}: {what}.", gNone:"Nothing found yet. A good chirp starts low and slow and ends with a quick whip up.",
  gReset:"Count again",
  gTake:"Real detectors face the same puzzle. The Einstein Telescope will hear tens of thousands of collisions a year. Neutron-star chirps last for hours in its sensitive band, so a few always overlap, just like your voices.",
- gCatT:"This room's catalogue",
+ gCatT:"Your group's catalogue",
  gCatS:"Each column is one collision: two objects (small dots) merge into one heavier object (big dot). Open circles: real detections by LIGO-Virgo-KAGRA, for comparison. Masses follow from the chirp, assuming the two are equal.",
- gReal:"real detections", gRoom:"this room", gShowing:"the last {k}", gLegRoom:"found in this room", gLegReal:"real detection"
+ gReal:"real detections", gRoom:"your group", gShowing:"the last {k}", gLegRoom:"found by your group", gLegReal:"real detection",
+ simLead:"Simulation · where the chirp comes from", simYou:"Your pair", simIdle:"Sing a whoop: your pair appears here.",
+ simNote:"Two heavy objects circle each other ever faster, draw closer and collide. Every orbit sends two waves through space. The animation runs in step with the sound, but the orbits are slowed down: in reality there are tens to hundreds per second.",
+ simPh:["Spiralling in","Collision!","The new black hole rings down"], simWave:"gravitational wave (slowed down)",
+ simHow:"<b>The animation.</b> Two objects circle each other above a ‘rubber sheet’ of space, in step with the sound: the higher the tone, the faster and closer they orbit. The orbits are slowed down and the sizes exaggerated: it is a sketch, not a calculation with Einstein's equations."
 },
 fr:{title:'Karaoké des <span class="wave">chirps</span>',
  tag:"Chante comme deux trous noirs qui se percutent. L'ordinateur compare ton « wouuup » au chirp de toutes les paires possibles : la même astuce que LIGO utilise pour extraire les signaux du bruit.",
@@ -938,22 +961,26 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
   "<b>Jusqu'où ?</b> « Entendre la moitié » veut dire : de toutes ces collisions à cette distance, la moitié serait détectée ; les autres sont mal placées ou mal orientées. Aujourd'hui : LIGO-Virgo tels qu'ils fonctionnaient en 2025. Einstein Telescope : tel qu'il est conçu. Les sons des vraies détections sont reconstitués à partir de leurs masses mesurées (simulés).",
   "<b>Vie privée.</b> Tout se passe dans ce navigateur. Ta voix n'est ni enregistrée ni envoyée nulle part."],
  axisYou:"ta voix (Hz)", axisGW:"onde gravitationnelle (Hz)", tl:["aujourd'hui","naissance du Soleil","Big Bang"], unit:"masses solaires",
- iGrp:"Toute la salle", iGrpS:"Tout le monde en même temps : combien de collisions l'ordinateur trouve-t-il ?",
- grpExpl:"<b>Toute la salle.</b> Appuie sur démarrer et laisse tout le monde faire « wouuup » en même temps, autant de fois qu'il veut. L'ordinateur suit toutes les voix à la fois et compte chaque chirp qui monte comme une collision, même quand ils se chevauchent.",
+ iGrp:"Mode groupe", iGrpS:"Entre amis, en classe ou toute une salle : faites « wouuup » ensemble et comptez les collisions",
+ grpExpl:"<b>Mode groupe.</b> Pose ton téléphone ou ton ordinateur au milieu, appuie sur démarrer et laisse tout le monde faire « wouuup » en même temps, autant de fois qu'il veut. L'ordinateur suit toutes les voix à la fois et compte chaque chirp qui monte comme une collision, même quand ils se chevauchent. Ça marche à deux comme dans une salle pleine.",
  gStart:"Commencer l'écoute", gStop:"Arrêter l'écoute", gStopDemo:"Arrêter la démo", gListenS:"ou appuie sur la barre d'espace",
- gDemo:"Démo : une salle simulée", gVoices:"voix", gDet:"chirp détecté", gNow:"maintenant",
- badgeLive:"EN DIRECT · À L'ÉCOUTE", badgeDemo:"DÉMO · salle simulée", badgeGIdle:"MODE SALLE",
+ gDemo:"Démo : un groupe simulé", gVoices:"voix", gDet:"chirp détecté", gNow:"maintenant",
+ badgeLive:"EN DIRECT · À L'ÉCOUTE", badgeDemo:"DÉMO · groupe simulé", badgeGIdle:"MODE GROUPE",
  noteGrp:"Points orange : chaque voix que l'ordinateur suit. Quand une voix devient un chirp qui monte, elle compte comme une collision et s'allume en bleu.",
  gIdle:"Appuie sur démarrer et faites tous « wouuup » en même temps !",
- gLead:"Trouvé dans cette salle", gUnit:"collisions", gUnit1:"collision", gPeak:"au maximum en même temps", gTime:"d'écoute",
+ gLead:"Trouvé par votre groupe", gUnit:"collisions", gUnit1:"collision", gPeak:"au maximum en même temps", gTime:"d'écoute",
  gCls:{sub:"plus légers que les étoiles à neutrons", bns:"paires d'étoiles à neutrons", gap:"paires dans l'écart de masse", bbh:"paires de trous noirs"},
  gObj:{sub:"plus léger que toute étoile à neutrons connue", bns:"étoile à neutrons", gap:"écart de masse", bbh:"trou noir"},
  gLast:"Dernière, n° {n} : {what}.", gNone:"Rien trouvé pour l'instant. Un bon chirp commence grave et lentement et finit par un coup de fouet rapide vers l'aigu.",
  gReset:"Recompter",
  gTake:"Les vrais détecteurs font face au même casse-tête. L'Einstein Telescope entendra des dizaines de milliers de collisions par an. Les chirps d'étoiles à neutrons durent des heures dans sa bande sensible, donc quelques-uns se chevauchent toujours, comme vos voix.",
- gCatT:"Le catalogue de cette salle",
+ gCatT:"Le catalogue de votre groupe",
  gCatS:"Chaque colonne est une collision : deux objets (petits points) fusionnent en un objet plus lourd (gros point). Cercles vides : vraies détections de LIGO-Virgo-KAGRA, pour comparer. Les masses découlent du chirp, en supposant les deux égales.",
- gReal:"vraies détections", gRoom:"cette salle", gShowing:"les {k} dernières", gLegRoom:"trouvé dans cette salle", gLegReal:"vraie détection"
+ gReal:"vraies détections", gRoom:"votre groupe", gShowing:"les {k} dernières", gLegRoom:"trouvé par votre groupe", gLegReal:"vraie détection",
+ simLead:"Simulation · d'où vient le chirp", simYou:"Ta paire", simIdle:"Chante un « wouuup » : ta paire apparaît ici.",
+ simNote:"Deux objets massifs tournent l'un autour de l'autre de plus en plus vite, se rapprochent et se percutent. Chaque tour envoie deux vagues à travers l'espace. L'animation suit le son, mais les tours sont ralentis : en réalité, il y en a des dizaines à des centaines par seconde.",
+ simPh:["Ils spiralent l'un vers l'autre","Collision !","Le nouveau trou noir vibre encore"], simWave:"onde gravitationnelle (ralentie)",
+ simHow:"<b>L'animation.</b> Deux objets tournent l'un autour de l'autre au-dessus d'un espace « en caoutchouc », au rythme du son : plus le son est aigu, plus ils tournent vite et près. Les tours sont ralentis et les tailles exagérées : c'est un croquis, pas un calcul avec les équations d'Einstein."
 }};
 
 /* ---------------- state ---------------- */
@@ -989,12 +1016,12 @@ function boardClear(){ boardMem=null; try{ localStorage.removeItem(BOARD_KEY); }
 /* ---------------- audio out ---------------- */
 function ctx(){ if(!S.ctx){ S.ctx = new (window.AudioContext||window.webkitAudioContext)(); } if (S.ctx.state==="suspended") S.ctx.resume(); return S.ctx; }
 let playing=null;
-function stopPlay(){ if (playing) try{playing.stop()}catch(e){} playing=null; stopAnim(); }
+function stopPlay(){ if (playing) try{playing.stop()}catch(e){} playing=null; stopAnim(); if (typeof simStop==="function"){ simStop(simPlay); simStop(simIntro); } }
 function play(x, sr){ const c=ctx(); stopPlay();
   const b=c.createBuffer(1,x.length,sr); b.copyToChannel(x instanceof Float32Array?x:Float32Array.from(x),0);
   const s=c.createBufferSource(); s.buffer=b; const g=c.createGain(); g.gain.value=0.9; s.connect(g).connect(c.destination); s.start(); playing=s; return c.currentTime; }
 function normalize(x){ let m=0; for(const v of x) m=Math.max(m,Math.abs(v)); if(m>0) for(let i=0;i<x.length;i++) x[i]*=0.8/m; return x; }
-function playTarget(animate){ const o=targetSound(tg()); const t0=play(normalize(o.x),o.sr); if (animate) startAnim(t0); }
+function playTarget(animate){ const o=targetSound(tg()); const t0=play(normalize(o.x),o.sr); if (animate) startAnim(t0); simStart(simPlay, targetSimSpec(tg()), t0); }
 
 /* ---------------- spectrogram + stage ---------------- */
 let specCache=null;
@@ -1093,12 +1120,148 @@ function drawTarget(g, xOf, h, C, tNow){
 /* small drawing of the wanted shape (slow start, fast rise), shown next to shape hints */
 function shapeSVG(){ let d=""; for(let i=0;i<=40;i++){ const u=i/40, tau=1.02-u; const f=Math.pow(tau,-3/8); const y=30-(f-1)/(Math.pow(0.02,-3/8)-1)*26; d+=(i?"L":"M")+(4+u*56).toFixed(1)+" "+y.toFixed(1); }
   return `<svg viewBox="0 0 64 34" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--tgt)" stroke-width="2.5" stroke-linecap="round"/></svg>`; }
-function introSVG(){ // a chirp waveform: slow wide wiggles that speed up and grow, then a short ringdown
-  let d=""; const N=900; for (let i=0;i<=N;i++){ const u=i/N, x=10+u*400; let y;
-    if (u<0.86){ const tau=0.9-u*0.9/0.86+0.04; const ph=-Math.pow(tau,5/8)*90; const a=Math.pow(tau,-1/4)*14; y=85+a*Math.sin(ph); }
-    else { const s=(u-0.86)/0.14; y=85+Math.pow(0.04,-1/4)*14*Math.exp(-s*5)*Math.sin(s*40); }
-    d+=(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1); }
-  return `<path d="${d}" fill="none" stroke="var(--tmpl)" stroke-width="2" stroke-linejoin="round"/>`; }
+/* ---------------- binary animation ----------------
+   A sketch of the source, in step with the sound: two bodies on a circular orbit above a rubber-sheet grid
+   (the look of GW-hunter). The separation follows the 0PN chirp of the pair being played (r ∝ f^-2/3), driven
+   by the audio clock, but the orbit is slowed down (fo0 rev/s at the start, saturating at foMax) and a wide
+   frequency range is compressed (ratioMax) so the pair stays visible. Ripples: an m = 2 spiral at twice the
+   retarded orbital phase, travelling out at SV.v, amplitude ∝ f^2/3, then an exponential ringdown. */
+const SV = {half:15, n:52, el:0.52, az:0.6, D:40, fo0:2.2, foMax:8, v:20, rStart:6.4, ratioMax:4.4, dt:1/240, post:2.6, blend:0.12, well:3.4, rip:1.5, ring:0.12};
+const simReduced = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+function simSpec({Mc, m1, m2, fStart, tStart, fEnd, win, label}){
+  const tau0=tauOfF(Mc,fStart), tauE=tauOfF(Mc,fEnd), tMerge=Math.max(0.05, tStart+tau0-tauE);
+  const fAt = t => fOfTau(Mc, Math.max(tauE, tau0-(t-tStart)));
+  const sc = SV.fo0/fStart, foOf = f => SV.foMax*Math.tanh(sc*f/SV.foMax);
+  const f0 = fAt(0), ratio = Math.max(1.001, Math.pow(fEnd/f0, 2/3)), k = ratio>SV.ratioMax? Math.log(SV.ratioMax)/Math.log(ratio) : 1;
+  const rTouch = SV.rStart/Math.pow(ratio,k), tEnd=tMerge+SV.post, n=Math.ceil(tEnd/SV.dt)+2, foE=foOf(fEnd);
+  const ph=new Float32Array(n), amp=new Float32Array(n), sep=new Float32Array(n);
+  let p=0;
+  for (let i=0;i<n;i++){ const t=i*SV.dt; let fo;
+    if (t<tMerge){ const f=fAt(t); fo=foOf(f); amp[i]=Math.pow(f/fEnd,2/3); sep[i]=rTouch*Math.pow(fEnd/f, 2*k/3); }
+    else { const u=t-tMerge; fo=foE; amp[i]=Math.exp(-u/SV.ring); sep[i]=rTouch*Math.max(0,1-u/SV.blend); }
+    ph[i]=p; p+=2*Math.PI*fo*SV.dt; }
+  const M=m1+m2, w1=Math.sqrt(m1), w2=Math.sqrt(m2), c1=classify(m1), c2=classify(m2);
+  return {m1, m2, q1:m1/M, q2:m2/M, label, tMerge, tEnd, n, ph, amp, sep, fo0:foOf(f0), win: win||tMerge+0.6,
+    r1:rTouch*w1/(w1+w2), r2:rTouch*w2/(w1+w2), rRem:rTouch*Math.sqrt(0.95*M)/(w1+w2), c1, c2, cR:classify(0.95*M), ns: c1==="bns"||c2==="bns"};
+}
+// relative orbital phase, wave amplitude and separation at time t of a spec (before t = 0: a steady orbit)
+function simAt(sp, t, o){
+  if (t<=0){ o.p=2*Math.PI*sp.fo0*t; o.a=sp.amp[0]; o.r=sp.sep[0]; return o; }
+  const x=t/SV.dt, i=Math.min(sp.n-2, Math.floor(x)), w=Math.min(1, x-i);
+  o.p=sp.ph[i]+(sp.ph[i+1]-sp.ph[i])*w; o.a=sp.amp[i]+(sp.amp[i+1]-sp.amp[i])*w; o.r=sp.sep[i]+(sp.sep[i+1]-sp.sep[i])*w; return o;
+}
+// Specs of the pairs whose sound can play (same frequencies as targetSound / pairSound / the event button)
+const simCache = new Map();
+function targetSimSpec(t){
+  if (!simCache.has(t.id)){ const McV=targetMcV(t), Mtot=mtotOfMc(McV), pa=phenomA(Mtot), e=EVENTS.find(v=>v.id===t.id);
+    simCache.set(t.id, simSpec({Mc:McV, m1:e.m1, m2:e.m2, fStart:fOfTau(McV,t.tauA), tStart:t.t0, fEnd:Math.min(t.ns? fISCO(Mtot) : pa.fmerg, 44100*0.45), win:KAR_T, label:t.id})); }
+  return simCache.get(t.id);
+}
+function fitSimSpec(r){
+  if (!r || !r.fit) return null;
+  if (!r._sim){ const f=r.fit, ns=r.m<3;
+    r._sim = simSpec({Mc:f.Mc, m1:r.m, m2:r.m, fStart:fOfTau(f.Mc,f.tc-f.t0), tStart:0.05, fEnd:Math.min(ns? r.fiscoV : r.pa.fmerg, 44100*0.45), label:null}); }
+  return r._sim;
+}
+const SG = (()=>{ const n=SV.n, N=(n+1)*(n+1), x=new Float32Array(N), y=new Float32Array(N), d=new Float32Array(N), th=new Float32Array(N);
+  for (let i=0;i<=n;i++) for (let j=0;j<=n;j++){ const k=i*(n+1)+j; x[k]=-SV.half+2*SV.half*j/n; y[k]=-SV.half+2*SV.half*i/n; d[k]=Math.hypot(x[k],y[k]); th[k]=Math.atan2(y[k],x[k]); }
+  return {N, x, y, d, th, px:new Float32Array(N), py:new Float32Array(N)}; })();
+function makeSim(canvas){ return {canvas, run:null, phase:0, lastMs:0, fadeT:-1e9}; }
+const simIntro = makeSim($("i-sim")), simPlay = makeSim($("simcv"));
+function simIdleSpec(sim){ return sim===simIntro? targetSimSpec(TARGETS[0]) : S.kind==="kar"? targetSimSpec(tg()) : S.kind==="free"? fitSimSpec(S.res) : null; }
+function simStart(sim, spec, t0){ if (!spec) return; sim.run={spec, t0, base:sim.phase, fade:spec!==simIdleSpec(sim)}; sim.fadeT=performance.now(); simKick(); }
+function simStop(sim){ if (sim.run){ sim.run=null; sim.fadeT=performance.now(); } }
+let simRaf=0;
+function simKick(){ if (!simRaf) simRaf=requestAnimationFrame(simLoop); }
+function simLoop(){ simRaf=0; let again=false;
+  for (const sim of [simIntro, simPlay]) if (sim.canvas.offsetParent) again = simFrame(sim) || again;
+  if (again) simRaf=requestAnimationFrame(simLoop); }
+function simFrame(sim){
+  const ms=performance.now(), dt=Math.min(0.1,(ms-(sim.lastMs||ms))/1000); sim.lastMs=ms;
+  let spec=null, tt=0, base=0, alpha=1, live=false;
+  if (sim.run){ const r=sim.run; tt=S.ctx? S.ctx.currentTime-r.t0 : 0;
+    if (tt>r.spec.tEnd){ sim.run=null; sim.fadeT=ms; }
+    else { spec=r.spec; base=r.base; live=true; alpha=Math.min(1,(r.spec.tEnd-tt)/0.5, r.fade? (ms-sim.fadeT)/250 : 1); } }
+  if (!live){ spec=simIdleSpec(sim); if (spec && !simReduced) sim.phase+=2*Math.PI*spec.fo0*dt; base=sim.phase; alpha=Math.min(1,(ms-sim.fadeT)/500); }
+  simDraw(sim.canvas, spec, Math.max(0,tt), base, Math.max(0,alpha), live);
+  return live || !simReduced || alpha<1;
+}
+const simO = {p:0,a:0,r:0};
+function simDraw(cv, spec, tt, base, alpha, live){
+  const dpr=window.devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight; if (!w||!h) return;
+  if (cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); }
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0);
+  const css=getComputedStyle(document.documentElement), C=k=>css.getPropertyValue(k).trim();
+  const bg=C("--panel"), col={sub:C("--good"), bns:C("--voice"), gap:C("--c-gap"), bbh:C("--tmpl")}, mono=C("--f-mono");
+  g.globalAlpha=1; g.fillStyle=bg; g.fillRect(0,0,w,h);
+  const stripH = spec? Math.max(46, Math.round(h*0.21)) : 0, sh=h-stripH;
+  // the pair at this moment
+  let b1x=0,b1y=0,b2x=0,b2y=0,r1=0,r2=0,merged=false, a0=0, sep0=0;
+  if (spec){ simAt(spec, tt, simO); const phi=base+simO.p, c=Math.cos(phi), s=Math.sin(phi);
+    b1x=-spec.q2*simO.r*c; b1y=-spec.q2*simO.r*s; b2x=spec.q1*simO.r*c; b2y=spec.q1*simO.r*s;
+    const u=Math.max(0,Math.min(1,(tt-spec.tMerge)/SV.blend)); r1=spec.r1+(spec.rRem-spec.r1)*u; r2=spec.r2+(spec.rRem-spec.r2)*u; merged=u>=1;
+    a0=spec.amp[0]; sep0=spec.sep[0]; }
+  const e1=r1*1.3+0.5, e2=r2*1.3+0.5, eR=spec? spec.rRem*1.3+0.5 : 1, tw=2*Math.PI*(spec? spec.fo0 : 0);
+  const zAt=(x,y,d,th)=>{ if (!spec) return 0;
+    const tr=tt-d/SV.v; let p, aa, rr;
+    if (tr<=0){ p=tw*tr; aa=a0; rr=sep0; } else { simAt(spec, tr, simO); p=simO.p; aa=simO.a; rr=simO.r; }
+    const q=d/(0.5*rr+1.4); let z=SV.rip*aa*(1-Math.exp(-q*q))/Math.sqrt(1+d/6)*Math.cos(2*(th-base-p));
+    if (merged) z-=SV.well/Math.sqrt(x*x+y*y+eR*eR);
+    else { const dx1=x-b1x, dy1=y-b1y, dx2=x-b2x, dy2=y-b2y; z-=SV.well*(spec.q1/Math.sqrt(dx1*dx1+dy1*dy1+e1*e1)+spec.q2/Math.sqrt(dx2*dx2+dy2*dy2+e2*e2)); }
+    return z; };
+  // camera
+  const ce=Math.cos(SV.el), se=Math.sin(SV.el), ca=Math.cos(SV.az), sa=Math.sin(SV.az);
+  const F=Math.min(w*0.47, sh*1.0)*SV.D/SV.half, cx=w/2, cy=sh*0.56;
+  let pd=0; const proj=(x,y,z)=>{ const xr=x*ca-y*sa, yr=x*sa+y*ca; pd=yr*ce-z*se+SV.D; return [cx+F*xr/pd, cy-F*(yr*se+z*ce)/pd]; };
+  const n=SV.n, P=SG;
+  for (let k=0;k<P.N;k++){ const q=proj(P.x[k], P.y[k], zAt(P.x[k], P.y[k], P.d[k], P.th[k])); P.px[k]=q[0]; P.py[k]=q[1]; }
+  g.save(); g.beginPath(); g.rect(0,0,w,sh); g.clip();
+  g.globalAlpha=alpha*0.55; g.strokeStyle=C("--tmpl"); g.lineWidth=1; g.beginPath();
+  for (let i=0;i<=n;i++){ for (let j=0;j<=n;j++){ const k=i*(n+1)+j; j? g.lineTo(P.px[k],P.py[k]) : g.moveTo(P.px[k],P.py[k]); } }
+  for (let j=0;j<=n;j++){ for (let i=0;i<=n;i++){ const k=i*(n+1)+j; i? g.lineTo(P.px[k],P.py[k]) : g.moveTo(P.px[k],P.py[k]); } }
+  g.stroke();
+  // fade the edges of the sheet into the background
+  const o=proj(0,0,0), far=proj(SV.half*sa, SV.half*ca, 0), near=proj(-SV.half*sa, -SV.half*ca, 0), rx=F*SV.half/SV.D, ry=(near[1]-far[1])/2;
+  g.globalAlpha=1; g.save(); g.translate(o[0],(near[1]+far[1])/2); g.scale(1,ry/rx);
+  const vg=g.createRadialGradient(0,0,rx*0.32,0,0,rx*0.92); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,bg);
+  g.fillStyle=vg; g.fillRect(-w*2,-h*4,w*4,h*8); g.restore();
+  // the bodies, far one first
+  const body=(x,y,r,cls)=>{ const z=zAt(x,y,Math.hypot(x,y),Math.atan2(y,x))+r*0.9, q=proj(x,y,z), R=Math.max(2.5,F*r/pd); return {q, R, cls, depth:pd}; };
+  const bodies = !spec? [] : merged? [body(0,0,spec.rRem,spec.cR)] : [body(b1x,b1y,r1,spec.c1), body(b2x,b2y,r2,spec.c2)];
+  bodies.sort((a,b)=>b.depth-a.depth);
+  g.globalAlpha=alpha;
+  for (const b of bodies){ const [X,Y]=b.q, c=col[b.cls];
+    if (b.cls==="bns"){ const gr=g.createRadialGradient(X,Y,0,X,Y,b.R); gr.addColorStop(0,"#fffaf0"); gr.addColorStop(0.55,c); gr.addColorStop(1,"rgba(255,181,71,0.15)");
+      g.shadowColor=c; g.shadowBlur=b.R*1.2+8; g.fillStyle=gr; g.beginPath(); g.arc(X,Y,b.R,0,7); g.fill(); g.shadowBlur=0; }
+    else { g.shadowColor=c; g.shadowBlur=b.R*0.9+8; g.fillStyle="#000"; g.beginPath(); g.arc(X,Y,b.R,0,7); g.fill(); g.shadowBlur=0;
+      g.strokeStyle=c; g.lineWidth=1.6; g.beginPath(); g.arc(X,Y,b.R+0.8,0,7); g.stroke(); } }
+  // neutron stars: a flash of light at the collision (GW170817 was also seen as a kilonova)
+  if (spec && spec.ns && live && tt>spec.tMerge && tt<spec.tMerge+0.9){ const u=(tt-spec.tMerge)/0.9, R=F*(spec.rRem*(1.5+9*u))/SV.D;
+    g.globalCompositeOperation="lighter"; g.globalAlpha=alpha*(1-u)*0.9; const gr=g.createRadialGradient(o[0],o[1],0,o[0],o[1],R);
+    gr.addColorStop(0,"#fff6d8"); gr.addColorStop(0.35,col.bns); gr.addColorStop(1,"rgba(255,181,71,0)"); g.fillStyle=gr; g.beginPath(); g.arc(o[0],o[1],R,0,7); g.fill();
+    g.globalCompositeOperation="source-over"; }
+  g.restore();
+  // labels
+  g.globalAlpha=alpha; g.textBaseline="alphabetic"; g.textAlign="left";
+  if (spec){ g.font=`700 13px ${mono}`; g.fillStyle=C("--fg"); g.fillText(spec.label||T("simYou"), 12, 22);
+    g.font=`500 12px ${mono}`; let x=12; const part=(s,c)=>{ g.fillStyle=c; g.fillText(s,x,39); x+=g.measureText(s).width; };
+    part(sig(spec.m1), col[spec.c1]); part(" + ", C("--muted")); part(sig(spec.m2), col[spec.c2]); part(" M☉", C("--muted"));
+    if (live){ const st = tt<spec.tMerge-0.02? 0 : tt<spec.tMerge+0.35? 1 : 2, lab=T("simPh")[st];
+      g.textAlign="right"; g.font=`${st===1?800:600} ${st===1?16:12.5}px ${st===1? C("--f-display") : mono}`; g.fillStyle= st===1? col.bns : st===2? C("--tmpl") : C("--muted");
+      g.fillText(lab, w-12, 22); } }
+  else { g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); g.font=`700 ${Math.round(Math.min(19,w/24))}px ${C("--f-display")}`; g.fillText(T("simIdle"), w/2, sh/2); }
+  // the wave this orbit sends out (same slowed-down phase), with the moment now
+  if (spec){ const y0=sh, mid=y0+stripH*0.58, A=stripH*0.3, x0=12, x1=w-12, X=t=>x0+t/spec.win*(x1-x0);
+    g.globalAlpha=1; g.strokeStyle=C("--line"); g.lineWidth=1; g.beginPath(); g.moveTo(0,y0+0.5); g.lineTo(w,y0+0.5); g.stroke();
+    g.globalAlpha=alpha; g.font=`500 10.5px ${mono}`; g.fillStyle=C("--muted"); g.textAlign="left"; g.textBaseline="alphabetic"; g.fillText(T("simWave"), x0, y0+14);
+    const N=Math.max(200, Math.round((x1-x0)/1.5)), hv=[];
+    for (let i=0;i<=N;i++){ const t=spec.win*i/N; simAt(spec,t,simO); hv.push(simO.a*Math.cos(2*simO.p)); }
+    const path=(upto)=>{ g.beginPath(); for (let i=0;i<=N;i++){ const t=spec.win*i/N; if (t>upto) break; const Xp=X(t), Yp=mid-A*hv[i]; i? g.lineTo(Xp,Yp) : g.moveTo(Xp,Yp); } g.stroke(); };
+    g.lineJoin="round"; g.strokeStyle=C("--tmpl"); g.lineWidth=1.4; g.globalAlpha=alpha*(live?0.3:0.6); path(Infinity);
+    if (live && tt<=spec.win){ g.globalAlpha=alpha; g.lineWidth=2; path(tt); simAt(spec,tt,simO);
+      g.fillStyle=C("--tgt"); g.shadowColor=C("--tgt"); g.shadowBlur=12; g.beginPath(); g.arc(X(tt), mid-A*simO.a*Math.cos(2*simO.p), 4.5, 0, 7); g.fill(); g.shadowBlur=0; } }
+  g.globalAlpha=1;
+}
 
 /* ---------------- result rendering ---------------- */
 function renderLadder(Mc){
@@ -1172,12 +1335,14 @@ function render(){
   $("msg").innerHTML = mk? ((["falling","steady","short","nopitch"].includes(mk)? shapeSVG() : "") + `<span>${T(mk)}</span>`) : "";
   // result
   const showRes = S.screen==="result";
-  $("result").hidden=!showRes; $("main").classList.toggle("solo",!showRes && !grp);
+  $("result").hidden=!showRes; $("main").classList.toggle("grp",grp);
+  $("simbox").hidden=grp; $("s-lead").textContent=L.simLead; $("s-note").textContent=L.simNote;
+  const sp=simIdleSpec(simPlay); $("simcv").setAttribute("aria-label", L.simLead+(sp? ": "+(sp.label||L.simYou)+", "+sig(sp.m1)+" + "+sig(sp.m2)+" "+L.unit : ""));
   if (showRes) renderResult(L);
   $("gpanel").hidden=!grp; $("gcat").hidden=!grp;
   if (grp && S.screen!=="intro"){ renderGroup(L); renderCatalog(L); }
-  $("howT").textContent=L.howT; $("howBody").innerHTML=L.how.map(x=>`<li>${x}</li>`).join("");
-  renderKV(); drawStage();
+  $("howT").textContent=L.howT; $("howBody").innerHTML=[...L.how.slice(0,-1), L.simHow, L.how[L.how.length-1]].map(x=>`<li>${x}</li>`).join("");
+  renderKV(); drawStage(); simKick();
   if (window.OutreachKit) window.OutreachKit.setLang(S.lang);
 }
 function renderResult(L){
@@ -1268,10 +1433,12 @@ function pairSound(){
   if (S.kind==="kar") return targetSound(tg());
   return null;
 }
-function autoPlayPair(){ const o=pairSound(); if (o) setTimeout(()=>{ if (S.screen==="result" && !recording) play(normalize(o.x),o.sr); }, 350); }
+const pairSimSpec = () => (S.res && S.res.fit)? fitSimSpec(S.res) : S.kind==="kar"? targetSimSpec(tg()) : null;
+function playPair(o){ const t0=play(normalize(o.x),o.sr); simStart(simPlay, pairSimSpec(), t0); }
+function autoPlayPair(){ const o=pairSound(); if (o) setTimeout(()=>{ if (S.screen==="result" && !recording) playPair(o); }, 350); }
 
 /* ---------------- playback buttons ---------------- */
-$("p-merge").onclick=()=>{ const o=pairSound(); if(o) play(normalize(o.x),o.sr); };
+$("p-merge").onclick=()=>{ const o=pairSound(); if(o) playPair(o); };
 $("p-you").onclick=()=>{ if(S.audio) play(S.audio.x, S.audio.sr); };
 $("p-tmpl").onclick=()=>{ const r=S.res; if(!r||!r.fit) return; const f=r.fit;
   const o=synthChirp({sr:22050, Mc:f.Mc, fStart:fOfTau(f.Mc,f.tc-f.t0), fStop:fOfTau(f.Mc,f.tc-f.tl), tStart:0.05, tail:0.1}); play(normalize(o.x),o.sr); };
@@ -1280,7 +1447,8 @@ $("p-event").onclick=()=>{ const P=resultPair(); if(!P) return; const e=P.closes
   const McV = e.mc/fac; const M=(e.m1+e.m2)/fac, Mtot=mtotOfMc(McV); const pa=phenomA(Mtot);
   const ns = Math.min(e.m1,e.m2)<3; const fStart=(S.res&&S.res.fit)? S.res.seg[0].f : fOfTau(McV,1.0); const fStop=Math.min(ns? fISCO(M): pa.fmerg, sr*0.45);
   if (fStop<=fStart) return;
-  const o=synthChirp({sr, Mc:McV, fStart, fStop, tStart:0.05, tail:0.15, ringdown: ns? null: {fring:Math.min(pa.fring,sr*0.45), tauD:1/(Math.PI*pa.sigma)}}); play(normalize(o.x),o.sr); };
+  const o=synthChirp({sr, Mc:McV, fStart, fStop, tStart:0.05, tail:0.15, ringdown: ns? null: {fring:Math.min(pa.fring,sr*0.45), tauD:1/(Math.PI*pa.sigma)}});
+  const t0=play(normalize(o.x),o.sr); simStart(simPlay, simSpec({Mc:McV, m1:e.m1, m2:e.m2, fStart, tStart:0.05, fEnd:fStop, label:e.id}), t0); };
 
 /* ---------------- microphone: level meter, room level, recording ---------------- */
 let stream=null, micSrc=null, an=null, levelRaf=0, micState="off";
@@ -1323,6 +1491,7 @@ async function startRec(){
   chunks=[]; recT0=c.currentTime; live={t:0, pitch:[], spec:{cols:[],N:an.fftSize,sr:c.sampleRate}};
   proc.onaudioprocess=ev=>{ chunks.push(new Float32Array(ev.inputBuffer.getChannelData(0))); };
   S.source="mic"; S.msgKey=null; render();
+  if (S.kind==="kar") simStart(simPlay, targetSimSpec(tg()), recT0); // the pair to follow spirals in while you sing
   const td=new Float32Array(an.fftSize), fd=new Float32Array(an.frequencyBinCount), d=new Float64Array(1200);
   const sr=c.sampleRate, tmax=Math.ceil(sr/65), tmin=Math.floor(sr/3000), W=Math.min(an.fftSize-tmax-1, 1024);
   const loop=()=>{ if(!recording) return; const t=c.currentTime-recT0; live.t=t;
@@ -1348,7 +1517,7 @@ sing.addEventListener("keyup",e=>{ if(e.key==="Enter") stopRec(); });
 window.addEventListener("keydown",e=>{ if(e.code==="Space"&&!e.repeat&&S.screen!=="intro"&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLButtonElement&&e.target!==sing)&&!(e.target.tagName==="SUMMARY")){ e.preventDefault(); if (S.kind==="group") gToggle(); else startRec(); } });
 window.addEventListener("keyup",e=>{ if(e.code==="Space"&&recording){ e.preventDefault(); stopRec(); } });
 
-/* ---------------- audience mode ----------------
+/* ---------------- group mode ----------------
    The microphone (or the demo / a recording, played aloud) streams into makeGroupDetector; each 10 ms
    column of its spectrum goes into a ring image (last GW_T seconds), detections go to G.dets.
    The count survives "← Start" and is cleared by "Count again" and the kiosk idle reset. */
@@ -1454,7 +1623,9 @@ function drawGroup(){
     g.fillStyle="rgba(9,12,20,0.75)"; g.fillRect(X-4, Y-14, tw, 32);
     g.fillStyle=C("--tgt"); g.fillText(lab, X, Y); g.font=`500 11px ${C("--f-mono")}`; g.fillStyle=C(G_COLV[P.cls].slice(4,-1)); g.fillText(sub, X, Y+13); g.font=`700 13px ${C("--f-mono")}`; }
   g.restore();
-  if (!G.cols && !G.on && !G.feed){ g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); g.font=`800 ${Math.round(Math.min(34,w/22))}px ${C("--f-display")}`; g.fillText(T("gIdle"), pad.l+pw/2, pad.t+ph/2); }
+  if (!G.cols && !G.on && !G.feed){ g.textAlign="center"; g.textBaseline="middle"; g.fillStyle=C("--fg"); let fs=Math.round(Math.min(34,w/22)); const fnt=()=>`800 ${fs}px ${C("--f-display")}`; g.font=fnt();
+    while (fs>11 && g.measureText(T("gIdle")).width>pw-24){ fs--; g.font=fnt(); }
+    g.fillText(T("gIdle"), pad.l+pw/2, pad.t+ph/2); }
 }
 
 function renderGroup(L){
@@ -1506,7 +1677,7 @@ $("go-free").onclick=()=>enterPlay("free");
 $("go-grp").onclick=()=>enterPlay("group");
 $("g-listen").onclick=()=>gToggle();
 $("g-reset").onclick=()=>gReset();
-$("i-listen").onclick=()=>{ const o=targetSound(TARGETS[0]); play(normalize(o.x),o.sr); };
+$("i-listen").onclick=()=>{ const o=targetSound(TARGETS[0]); const t0=play(normalize(o.x),o.sr); simStart(simIntro, targetSimSpec(TARGETS[0]), t0); };
 $("b-back").onclick=$("r-start").onclick=()=>goIntro();
 $("exBtn").onclick=()=>{ if (S.kind==="group"){ const o=synthCrowd(ctx().sampleRate); gFeed(o.x, o.sr, "demo"); return; }
   if (S.kind==="kar"){ if (S.screen==="result"){ S.res=null; S.kar=null; specCache=null; S.screen="sing"; render(); } playTarget(true); return; }
@@ -1528,8 +1699,7 @@ function goIntro(){ gHalt(); abortRec(); stopPlay(); closeMic(); S.res=null; S.k
 function kioskReset(){ gClear(); goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; $("more").open=false; $("how").open=false; if (BOARD_CLEAR_ON_IDLE) boardClear(); render(); window.scrollTo(0,0); }
 
 if (DEBUG) $("phys").hidden=false;
-$("i-svg").innerHTML=introSVG();
-window.__chirp = {G, makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, boardLoad};
+window.__chirp = {simSpec, simDraw,targetSimSpec, fitSimSpec, simPlay, simIntro, G,makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, boardLoad};
 render();
 </script>
 <script src="../shared/outreach-kit.js"></script>
