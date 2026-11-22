@@ -1,0 +1,692 @@
+# Virtual audience roster. All people here are fictional.
+# Field meanings and scales: dimensions.md. Add new personas at the end; keep ids unique.
+
+- id: noor-7
+  name: Noor
+  age: 7
+  age_band: child
+  home: Mechelen (BE)
+  languages: {primary: nl-BE, reads: [nl: A1], notes: "reads short words letter by letter; recognises icons"}
+  education: 1st grade primary school
+  occupation: pupil
+  science_literacy: 0
+  gw_et_knowledge: none
+  knows: ["the Moon and the Sun", "stars twinkle", "a black hole is 'a hole in space' from a cartoon"]
+  doesnt_know: ["almost every word longer than two syllables", "numbers above 100", "what a graph is", "gravity as a word"]
+  et_stance: unaware
+  digital_skill: 3
+  reading: {wpm: 20, habit: "cannot really read yet; follows pictures, colours, sounds and arrows"}
+  attention: {solo_sec: 60, expo_sec: 45, notes: "stays as long as something moves or makes a sound when she touches it"}
+  motivation: "Grandma brought her; wants to press things"
+  social: "with her grandmother (see maria-79)"
+  personality: "curious, giggly, copies what older kids do, upset if something 'doesn't work'"
+  performance_comfort: high
+  accessibility: none
+  devices: "plays games on her mother's tablet"
+
+- id: lotte-9
+  name: Lotte
+  age: 9
+  age_band: child
+  home: Leuven (BE)
+  languages: {primary: nl-BE, reads: [nl: native], notes: "reads slowly, sounds out long words"}
+  education: 4th grade primary school
+  occupation: pupil
+  science_literacy: 1
+  gw_et_knowledge: none
+  knows: ["planets go around the Sun", "black holes 'eat everything'", "sound is something you hear"]
+  doesnt_know: ["frequency", "solar mass", "what a detector or telescope does apart from 'looking'", "light-year", "graphs with axes"]
+  et_stance: unaware
+  digital_skill: 3
+  reading: {wpm: 60, habit: "reads big words and buttons, skips paragraphs"}
+  attention: {solo_sec: 90, expo_sec: 60, notes: "much longer if she can use her voice or body, or gets a score"}
+  motivation: "parent brought her; wants to play"
+  social: "with her dad"
+  personality: "loud, playful, taps before reading, gives up fast when stuck, loves praise"
+  performance_comfort: high
+  accessibility: none
+  devices: "dad's iPhone, school Chromebook"
+
+- id: lucas-11
+  name: Lucas
+  age: 11
+  age_band: child
+  home: Eupen (BE)
+  languages: {primary: de-BE, reads: [de: native, fr: A2, nl: none, en: A1], notes: "dyslexic; reading tires him quickly"}
+  education: 6th grade primary school
+  occupation: pupil
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["lots about rockets and planets from YouTube", "black holes bend light", "the Sun is a star"]
+  doesnt_know: ["what gravitational waves actually are", "frequency as a word", "interferometer", "Einstein Telescope (has heard 'Einstein')"]
+  et_stance: unaware
+  digital_skill: 4
+  reading: {wpm: 50, habit: "avoids text blocks; reads headings and buttons; prefers audio and pictures"}
+  attention: {solo_sec: 180, expo_sec: 120, notes: "very long if it is about space and he can do something; drops fast at walls of text"}
+  motivation: "loves space; asked to come"
+  social: "with his mum; at an expo, drags her along"
+  personality: "enthusiastic, asks 'but how big?', embarrassed about reading slowly"
+  performance_comfort: medium
+  accessibility: dyslexia
+  devices: "old Android phone (small screen), family laptop"
+
+- id: ayoub-13
+  name: Ayoub
+  age: 13
+  age_band: teen
+  home: Genk (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B1 (gaming), fr: A2], notes: "speaks Darija with grandparents"}
+  education: 2nd year secondary school (general)
+  occupation: pupil
+  science_literacy: 1
+  gw_et_knowledge: none
+  knows: ["game mechanics instantly", "black holes from films"]
+  doesnt_know: ["frequency (would guess 'how often')", "solar mass", "what Einstein did", "anything about ET"]
+  et_stance: unaware
+  digital_skill: 5
+  reading: {wpm: 180, habit: "skips all text, finds the button that starts things"}
+  attention: {solo_sec: 45, expo_sec: 40, notes: "long if there is a score, a leaderboard or something to beat; zero for 'school stuff'"}
+  motivation: "school trip or bored; wants a challenge"
+  social: "with friends; shows off in front of them"
+  personality: "competitive, funny, tests what breaks, mocks things that feel babyish"
+  performance_comfort: high (with friends) / medium (alone)
+  accessibility: none
+  devices: "recent Android phone, gaming PC"
+
+- id: emma-15
+  name: Emma
+  age: 15
+  age_band: teen
+  home: Aarschot (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B2, fr: A2]}
+  education: 4th year secondary (humanities track)
+  occupation: pupil
+  science_literacy: 2
+  gw_et_knowledge: none
+  knows: ["basic physics from school: speed, mass", "sound waves from a physics lesson"]
+  doesnt_know: ["gravitational waves", "neutron stars", "what ET is", "Hz beyond 'it was on a test once'"]
+  et_stance: unaware
+  digital_skill: 4
+  reading: {wpm: 220, habit: "reads short texts properly; skims long ones"}
+  attention: {solo_sec: 120, expo_sec: 60, notes: "will not do anything that makes classmates look at her"}
+  motivation: "school trip; the teacher wants a photo of the class at the stand"
+  social: "with her class (25 pupils)"
+  personality: "shy, thoughtful, privately curious, embarrassed easily"
+  performance_comfort: low
+  accessibility: none
+  devices: "iPhone, sound always off"
+
+- id: fien-16
+  name: Fien
+  age: 16
+  age_band: teen
+  home: Hasselt (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: C1, fr: B1]}
+  education: 5th year secondary (sciences–mathematics)
+  occupation: pupil
+  science_literacy: 3
+  gw_et_knowledge: news
+  knows: ["waves, frequency, amplitude", "Newton's gravity", "LIGO detected black holes merging (from a documentary)"]
+  doesnt_know: ["how an interferometer works in detail", "chirp mass", "why ET is underground"]
+  et_stance: supportive
+  digital_skill: 4
+  reading: {wpm: 260, habit: "reads everything, opens 'more info'"}
+  attention: {solo_sec: 400, expo_sec: 240, notes: "stays as long as she learns something new; annoyed by oversimplification"}
+  motivation: "wants to study physics; came on purpose"
+  social: "with a friend who is less interested"
+  personality: "serious, asks follow-up questions, checks if the numbers make sense"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone, school laptop"
+
+- id: jules-17
+  name: Jules
+  age: 17
+  age_band: teen
+  home: Liège (BE)
+  languages: {primary: fr-BE, reads: [fr: native, nl: A1, en: A2]}
+  education: 6th year technical/vocational (electricity)
+  occupation: student electrician
+  science_literacy: 2
+  gw_et_knowledge: none
+  knows: ["circuits, voltage, oscilloscopes, signals on a screen", "frequency in Hz (mains is 50 Hz)"]
+  doesnt_know: ["astronomy", "gravitational waves", "black holes beyond films", "academic French words"]
+  et_stance: curious-local
+  digital_skill: 4
+  reading: {wpm: 150, habit: "reads short instructions; gives up on long theory"}
+  attention: {solo_sec: 90, expo_sec: 90, notes: "longer for anything technical he can touch or measure"}
+  motivation: "class visit; would like to know if ET will hire technicians"
+  social: "with classmates"
+  personality: "practical, distrusts 'university talk', respects things that work"
+  performance_comfort: medium
+  accessibility: none
+  devices: "Android phone"
+
+- id: arno-19
+  name: Arno
+  age: 19
+  age_band: young
+  home: Leuven (BE), from Roeselare
+  languages: {primary: nl-BE, reads: [nl: native, en: C1, fr: B1]}
+  education: 1st year engineering (KU Leuven)
+  occupation: student
+  science_literacy: 4
+  gw_et_knowledge: news
+  knows: ["calculus, waves, oscillators", "that LIGO uses lasers and mirrors", "Fourier transforms vaguely"]
+  doesnt_know: ["post-Newtonian anything", "detector noise curves", "ET design details"]
+  et_stance: neutral
+  digital_skill: 5
+  reading: {wpm: 300, habit: "skims, then checks details that look wrong"}
+  attention: {solo_sec: 150, expo_sec: 90, notes: "stays if it is clever; leaves if it is 'for kids'"}
+  motivation: "a friend sent the link; between exam blocks"
+  social: "alone, at night"
+  personality: "sarcastic, quick, likes to find the bug, secretly impressed by good physics"
+  performance_comfort: medium
+  accessibility: none
+  devices: "laptop with many tabs, Android phone"
+
+- id: chloe-20
+  name: Chloé
+  age: 20
+  age_band: young
+  home: Louvain-la-Neuve (BE)
+  languages: {primary: fr-BE, reads: [fr: native, en: B2, nl: A2]}
+  education: bachelor in history (UCLouvain)
+  occupation: student
+  science_literacy: 1
+  gw_et_knowledge: heard-of
+  knows: ["Einstein as a name", "history of science stories", "art and design vocabulary"]
+  doesnt_know: ["any formula", "frequency", "what a wave 'in space' could mean"]
+  et_stance: neutral
+  digital_skill: 4
+  reading: {wpm: 280, habit: "reads well-written text with pleasure; skips numbers and graphs"}
+  attention: {solo_sec: 150, expo_sec: 120, notes: "longer for beauty and stories; shorter when she feels 'bad at maths'"}
+  motivation: "science festival with friends; likes beautiful things"
+  social: "with two friends"
+  personality: "aesthetic, curious about people's stories, maths-anxious, honest"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone"
+
+- id: kevin-22
+  name: Kevin
+  age: 22
+  age_band: young
+  home: Beringen (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B1]}
+  education: left secondary school (vocational) without diploma
+  occupation: warehouse worker
+  science_literacy: 1
+  gw_et_knowledge: none
+  knows: ["cars, football, phone games", "'scientists always want more money'"]
+  doesnt_know: ["what any of this is for", "black holes beyond memes", "frequency", "Einstein beyond the picture with the tongue"]
+  et_stance: skeptical-local
+  digital_skill: 3
+  reading: {wpm: 160, habit: "reads first line only"}
+  attention: {solo_sec: 30, expo_sec: 40, notes: "only stays if it is funny, a game, or his girlfriend wants to"}
+  motivation: "his girlfriend wanted to go to the expo"
+  social: "with his girlfriend"
+  personality: "jokes to hide boredom, distrusts experts, fair if something is genuinely cool"
+  performance_comfort: high (if it is a laugh)
+  accessibility: none
+  devices: "mid-range Android, cracked screen, battery always low"
+
+- id: sanne-24
+  name: Sanne
+  age: 24
+  age_band: young
+  home: Maastricht (NL)
+  languages: {primary: nl-NL, reads: [nl: native, en: C1, de: B1, fr: A2], notes: "notices Flemish vs Dutch wording"}
+  education: master in communication
+  occupation: junior social-media manager
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["what makes a post shareable", "ET might come 'near Maastricht'"]
+  doesnt_know: ["the physics", "why the detector is underground"]
+  et_stance: curious-local
+  digital_skill: 5
+  reading: {wpm: 280, habit: "skims; judges in 3 seconds by look and feel"}
+  attention: {solo_sec: 60, expo_sec: 60, notes: "stays for great design or something she would post; leaves on clunky UI"}
+  motivation: "saw a post; looking for content"
+  social: "alone on her phone, or with a colleague at the expo"
+  personality: "design-critical, fast, generous with praise when deserved"
+  performance_comfort: high
+  accessibility: none
+  devices: "new iPhone, always on 4G"
+
+- id: lien-26
+  name: Lien
+  age: 26
+  age_band: young
+  home: Ghent (BE)
+  languages: {primary: VGT (Flemish Sign Language), reads: [nl: C1, en: B2], notes: "Deaf since birth; reads Dutch well but it is a second language"}
+  education: bachelor in graphic design
+  occupation: graphic designer
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["visual design", "vibrations can be felt", "subtitles are often missing"]
+  doesnt_know: ["pitch as heard; she knows it as a concept on a screen", "physics vocabulary"]
+  et_stance: neutral
+  digital_skill: 4
+  reading: {wpm: 190, habit: "reads everything visual; looks for captions and visual cues"}
+  attention: {solo_sec: 120, expo_sec: 90, notes: "leaves quickly if the experience only works by sound"}
+  motivation: "a friend recommended it"
+  social: "with a hearing friend"
+  personality: "direct, notices when she is excluded, enjoys visual cleverness"
+  performance_comfort: medium
+  accessibility: "Deaf: hears nothing; cannot sing to a target pitch; relies entirely on visuals"
+  devices: "iPhone, vibration on"
+
+- id: sophie-27
+  name: Sophie
+  age: 27
+  age_band: young
+  home: Antwerp (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: C2, fr: B2]}
+  education: PhD in physics
+  occupation: postdoc in gravitational-wave data analysis (member of a detector collaboration)
+  science_literacy: 5
+  gw_et_knowledge: professional
+  knows: ["everything about chirps, templates, noise, ET design", "common outreach simplifications and which ones are wrong"]
+  doesnt_know: ["what the general public does not know (she overestimates them)"]
+  et_stance: supportive
+  digital_skill: 4
+  reading: {wpm: 320, habit: "reads all text looking for errors"}
+  attention: {solo_sec: 300, expo_sec: 180, notes: "stays to check accuracy"}
+  motivation: "colleague asked her to look at it"
+  social: "alone"
+  personality: "precise, kind but blunt about physics errors, appreciates clever analogies"
+  performance_comfort: medium
+  accessibility: none
+  devices: "laptop and iPhone"
+
+- id: elena-29
+  name: Elena
+  age: 29
+  age_band: young
+  home: Cagliari (IT)
+  languages: {primary: it, reads: [it: native, en: B2, fr: A2, nl: none, de: none]}
+  education: PhD in economics
+  occupation: researcher in regional economics, visiting Belgium for a conference
+  science_literacy: 3
+  gw_et_knowledge: news
+  knows: ["ET might be built in Sardinia (Sos Enattos)", "big-science projects bring money to regions"]
+  doesnt_know: ["Dutch at all", "the physics behind the detection", "why one site would be better than another"]
+  et_stance: rival-site
+  digital_skill: 4
+  reading: {wpm: 170, habit: "reads English carefully, skims"}
+  attention: {solo_sec: 120, expo_sec: 120, notes: "curious about the rival bid; gone in seconds if she cannot find English"}
+  motivation: "walked past an expo stand; recognised 'Einstein Telescope'"
+  social: "alone"
+  personality: "friendly, competitive about Sardinia, analytical"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone on roaming data"
+
+- id: bram-31
+  name: Bram
+  age: 31
+  age_band: adult
+  home: Leuven (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: C1, fr: B2]}
+  education: master in physics, teacher training
+  occupation: secondary-school physics teacher
+  science_literacy: 4
+  gw_et_knowledge: enthusiast
+  knows: ["waves, frequency, the 2015 detection, what LIGO looks like", "what 15-year-olds understand"]
+  doesnt_know: ["ET technical details"]
+  et_stance: supportive
+  digital_skill: 4
+  reading: {wpm: 260, habit: "reads everything, imagining using it in class"}
+  attention: {solo_sec: 400, expo_sec: 180, notes: "evaluating; patient"}
+  motivation: "looking for something to use in class"
+  social: "alone at his laptop, or with his class at an expo"
+  personality: "constructive, practical: can this work in 50 minutes with 25 phones?"
+  performance_comfort: high
+  accessibility: none
+  devices: "laptop, smartboard in class, pupils' phones"
+
+- id: tom-34
+  name: Tom
+  age: 34
+  age_band: adult
+  home: Ghent (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: C2, fr: B1]}
+  education: master in computer science
+  occupation: software developer
+  science_literacy: 3
+  gw_et_knowledge: enthusiast
+  knows: ["podcast-level GW knowledge", "how web apps break"]
+  doesnt_know: ["the real physics behind chirps", "ET site details"]
+  et_stance: supportive
+  digital_skill: 5
+  reading: {wpm: 300, habit: "skims; reads docs only when stuck"}
+  attention: {solo_sec: 180, expo_sec: 90, notes: "pokes at edge cases; leaves if it is slow or janky"}
+  motivation: "space nerd; saw it on social media"
+  social: "alone"
+  personality: "curious, technical, notices lag and broken layouts"
+  performance_comfort: medium
+  accessibility: "colour blind (deuteranopia): red and green look alike"
+  devices: "flagship Android, laptop with Firefox"
+
+- id: yasmina-35
+  name: Yasmina
+  age: 35
+  age_band: adult
+  home: Hasselt (BE), from Aleppo (SY)
+  languages: {primary: ar, reads: [ar: native, en: B1, nl: A2, fr: A1], notes: "reads Dutch slowly with a translation app at hand"}
+  education: pharmacy degree (Syria), now Dutch course NT2
+  occupation: pharmacy assistant
+  science_literacy: 3
+  gw_et_knowledge: heard-of
+  knows: ["chemistry, biology, units", "science vocabulary in Arabic and some English"]
+  doesnt_know: ["Dutch science words", "idioms and jokes in Dutch", "what ET is"]
+  et_stance: unaware
+  digital_skill: 3
+  reading: {wpm: 60, habit: "reads Dutch word by word; gives up on long Dutch paragraphs; looks for an English option"}
+  attention: {solo_sec: 120, expo_sec: 90, notes: "longer if she understands; leaves politely if language is too hard"}
+  motivation: "with her son at a family day"
+  social: "with her 8-year-old son"
+  personality: "smart, patient, frustrated when treated as less intelligent because of language"
+  performance_comfort: low
+  accessibility: "second-language reader"
+  devices: "Android phone, Google Translate camera"
+
+- id: nadia-38
+  name: Nadia
+  age: 38
+  age_band: adult
+  home: Antwerp (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B2, fr: B1]}
+  education: bachelor in nursing
+  occupation: nurse (shift work)
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["body and medicine", "black holes are 'very heavy'"]
+  doesnt_know: ["frequency", "how you can 'hear' space", "ET"]
+  et_stance: neutral
+  digital_skill: 3
+  reading: {wpm: 220, habit: "reads in short bursts between looking after kids"}
+  attention: {solo_sec: 60, expo_sec: 45, notes: "split attention: two kids (5 and 8) pulling her away; stays if the kids are happy"}
+  motivation: "family day out; wants the kids entertained and maybe learn something"
+  social: "with her two children"
+  personality: "warm, tired, practical; judges by whether the kids enjoy it"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone with a cracked case, battery saver on"
+
+- id: jan-39
+  name: Jan
+  age: 39
+  age_band: adult
+  home: Hasselt (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: C1, fr: B2, de: B1]}
+  education: master in journalism
+  occupation: regional newspaper journalist
+  science_literacy: 2
+  gw_et_knowledge: news
+  knows: ["the ET bid is a big regional story", "the political angles: money, jobs, nature"]
+  doesnt_know: ["the physics beyond press releases"]
+  et_stance: neutral
+  digital_skill: 4
+  reading: {wpm: 300, habit: "skims for a quote or a headline"}
+  attention: {solo_sec: 90, expo_sec: 120, notes: "stays if there is a story; leaves when it is PR"}
+  motivation: "writing a piece on ET outreach"
+  social: "alone, notebook in hand"
+  personality: "sceptical, fair, looks for the human angle and for overclaims"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone, laptop"
+
+- id: raj-41
+  name: Raj
+  age: 41
+  age_band: adult
+  home: Brussels (BE), from Bangalore (IN)
+  languages: {primary: en, reads: [en: native, fr: A2, nl: A1]}
+  education: master in computer engineering
+  occupation: IT consultant (expat)
+  science_literacy: 4
+  gw_et_knowledge: news
+  knows: ["signal processing basics", "LIGO from the news"]
+  doesnt_know: ["Dutch", "ET details", "Belgian context"]
+  et_stance: neutral
+  digital_skill: 5
+  reading: {wpm: 280, habit: "reads English well; skips anything not in English"}
+  attention: {solo_sec: 120, expo_sec: 90, notes: "gone if he cannot find English in 10 seconds"}
+  motivation: "weekend science festival with his daughter (10)"
+  social: "with his daughter"
+  personality: "polite, curious, systematic"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone, work laptop"
+
+- id: stefan-44
+  name: Stefan
+  age: 44
+  age_band: adult
+  home: Lommel (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B1, de: B1]}
+  education: secondary school (general), sales training
+  occupation: sales representative
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["gadgets", "cars", "what sells"]
+  doesnt_know: ["the physics", "frequency in a technical sense"]
+  et_stance: supportive
+  digital_skill: 4
+  reading: {wpm: 200, habit: "reads nothing, presses everything"}
+  attention: {solo_sec: 30, expo_sec: 40, notes: "ADHD: instant interest, instant boredom; back if there is a competition"}
+  motivation: "with his kids at an expo; loves gadgets"
+  social: "with two teenagers"
+  personality: "enthusiastic, competitive with his kids, loud"
+  performance_comfort: high
+  accessibility: "ADHD"
+  devices: "large Samsung phone"
+
+- id: pieter-45
+  name: Pieter
+  age: 45
+  age_band: adult
+  home: Voeren (BE)
+  languages: {primary: nl-BE, reads: [nl: native, fr: B2, de: B1, en: A2], notes: "speaks local dialect; reads standard Dutch fine but slowly"}
+  education: agricultural secondary school
+  occupation: dairy farmer
+  science_literacy: 1
+  gw_et_knowledge: heard-of
+  knows: ["his land, the water table, the soil", "ET may be built under the region; 'there will be drilling'"]
+  doesnt_know: ["what gravitational waves are", "why it must be underground here", "what the region gets back"]
+  et_stance: skeptical-local
+  digital_skill: 2
+  reading: {wpm: 150, habit: "reads slowly and only what looks important"}
+  attention: {solo_sec: 45, expo_sec: 90, notes: "patient with a person who answers his questions; impatient with screens"}
+  motivation: "came to the information evening to ask about groundwater and construction traffic"
+  social: "with his wife, who is more positive"
+  personality: "suspicious of 'Leuven professors', sincere, wants straight answers"
+  performance_comfort: low
+  accessibility: "reading glasses, often forgotten"
+  devices: "old Android phone used for calls and WhatsApp"
+
+- id: greet-48
+  name: Greet
+  age: 48
+  age_band: adult
+  home: Tongeren (BE)
+  languages: {primary: nl-BE, reads: [nl: native, fr: B2, en: B2]}
+  education: master in law
+  occupation: alderman (schepen) for economy in a Limburg municipality
+  science_literacy: 2
+  gw_et_knowledge: news
+  knows: ["the ET bid, the budget, the political timeline", "the talking points about jobs and innovation"]
+  doesnt_know: ["the physics", "what to tell sceptical residents beyond talking points"]
+  et_stance: stakeholder
+  digital_skill: 3
+  reading: {wpm: 250, habit: "skims for a message she can repeat"}
+  attention: {solo_sec: 60, expo_sec: 120, notes: "stays if a photographer is there; limited time"}
+  motivation: "official visit to the stand"
+  social: "with an aide and a photographer"
+  personality: "polished, busy, wants a clear one-liner, careful not to look silly"
+  performance_comfort: medium (depends on the photo)
+  accessibility: none
+  devices: "iPad, iPhone"
+
+- id: martine-52
+  name: Martine
+  age: 52
+  age_band: middle
+  home: Tongeren (BE)
+  languages: {primary: nl-BE, reads: [nl: native, fr: B1, en: A2]}
+  education: teacher training (primary)
+  occupation: primary-school teacher (5th grade)
+  science_literacy: 2
+  gw_et_knowledge: heard-of
+  knows: ["what 10-year-olds can handle", "classroom logistics"]
+  doesnt_know: ["the physics; afraid pupils will ask her questions she can't answer"]
+  et_stance: supportive
+  digital_skill: 2
+  reading: {wpm: 230, habit: "reads everything, carefully"}
+  attention: {solo_sec: 300, expo_sec: 120, notes: "patient; evaluating for her class"}
+  motivation: "deciding whether to use it in class"
+  social: "alone at home, or with her class at an expo"
+  personality: "careful, kind, anxious about technology failing in front of 24 children"
+  performance_comfort: medium
+  accessibility: "reading glasses"
+  devices: "school laptop, iPad, smartboard"
+
+- id: ingrid-57
+  name: Ingrid
+  age: 57
+  age_band: middle
+  home: Heerlen (NL)
+  languages: {primary: nl-NL, reads: [nl: native, de: B2, en: B2, fr: A2]}
+  education: higher vocational (tourism)
+  occupation: works at a regional tourist office
+  science_literacy: 2
+  gw_et_knowledge: news
+  knows: ["the mining past of the region", "visitors want a story and a place to visit"]
+  doesnt_know: ["the physics", "whether ET will have a visitor centre"]
+  et_stance: curious-local
+  digital_skill: 3
+  reading: {wpm: 220, habit: "reads intros, skips details"}
+  attention: {solo_sec: 90, expo_sec: 120, notes: "stays for stories about the region"}
+  motivation: "thinking about ET tourism"
+  social: "with a colleague"
+  personality: "sociable, regional pride, practical"
+  performance_comfort: medium
+  accessibility: none
+  devices: "iPhone, office desktop"
+
+- id: hans-58
+  name: Hans
+  age: 58
+  age_band: middle
+  home: Aachen (DE)
+  languages: {primary: de-DE, reads: [de: native, en: C1, nl: B1, fr: A2]}
+  education: Dipl.-Ing. mechanical engineering
+  occupation: engineer at a precision-machining company
+  science_literacy: 4
+  gw_et_knowledge: news
+  knows: ["vibration isolation, tolerances, vacuum", "numbers and units"]
+  doesnt_know: ["astrophysics", "chirp details"]
+  et_stance: supportive
+  digital_skill: 4
+  reading: {wpm: 240, habit: "reads for numbers and specifications"}
+  attention: {solo_sec: 150, expo_sec: 150, notes: "stays for real numbers; leaves on vague or childish framing"}
+  motivation: "his company hopes for ET contracts"
+  social: "alone or with a colleague"
+  personality: "precise, dry humour, dislikes hype"
+  performance_comfort: low
+  accessibility: "varifocal glasses"
+  devices: "Windows laptop, Android phone"
+
+- id: josee-61
+  name: Josée
+  age: 61
+  age_band: middle
+  home: Verviers (BE)
+  languages: {primary: fr-BE, reads: [fr: native, nl: A1, de: A2]}
+  education: secondary school (general)
+  occupation: retired administrative assistant
+  science_literacy: 1
+  gw_et_knowledge: heard-of
+  knows: ["TV documentaries about the universe", "ET 'is a big scientific project in the region'"]
+  doesnt_know: ["any physics vocabulary", "what 'swipe' or a hamburger menu is"]
+  et_stance: curious-local
+  digital_skill: 2
+  reading: {wpm: 200, habit: "reads all French text slowly; lost in Dutch"}
+  attention: {solo_sec: 120, expo_sec: 120, notes: "patient but afraid of 'breaking' the app; stops if nothing happens after a tap"}
+  motivation: "her grandson sent her the link"
+  social: "alone on her tablet; at an expo with a friend"
+  personality: "kind, timid with technology, embarrassed to ask"
+  performance_comfort: low
+  accessibility: "slightly reduced vision; large font set on her tablet"
+  devices: "Samsung tablet (large font), basic phone"
+
+- id: dirk-66
+  name: Dirk
+  age: 66
+  age_band: senior
+  home: Mol (BE)
+  languages: {primary: nl-BE, reads: [nl: native, en: B2, fr: B1, de: B1]}
+  education: industrial engineer
+  occupation: retired; volunteer at a public observatory
+  science_literacy: 4
+  gw_et_knowledge: enthusiast
+  knows: ["astronomy in depth", "LIGO/Virgo results", "the ET plan from magazines"]
+  doesnt_know: ["modern web conventions", "the newest ET design choices"]
+  et_stance: supportive
+  digital_skill: 2
+  reading: {wpm: 220, habit: "reads everything, wants more"}
+  attention: {solo_sec: 600, expo_sec: 300, notes: "would stay all day; will talk to the explainer at length"}
+  motivation: "hobby; came on purpose"
+  social: "alone"
+  personality: "talkative, knowledgeable, tells stories, sometimes corrects others"
+  performance_comfort: medium
+  accessibility: "slight tremor in his hands: imprecise taps"
+  devices: "desktop PC, old Android phone"
+
+- id: willy-72
+  name: Willy
+  age: 72
+  age_band: senior
+  home: Maasmechelen (BE)
+  languages: {primary: nl-BE, reads: [nl: native, it: B1 (spoken), fr: A2], notes: "son of an Italian miner; speaks Limburgish dialect"}
+  education: technical school
+  occupation: retired coal miner, then factory worker
+  science_literacy: 1
+  gw_et_knowledge: none
+  knows: ["working underground, rock, water in the mines, safety", "ventilation and pumps"]
+  doesnt_know: ["gravitational waves", "black holes beyond the word", "why physicists want to go underground"]
+  et_stance: curious-local
+  digital_skill: 1
+  reading: {wpm: 120, habit: "reads big text only"}
+  attention: {solo_sec: 30, expo_sec: 120, notes: "barely uses screens alone; with a person to talk to about 'underground' he stays a long time"}
+  motivation: "his daughter took him to the expo"
+  social: "with his daughter"
+  personality: "proud of the mining past, funny, sceptical of 'people who never got their hands dirty'"
+  performance_comfort: medium
+  accessibility: "hard of hearing (hearing aids, struggles in noisy halls); poor near vision"
+  devices: "flip phone; daughter's smartphone when she hands it to him"
+
+- id: maria-79
+  name: Maria
+  age: 79
+  age_band: senior
+  home: Kessel-Lo (BE)
+  languages: {primary: nl-BE, reads: [nl: native, fr: B1]}
+  education: secondary school
+  occupation: retired shop owner
+  science_literacy: 1
+  gw_et_knowledge: none
+  knows: ["the stars from her youth in the countryside"]
+  doesnt_know: ["touchscreens beyond tapping", "any physics vocabulary"]
+  et_stance: unaware
+  digital_skill: 1
+  reading: {wpm: 100, habit: "can only read large, high-contrast text"}
+  attention: {solo_sec: 20, expo_sec: 90, notes: "never alone with an app; at an expo, watches her granddaughter and stays if someone explains"}
+  motivation: "accompanying her granddaughter (see noor-7)"
+  social: "with Noor (7)"
+  personality: "gentle, curious about people, says 'that's too modern for me'"
+  performance_comfort: low
+  accessibility: "macular degeneration: central vision blurred; needs large text and strong contrast"
+  devices: "landline and a simple mobile phone"

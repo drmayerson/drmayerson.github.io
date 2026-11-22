@@ -1,0 +1,38 @@
+# Named panels: groups of persona ids from personas/roster.yaml (or personas/generated/*.yaml).
+# Add a panel by giving it a name, a one-line purpose and a list of ids.
+
+quick:
+  purpose: "Smoke test: one child, one teen, a parent, a sceptical local, a timid senior and a GW expert."
+  ids: [lotte-9, ayoub-13, nadia-38, pieter-45, josee-61, sophie-27]
+
+general-public:
+  purpose: "Broad public, mostly non-experts, mixed ages and digital skill."
+  ids: [lotte-9, ayoub-13, emma-15, chloe-20, kevin-22, sanne-24, tom-34, nadia-38, stefan-44, martine-52, josee-61, willy-72]
+
+family-day:
+  purpose: "Expo family day: young children, parents, grandparents."
+  ids: [noor-7, lotte-9, lucas-11, ayoub-13, yasmina-35, nadia-38, stefan-44, raj-41, maria-79, willy-72]
+
+school-visit:
+  purpose: "Class visits and teachers deciding whether to use it."
+  ids: [lucas-11, ayoub-13, emma-15, fien-16, jules-17, bram-31, martine-52]
+
+et-region:
+  purpose: "People living near the Meuse–Rhine candidate site, local stakeholders and the press."
+  ids: [jules-17, kevin-22, sanne-24, jan-39, pieter-45, greet-48, ingrid-57, hans-58, josee-61, willy-72]
+
+experts:
+  purpose: "Accuracy and depth check by people who know the physics or teach it."
+  ids: [fien-16, arno-19, sophie-27, bram-31, hans-58, dirk-66]
+
+accessibility:
+  purpose: "Visitors with vision, hearing, reading, motor or attention needs, and second-language readers."
+  ids: [lucas-11, lien-26, tom-34, yasmina-35, stefan-44, dirk-66, willy-72, maria-79]
+
+international:
+  purpose: "Visitors who do not read Dutch, or read it poorly."
+  ids: [lucas-11, jules-17, chloe-20, elena-29, raj-41, yasmina-35, hans-58, josee-61]
+
+full:
+  purpose: "Everyone in the roster."
+  ids: all
