@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -223,10 +223,11 @@ summary{cursor:pointer;padding:14px 0;font:600 15px var(--f-body)}
       <p class="tag" id="t-tag"></p>
     </div>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Taal / Language / Langue" id="langSeg">
+      <div class="seg" role="group" aria-label="Taal / Language / Langue / Sprache" id="langSeg">
         <button data-l="nl" aria-pressed="true">NL</button>
         <button data-l="en" aria-pressed="false">EN</button>
         <button data-l="fr" aria-pressed="false">FR</button>
+        <button data-l="de" aria-pressed="false">DE</button>
       </div>
     </div>
   </header>
@@ -1087,17 +1088,119 @@ fr:{title:'Karaoké des <span class="wave">chirps</span>',
  kbSpace:"espace", kbBack:"effacer",
  lbAdmin:"Mode gestionnaire : touche ✕ pour effacer un nom, ou efface toute une liste.", lbAdminPin:"Code gestionnaire", lbWrongPin:"Code erroné.", lbResetAll:"Effacer tous les classements", lbReset:"Effacer la liste", lbConfirm:"Touche encore pour confirmer", lbDone:"Terminé", lbCancel:"Annuler", lbDel:"Effacer ce nom",
  chBtn:"⏱ Défi : 15 secondes", chStop:"Arrêter le défi", chReady:"Prêts ? Faites « wouuup » autant que possible !", chGo:"WOUUUP !", chDone:"⏱ {n} collisions en 15 secondes", badgeCh:"DÉFI · 15 S"
+},
+de:{title:'Chirp-<span class="wave">Karaoke</span>',
+ tag:"Sing wie zwei zusammenstoßende Schwarze Löcher. Der Computer vergleicht dein „Wuuup“ mit dem Chirp jedes möglichen Paares: derselbe Trick, mit dem LIGO Signale aus dem Rauschen fischt.",
+ iWhat:"Was ist ein Chirp?",
+ iP:"Wenn zwei Schwarze Löcher oder Neutronensterne einander umkreisen, bringen sie den Raum selbst zum Zittern: eine Gravitationswelle. Je näher sie sich kommen, desto schneller steigt der Ton, bis sie zusammenstoßen, ein „Chirp“ (ein Zwitschern), und genau das hören Detektoren wie LIGO.",
+ iListen:"▶ Hör dir einen echten an", iListenS:"GW170817: zwei Neutronensterne, die letzte Sekunde vor dem Zusammenstoß · nachgebaut aus den gemessenen Massen",
+ iKar:"Sing mit", iKarS:"Karaoke: folge einem echten Chirp",
+ iFree:"Welches Paar bist du?", iFreeS:"Sing dein eigenes „Wuuup“ und finde dein Paar",
+ priv:"Deine Stimme verlässt dieses Gerät nie und wird nicht gespeichert. Nur ein Name, den du selbst für die Bestenliste eintippst, bleibt auf diesem Gerät.",
+ back:"← Anfang", start:"Zurück zum Anfang",
+ modeReal:"Echtes Tempo", modeBH:"Schwarze-Löcher-Modus ×25",
+ explReal:"<b>Echtes Tempo.</b> Deine Stimme zählt genau so als Gravitationswelle, wie sie ist: gleiche Tonhöhe, gleiches Tempo. Paare von Neutronensternen gleiten in etwa einer Sekunde durch diese Töne.",
+ explBH:"<b>Schwarze-Löcher-Modus.</b> Chirps von Schwarzen Löchern sind tief und dauern nur einen Bruchteil einer Sekunde: zu schnell zum Singen. Hier zählt dein „Wuuup“ als Aufnahme, die 25× schneller abgespielt wird, Tonhöhe und Tempo zusammen. Einsteins Gleichungen erlauben genau das: 25× schwerere Schwarze Löcher machen denselben Chirp, 25× tiefer und 25× langsamer.",
+ karExpl:"<b>Karaoke.</b> Hör dir zuerst den Chirp an. Dann halte die Taste gedrückt und sing mit der leuchtenden Linie mit: tief und langsam anfangen, mit einem schnellen Schwung nach oben enden. Jede Oktave zählt.",
+ tgtNote:{GW170817:"Zwei Neutronensterne, 17. August 2017, in echtem Tempo: So schnell stieg ihr Ton wirklich.",GW150914:"Die ersten Schwarzen Löcher, die je gehört wurden (2015), 25× schneller abgespielt. In Wirklichkeit sind das ihre letzten 25 Sekunden, ein Brummen von 6 bis 17 Schwingungen pro Sekunde: zu tief für LIGO, aber genau richtig für das Einstein-Teleskop."},
+ freeExpl:"<b>Freies „Wuuup“.</b> Halte die Taste gedrückt und sing ein steigendes „Wuuu-WIIIP!“. Der Computer sucht das Paar aus Sternen oder Schwarzen Löchern, das am meisten nach dir klingt.",
+ hold:"Halten und singen", hold2:"oder Leertaste gedrückt halten", singing:"Du singst… loslassen", example:"Beispiel-Chirp", listenAgain:"▶ Noch einmal hören", upload:"Aufnahme verwenden",
+ you:"deine Stimme", tmpl:"passendster Chirp", tgt:"Chirp zum Mitsingen",
+ badgeEx:"BEISPIEL · vom Computer gemacht", badgeYou:"DEIN CHIRP", badgeFile:"AUFNAHME", badgeKar:"KARAOKE · {id}",
+ noteEx:"Ein Beispiel vom Computer, keine echte Stimme.",
+ noteYou:"Deine Stimme als Klangbild: tiefe Töne unten, hohe oben. Orange: deine Tonhöhe. Blau: der Chirp des am besten passenden Paares; gestrichelt: wie er bis zum Zusammenstoß weiterliefe.",
+ noteKar:"Orange: deine Tonhöhe. Leuchtende Linie: der Chirp zum Mitsingen.", noteIdle:"Tiefe Töne unten, hohe Töne oben.",
+ lvlReady:"Mikrofon bereit", lvlNoisy:"Sehr laut hier: sing nah am Mikrofon", lvlOff:"Kein Mikrofon",
+ lead:"Dein Chirp passt zu", leadKar:"Karaoke · {id}",
+ cls:{sub:"zwei Objekte, leichter als jeder bekannte Neutronenstern,", bns:"zwei Neutronensterne", gap:"zwei Objekte in der Massenlücke", bbh:"zwei Schwarze Löcher"},
+ head:"{cls} von etwa {m} + {m} Sonnenmassen",
+ headSub:"Zu langsam für jedes bekannte Paar. Ende mit einem schnelleren Schwung!",
+ subSub:"Dein „Wuuup“ passt zu zwei Objekten von je etwa {m} Sonnenmassen: leichter als jeder bekannte Neutronenstern. Falls so ein Paar je gefunden wird, könnten es primordiale Schwarze Löcher aus dem frühen Universum sein.",
+ headKar:"Du hast {id} zu {s} getroffen",
+ subKarFit:"Dein eigener Chirp klingt wie {cls} von etwa {m} + {m} Sonnenmassen.", subKarNo:"Diesmal konnten wir deinem Chirp kein Paar zuordnen, aber die Punktzahl zählt.",
+ matchLine:"Übereinstimmung: {s}",
+ cmp:"Nächste echte Entdeckung: <b>{id}</b>, {what}.",
+ vsL:"Die heutigen Detektoren (LIGO-Virgo, 2025) hören die Hälfte solcher Paare bis zu {t} zurück in der Zeit.", vsLnone:"Die heutigen Detektoren (LIGO-Virgo, 2025) hören so ein Paar nicht.",
+ vsE:"Das Einstein-Teleskop: bis zu {t} zurück.", vsEdark:"Das Einstein-Teleskop: ganz zurück bis vor die ersten Sterne (eine formale Grenze: Damals gab es noch keine Schwarzen Löcher aus Sternen).", vsEnone:"Selbst das Einstein-Teleskop hört so ein Paar nicht.",
+ takeaway:"Der Klang verrät die Masse: Schwerere Paare chirpen tiefer und sind schneller fertig. Das Einstein-Teleskop wird solche Zusammenstöße viel tiefer im Universum hören als die heutigen Detektoren.",
+ pMergeAuto:"▶ Dein Paar, bis zum Zusammenstoß",
+ more:"Mehr über deinen Chirp",
+ chirpMass:"Deine Stimme misst eine Zahl, die „Chirp-Masse“ ({mc} Sonnenmassen): die Kombination der beiden Massen, die bestimmt, wie schnell der Ton steigt. Wie sie sich auf die beiden verteilt, ist geschätzt (gleiche Massen).",
+ score:"Übereinstimmung", scoreHint:"Wie genau deine Tonhöhe dem passendsten Chirp folgte.", scoreHintKar:"Wie genau deine Tonhöhe der leuchtenden Linie folgte (eine Verschiebung bis 0,4 s und ganze Oktaven sind erlaubt).",
+ tip:"Tipp: Echte Chirps beginnen langsam und schießen am Ende nach oben. Versuch ein langes, tiefes „Wuuuuu“, das in einem schnellen „WIIIP!“ endet.",
+ ladder:"Dein Paar neben echten Entdeckungen (Chirp-Masse, in Sonnenmassen)", closest:"Nächste echte Entdeckung",
+ closestInfo:"{m1} + {m2} Sonnenmassen · Signal unterwegs: {t} · {what}",
+ reachTitle:"Wer könnte so ein Paar hören?", ligo:"LIGO-Virgo (2025)", et:"Einstein-Teleskop",
+ reachLine:"<b>{det}</b>: hört die Hälfte solcher Paare bis zu {t} zurück", reachDark:"<b>{det}</b>: ganz zurück bis ins kosmische dunkle Zeitalter, vor den ersten Sternen (formale Grenze; damals gab es noch keine Schwarzen Löcher aus Sternen)",
+ none:"zu schwach zum Hören",
+ pYou:"▶ Deine Stimme", pTmpl:"▶ Passendster Chirp", pMerge:"▶ Bis zum Zusammenstoß", pEvent:"▶ {id}", pTarget:"▶ {id} (zum Mitsingen)", simulated:"simuliert",
+ merger:"Dein Chirp endete bei {f} Hz (Schwingungen pro Sekunde). Der Zusammenstoß käme {dt} später, bei etwa {fm} Hz.",
+ bhBand:"In Wirklichkeit liefe dein Chirp von {a} bis {b} Hz: tiefe Töne, bei denen das Einstein-Teleskop viel empfindlicher ist als LIGO.",
+ mic:"Das Mikrofon ist nicht verfügbar. Erlaube deinem Browser den Zugriff auf das Mikrofon oder verwende eine Aufnahme.",
+ short:"Zu kurz. Sing ein „Wuuup“ von mindestens einer halben Sekunde.", nopitch:"Kein klarer Ton gehört. Versuch, etwas lauter zu summen oder zu pfeifen.",
+ quiet:"Zu leise. Sing etwas lauter oder näher am Mikrofon.", nothing:"Wir haben niemanden singen gehört. Halte die Taste gedrückt, während du singst.",
+ decode:"Diese Datei konnte nicht als Ton gelesen werden. Versuch eine andere Aufnahme (zum Beispiel .wav oder .mp3).",
+ falling:"Dein Ton ging nach unten. Echte Chirps gehen nur nach oben, so wie hier: Je näher das Paar, desto höher und schneller die Welle.",
+ steady:"Das war ein gleichbleibender Ton. So klingt ein Paar, das noch weit vom Zusammenstoß entfernt ist. Lass deinen Ton steigen, so wie hier.",
+ gyr:"{x} Milliarden Jahre", myr:"{x} Millionen Jahre", sec:"{x} s",
+ what:{GW150914:"die allererste Entdeckung (2015)",GW151226:"das zweite Paar Schwarzer Löcher (2015)",GW170817:"Neutronensterne, auch im Licht gesehen",GW190425:"das schwerste Paar Neutronensterne",GW190521:"bildete ein mittelschweres Schwarzes Loch",GW190814:"Schwarzes Loch + rätselhaftes Objekt von 2,6 Sonnenmassen",GW200115:"Schwarzes Loch + Neutronenstern",GW230529:"Neutronenstern + leichtes Schwarzes Loch",GW231123:"das bisher schwerste Paar",GW250114:"das bisher lauteste Signal (2025)"},
+ howT:"Wie funktioniert es?",
+ how:["<b>Deine Tonhöhe.</b> Der Computer misst hundertmal pro Sekunde, wie hoch du singst.",
+  "<b>Vergleichen.</b> Er legt diese Linie neben den Chirp jedes möglichen Paares. Schwerere Paare chirpen tiefer und sind schneller fertig, leichtere höher und länger: Die beste Übereinstimmung verrät die Massen. LIGO nutzt denselben Trick, um echte Signale aus dem Rauschen zu fischen.",
+  "<b>Schwarze-Löcher-Modus.</b> Echte Chirps von Schwarzen Löchern sind zu tief und zu kurz zum Singen. Nach Einsteins Gleichungen dürfen wir dein „Wuuup“ als Aufnahme sehen, die 25-mal schneller abgespielt wird: Derselbe Chirp gehört dann zu 25-mal schwereren Schwarzen Löchern.",
+  "<b>Wie weit?</b> „Die Hälfte hören“ heißt: Von allen solchen Zusammenstößen in dieser Entfernung wird die Hälfte entdeckt; die übrigen liegen oder stehen ungünstig. Heute: LIGO-Virgo, wie sie 2025 arbeiteten. Einstein-Teleskop: wie es geplant ist. Die Klänge echter Entdeckungen sind aus ihren gemessenen Massen nachgebaut (simuliert).",
+  "<b>Privatsphäre.</b> Alles passiert in diesem Browser. Deine Stimme wird nicht gespeichert und nirgendwohin geschickt."],
+ axisYou:"dein Ton (Hz)", axisGW:"Gravitationswelle (Hz)", tl:["heute","Sonne entsteht","Urknall"], unit:"Sonnenmassen",
+ iGrp:"Gruppenmodus", iGrpS:"Mit Freunden, der Klasse oder einem ganzen Saal: gemeinsam „wuuupen“ und die Zusammenstöße zählen",
+ grpExpl:"<b>Gruppenmodus.</b> Leg dein Handy oder deinen Laptop in die Mitte, drück auf Start und lass alle gleichzeitig „wuuupen“, so oft sie wollen. Der Computer verfolgt alle Stimmen auf einmal und zählt jeden steigenden Chirp als Zusammenstoß, auch wenn sie sich überlappen. Das klappt mit zwei Freunden genauso gut wie mit einem vollen Saal.",
+ gStart:"Zuhören starten", gStop:"Zuhören stoppen", gStopDemo:"Demo stoppen", gListenS:"oder Leertaste drücken",
+ gDemo:"Demo: eine simulierte Gruppe", gVoices:"Stimmen", gDet:"gefundener Chirp", gNow:"jetzt",
+ badgeLive:"LIVE · HÖRT ZU", badgeDemo:"DEMO · simulierte Gruppe", badgeGIdle:"GRUPPENMODUS",
+ noteGrp:"Orange Punkte: jede Stimme, der der Computer folgt. Wird eine Stimme zu einem steigenden Chirp, zählt sie als Zusammenstoß und leuchtet blau auf.",
+ gIdle:"Drück auf Start und alle „wuuupen“ gleichzeitig!",
+ gLead:"Gefunden von eurer Gruppe", gUnit:"Zusammenstöße", gUnit1:"Zusammenstoß", gPeak:"höchstens gleichzeitig", gTime:"zugehört",
+ gCls:{sub:"leichter als Neutronensterne", bns:"Paare von Neutronensternen", gap:"Paare in der Massenlücke", bbh:"Paare Schwarzer Löcher"},
+ gObj:{sub:"leichter als jeder bekannte Neutronenstern", bns:"Neutronenstern", gap:"Massenlücke", bbh:"Schwarzes Loch"},
+ gLast:"Letzter, Nr. {n}: {what}.", gNone:"Noch nichts gefunden. Ein guter Chirp beginnt tief und langsam und endet mit einem schnellen Schwung nach oben.",
+ gReset:"Neu zählen",
+ gTake:"Echte Detektoren stehen vor demselben Rätsel. Das Einstein-Teleskop wird Zehntausende Zusammenstöße pro Jahr hören. Chirps von Neutronensternen dauern in seinem empfindlichen Bereich stundenlang, also überlappen sich immer ein paar, genau wie eure Stimmen.",
+ gCatT:"Der Katalog eurer Gruppe",
+ gCatS:"Jede Spalte ist ein Zusammenstoß: Zwei Objekte (kleine Punkte) verschmelzen zu einem schwereren Objekt (großer Punkt). Offene Kreise: echte Entdeckungen von LIGO-Virgo-KAGRA, zum Vergleich. Die Massen folgen aus dem Chirp, unter der Annahme, dass beide gleich sind.",
+ gReal:"echte Entdeckungen", gRoom:"eure Gruppe", gShowing:"die letzten {k}", gLegRoom:"gefunden von eurer Gruppe", gLegReal:"echte Entdeckung",
+ simLead:"Simulation · woher der Chirp kommt", simYou:"Dein Paar", simIdle:"Sing ein „Wuuup“: Hier erscheint dein Paar.",
+ simNote:"Zwei schwere Objekte umkreisen einander immer schneller, kommen sich näher und stoßen zusammen. Jede Umrundung schickt zwei Wellen durch den Raum. Die Animation läuft im Takt mit dem Ton, aber die Umrundungen sind verlangsamt: In Wirklichkeit sind es Dutzende bis Hunderte pro Sekunde.",
+ simPh:["Sie spiralen aufeinander zu","Zusammenstoß!","Das neue Schwarze Loch schwingt aus"], simWave:"Gravitationswelle (verlangsamt)",
+ simHow:"<b>Die Animation.</b> Zwei Objekte umkreisen einander über einem „Gummituch“ aus Raum, im Takt mit dem Ton: Je höher der Ton, desto schneller und enger kreisen sie. Die Umrundungen sind verlangsamt und die Größen übertrieben: eine Skizze, keine Berechnung mit Einsteins Gleichungen.",
+ lb:{kar:{t:"Bestes Mitsingen",s:"Sing mit: wie genau du dem echten Chirp gefolgt bist."},
+  match:{t:"Bester Chirp",s:"Welches Paar bist du: wie sehr dein „Wuuup“ einem echten Chirp gleicht."},
+  heavy:{t:"Schwerstes Paar",s:"Masse jedes Objekts. Zählt ab 60 % Übereinstimmung."},
+  far:{t:"Am weitesten weg",s:"So weit zurück in der Zeit hört das Einstein-Teleskop so ein Paar noch. Zählt ab 60 % Übereinstimmung."},
+  light:{t:"Leichtestes Paar",s:"Leichter als ein Neutronenstern? Dann vielleicht primordiale Schwarze Löcher. Zählt ab 60 % Übereinstimmung."},
+  group:{t:"Meiste Zusammenstöße in 15 s",s:"Gruppenmodus: die 15-Sekunden-Challenge."}},
+ lbOpen:"🏆 Bestenlisten", lbTitle:"Bestenlisten von heute", lbExpl:"Die Top 10 von heute in jeder Kategorie. Schaffst du es auf eine Liste, darfst du deinen Namen eintippen.", lbBack:"← Zurück",
+ lbChamp:"Champions von heute:", lbNone:"Noch niemand auf den heutigen Bestenlisten: Mach den Anfang!", lbEmpty:"Noch niemand. Mach den Anfang!",
+ lbQual:"Top 10 von heute!", lbName:"Tipp deinen Namen (oder einen Spitznamen) für die Bestenliste ein.", lbTeam:"Tippt einen Namen für eure Gruppe ein.", lbSave:"Speichern", lbSkip:"Überspringen",
+ lbEnter:"Trag deinen Namen ein", lbSaved:"Du stehst auf der Bestenliste: {list}", lbSee:"Bestenlisten ansehen", lbBest:"Bestwert von heute, {b}: {n} ({v})", lbPeak:"max. {n} gleichzeitig", lbGyr:"{x} Mrd. J.", lbMyr:"{x} Mio. J.",
+ kbSpace:"Leertaste", kbBack:"löschen",
+ lbAdmin:"Verwaltung: Tippe auf ✕, um einen Namen zu löschen, oder lösche eine ganze Liste.", lbAdminPin:"Verwaltungscode", lbWrongPin:"Falscher Code.", lbResetAll:"Alle Bestenlisten löschen", lbReset:"Liste löschen", lbConfirm:"Zum Bestätigen noch einmal tippen", lbDone:"Fertig", lbCancel:"Abbrechen", lbDel:"Diesen Namen löschen",
+ chBtn:"⏱ 15-Sekunden-Challenge", chStop:"Challenge stoppen", chReady:"Bereit? Wuuupt, so viel ihr könnt!", chGo:"WUUUP!", chDone:"⏱ {n} Zusammenstöße in 15 Sekunden", badgeCh:"CHALLENGE · 15 S"
 }};
 
 /* ---------------- state ---------------- */
 const Q = new URLSearchParams(location.search);
 const DEBUG = Q.get("debug")==="1";
 const S = { lang:"nl", screen:"intro", kind:"kar", tgtI:0, mode:"bh", audio:null, source:null, res:null, kar:null, msgKey:null, ctx:null, best:null };
-if (I18N[Q.get("lang")]) S.lang = Q.get("lang");
+// Default language: the first of the phone's / browser's preferred languages that we have, otherwise English.
+// ?lang=xx in the URL overrides it (e.g. a kiosk launched with ?kiosk=1&lang=nl); the idle reset returns to START_LANG.
+const DEFAULT_LANG = (()=>{ const pref = (navigator.languages && navigator.languages.length)? navigator.languages : [navigator.language||""];
+  for (const l of pref){ const c=String(l).slice(0,2).toLowerCase(); if (I18N[c]) return c; } return "en"; })();
+const START_LANG = I18N[Q.get("lang")]? Q.get("lang") : DEFAULT_LANG;
+S.lang = START_LANG;
 const $ = id => document.getElementById(id);
 const T = (k, vars) => { let s = (I18N[S.lang][k] ?? I18N.en[k]); if (vars) for (const [a,b] of Object.entries(vars)) s = s.split("{"+a+"}").join(b); return s; };
-const nf = (x, d=1) => Number(x).toLocaleString(S.lang==="en"?"en-US":S.lang==="nl"?"nl-BE":"fr-BE",{minimumFractionDigits:d,maximumFractionDigits:d});
-const pct = x => Math.round(x*100)+(S.lang==="fr"?" %":"%");
+const LOCALE = {nl:"nl-BE", en:"en-US", fr:"fr-BE", de:"de-DE"};
+const nf = (x, d=1) => Number(x).toLocaleString(LOCALE[S.lang]||"en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = x => Math.round(x*100)+(S.lang==="fr"||S.lang==="de"?" %":"%");
 function sig(x){ const d = x>=100?0: x>=10?1: x>=1?2:3; return nf(x, Math.max(0,d-(x>=10?1:0))); }
 function fmtTime(gyr){
   if (gyr >= 0.995) { const x=nf(gyr,1); return T((S.lang==="fr"&&gyr<2)?"gyr1":"gyr",{x}); }
@@ -1197,16 +1300,17 @@ function openBoards(){ if (S.screen==="board") return; kbClose(); abortRec(); ch
 function closeBoards(){ S.lbAdmin=false; S.lbConfirm=null; kbClose(); const p=S.prevScreen||"intro"; if (p==="intro") goIntro(); else show(p); }
 
 /* ---------------- touch keyboard ----------------
-   A bottom sheet with big keys: AZERTY in Dutch and French, QWERTY in English, a row of accents; a
+   A bottom sheet with big keys: AZERTY in Dutch and French, QWERTY in English, QWERTZ in German, a row of accents; a
    physical keyboard works too. Mode "name" saves the pending leaderboard entries, "pin" asks the manager code. */
 const KB={open:false, mode:"name", text:"", msg:""};
-const KB_LAY={azerty:["AZERTYUIOP","QSDFGHJKLM","WXCVBN"], qwerty:["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"]}, KB_ACC="ÀÂÇÉÈÊËÏÔÖÜ";
+const KB_LAY={azerty:["AZERTYUIOP","QSDFGHJKLM","WXCVBN"], qwerty:["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"], qwertz:["QWERTZUIOPÜ","ASDFGHJKLÖÄ","YXCVBNM"]};
+const KB_OF={nl:"azerty", fr:"azerty", en:"qwerty", de:"qwertz"}, KB_ACC_OF={de:"ÀÁÂÇÉÈÊËÏÔ"}, KB_ACC="ÀÂÇÉÈÊËÏÔÖÜ";
 function kbOpen(mode){ if (mode==="name" && !(S.lbPend && S.lbPend.length)) return; KB.open=true; KB.mode=mode; KB.text=""; KB.msg=""; $("kb").hidden=false; kbRender(); if (mode==="name") window.scrollTo({top:0, behavior:"smooth"}); }
 function kbClose(){ if (!KB.open) return; KB.open=false; $("kb").hidden=true; }
 function kbRender(){
   if (!KB.open) return; const L=I18N[S.lang], pin=KB.mode==="pin"; let rows;
   if (pin) rows=[["1","2","3"],["4","5","6"],["7","8","9"],["⌫","0"]];
-  else { rows=[[...KB_ACC], ...(S.lang==="en"? KB_LAY.qwerty : KB_LAY.azerty).map(r=>[...r])]; rows[rows.length-1].push("⌫"); rows.push(["-","␣","'"]); }
+  else { rows=[[...(KB_ACC_OF[S.lang]||KB_ACC)], ...KB_LAY[KB_OF[S.lang]||"qwerty"].map(r=>[...r])]; rows[rows.length-1].push("⌫"); rows.push(["-","␣","'"]); }
   $("kb-keys").className="kb-keys"+(pin?" kb-pin":"");
   $("kb-keys").innerHTML = rows.map((r,i)=>`<div class="kb-row${!pin&&i===0?" acc":""}">`+r.map(k=>
     `<button type="button" data-k="${k}"${k==="␣"?' class="wide"':k==="⌫"?' class="mid"':""} aria-label="${k==="␣"?L.kbSpace:k==="⌫"?L.kbBack:k}">${k==="␣"?L.kbSpace:k}</button>`).join("")+`</div>`).join("");
@@ -1969,8 +2073,8 @@ document.querySelectorAll("#langSeg button").forEach(b=>b.onclick=()=>{ S.lang=b
 let rz=0; window.addEventListener("resize",()=>{ cancelAnimationFrame(rz); rz=requestAnimationFrame(()=>drawStage()); });
 
 function goIntro(){ chCancel(); gHalt(); abortRec(); stopPlay(); closeMic(); kbClose(); lbClear(); S.res=null; S.kar=null; S.audio=null; S.source=null; specCache=null; S.msgKey=null; show("intro"); }
-// Kiosk idle reset (shared outreach kit): back to the intro, in Dutch, nothing of the last visitor left.
-function kioskReset(){ gClear(); goIntro(); S.lang="nl"; S.kind="kar"; S.tgtI=0; S.mode="bh"; S.lbAdmin=false; S.lbConfirm=null; S.lbLast=null; $("more").open=false; $("how").open=false; render(); window.scrollTo(0,0); }
+// Kiosk idle reset (shared outreach kit): back to the intro, in the device's default language, nothing of the last visitor left.
+function kioskReset(){ gClear(); goIntro(); S.lang=START_LANG; S.kind="kar"; S.tgtI=0; S.mode="bh"; S.lbAdmin=false; S.lbConfirm=null; S.lbLast=null; $("more").open=false; $("how").open=false; render(); window.scrollTo(0,0); }
 
 if (DEBUG) $("phys").hidden=false;
 window.__chirp = {simSpec, simDraw,targetSimSpec, fitSimSpec, simPlay, simIntro, G,makeGroupDetector, synthCrowd, gFeed, analyze, synthChirp, fOfTau, tauOfF, KCH, exampleWhoop, phenomA, fitTrack, pitchTrack, coherentOverlap, karaokeScore, targetSound, TARGETS, REACH, reachZ, lookback, S, finishAnalysis, enterPlay, kioskReset, lbLoad, lbStore, lbCands, KB, chStart, CH};

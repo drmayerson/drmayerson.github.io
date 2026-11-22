@@ -11,7 +11,7 @@
      data-kiosk    "url" (default: kiosk only with ?kiosk=1) | "always" | "never"
 
    Page API (all optional)
-     window.OutreachKit.setLang('nl'|'en'|'fr')   re-labels the kit's own texts
+     window.OutreachKit.setLang('nl'|'en'|'fr'|'de')   re-labels the kit's own texts
      window.OutreachKit.onReset = fn              called on idle reset instead of a reload
      window.OutreachKit.kiosk                     true when kiosk mode is on
      window.OutreachKit.invite(text)              shows the "touch to start" overlay now
@@ -30,7 +30,8 @@
   var T = {
     nl: { back: '← Projecten', credit: 'Leuven Gravity Institute, KU Leuven · voor de Einstein Telescope', invite: 'Raak het scherm aan om te beginnen' },
     en: { back: '← Projects', credit: 'Leuven Gravity Institute, KU Leuven · for the Einstein Telescope', invite: 'Touch the screen to start' },
-    fr: { back: '← Projets', credit: 'Leuven Gravity Institute, KU Leuven · pour l’Einstein Telescope', invite: 'Touchez l’écran pour commencer' }
+    fr: { back: '← Projets', credit: 'Leuven Gravity Institute, KU Leuven · pour l’Einstein Telescope', invite: 'Touchez l’écran pour commencer' },
+    de: { back: '← Projekte', credit: 'Leuven Gravity Institute, KU Leuven · für das Einstein-Teleskop', invite: 'Berühre den Bildschirm, um zu beginnen' }
   };
   var lang = (document.documentElement.lang || 'nl').slice(0, 2);
   if (!T[lang]) lang = 'nl';
