@@ -19,6 +19,24 @@ or just ask: "Run the test audience on eenhoornrace at an unmanned expo stand, w
 
 Defaults: scenario `solo-phone`, panel `quick` (6 visitors). Claude asks before running more than 12 visitors, because each one is a separate subagent.
 
+**Scenarios** (second word): `solo-phone`, `solo-laptop`, `expo-unmanned` (kiosk, nobody at the stand), `expo-manned` (with an explainer; add "explainer volunteer", "outreach-pro" or "tired-researcher" to change the default PhD student).
+
+**Panels** (third word, or "with the … panel"). You can also name people ("only lotte-9 and willy-72") or ask for new ones ("generate 8 Walloon pupils").
+
+| Panel | Size | Visitors |
+|---|---|---|
+| `quick` (default) | 6 | lotte-9, ayoub-13, nadia-38, pieter-45, josee-61, sophie-27 |
+| `general-public` | 12 | lotte-9, ayoub-13, emma-15, chloe-20, kevin-22, sanne-24, tom-34, nadia-38, stefan-44, martine-52, josee-61, willy-72 |
+| `family-day` | 10 | noor-7, lotte-9, lucas-11, ayoub-13, yasmina-35, nadia-38, stefan-44, raj-41, maria-79, willy-72 |
+| `school-visit` | 7 | lucas-11, ayoub-13, emma-15, fien-16, jules-17, bram-31, martine-52 |
+| `et-region` | 10 | jules-17, kevin-22, sanne-24, jan-39, pieter-45, greet-48, ingrid-57, hans-58, josee-61, willy-72 |
+| `experts` | 6 | fien-16, arno-19, sophie-27, bram-31, hans-58, dirk-66 |
+| `accessibility` | 8 | lucas-11, lien-26, tom-34, yasmina-35, stefan-44, dirk-66, willy-72, maria-79 |
+| `international` | 8 | lucas-11, jules-17, chloe-20, elena-29, raj-41, yasmina-35, hans-58, josee-61 |
+| `full` | 30 | everyone in `personas/roster.yaml` |
+
+Who each person is: `personas/roster.yaml` (one entry per visitor). The panels themselves: `panels.yaml`.
+
 Each run writes to `.claude/test-audience-runs/<date>_<app>_<scenario>_<panel>/`: `brief.md`, `dossier.md` (what the app showed), `shots/`, `responses/<visitor>.json`, `summary.json`, `probe.md` and `report.md`. Runs are git-ignored; commit one by hand if you want to keep it.
 
 ## Changing the audience
