@@ -25,13 +25,27 @@ Rank problems by **severity × number of visitors hit**, and give extra weight t
 
 Discount responses that broke the realism rules (an 8-year-old explaining chirp mass, a persona reading a language they don't read). Mention that you did.
 
-## Report structure (`<run>/report.md`)
+## Report structure
+
+The report is read by people who were not in the conversation: the app's author later, a colleague, the stand crew. It must stand on its own, without the run folder. Save it at the location chosen in step 1 as `<app>-test-audience-<scenario>-<panel>-<YYYY-MM-DD>.md`, and copy it to `<run>/report.md`. Refer to screenshots by their path in the run folder; don't embed them.
 
 ```markdown
-# Test audience: <app> · <scenario> · <panel> (<n> visitors) · <date>
+# <App name>: simulated test audience, <scenario in words>
+
+Run <date> with the `test-audience` skill (<where the skill lives>).
+App: **<app>** (<repo or URL>, commit <hash> if known).
+Full run (dossier, screenshots, every visitor's answers): `<run folder path>`.
+
+## How this was done, and what it does not cover
+- **Situation simulated:** device, place, sound, who is around; for expos, the stand set-up (staffed or not, kiosk mode, language).
+- **Explainer** (expo-manned only): the profile in one sentence.
+- **Visitors:** a table, one row each: name and age · who they are in a few words · their situation in this run (who they came with, how they got there).
+- **Method:** two sentences: app recorded into a neutral description with real screenshots; each visitor a separate agent with its own clock, reading speed, patience and knowledge, not told the intended takeaways; claims checked against the app.
+- **Not covered:** what could not be exercised (microphone, camera, real crowd, a flow end to end) and anything discounted.
+- **Read it as:** finds friction before real visitors do; does not predict how much people will like it.
 
 ## Verdict
-Two or three sentences: did it work for this audience, for whom not, and the single most important fix.
+Two or three sentences, or a short table (pull · hold · message · ET link · physics): did it work for this audience, for whom not, and the single most important fix.
 
 ## Did the message land?
 | Intended takeaway | got it | partly | missed | garbled |
@@ -67,6 +81,9 @@ Numbered, most valuable first. Each: what to change, which problem(s) it address
 
 ## Caveats
 Simulated visitors, not people: good at friction, weak at predicting delight and real social dynamics. Fidelity of the dossier (browser or code-only), what was not exercised, any responses discounted, average sim_confidence.
+
+## Screenshots
+One line per screenshot in the run folder: file name and what it shows (and what it does not show, e.g. a test image instead of a real camera picture).
 ```
 
-Keep the report scannable: tables and short lines, no padding. Quotes stay verbatim and in the visitor's language.
+Keep the report scannable: tables and short lines, no padding. Quotes stay verbatim and in the visitor's language. Write it in the language the user works in with you (English unless they use another), with visitor quotes in the visitors' own languages. If earlier reports exist at the chosen location, match their conventions (for example P1/P2/P3 priorities and finding IDs, as in `outreach-apps-review.md`).

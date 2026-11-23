@@ -1,12 +1,30 @@
 # Visitor brief
 
-Launch one subagent per visitor with the prompt below. Replace everything in `{curly braces}`. Paste the persona's full YAML entry and the scenario's **Visitor text** (and for `expo-manned`, the "Extra for the visitor" text and the chosen explainer profile). Give file paths as absolute paths. Do not add the intended takeaways, your view of the app, or anything about other visitors.
+## How to hand it out (files, not long prompts)
+
+Split the brief below into two kinds of files in the run folder, so you don't repeat it in every prompt:
+
+1. **`<run>/visitor-instructions.md`**, once per run: everything in the template below except "Who you are" and the situation line. It contains the scenario's **Visitor text** (for `expo-manned` also the "Extra for the visitor" text and the explainer profile), the app files to read (paths relative to the run folder), "How to live through the visit", and "What to write" with the JSON shape.
+2. **`<run>/visitors/<persona-id>.md`**, one per visitor: the persona's full YAML entry, verbatim from `personas/roster.yaml` (cut it out with a small script rather than retyping), and that visitor's situation line (see below).
+
+Then launch each visitor with `subagent_type: "general-purpose"`, `model: "sonnet"`, a description like `"Visitor lotte-9"`, and this short prompt:
+
+```text
+You are one visitor in a simulated audience test of an outreach app. Your run folder is <absolute run path>
+1. Read visitors\<persona-id>.md in that folder: who you are and your situation.
+2. Read visitor-instructions.md in that folder and follow it exactly: read dossier.md and the screenshots it names, live through the visit as this person, and write responses\<persona-id>.json.
+3. Reply with only the one line the instructions ask for.
+```
+
+Do not put the intended takeaways, your view of the app, or anything about other visitors in either file.
+
+## The brief's content
 
 Add one **situation line** for each visitor, in brackets after the scenario text, that places this person in the scenario using their persona: how the link reached them (or how they came to the stand), where they are, whether their sound is on, which device and therefore which screenshot applies (an old small Android → `first_small-phone.png`), and **which language version they get**. If the app picks its language from the browser, a French-speaking visitor sees the French version: say so, and tell them the dossier's text appears to them in that language. Vary the situations realistically; don't make every visitor's circumstances ideal.
 
 If something could not be exercised in the walkthrough (singing, camera, motion), tell the visitor to assume the device works once permission is given, and to decide in character how well they manage the task, or whether they try at all.
 
-Recommended subagent settings: `subagent_type: "general-purpose"`, a short description like `"Visitor lotte-9"`. Default model; for panels over 12 visitors, `model: "sonnet"`.
+The template below shows the whole brief as a single text; split it into the two files as described above.
 
 ---
 

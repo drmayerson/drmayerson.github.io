@@ -31,13 +31,20 @@ From the arguments and the conversation, settle:
 
 - **App**: a folder of the current project (served by the project's dev server; in the drmayerson.github.io repo that is the `site` entry in `.claude/launch.json`, so `chirp-karaoke` means `http://localhost:<port>/chirp-karaoke/` with the port `preview_start` reports; if the browser can't reach it, a server from another session may already be serving the folder on 8765, so try that) or a public URL.
 - **Scenario(s)**: default `solo-phone`. Several are fine; each becomes its own run.
-- **Panel**: default `quick` (6 visitors). Also accepted: another panel name, a list of persona ids, or "generate N <description>" (see `personas/dimensions.md`, Generating).
+- **Panel (audience)**: use the one the user named: a panel name from `panels.yaml`, a list of persona ids, or "generate N <description>" (see `personas/dimensions.md`, Generating). **If the user did not name an audience, always ask. Never pick one silently.** See "Asking" below.
+- **Report location**: every run ends with a written report (section 5). Use the place the user named. If they named none, use an obvious existing home for such reports: a folder or file of earlier test-audience or app reviews that the user keeps (for drmayerson.github.io, earlier reports sit in the parent folder `Github.io/`, e.g. `bh-camera-test-audience.md` and `outreach-apps-review.md`). If it isn't clear, ask. See "Asking" below.
 - **Intended takeaways**: what the app should leave people with. Use the user's if given. Otherwise infer 2–4 from the app's own text (intro, takeaway or summary strings in the source), and state them to the user in one line as assumptions. Do not stop to ask.
 - **Explainer profile** (only for `expo-manned`): default `phd-enthusiast`.
 
-Ask the user only for what you cannot default. Before launching **more than 12 visitors**, tell the user the number and that each visitor is one subagent (roughly 20–50k tokens each), and wait for a yes. For panels over 12, suggest `model: "sonnet"` for the visitor agents to keep the cost down.
+**Asking.** Put every open question in **one** `AskUserQuestion` call, before the walkthrough starts, so the user answers once and the rest runs without them:
+- *Audience* (when not given): offer up to four panels that fit this app and scenario, best fit first and marked "(Recommended)". Choose them from each panel's `purpose` in `panels.yaml`: for an ET information evening, `et-region`; for a family expo, `family-day`; for a classroom app, `school-visit`. Always include `quick` as the cheap option. In each option's description give the size and a few of the people (e.g. "10: children 7–13, parents, grandparents, a Syrian mum learning Dutch"). The automatic "Other" answer covers other panels, persona ids or "generate …".
+- *Report location* (only when not given and not obvious): offer two to four concrete places, e.g. the folder where earlier reviews live, the app's own repository (say so when the repository is public: a report committed there is published), or only the run folder (local, git-ignored).
 
-Create the run folder in the project root: `.claude/test-audience-runs/<YYYY-MM-DD>_<app>_<scenario>_<panel>/` (`<run>` from here on), with subfolders `shots/` and `responses/`. Write `<run>/brief.md`: app, URL, scenario, panel and persona ids, intended takeaways, explainer profile, date.
+Ask nothing else that has a default. Before launching **more than 12 visitors**, tell the user the number and that each visitor is one subagent (roughly 70–90k tokens each), and wait for a yes.
+
+**Visitor model: always Sonnet.** Launch every visitor agent with `model: "sonnet"`, whatever the panel size, unless the user explicitly asks for another model for the visitors. The walkthrough, probe and report stay with you (the main model).
+
+Create the run folder in the project root: `.claude/test-audience-runs/<YYYY-MM-DD>_<app>_<scenario>_<panel>/` (`<run>` from here on), with subfolders `shots/` and `responses/`. Write `<run>/brief.md`: app, URL, scenario, panel and persona ids, intended takeaways, explainer profile, report location, date.
 
 ## 2. Walk through the app yourself → `<run>/dossier.md`
 
@@ -45,7 +52,7 @@ Follow `protocols/walkthrough.md`. You are the only one who touches the app: the
 
 ## 3. Send in the audience
 
-For each visitor, launch one subagent with the prompt from `protocols/visitor-brief.md`, filled in with that persona's full YAML entry, the scenario text, the paths, and (expo-manned) the explainer profile. Launch them **all in one message** so they run in parallel; for panels over ~12, launch in waves of up to 12.
+For each visitor, launch one subagent (`model: "sonnet"`) as described in `protocols/visitor-brief.md`: one shared `<run>/visitor-instructions.md` for the whole run, plus a `<run>/visitors/<persona-id>.md` per visitor with that persona's full YAML entry and their situation line. The prompt itself only points the agent at those two files. Launch them **all in one message** so they run in parallel; for panels over ~12, launch in waves of up to 12.
 
 Never put the intended takeaways, your own opinion of the app, or other visitors' answers in a visitor's prompt. Each visitor writes `<run>/responses/<persona-id>.json` and replies with one line; do not ask for more, so the responses stay out of your context.
 
@@ -54,9 +61,11 @@ Never put the intended takeaways, your own opinion of the app, or other visitors
 1. Run `python scripts/aggregate.py <run>`. It lists missing or invalid response files; relaunch those visitors once.
 2. **Probe.** Read each response's `untested_actions` and `failures` of type `technical`. Where the dossier does not settle whether it really happens (a visitor "would tap the picture", "thinks the sound did not play"), check the five most consequential ones in the browser yourself. Record each as confirmed, not reproduced, or could not test, in `<run>/probe.md`.
 
-## 5. Report → `<run>/report.md`
+## 5. Report → the chosen location (always)
 
-Follow `protocols/report.md`. Then give the user, in chat: the verdict in two sentences, the top three problems, the takeaway recall numbers, and a link to `report.md`. If the report is meant for others (a team, a funder, the exhibit crew), offer to publish it as a page.
+Every run ends with a report; this is not optional. Follow `protocols/report.md`: a self-contained Markdown file that someone who was not in the conversation can read, covering what was tested and how, the verdict, findings and fixes. Save it at the location settled in step 1 as `<app>-test-audience-<scenario>-<panel>-<YYYY-MM-DD>.md`. Keep a copy at `<run>/report.md`, so the run folder is complete.
+
+Then give the user, in chat: the verdict in two sentences, the top three problems, the takeaway recall numbers, and a link to the report. If the report is meant for others (a team, a funder, the exhibit crew), offer to publish it as a page.
 
 ## Realism rules
 

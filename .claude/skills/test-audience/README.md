@@ -17,7 +17,9 @@ In Claude Code, opened anywhere inside this repository (any account or subscript
 
 or just ask: "Run the test audience on eenhoornrace at an unmanned expo stand, with the accessibility panel."
 
-Defaults: scenario `solo-phone`, panel `quick` (6 visitors). Claude asks before running more than 12 visitors, because each one is a separate subagent.
+If you don't name an audience, Claude **asks** which panel to use, suggesting the ones that fit the app. It does the same for where to save the report, unless that is obvious (here: next to the earlier reports in the `Github.io` folder). Everything is asked in one go at the start, so the run then continues without you. The scenario defaults to `solo-phone`. Visitors always run on Sonnet (cheaper; the walkthrough and report stay on the main model). Claude asks before running more than 12 visitors, because each one is a separate subagent.
+
+Every run ends with a **report**: a self-contained Markdown file (how it was done, who the visitors were, the verdict, what landed, ranked problems, misconceptions, a fix list), saved as `<app>-test-audience-<scenario>-<panel>-<date>.md`.
 
 **Scenarios** (second word): `solo-phone`, `solo-laptop`, `expo-unmanned` (kiosk, nobody at the stand), `expo-manned` (with an explainer; add "explainer volunteer", "outreach-pro" or "tired-researcher" to change the default PhD student).
 
@@ -25,7 +27,7 @@ Defaults: scenario `solo-phone`, panel `quick` (6 visitors). Claude asks before 
 
 | Panel | Size | Visitors |
 |---|---|---|
-| `quick` (default) | 6 | lotte-9, ayoub-13, nadia-38, pieter-45, josee-61, sophie-27 |
+| `quick` (cheapest) | 6 | lotte-9, ayoub-13, nadia-38, pieter-45, josee-61, sophie-27 |
 | `general-public` | 12 | lotte-9, ayoub-13, emma-15, chloe-20, kevin-22, sanne-24, tom-34, nadia-38, stefan-44, martine-52, josee-61, willy-72 |
 | `family-day` | 10 | noor-7, lotte-9, lucas-11, ayoub-13, yasmina-35, nadia-38, stefan-44, raj-41, maria-79, willy-72 |
 | `school-visit` | 7 | lucas-11, ayoub-13, emma-15, fien-16, jules-17, bram-31, martine-52 |
@@ -37,7 +39,7 @@ Defaults: scenario `solo-phone`, panel `quick` (6 visitors). Claude asks before 
 
 Who each person is: `personas/roster.yaml` (one entry per visitor). The panels themselves: `panels.yaml`.
 
-Each run writes to `.claude/test-audience-runs/<date>_<app>_<scenario>_<panel>/`: `brief.md`, `dossier.md` (what the app showed), `shots/`, `responses/<visitor>.json`, `summary.json`, `probe.md` and `report.md`. Runs are git-ignored; commit one by hand if you want to keep it.
+Each run writes to `.claude/test-audience-runs/<date>_<app>_<scenario>_<panel>/`: `brief.md`, `dossier.md` (what the app showed), `shots/`, `responses/<visitor>.json`, `summary.json`, `probe.md` and a copy of the report. Runs are git-ignored; commit one by hand if you want to keep it.
 
 ## Changing the audience
 
